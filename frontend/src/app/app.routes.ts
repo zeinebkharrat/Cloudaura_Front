@@ -2,8 +2,12 @@ import { Routes } from '@angular/router';
 import { HomeComponent } from './home.component';
 import { VirtualTourPageComponent } from './virtual-tour-page.component';
 import { FeaturePageComponent } from './feature-page.component';
+import { SignInComponent } from './sign-in.component';
+import { SignUpComponent } from './sign-up.component';
 export const routes: Routes = [
   { path: '', component: HomeComponent },
+  { path: 'signin', component: SignInComponent },
+  { path: 'signup', component: SignUpComponent },
   { path: 'virtual-tour', component: VirtualTourPageComponent },
   {
     path: 'destinations',
@@ -310,4 +314,5 @@ export const routes: Routes = [
       ],
     },
   },
+  { path: '**', redirectTo: '' },
 ];

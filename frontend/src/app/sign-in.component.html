@@ -1,0 +1,58 @@
+<section class="auth-page">
+  <div class="auth-bg-orb auth-bg-orb-left"></div>
+  <div class="auth-bg-orb auth-bg-orb-right"></div>
+
+  <article class="auth-card animate-in">
+    <p class="auth-kicker">Tunisia Travel Access</p>
+    <h1>Connexion à YallaTN+</h1>
+    <p class="auth-subtitle">Retrouvez vos itinéraires, vos favoris et vos réservations en un instant.</p>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <label>
+        Email ou nom d’utilisateur
+        <input
+          type="text"
+          formControlName="identifier"
+          placeholder="ex: sara.bizerte ou sara@email.com"
+          autocomplete="username"
+        />
+      </label>
+      @if (form.controls.identifier.invalid && form.controls.identifier.touched) {
+        <p class="field-error">Ce champ est obligatoire.</p>
+      }
+
+      <label>
+        Mot de passe
+        <input
+          type="password"
+          formControlName="password"
+          placeholder="Votre mot de passe"
+          autocomplete="current-password"
+        />
+      </label>
+      @if (form.controls.password.invalid && form.controls.password.touched) {
+        <p class="field-error">Le mot de passe doit contenir au moins 8 caractères.</p>
+      }
+
+      @if (formError()) {
+        <div class="auth-error">{{ formError() }}</div>
+      }
+
+      <button type="submit" class="auth-submit" [disabled]="isLoading()">
+        {{ isLoading() ? 'Connexion...' : 'Se connecter' }}
+      </button>
+    </form>
+
+    <div class="social-zone">
+      <p>Social login (phase 2)</p>
+      <div class="social-buttons">
+        <button type="button" disabled>Google bientôt</button>
+        <button type="button" disabled>GitHub bientôt</button>
+      </div>
+    </div>
+
+    <p class="auth-switch">
+      Nouveau voyageur ? <a routerLink="/signup">Créer un compte</a>
+    </p>
+  </article>
+</section>

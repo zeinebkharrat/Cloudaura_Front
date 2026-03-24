@@ -1,6 +1,7 @@
 import { Component, inject, signal, OnInit, Renderer2 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { AuthService } from './auth.service';
 
 
 @Component({
@@ -14,8 +15,11 @@ export class AppComponent implements OnInit {
 
   private readonly router = inject(Router);
   private readonly renderer = inject(Renderer2);
+  private readonly authService = inject(AuthService);
 
   isDarkMode = signal(true);
+  isAuthenticated = this.authService.isAuthenticated;
+  currentUser = this.authService.currentUser;
 
   ngOnInit() {
     const savedTheme = localStorage.getItem('theme');
@@ -25,6 +29,8 @@ export class AppComponent implements OnInit {
     } else {
       this.renderer.setAttribute(document.documentElement, 'data-theme', 'dark');
     }
+
+    this.authService.restoreSession();
   }
 
   isAdminArea(): boolean {
@@ -36,5 +42,10 @@ export class AppComponent implements OnInit {
     const theme = this.isDarkMode() ? 'dark' : 'light';
     this.renderer.setAttribute(document.documentElement, 'data-theme', theme);
     localStorage.setItem('theme', theme);
+  }
+
+  logout() {
+    this.authService.logout();
+    this.router.navigateByUrl('/');
   }
 }

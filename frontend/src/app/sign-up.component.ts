@@ -1,0 +1,64 @@
+import { CommonModule } from '@angular/common';
+import { Component, inject, signal } from '@angular/core';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
+import { AuthService } from './auth.service';
+
+function passwordsMatch(group: AbstractControl): ValidationErrors | null {
+  const password = group.get('password')?.value;
+  const confirmPassword = group.get('confirmPassword')?.value;
+  if (!password || !confirmPassword) {
+    return null;
+  }
+  return password === confirmPassword ? null : { passwordMismatch: true };
+}
+
+@Component({
+  selector: 'app-sign-up',
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  templateUrl: './sign-up.component.html',
+  styleUrl: './sign-up.component.css',
+})
+export class SignUpComponent {
+  private readonly fb = inject(FormBuilder);
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+
+  readonly isLoading = signal(false);
+  readonly formError = signal<string | null>(null);
+
+  readonly form = this.fb.nonNullable.group(
+    {
+      firstName: ['', [Validators.required, Validators.minLength(2)]],
+      lastName: ['', [Validators.required, Validators.minLength(2)]],
+      username: ['', [Validators.required, Validators.minLength(3)]],
+      email: ['', [Validators.required, Validators.email]],
+      password: ['', [Validators.required, Validators.minLength(8)]],
+      confirmPassword: ['', [Validators.required]],
+    },
+    { validators: passwordsMatch }
+  );
+
+  submit() {
+    if (this.form.invalid || this.isLoading()) {
+      this.form.markAllAsTouched();
+      return;
+    }
+
+    this.isLoading.set(true);
+    this.formError.set(null);
+
+    const { confirmPassword: _confirmPassword, ...payload } = this.form.getRawValue();
+
+    this.authService.signup(payload).subscribe({
+      next: () => this.router.navigateByUrl('/'),
+      error: (error: HttpErrorResponse) => {
+        this.isLoading.set(false);
+        this.formError.set(error.error?.message || 'Inscription impossible. Veuillez réessayer.');
+      },
+      complete: () => this.isLoading.set(false),
+    });
+  }
+}
