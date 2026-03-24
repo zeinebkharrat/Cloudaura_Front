@@ -1,0 +1,451 @@
+[33m❯[39m Building...
+[32m✔[39m Building...
+Application bundle generation failed. [1.965 seconds]
+
+[1m[31m[31mX [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "zrender/lib/core/matrix"[0m
+
+    node_modules/echarts-gl/lib/chart/common/GLViewHelper.js:1:24:
+[37m      1 │ import * as matrix from [32m'zrender/lib/core/matrix'[37m;
+        ╵                         [32m~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  The module "./lib/core/matrix" was not found on the file system:
+
+    node_modules/zrender/package.json:87:11:
+[37m      87 │     "./*": [32m"./*"[37m
+         ╵            [32m~~~~~[0m
+
+  Import from "zrender/lib/core/matrix.js" to get the file "node_modules/zrender/lib/core/matrix.js":
+
+    node_modules/echarts-gl/lib/chart/common/GLViewHelper.js:1:48:
+[37m      1 │ import * as matrix from 'zrender/lib/core/matrix[32m[37m';
+        │                                                 [32m^[37m
+        ╵                                                 [32m.js[0m
+
+  You can mark the path "zrender/lib/core/matrix" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "echarts/lib/util/layout"[0m
+
+    node_modules/echarts-gl/lib/chart/graphGL/GraphGLView.js:2:30:
+[37m      2 │ import { getLayoutRect } from [32m'echarts/lib/util/layout'[37m;
+        ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  The module "./lib/util/layout" was not found on the file system:
+
+    node_modules/echarts/package.json:223:11:
+[37m      223 │     "./*": [32m"./*"[37m
+          ╵            [32m~~~~~[0m
+
+  Import from "echarts/lib/util/layout.js" to get the file "node_modules/echarts/lib/util/layout.js":
+
+    node_modules/echarts-gl/lib/chart/graphGL/GraphGLView.js:2:54:
+[37m      2 │ import { getLayoutRect } from 'echarts/lib/util/layout[32m[37m';
+        │                                                       [32m^[37m
+        ╵                                                       [32m.js[0m
+
+  You can mark the path "echarts/lib/util/layout" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "zrender/lib/animation/requestAnimationFrame"[0m
+
+    node_modules/echarts-gl/lib/chart/graphGL/GraphGLView.js:9:34:
+[37m      9 │ ...tAnimationFrame from [32m'zrender/lib/animation/requestAnimationFrame'[37m;
+        ╵                         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  The module "./lib/animation/requestAnimationFrame" was not found on the file system:
+
+    node_modules/zrender/package.json:87:11:
+[37m      87 │     "./*": [32m"./*"[37m
+         ╵            [32m~~~~~[0m
+
+  Import from "zrender/lib/animation/requestAnimationFrame.js" to get the file "node_modules/zrender/lib/animation/requestAnimationFrame.js":
+
+    node_modules/echarts-gl/lib/chart/graphGL/GraphGLView.js:9:78:
+[37m      9 │ ...tAnimationFrame from 'zrender/lib/animation/requestAnimationFrame[32m[37m';
+        │                                                                     [32m^[37m
+        ╵                                                                     [32m.js[0m
+
+  You can mark the path "zrender/lib/animation/requestAnimationFrame" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "echarts/lib/data/Graph"[0m
+
+    node_modules/echarts-gl/lib/chart/graphGL/createGraphFromNodeEdge.js:2:18:
+[37m      2 │ import Graph from [32m'echarts/lib/data/Graph'[37m;
+        ╵                   [32m~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  The module "./lib/data/Graph" was not found on the file system:
+
+    node_modules/echarts/package.json:223:11:
+[37m      223 │     "./*": [32m"./*"[37m
+          ╵            [32m~~~~~[0m
+
+  Import from "echarts/lib/data/Graph.js" to get the file "node_modules/echarts/lib/data/Graph.js":
+
+    node_modules/echarts-gl/lib/chart/graphGL/createGraphFromNodeEdge.js:2:41:
+[37m      2 │ import Graph from 'echarts/lib/data/Graph[32m[37m';
+        │                                          [32m^[37m
+        ╵                                          [32m.js[0m
+
+  You can mark the path "echarts/lib/data/Graph" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "echarts/lib/data/helper/linkList"[0m
+
+    node_modules/echarts-gl/lib/chart/graphGL/createGraphFromNodeEdge.js:3:21:
+[37m      3 │ import linkList from [32m'echarts/lib/data/helper/linkList'[37m;
+        ╵                      [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  The module "./lib/data/helper/linkList" was not found on the file system:
+
+    node_modules/echarts/package.json:223:11:
+[37m      223 │     "./*": [32m"./*"[37m
+          ╵            [32m~~~~~[0m
+
+  Import from "echarts/lib/data/helper/linkList.js" to get the file "node_modules/echarts/lib/data/helper/linkList.js":
+
+    node_modules/echarts-gl/lib/chart/graphGL/createGraphFromNodeEdge.js:3:54:
+[37m      3 │ import linkList from 'echarts/lib/data/helper/linkList[32m[37m';
+        │                                                       [32m^[37m
+        ╵                                                       [32m.js[0m
+
+  You can mark the path "echarts/lib/data/helper/linkList" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "zrender/lib/contain/line"[0m
+
+    node_modules/echarts-gl/lib/chart/line3D/Line3DView.js:7:29:
+[37m      7 │ import * as lineContain from [32m'zrender/lib/contain/line'[37m;
+        ╵                              [32m~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  The module "./lib/contain/line" was not found on the file system:
+
+    node_modules/zrender/package.json:87:11:
+[37m      87 │     "./*": [32m"./*"[37m
+         ╵            [32m~~~~~[0m
+
+  Import from "zrender/lib/contain/line.js" to get the file "node_modules/zrender/lib/contain/line.js":
+
+    node_modules/echarts-gl/lib/chart/line3D/Line3DView.js:7:54:
+[37m      7 │ import * as lineContain from 'zrender/lib/contain/line[32m[37m';
+        │                                                       [32m^[37m
+        ╵                                                       [32m.js[0m
+
+  You can mark the path "zrender/lib/contain/line" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "echarts/lib/label/labelStyle"[0m
+
+    node_modules/echarts-gl/lib/component/common/LabelsBuilder.js:6:32:
+[37m      6 │ import { createTextStyle } from [32m'echarts/lib/label/labelStyle'[37m;
+        ╵                                 [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  The module "./lib/label/labelStyle" was not found on the file system:
+
+    node_modules/echarts/package.json:223:11:
+[37m      223 │     "./*": [32m"./*"[37m
+          ╵            [32m~~~~~[0m
+
+  Import from "echarts/lib/label/labelStyle.js" to get the file "node_modules/echarts/lib/label/labelStyle.js":
+
+    node_modules/echarts-gl/lib/component/common/LabelsBuilder.js:6:61:
+[37m      6 │ import { createTextStyle } from 'echarts/lib/label/labelStyle[32m[37m';
+        │                                                              [32m^[37m
+        ╵                                                              [32m.js[0m
+
+  You can mark the path "echarts/lib/label/labelStyle" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "echarts/lib/label/labelStyle"[0m
+
+    node_modules/echarts-gl/lib/component/grid3D/Grid3DAxis.js:2:32:
+[37m      2 │ import { createTextStyle } from [32m'echarts/lib/label/labelStyle'[37m;
+        ╵                                 [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  The module "./lib/label/labelStyle" was not found on the file system:
+
+    node_modules/echarts/package.json:223:11:
+[37m      223 │     "./*": [32m"./*"[37m
+          ╵            [32m~~~~~[0m
+
+  Import from "echarts/lib/label/labelStyle.js" to get the file "node_modules/echarts/lib/label/labelStyle.js":
+
+    node_modules/echarts-gl/lib/component/grid3D/Grid3DAxis.js:2:61:
+[37m      2 │ import { createTextStyle } from 'echarts/lib/label/labelStyle[32m[37m';
+        │                                                              [32m^[37m
+        ╵                                                              [32m.js[0m
+
+  You can mark the path "echarts/lib/label/labelStyle" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "echarts/lib/label/labelStyle"[0m
+
+    node_modules/echarts-gl/lib/component/grid3D/Grid3DView.js:3:32:
+[37m      3 │ import { createTextStyle } from [32m'echarts/lib/label/labelStyle'[37m;
+        ╵                                 [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  The module "./lib/label/labelStyle" was not found on the file system:
+
+    node_modules/echarts/package.json:223:11:
+[37m      223 │     "./*": [32m"./*"[37m
+          ╵            [32m~~~~~[0m
+
+  Import from "echarts/lib/label/labelStyle.js" to get the file "node_modules/echarts/lib/label/labelStyle.js":
+
+    node_modules/echarts-gl/lib/component/grid3D/Grid3DView.js:3:61:
+[37m      3 │ import { createTextStyle } from 'echarts/lib/label/labelStyle[32m[37m';
+        │                                                              [32m^[37m
+        ╵                                                              [32m.js[0m
+
+  You can mark the path "echarts/lib/label/labelStyle" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "echarts/lib/data/OrdinalMeta"[0m
+
+    node_modules/echarts-gl/lib/component/grid3D/createAxis3DModel.js:3:24:
+[37m      3 │ import OrdinalMeta from [32m'echarts/lib/data/OrdinalMeta'[37m;
+        ╵                         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  The module "./lib/data/OrdinalMeta" was not found on the file system:
+
+    node_modules/echarts/package.json:223:11:
+[37m      223 │     "./*": [32m"./*"[37m
+          ╵            [32m~~~~~[0m
+
+  Import from "echarts/lib/data/OrdinalMeta.js" to get the file "node_modules/echarts/lib/data/OrdinalMeta.js":
+
+    node_modules/echarts-gl/lib/component/grid3D/createAxis3DModel.js:3:53:
+[37m      3 │ import OrdinalMeta from 'echarts/lib/data/OrdinalMeta[32m[37m';
+        │                                                      [32m^[37m
+        ╵                                                      [32m.js[0m
+
+  You can mark the path "echarts/lib/data/OrdinalMeta" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "echarts/lib/coord/geo/fix/textCoord"[0m
+
+    node_modules/echarts-gl/lib/coord/geo3D/Geo3D.js:5:22:
+[37m      5 │ import textCoord from [32m'echarts/lib/coord/geo/fix/textCoord'[37m;
+        ╵                       [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  The module "./lib/coord/geo/fix/textCoord" was not found on the file system:
+
+    node_modules/echarts/package.json:223:11:
+[37m      223 │     "./*": [32m"./*"[37m
+          ╵            [32m~~~~~[0m
+
+  Import from "echarts/lib/coord/geo/fix/textCoord.js" to get the file "node_modules/echarts/lib/coord/geo/fix/textCoord.js":
+
+    node_modules/echarts-gl/lib/coord/geo3D/Geo3D.js:5:58:
+[37m      5 │ import textCoord from 'echarts/lib/coord/geo/fix/textCoord[32m[37m';
+        │                                                           [32m^[37m
+        ╵                                                           [32m.js[0m
+
+  You can mark the path "echarts/lib/coord/geo/fix/textCoord" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "echarts/lib/coord/geo/fix/geoCoord"[0m
+
+    node_modules/echarts-gl/lib/coord/geo3D/Geo3D.js:6:21:
+[37m      6 │ ...geoCoord from [32m'echarts/lib/coord/geo/fix/geoCoord'[37m; // Geo fix f...
+        ╵                  [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  The module "./lib/coord/geo/fix/geoCoord" was not found on the file system:
+
+    node_modules/echarts/package.json:223:11:
+[37m      223 │     "./*": [32m"./*"[37m
+          ╵            [32m~~~~~[0m
+
+  Import from "echarts/lib/coord/geo/fix/geoCoord.js" to get the file "node_modules/echarts/lib/coord/geo/fix/geoCoord.js":
+
+    node_modules/echarts-gl/lib/coord/geo3D/Geo3D.js:6:56:
+[37m      6 │ ...ord from 'echarts/lib/coord/geo/fix/geoCoord[32m[37m'; // Geo fix functions
+        │                                                [32m^[37m
+        ╵                                                [32m.js[0m
+
+  You can mark the path "echarts/lib/coord/geo/fix/geoCoord" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "echarts/lib/util/layout"[0m
+
+    node_modules/echarts-gl/lib/coord/geo3DCreator.js:3:30:
+[37m      3 │ import { getLayoutRect } from [32m'echarts/lib/util/layout'[37m;
+        ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  The module "./lib/util/layout" was not found on the file system:
+
+    node_modules/echarts/package.json:223:11:
+[37m      223 │     "./*": [32m"./*"[37m
+          ╵            [32m~~~~~[0m
+
+  Import from "echarts/lib/util/layout.js" to get the file "node_modules/echarts/lib/util/layout.js":
+
+    node_modules/echarts-gl/lib/coord/geo3DCreator.js:3:54:
+[37m      3 │ import { getLayoutRect } from 'echarts/lib/util/layout[32m[37m';
+        │                                                       [32m^[37m
+        ╵                                                       [32m.js[0m
+
+  You can mark the path "echarts/lib/util/layout" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "echarts/lib/util/layout"[0m
+
+    node_modules/echarts-gl/lib/coord/globeCreator.js:3:30:
+[37m      3 │ import { getLayoutRect } from [32m'echarts/lib/util/layout'[37m;
+        ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  The module "./lib/util/layout" was not found on the file system:
+
+    node_modules/echarts/package.json:223:11:
+[37m      223 │     "./*": [32m"./*"[37m
+          ╵            [32m~~~~~[0m
+
+  Import from "echarts/lib/util/layout.js" to get the file "node_modules/echarts/lib/util/layout.js":
+
+    node_modules/echarts-gl/lib/coord/globeCreator.js:3:54:
+[37m      3 │ import { getLayoutRect } from 'echarts/lib/util/layout[32m[37m';
+        │                                                       [32m^[37m
+        ╵                                                       [32m.js[0m
+
+  You can mark the path "echarts/lib/util/layout" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "echarts/lib/coord/cartesian/Cartesian"[0m
+
+    node_modules/echarts-gl/lib/coord/grid3D/Cartesian3D.js:2:22:
+[37m      2 │ import Cartesian from [32m'echarts/lib/coord/cartesian/Cartesian'[37m;
+        ╵                       [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  The module "./lib/coord/cartesian/Cartesian" was not found on the file system:
+
+    node_modules/echarts/package.json:223:11:
+[37m      223 │     "./*": [32m"./*"[37m
+          ╵            [32m~~~~~[0m
+
+  Import from "echarts/lib/coord/cartesian/Cartesian.js" to get the file "node_modules/echarts/lib/coord/cartesian/Cartesian.js":
+
+    node_modules/echarts-gl/lib/coord/grid3D/Cartesian3D.js:2:60:
+[37m      2 │ import Cartesian from 'echarts/lib/coord/cartesian/Cartesian[32m[37m';
+        │                                                             [32m^[37m
+        ╵                                                             [32m.js[0m
+
+  You can mark the path "echarts/lib/coord/cartesian/Cartesian" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "echarts/lib/util/layout"[0m
+
+    node_modules/echarts-gl/lib/coord/grid3DCreator.js:4:30:
+[37m      4 │ import { getLayoutRect } from [32m'echarts/lib/util/layout'[37m;
+        ╵                               [32m~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  The module "./lib/util/layout" was not found on the file system:
+
+    node_modules/echarts/package.json:223:11:
+[37m      223 │     "./*": [32m"./*"[37m
+          ╵            [32m~~~~~[0m
+
+  Import from "echarts/lib/util/layout.js" to get the file "node_modules/echarts/lib/util/layout.js":
+
+    node_modules/echarts-gl/lib/coord/grid3DCreator.js:4:54:
+[37m      4 │ import { getLayoutRect } from 'echarts/lib/util/layout[32m[37m';
+        │                                                       [32m^[37m
+        ╵                                                       [32m.js[0m
+
+  You can mark the path "echarts/lib/util/layout" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "zrender/lib/animation/requestAnimationFrame"[0m
+
+    node_modules/echarts-gl/lib/core/LayerGL.js:20:34:
+[37m      20 │ ...AnimationFrame from [32m'zrender/lib/animation/requestAnimationFrame'[37m;
+         ╵                        [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  The module "./lib/animation/requestAnimationFrame" was not found on the file system:
+
+    node_modules/zrender/package.json:87:11:
+[37m      87 │     "./*": [32m"./*"[37m
+         ╵            [32m~~~~~[0m
+
+  Import from "zrender/lib/animation/requestAnimationFrame.js" to get the file "node_modules/zrender/lib/animation/requestAnimationFrame.js":
+
+    node_modules/echarts-gl/lib/core/LayerGL.js:20:78:
+[37m      20 │ ...AnimationFrame from 'zrender/lib/animation/requestAnimationFrame[32m[37m';
+         │                                                                    [32m^[37m
+         ╵                                                                    [32m.js[0m
+
+  You can mark the path "zrender/lib/animation/requestAnimationFrame" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "zrender/lib/animation/Animator"[0m
+
+    node_modules/echarts-gl/lib/util/animatableMixin.js:1:21:
+[37m      1 │ import Animator from [32m'zrender/lib/animation/Animator'[37m;
+        ╵                      [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  The module "./lib/animation/Animator" was not found on the file system:
+
+    node_modules/zrender/package.json:87:11:
+[37m      87 │     "./*": [32m"./*"[37m
+         ╵            [32m~~~~~[0m
+
+  Import from "zrender/lib/animation/Animator.js" to get the file "node_modules/zrender/lib/animation/Animator.js":
+
+    node_modules/echarts-gl/lib/util/animatableMixin.js:1:52:
+[37m      1 │ import Animator from 'zrender/lib/animation/Animator[32m[37m';
+        │                                                     [32m^[37m
+        ╵                                                     [32m.js[0m
+
+  You can mark the path "zrender/lib/animation/Animator" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mCould not resolve "zrender/lib/core/LRU"[0m
+
+    node_modules/echarts-gl/lib/util/graphicGL.js:11:21:
+[37m      11 │ import LRUCache from [32m'zrender/lib/core/LRU'[37m;
+         ╵                      [32m~~~~~~~~~~~~~~~~~~~~~~[0m
+
+  The module "./lib/core/LRU" was not found on the file system:
+
+    node_modules/zrender/package.json:87:11:
+[37m      87 │     "./*": [32m"./*"[37m
+         ╵            [32m~~~~~[0m
+
+  Import from "zrender/lib/core/LRU.js" to get the file "node_modules/zrender/lib/core/LRU.js":
+
+    node_modules/echarts-gl/lib/util/graphicGL.js:11:42:
+[37m      11 │ import LRUCache from 'zrender/lib/core/LRU[32m[37m';
+         │                                           [32m^[37m
+         ╵                                           [32m.js[0m
+
+  You can mark the path "zrender/lib/core/LRU" as external to exclude it from the bundle, which will remove this error and leave the unresolved path in the bundle.
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS1434: Unexpected keyword or identifier.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/tunisia-map.ts:31:1:
+[37m      31 │  [32mas[37m any;
+         ╵  [32m~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2304: Cannot find name 'as'.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/tunisia-map.ts:31:1:
+[37m      31 │  [32mas[37m any;
+         ╵  [32m~~[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mExpected ";" but found "any"[0m
+
+    src/app/tunisia-map.ts:31:4:
+[37m      31 │  as [32many[37m;
+         │     [32m~~~[37m
+         ╵     [32m;[0m
+
+
+[31mX [41;31m[[41;97mERROR[41;31m][0m [1mTS2693: 'any' only refers to a type, but is being used as a value here.[0m [1m[35m[plugin angular-compiler][0m
+
+    src/app/tunisia-map.ts:31:4:
+[37m      31 │  as [32many[37m;
+         ╵     [32m~~~[0m
+
+[39m[22m

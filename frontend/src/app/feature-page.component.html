@@ -1,0 +1,45 @@
+<main class="feature-page" [attr.data-accent]="accent">
+  <div class="feature-page__bg" aria-hidden="true"></div>
+  <div class="feature-page__mesh" aria-hidden="true"></div>
+
+  <a routerLink="/" class="back-home">← Accueil</a>
+
+  <header class="feature-page__hero glass-panel">
+    <p class="feature-page__kicker">{{ kicker }}</p>
+    <h1 class="feature-page__title">{{ title }}</h1>
+    <p class="feature-page__lead">{{ description }}</p>
+    <div class="feature-page__divider" aria-hidden="true"></div>
+  </header>
+
+  <div class="feature-page__grid" *ngIf="blocks.length">
+    <article
+      class="feature-block glass-panel"
+      *ngFor="let block of blocks; let i = index"
+      [style.animation-delay.ms]="i * 70"
+    >
+      <div class="feature-block__head">
+        <span class="feature-block__icon" *ngIf="block.icon" aria-hidden="true">{{ block.icon }}</span>
+        <h2 class="feature-block__title">{{ block.title }}</h2>
+      </div>
+      <ul class="feature-block__list">
+        <li *ngFor="let item of block.items">
+          <span class="feature-block__bullet" aria-hidden="true"></span>
+          {{ item }}
+        </li>
+      </ul>
+    </article>
+  </div>
+
+  <section class="feature-page__legacy glass-panel" *ngIf="!blocks.length && highlights.length">
+    <h2 class="feature-page__legacy-title">Axes fonctionnels</h2>
+    <ul class="feature-page__legacy-list">
+      <li *ngFor="let item of highlights">{{ item }}</li>
+    </ul>
+  </section>
+
+  <p class="feature-page__empty" *ngIf="!blocks.length && !highlights.length">
+    Détail du module à définir.
+  </p>
+
+
+</main>

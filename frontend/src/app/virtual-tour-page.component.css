@@ -1,0 +1,19 @@
+.virtual-tour-page {
+  padding: 100px 8% 80px;
+  min-height: calc(100vh - 120px);
+}
+
+.back-home {
+  display: inline-block;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  margin-bottom: 28px;
+  transition: color 0.2s;
+}
+
+.back-home:hover {
+  color: var(--tunisia-red);
+}

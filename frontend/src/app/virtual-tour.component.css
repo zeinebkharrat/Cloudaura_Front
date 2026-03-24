@@ -1,0 +1,133 @@
+.virtual-tour-section {
+  padding: 0 0 40px;
+  position: relative;
+}
+
+.virtual-tour-kicker {
+  font-size: 0.85rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0 0 12px;
+}
+
+.virtual-tour-kicker::before {
+  content: '🎮 ';
+}
+
+.virtual-tour-title {
+  font-size: clamp(1.85rem, 4vw, 3rem);
+  margin: 0 auto 12px;
+  max-width: 900px;
+  line-height: 1.15;
+}
+
+.virtual-tour-rotating {
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(1.1rem, 2.2vw, 1.35rem);
+  font-weight: 600;
+  color: var(--text-color);
+  opacity: 0.92;
+  margin: 0 auto 14px;
+  min-height: 1.4em;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+.virtual-tour-rotating--fade {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.virtual-tour-sub {
+  font-size: 1.05rem;
+  color: var(--text-muted);
+  max-width: 640px;
+  margin: 0 auto 40px;
+  line-height: 1.55;
+}
+
+.virtual-tour-sub code {
+  font-size: 0.88em;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--glass-border);
+}
+
+.virtual-tour-panel {
+  padding: 20px;
+  border-radius: 24px;
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.45);
+}
+
+.scene-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.scene-chip {
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-color);
+  cursor: pointer;
+  opacity: 0.75;
+  transition: opacity 0.2s, border-color 0.2s, background 0.2s, color 0.2s;
+}
+
+.scene-chip:hover {
+  opacity: 1;
+  border-color: rgba(232, 0, 45, 0.45);
+}
+
+.scene-chip--active {
+  opacity: 1;
+  border-color: var(--tunisia-red);
+  background: rgba(232, 0, 45, 0.12);
+  color: #fff;
+}
+
+.pannellum-host {
+  width: 100%;
+  height: min(520px, 68vh);
+  border-radius: 16px;
+  overflow: hidden;
+  background: #0b0c10;
+}
+
+.virtual-tour-credit {
+  margin: 14px 4px 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.virtual-tour-credit a {
+  color: var(--text-color);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  opacity: 0.85;
+}
+
+.virtual-tour-credit a:hover {
+  opacity: 1;
+  color: var(--tunisia-red);
+}
+
+.virtual-tour-section .section-header {
+  text-align: center;
+  margin-bottom: 0;
+}
+
+@media (max-width: 992px) {
+  .pannellum-host {
+    height: min(420px, 55vh);
+  }
+}

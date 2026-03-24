@@ -1,0 +1,61 @@
+/**
+ * Codes `gouv_id` du GeoJSON (préfixe TN + numéro) → libellés.
+ * FR : forme administrative usuelle en français.
+ * EN : aligné sur les cartes de référence (24 gouvernorats), ex. « Kef », « Medenine », « Kebili ».
+ */
+export const GOVERNORATE_LABEL_FR: Record<string, string> = {
+  TN11: 'Tunis',
+  TN12: 'Ariana',
+  TN13: 'Ben Arous',
+  TN14: 'Manouba',
+  TN15: 'Nabeul',
+  TN16: 'Zaghouan',
+  TN17: 'Bizerte',
+  TN21: 'Béja',
+  TN22: 'Jendouba',
+  TN23: 'Le Kef',
+  TN24: 'Siliana',
+  TN31: 'Sousse',
+  TN32: 'Monastir',
+  TN33: 'Mahdia',
+  TN34: 'Sfax',
+  TN41: 'Kairouan',
+  TN42: 'Kasserine',
+  TN43: 'Sidi Bouzid',
+  TN51: 'Gabès',
+  TN52: 'Médenine',
+  TN53: 'Tataouine',
+  TN61: 'Gafsa',
+  TN71: 'Tozeur',
+  TN72: 'Kébili',
+  TN73: 'Jendouba',
+};
+
+/** Noms affichés sur la carte interactive (anglais, comme ta carte de référence). */
+export const GOVERNORATE_LABEL_EN: Record<string, string> = {
+  TN11: 'Tunis',
+  TN12: 'Ariana',
+  TN13: 'Ben Arous',
+  TN14: 'Manouba',
+  TN15: 'Nabeul',
+  TN16: 'Zaghouan',
+  TN17: 'Bizerte',
+  TN21: 'Béja',
+  TN22: 'Kef',
+  TN23: 'Kasserine',
+  TN24: 'Siliana',
+  TN31: 'Sousse',
+  TN32: 'Monastir',
+  TN33: 'Mahdia',
+  TN34: 'Sfax',
+  TN41: 'Kairouan',
+  TN42: 'Kasserine',
+  TN43: 'Sidi Bouzid',
+  TN51: 'Gabès',
+  TN52: 'Medenine',
+  TN53: 'Tataouine',
+  TN61: 'Gafsa',
+  TN71: 'Tozeur',
+  TN72: 'Kebili',
+  TN73: 'Jendouba',
+};

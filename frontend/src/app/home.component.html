@@ -1,0 +1,147 @@
+<header class="hero">
+  <div class="hero-content">
+    <h1 class="hero-title animate-in delay-1">Tunisia in <br><span class="gradient-text">3D Dimension</span></h1>
+    <p class="hero-subtitle animate-in delay-2">
+      Experience the beauty of the Mediterranean, the vastness of the Sahara,
+      and the heritage of antiquity, like never before through premium 3D realism.
+    </p>
+    <div class="hero-buttons animate-in delay-3">
+      <button class="btn-primary">Start Your Journey</button>
+      <button class="btn-outline" style="margin-left: 15px">Watch Video</button>
+    </div>
+  </div>
+
+  <div class="hero-visual animate-in delay-2">
+    <div class="model-container sidi-bou-container">
+      <img src="assets/sidi_bou.png" alt="Sidi Bou Said 3D Render" class="float-img sidi-bou">
+      <div class="glow-orb blue-orb"></div>
+    </div>
+  </div>
+</header>
+
+<section class="home-manifesto" aria-label="Valeurs de la plateforme">
+  <div class="home-manifesto__glow" aria-hidden="true"></div>
+  <div class="home-manifesto__inner">
+    <div class="home-manifesto__ornament" aria-hidden="true"></div>
+    <p class="home-manifesto__line">
+      Villes &amp; parcours · Mobilité &amp; séjour · Événements · Artisanat · Communauté
+    </p>
+    <p class="home-manifesto__sub">
+      Une vision front-end : interfaces soignées, prêtes à accueillir données, réservations et échanges.
+    </p>
+  </div>
+</section>
+
+<section id="hub" class="hub-section destinations">
+  <div class="section-header">
+    <p class="hub-kicker animate-in">Écosystème YallaTN+</p>
+    <h2 class="animate-in">Le reste de l’écosystème</h2>
+    <p class="animate-in delay-1">
+      Destinations, transports, hébergement, activités et artisanat sont dans la barre du haut. Ici : quiz, événements, recommandations et communauté.
+    </p>
+  </div>
+  <div class="hub-grid hub-grid--secondary">
+    <a routerLink="/jeux" class="hub-card glass-panel animate-in delay-1">
+      <span class="hub-card__icon" aria-hidden="true">🧠</span>
+      <h3>Jeux &amp; quiz</h3>
+      <p>Roadmap interactive : avancez étape par étape.</p>
+    </a>
+    <a routerLink="/evenements" class="hub-card glass-panel animate-in delay-1">
+      <span class="hub-card__icon" aria-hidden="true">📅</span>
+      <h3>Événements</h3>
+      <p>Festivals, sport, tech et calendrier interactif.</p>
+    </a>
+    <a routerLink="/recommandations" class="hub-card glass-panel animate-in delay-2">
+      <span class="hub-card__icon" aria-hidden="true">✨</span>
+      <h3>Recommandations</h3>
+      <p>Suggestions adaptées à votre profil.</p>
+    </a>
+    <a routerLink="/communaute" class="hub-card glass-panel animate-in delay-3">
+      <span class="hub-card__icon" aria-hidden="true">💬</span>
+      <h3>Communauté</h3>
+      <p>Chat, forums, avis et carnets de voyage.</p>
+    </a>
+  </div>
+</section>
+
+<section id="destinations" class="destinations">
+  <div class="section-header">
+    <h2 class="animate-in">Immersive Destinations</h2>
+    <p class="animate-in delay-1">Explore our most requested sites in 3D isometric view.</p>
+  </div>
+
+  <div class="destination-grid">
+    <div class="destination-card glass-panel animate-in delay-1">
+      <div class="card-visual">
+        <img src="assets/el_jem.png" alt="El Jem 3D Render" class="float-img el-jem">
+        <div class="glow-orb purple-orb"></div>
+      </div>
+      <div class="card-content">
+        <h3>El Jem Amphitheater</h3>
+        <p>A marvel of Roman engineering rising majestically from the Tunisian plains.</p>
+        <a href="#" class="explore-link">Enter 3D View &rarr;</a>
+      </div>
+    </div>
+
+    <div class="destination-card glass-panel animate-in delay-2">
+      <div class="card-visual">
+        <img src="assets/sahara.png" alt="Sahara Desert 3D Render" class="float-img sahara">
+        <div class="glow-orb orange-orb"></div>
+      </div>
+      <div class="card-content">
+        <h3>Sahara Dunes</h3>
+        <p>Endless golden sands and timeless nomadic traditions captured in an isometric landscape.</p>
+        <a href="#" class="explore-link">Enter 3D View &rarr;</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="map-section" class="destinations map-section">
+  <div class="map-wrapper animate-in delay-2 glass-panel">
+    <div class="map-view-tabs" role="tablist" aria-label="Map display mode">
+      <button
+        type="button"
+        class="map-view-tab"
+        [class.map-view-tab--active]="mapViewMode() === 'local'"
+        (click)="setMapView('local')"
+        role="tab"
+        [attr.aria-selected]="mapViewMode() === 'local'"
+      >
+        Local View
+      </button>
+      <button
+        type="button"
+        class="map-view-tab"
+        [class.map-view-tab--active]="mapViewMode() === 'highlights'"
+        (click)="setMapView('highlights')"
+        role="tab"
+        [attr.aria-selected]="mapViewMode() === 'highlights'"
+      >
+        Highlights View
+      </button>
+    </div>
+    <div #mapContainer class="echarts-map"></div>
+
+    <div *ngIf="selectedRegion()" class="region-info-panel slide-up">
+      <button class="close-btn" (click)="selectedRegion.set(null)">&times;</button>
+      <h3>{{ selectedRegion()?.name }}</h3>
+      <p>{{ selectedRegion()?.description }}</p>
+      <button class="btn-primary" style="margin-top: 15px;">Explore {{ selectedRegion()?.name }}</button>
+    </div>
+  </div>
+
+  <div class="map-section-heading section-header">
+    <h2 class="animate-in">Interactive 3D Map</h2>
+    <p class="animate-in delay-1">Explore all 24 Tunisian states. Click on a region to discover more.</p>
+  </div>
+</section>
+
+<section id="story" class="destinations story-section">
+  <div class="section-header">
+    <h2 class="animate-in">Our Story</h2>
+    <p class="animate-in delay-1">
+      YallaTN+ brings Tunisia’s heritage and landscapes to the immersive web—so you can feel the place before you go.
+    </p>
+  </div>
+</section>

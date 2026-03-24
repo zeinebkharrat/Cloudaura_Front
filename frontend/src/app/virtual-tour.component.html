@@ -1,0 +1,55 @@
+<section id="virtual-tour" class="virtual-tour-section">
+  <div class="section-header">
+    <p class="virtual-tour-kicker">Virtual tour</p>
+    <h2 class="virtual-tour-title">Experience Before You Travel</h2>
+    <p
+      class="virtual-tour-rotating"
+      [class.virtual-tour-rotating--fade]="taglineFading()"
+      aria-live="polite"
+    >
+      {{ taglines[taglineIndex()] }}
+    </p>
+    <p class="virtual-tour-sub">
+      Vues réelles en Tunisie (panoramas larges). Vous pouvez remplacer par vos fichiers équirectangulaires dans <code>public/</code> pour un chargement local.
+    </p>
+  </div>
+
+  <div class="virtual-tour-panel glass-panel animate-in delay-1">
+    <div class="scene-row" role="tablist" aria-label="360° scene">
+      @for (scene of scenes; track scene.id) {
+        <button
+          type="button"
+          class="scene-chip"
+          [class.scene-chip--active]="selectedSceneId() === scene.id"
+          (click)="selectScene(scene)"
+          role="tab"
+          [attr.aria-selected]="selectedSceneId() === scene.id"
+        >
+          {{ scene.label }}
+        </button>
+      }
+    </div>
+    <div
+      #viewerHost
+      class="pannellum-host"
+      role="region"
+      aria-label="360 degree panorama viewer"
+    ></div>
+    <p class="virtual-tour-credit">
+      <strong>Crédits photos :</strong>
+      <a
+        href="https://commons.wikimedia.org/wiki/File:Vue_de_Tabarka,_25_d%C3%A9cembre_2014.jpg"
+        target="_blank"
+        rel="noopener noreferrer"
+      >Tabarka</a>
+      — Habib Mhenni (CC BY-SA 4.0) ;
+      <a
+        href="https://commons.wikimedia.org/wiki/File:Tunisia_10-12_-_165_-_Tozeur_-_Panorama_(6609494779).jpg"
+        target="_blank"
+        rel="noopener noreferrer"
+      >Tozeur</a>
+      — McKay Savage (CC BY 2.0), via
+      <a href="https://commons.wikimedia.org/" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a>.
+    </p>
+  </div>
+</section>
