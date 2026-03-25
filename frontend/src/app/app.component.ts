@@ -1,6 +1,7 @@
 import { Component, inject, signal, OnInit, Renderer2 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { AuthService } from './core/auth.service';
 
 
 @Component({
@@ -12,8 +13,9 @@ import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/rou
 })
 export class AppComponent implements OnInit {
 
-  private readonly router = inject(Router);
+  private readonly router   = inject(Router);
   private readonly renderer = inject(Renderer2);
+  readonly auth             = inject(AuthService);
 
   isDarkMode = signal(true);
 

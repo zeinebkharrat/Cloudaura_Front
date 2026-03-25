@@ -1,0 +1,31 @@
+import { Component, signal, computed } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
+import { AuthService } from '../../core/auth.service';
+
+@Component({
+  selector: 'app-admin-layout',
+  standalone: true,
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
+  templateUrl: './admin-layout.component.html',
+  styleUrl:    './admin-layout.component.css',
+})
+export class AdminLayoutComponent {
+  open = signal(true);
+  user = computed(() => this.auth.currentUser());
+
+  nav = [
+    { label: 'Tableau de bord', icon: '📊', route: '/admin' },
+    { label: 'Hébergements',    icon: '🏨', route: '/admin/accommodations' },
+    { label: 'Transports',      icon: '🚌', route: '/admin/transports' },
+    { label: 'Activités',       icon: '📍', route: '/admin/activities' },
+    { label: 'Événements',      icon: '📅', route: '/admin/events' },
+    { label: 'Artisanat',       icon: '🏺', route: '/admin/crafts' },
+    { label: 'Utilisateurs',    icon: '👥', route: '/admin/users' },
+    { label: 'Paramètres',      icon: '⚙️',  route: '/admin/settings' }
+  ];
+
+  constructor(public auth: AuthService, private router: Router) {}
+  toggle() { this.open.set(!this.open()); }
+  logout() { this.auth.logout(); }
+}

@@ -2,9 +2,24 @@ import { Routes } from '@angular/router';
 import { HomeComponent } from './home.component';
 import { VirtualTourPageComponent } from './virtual-tour-page.component';
 import { FeaturePageComponent } from './feature-page.component';
+import { LoginComponent } from './login/login.component';
+import { AdminLayoutComponent } from './admin/layout/admin-layout.component';
+import { AdminDashboardComponent } from './admin/dashboard/admin-dashboard.component';
+import { AuthGuard } from './core/auth.guard';
+
 export const routes: Routes = [
   { path: '', component: HomeComponent },
+  { path: 'login', component: LoginComponent },
   { path: 'virtual-tour', component: VirtualTourPageComponent },
+  {
+    path: 'admin',
+    component: AdminLayoutComponent,
+    canActivate: [AuthGuard],
+    data: { requiresAdmin: true },
+    children: [
+      { path: '', component: AdminDashboardComponent },
+    ],
+  },
   {
     path: 'destinations',
     component: FeaturePageComponent,
