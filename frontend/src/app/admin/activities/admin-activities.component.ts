@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
@@ -13,7 +13,7 @@ import { CityAdminService } from '../services/city-admin.service';
   templateUrl: './admin-activities.component.html',
   styleUrl: './admin-activities.component.css',
 })
-export class AdminActivitiesComponent implements OnInit {
+export class AdminActivitiesComponent implements OnInit, OnDestroy {
   activities: Activity[] = [];
   cities: City[] = [];
   q = '';
@@ -32,6 +32,7 @@ export class AdminActivitiesComponent implements OnInit {
     type: '',
     price: null,
   };
+  private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private readonly activityService: ActivityAdminService,
@@ -41,6 +42,12 @@ export class AdminActivitiesComponent implements OnInit {
   ngOnInit(): void {
     this.loadCities();
     this.loadActivities();
+  }
+
+  ngOnDestroy(): void {
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+    }
   }
 
   loadCities(): void {
@@ -70,6 +77,14 @@ export class AdminActivitiesComponent implements OnInit {
   search(): void {
     this.page = 0;
     this.loadActivities();
+  }
+
+  onSearchInputChange(): void {
+    this.page = 0;
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+    }
+    this.searchDebounceTimer = setTimeout(() => this.loadActivities(), 300);
   }
 
   changePage(next: boolean): void {

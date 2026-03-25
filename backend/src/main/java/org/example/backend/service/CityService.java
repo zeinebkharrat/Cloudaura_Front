@@ -12,6 +12,7 @@ import org.example.backend.repository.RestaurantRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import jakarta.persistence.criteria.Expression;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,10 +31,15 @@ public class CityService {
                 return cb.conjunction();
             }
             String like = "%" + q.trim().toLowerCase() + "%";
+
+            Expression<String> safeName = cb.lower(cb.coalesce(root.get("name"), ""));
+            Expression<String> safeRegion = cb.lower(cb.coalesce(root.get("region"), ""));
+            Expression<String> safeDescription = cb.lower(cb.coalesce(root.get("description").as(String.class), ""));
+
             return cb.or(
-                cb.like(cb.lower(root.get("name")), like),
-                cb.like(cb.lower(root.get("region")), like),
-                cb.like(cb.lower(root.get("description")), like)
+                cb.like(safeName, like),
+                cb.like(safeRegion, like),
+                cb.like(safeDescription, like)
             );
         };
 

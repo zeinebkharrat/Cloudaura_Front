@@ -16,14 +16,13 @@
         <span class="search-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
         </span>
-        <input type="text" [(ngModel)]="q" placeholder="Rechercher un restaurant..." (keyup.enter)="search()" />
+        <input type="text" [(ngModel)]="q" (ngModelChange)="onSearchInputChange()" placeholder="Rechercher un restaurant..." />
       </div>
-      <select [(ngModel)]="sort" (change)="search()">
+      <select [(ngModel)]="sort" (change)="onSearchInputChange()">
         <option value="restaurantId,desc">Plus récents</option>
         <option value="name,asc">Nom A → Z</option>
         <option value="rating,desc">Meilleure note</option>
       </select>
-      <button class="btn" (click)="search()">Rechercher</button>
     </div>
 
     <div class="table-wrap">

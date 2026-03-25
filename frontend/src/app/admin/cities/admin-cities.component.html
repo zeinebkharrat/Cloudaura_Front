@@ -16,7 +16,7 @@
         <span class="search-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
         </span>
-        <input type="text" [(ngModel)]="q" placeholder="Rechercher une ville..." (keyup.enter)="searchCities()" />
+        <input type="text" [(ngModel)]="q" (ngModelChange)="onSearchInputChange()" placeholder="Rechercher une ville..." />
       </div>
       <select [(ngModel)]="sort" (change)="sortChanged()">
         <option value="cityId,desc">Plus récentes</option>
@@ -24,7 +24,6 @@
         <option value="name,desc">Nom Z → A</option>
         <option value="region,asc">Région A → Z</option>
       </select>
-      <button class="btn" (click)="searchCities()">Rechercher</button>
     </div>
 
     <div class="table-wrap">
@@ -143,12 +142,11 @@
 
         @if (editingCityId) {
           <div class="toolbar compact">
-            <input type="text" [(ngModel)]="mediaQ" placeholder="Rechercher média..." (keyup.enter)="searchMedia()" />
+            <input type="text" [(ngModel)]="mediaQ" (ngModelChange)="onMediaSearchInputChange()" placeholder="Rechercher média..." />
             <select [(ngModel)]="mediaSort" (change)="searchMedia()">
               <option value="mediaId,desc">Plus récents</option>
               <option value="mediaType,asc">Type A → Z</option>
             </select>
-            <button class="btn ghost" (click)="searchMedia()">Filtrer</button>
           </div>
 
           <div class="media-grid">

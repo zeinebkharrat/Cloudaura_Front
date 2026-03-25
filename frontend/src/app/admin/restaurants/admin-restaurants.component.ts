@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -15,7 +15,7 @@ import { RestaurantAdminService } from '../services/restaurant-admin.service';
   templateUrl: './admin-restaurants.component.html',
   styleUrl: './admin-restaurants.component.css',
 })
-export class AdminRestaurantsComponent implements OnInit {
+export class AdminRestaurantsComponent implements OnInit, OnDestroy {
   restaurants: Restaurant[] = [];
   cities: City[] = [];
   q = '';
@@ -51,6 +51,7 @@ export class AdminRestaurantsComponent implements OnInit {
 
   private map?: L.Map;
   private mapMarker?: L.CircleMarker;
+  private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private readonly restaurantService: RestaurantAdminService,
@@ -61,6 +62,17 @@ export class AdminRestaurantsComponent implements OnInit {
   ngOnInit(): void {
     this.loadCities();
     this.loadRestaurants();
+  }
+
+  ngOnDestroy(): void {
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+    }
+    if (this.map) {
+      this.map.remove();
+      this.map = undefined;
+      this.mapMarker = undefined;
+    }
   }
 
   loadCities(): void {
@@ -90,6 +102,14 @@ export class AdminRestaurantsComponent implements OnInit {
   search(): void {
     this.page = 0;
     this.loadRestaurants();
+  }
+
+  onSearchInputChange(): void {
+    this.page = 0;
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+    }
+    this.searchDebounceTimer = setTimeout(() => this.loadRestaurants(), 300);
   }
 
   changePage(next: boolean): void {

@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { concatMap, from, map, Observable, of, switchMap, toArray } from 'rxjs';
@@ -13,7 +13,7 @@ import { CityAdminService } from '../services/city-admin.service';
   templateUrl: './admin-cities.component.html',
   styleUrl: './admin-cities.component.css',
 })
-export class AdminCitiesComponent implements OnInit {
+export class AdminCitiesComponent implements OnInit, OnDestroy {
   cities: City[] = [];
   q = '';
   sort = 'cityId,desc';
@@ -44,11 +44,23 @@ export class AdminCitiesComponent implements OnInit {
   mediaTotalPages = 0;
   uploadFiles: File[] = [];
   mediaPreviewUrls: string[] = [];
+  private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private mediaSearchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private readonly cityService: CityAdminService) {}
 
   ngOnInit(): void {
     this.loadCities();
+  }
+
+  ngOnDestroy(): void {
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+    }
+    if (this.mediaSearchDebounceTimer) {
+      clearTimeout(this.mediaSearchDebounceTimer);
+    }
+    this.clearSelectedFiles();
   }
 
   loadCities(): void {
@@ -71,6 +83,14 @@ export class AdminCitiesComponent implements OnInit {
   searchCities(): void {
     this.page = 0;
     this.loadCities();
+  }
+
+  onSearchInputChange(): void {
+    this.page = 0;
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+    }
+    this.searchDebounceTimer = setTimeout(() => this.loadCities(), 300);
   }
 
   changeCityPage(next: boolean): void {
@@ -230,6 +250,14 @@ export class AdminCitiesComponent implements OnInit {
   searchMedia(): void {
     this.mediaPage = 0;
     this.loadMedia();
+  }
+
+  onMediaSearchInputChange(): void {
+    this.mediaPage = 0;
+    if (this.mediaSearchDebounceTimer) {
+      clearTimeout(this.mediaSearchDebounceTimer);
+    }
+    this.mediaSearchDebounceTimer = setTimeout(() => this.loadMedia(), 300);
   }
 
   changeMediaPage(next: boolean): void {
