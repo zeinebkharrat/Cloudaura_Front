@@ -1,0 +1,276 @@
+<section class="community-page">
+  <div class="community-header glass-panel">
+    <div class="community-header__left">
+      <h2>Communauté</h2>
+      <p>Un mini fil social : posts, likes, commentaires et media.</p>
+    </div>
+
+    <div class="community-header__right">
+      <label class="user-id-field">
+        <span>Mon userId (démo)</span>
+        <input
+          type="number"
+          [value]="currentUserId()"
+          (input)="setUserId($any($event.target).value)"
+          min="1"
+        />
+      </label>
+    </div>
+  </div>
+
+  <div class="community-layout">
+    <section class="create-post glass-panel">
+      @if (!showCreatePostForm()) {
+        <button
+          type="button"
+          class="btn-primary create-post__open"
+          (click)="showCreatePostForm.set(true)"
+        >
+          + Nouveau post
+        </button>
+      } @else {
+        <div class="create-post__inner">
+          <div class="create-post__top">
+            <h3>Créer un post</h3>
+            <button
+              type="button"
+              class="btn-outline btn-outline--small"
+              (click)="showCreatePostForm.set(false)"
+            >
+              Fermer
+            </button>
+          </div>
+
+          <label class="field-label">
+            <span>Contenu</span>
+            <textarea
+              rows="4"
+              [value]="newPostContent()"
+              (input)="newPostContent.set($any($event.target).value)"
+              placeholder="Partagez une expérience, une idée, un avis..."
+            ></textarea>
+          </label>
+
+          <div class="form-row">
+            <label class="field-label">
+              <span>Lieu (optionnel)</span>
+              <input
+                type="text"
+                [value]="newPostLocation()"
+                (input)="newPostLocation.set($any($event.target).value)"
+                placeholder="Ex: Sidi Bou Saïd"
+              />
+            </label>
+
+            <label class="field-label">
+              <span>Visibilité</span>
+              <select
+                [value]="newPostVisibility()"
+                (change)="newPostVisibility.set($any($event.target).value)"
+              >
+                <option value="public">Public</option>
+                <option value="private">Privé</option>
+              </select>
+            </label>
+          </div>
+
+          <button
+            class="btn-primary"
+            type="button"
+            (click)="createPost()"
+            [disabled]="isPosting() || newPostContent().trim().length === 0"
+          >
+            {{ isPosting() ? 'Publication...' : 'Publier' }}
+          </button>
+        </div>
+      }
+    </section>
+
+    <section class="feed">
+      @if (loadError()) {
+        <div class="feed-error glass-panel">{{ loadError() }}</div>
+      }
+
+      @if (!loadError() && !feedLoaded()) {
+        <div class="feed-loading glass-panel">Chargement de la communauté...</div>
+      }
+
+      @if (feedLoaded()) {
+        @for (post of posts(); track (post.postId ?? post.content ?? 0)) {
+          @if (post.postId != null) {
+            <article class="post-card glass-panel">
+              <header class="post-header">
+                <div class="post-author">
+                  <span class="avatar" aria-hidden="true"></span>
+                  <span class="author-name">{{ displayName(post.author) }}</span>
+                </div>
+                <div class="post-meta">
+                  <span class="meta-date">{{ formatDate(post.createdAt) }}</span>
+                </div>
+              </header>
+
+              <p class="post-content">{{ post.content }}</p>
+
+              @if (post.location) {
+                <div class="post-location">📍 {{ post.location }}</div>
+              }
+              @if (post.visibility) {
+                <div class="post-visibility">🔒 {{ post.visibility }}</div>
+              }
+
+              <div class="post-actions">
+                <button
+                  type="button"
+                  class="like-btn"
+                  [class.like-btn--active]="isPostLiked(post.postId!)"
+                  (click)="toggleLike(post.postId!)"
+                  [disabled]="togglingLikePostId() === post.postId"
+                >
+                  {{ isPostLiked(post.postId!) ? 'Aimé' : 'Like' }}
+                </button>
+
+                <div class="counts">
+                  <span class="count">{{ getLikeCount(post.postId!) }} likes</span>
+                  <span class="count">{{ getCommentCount(post.postId!) }} commentaires</span>
+                </div>
+              </div>
+
+              @if (getMediaForPost(post.postId!).length > 0) {
+                <div class="media-grid">
+                  @for (m of getMediaForPost(post.postId!); track (m.mediaId ?? m.orderIndex ?? 0)) {
+                    @if (m.fileUrl) {
+                      <div class="media-item">
+                        @if (m.mediaType === 'VIDEO') {
+                          <video
+                            class="media-video"
+                            controls
+                            [src]="m.fileUrl"
+                          ></video>
+                        } @else {
+                          <img
+                            class="media-image"
+                            [src]="m.fileUrl"
+                            [alt]="'Media du post ' + post.postId"
+                          />
+                        }
+                      </div>
+                    }
+                  }
+                </div>
+              }
+
+              <div class="media-upload">
+                <label class="upload-btn">
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    multiple
+                    (change)="onAddMediaFiles(post.postId!, $event)"
+                    [disabled]="uploadingPostId() === post.postId"
+                  />
+                  <span>
+                    {{ uploadingPostId() === post.postId ? 'Ajout...' : 'Ajouter media' }}
+                  </span>
+                </label>
+              </div>
+
+              <section class="comments">
+                <h4>Commentaires</h4>
+
+                <div class="comment-form glass-panel">
+                  <textarea
+                    rows="2"
+                    [value]="getPostDraft(post.postId!)"
+                    (input)="setPostDraft(post.postId!, $any($event.target).value)"
+                    placeholder="Écrire un commentaire..."
+                  ></textarea>
+
+                  <button
+                    type="button"
+                    class="btn-outline btn-outline--small"
+                    (click)="addComment(post.postId!)"
+                    [disabled]="getPostDraft(post.postId!).trim().length === 0"
+                  >
+                    Envoyer
+                  </button>
+                </div>
+
+                <div class="comment-thread">
+                  @if (commentTreeForPost(post.postId!).length === 0) {
+                    <p class="empty-thread">Aucun commentaire pour ce post.</p>
+                  }
+
+                  @for (root of commentTreeForPost(post.postId!); track root.commentId) {
+                    <ng-container
+                      *ngTemplateOutlet="commentTpl; context: { $implicit: root, depth: 0, postId: post.postId! }"
+                    ></ng-container>
+                  }
+                </div>
+              </section>
+            </article>
+          }
+        }
+      }
+    </section>
+  </div>
+
+  <ng-template #commentTpl let-comment let-depth="depth" let-postId="postId">
+    <div class="comment-item" [style.marginLeft.px]="depth * 18">
+      <div class="comment-header">
+        <span class="comment-author">{{ displayName(comment.author) }}</span>
+        @if (comment.createdAt) {
+          <span class="comment-date">{{ formatDate(comment.createdAt) }}</span>
+        }
+      </div>
+      <p class="comment-content">{{ comment.content }}</p>
+
+      <div class="comment-actions">
+        <button
+          type="button"
+          class="reply-btn"
+          (click)="openReply(comment.commentId!)"
+          [disabled]="activeReplyCommentId() === comment.commentId"
+        >
+          Répondre
+        </button>
+      </div>
+
+      @if (activeReplyCommentId() === comment.commentId!) {
+        <div class="reply-form glass-panel">
+          <textarea
+            rows="2"
+            [value]="getReplyDraft(comment.commentId!)"
+            (input)="setReplyDraft(comment.commentId!, $any($event.target).value)"
+            placeholder="Votre réponse..."
+          ></textarea>
+          <div class="reply-actions">
+            <button
+              type="button"
+              class="btn-primary btn-primary--small"
+              (click)="addComment(postId, comment.commentId!)"
+              [disabled]="getReplyDraft(comment.commentId!).trim().length === 0"
+            >
+              Répondre
+            </button>
+            <button
+              type="button"
+              class="btn-outline btn-outline--small"
+              (click)="closeReply()"
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      }
+    </div>
+
+    @if (comment.children?.length) {
+      @for (child of comment.children; track child.commentId) {
+        <ng-container
+          *ngTemplateOutlet="commentTpl; context: { $implicit: child, depth: depth + 1, postId: postId }"
+        ></ng-container>
+      }
+    }
+  </ng-template>
+</section>
+

@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { HomeComponent } from './home.component';
 import { VirtualTourPageComponent } from './virtual-tour-page.component';
 import { FeaturePageComponent } from './feature-page.component';
+import { CommunityComponent } from './Community/community.component';
 export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'virtual-tour', component: VirtualTourPageComponent },
@@ -275,7 +276,7 @@ export const routes: Routes = [
   },
   {
     path: 'communaute',
-    component: FeaturePageComponent,
+    component: CommunityComponent,
     data: {
       kicker: 'Voyageurs',
       accent: 'violet',
