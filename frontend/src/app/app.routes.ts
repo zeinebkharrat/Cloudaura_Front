@@ -7,6 +7,9 @@ import { AdminLayoutComponent } from './admin/layout/admin-layout.component';
 import { AdminDashboardComponent } from './admin/dashboard/admin-dashboard.component';
 import { AuthGuard } from './core/auth.guard';
 
+import { EventManagementComponent } from './admin/event-management/event-management.component';
+
+
 export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'login', component: LoginComponent },
@@ -18,6 +21,7 @@ export const routes: Routes = [
     data: { requiresAdmin: true },
     children: [
       { path: '', component: AdminDashboardComponent },
+      { path: 'events', component: EventManagementComponent },
     ],
   },
   {
