@@ -16,13 +16,7 @@ export class AdminLayoutComponent {
 
   nav = [
     { label: 'Tableau de bord', icon: '📊', route: '/admin' },
-    { label: 'Hébergements',    icon: '🏨', route: '/admin/accommodations' },
-    { label: 'Transports',      icon: '🚌', route: '/admin/transports' },
-    { label: 'Activités',       icon: '📍', route: '/admin/activities' },
-    { label: 'Événements',      icon: '📅', route: '/admin/events' },
-    { label: 'Artisanat',       icon: '🏺', route: '/admin/crafts' },
-    { label: 'Utilisateurs',    icon: '👥', route: '/admin/users' },
-    { label: 'Paramètres',      icon: '⚙️',  route: '/admin/settings' }
+    { label: 'Ludification', icon: '🎮', route: '/admin/games' },
   ];
 
   constructor(public auth: AuthService, private router: Router) {}

@@ -1,0 +1,140 @@
+<div class="cw-page">
+  <div class="glass-container">
+    <section class="cw-card">
+      @if (isLoading()) {
+        <div class="loader-container">
+          <div class="spinner"></div>
+          <p>Préparation de votre grille...</p>
+        </div>
+      } @else if (loadError()) {
+        <div class="error-state">
+          <div class="error-icon">⚠️</div>
+          <p>{{ loadError() }}</p>
+          <button class="btn-primary" (click)="backToHub()">Retour au Hub</button>
+        </div>
+      } @else {
+        <header class="cw-header">
+          <div class="header-left">
+            <button class="btn-back" (click)="backToHub()" title="Quitter le jeu">
+              <span class="icon">←</span> Quitter
+            </button>
+            <div class="title-group">
+              <h2>{{ crossword()?.title }}</h2>
+              <p class="cw-desc">{{ crossword()?.description }}</p>
+            </div>
+          </div>
+          
+          <div class="cw-actions">
+            <button class="btn-secondary" (click)="clearGrid()">
+              <span class="icon">↺</span> Effacer
+            </button>
+            <button class="btn-primary" (click)="checkGrid()">
+              <span class="icon">✓</span> Vérifier
+            </button>
+          </div>
+        </header>
+
+        @if (parsedGrid()) {
+          <div class="cw-meta-row">
+            <div class="cw-meta">
+              <span class="badge">
+                <span class="icon">▦</span> {{ parsedGrid()?.rows }}x{{ parsedGrid()?.cols }}
+              </span>
+              <span class="badge">
+                <span class="icon">✎</span> {{ horizontalClues().length + verticalClues().length }} mots
+              </span>
+            </div>
+          </div>
+
+          @if (validationMessage()) {
+            <div class="validation-msg-toast" [class.success]="validationMessage()?.success">
+              <span class="icon">{{ validationMessage()?.success ? '✓' : '⚠' }}</span>
+              {{ validationMessage()?.text }}
+            </div>
+          }
+
+          <div class="cw-main-layout">
+            <div class="board-wrapper">
+              <div class="cw-grid-board">
+                @for (row of gridCells(); track $index; let r = $index) {
+                  <div class="cw-grid-row">
+                    @for (cell of row; track $index; let c = $index) {
+                      <div class="cw-cell" 
+                           [class.blocked]="cell.blocked" 
+                           [class.has-guess]="cell.value"
+                           [class.active]="cell.isActive">
+                        @if (!cell.blocked) {
+                          <div class="number-container">
+                            @for (num of cell.clueNumbers; track num) {
+                              <span class="cell-number">{{ num }}</span>
+                            }
+                          </div>
+                          <input
+                            #cellInput
+                            class="cell-input"
+                            maxlength="1"
+                            [value]="cell.value"
+                            (input)="onCellInput(r, c, $event)"
+                            (keydown)="onKeyDown(r, c, $event)"
+                            (focus)="onCellFocus(r, c)"
+                            aria-label="Case mots croisés"
+                          />
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+
+            <aside class="cw-clues-sidebar">
+              <div class="clue-section horizontal">
+                <div class="section-header">
+                  <span class="icon">➡</span>
+                  <h3>Horizontal</h3>
+                </div>
+                <div class="clue-list-scroll">
+                  <ul class="cw-clues">
+                    @for (clue of horizontalClues(); track clue.number) {
+                      <li class="clue-item">
+                        <div class="clue-num-box">#{{ clue.number }}</div>
+                        <div class="clue-content">
+                          <p class="clue-text">{{ clue.clue }}</p>
+                          <span class="clue-len">{{ clue.length }} lettres</span>
+                        </div>
+                      </li>
+                    }
+                  </ul>
+                </div>
+              </div>
+
+              <div class="clue-section vertical">
+                <div class="section-header">
+                  <span class="icon">⬇</span>
+                  <h3>Vertical</h3>
+                </div>
+                <div class="clue-list-scroll">
+                  <ul class="cw-clues">
+                    @for (clue of verticalClues(); track clue.number) {
+                      <li class="clue-item">
+                        <div class="clue-num-box">#{{ clue.number }}</div>
+                        <div class="clue-content">
+                          <p class="clue-text">{{ clue.clue }}</p>
+                          <span class="clue-len">{{ clue.length }} lettres</span>
+                        </div>
+                      </li>
+                    }
+                  </ul>
+                </div>
+              </div>
+            </aside>
+          </div>
+        } @else {
+          <div class="error-state">
+            <p>Le format de la grille est invalide.</p>
+          </div>
+        }
+      }
+    </section>
+  </div>
+</div>

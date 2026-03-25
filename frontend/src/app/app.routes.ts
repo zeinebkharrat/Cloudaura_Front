@@ -5,12 +5,20 @@ import { FeaturePageComponent } from './feature-page.component';
 import { LoginComponent } from './login/login.component';
 import { AdminLayoutComponent } from './admin/layout/admin-layout.component';
 import { AdminDashboardComponent } from './admin/dashboard/admin-dashboard.component';
+import { AdminGamesComponent } from './admin/games/admin-games.component';
+import { UserGamesComponent } from './games/user-games.component';
+import { QuizPlayerComponent } from './games/quiz-player.component';
+import { CrosswordPlayerComponent } from './games/crossword-player.component';
 import { AuthGuard } from './core/auth.guard';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'login', component: LoginComponent },
   { path: 'virtual-tour', component: VirtualTourPageComponent },
+  { path: 'jeux', redirectTo: 'games', pathMatch: 'full' },
+  { path: 'games', component: UserGamesComponent },
+  { path: 'games/quiz/:id', component: QuizPlayerComponent },
+  { path: 'games/crossword/:id', component: CrosswordPlayerComponent },
   {
     path: 'admin',
     component: AdminLayoutComponent,
@@ -18,6 +26,7 @@ export const routes: Routes = [
     data: { requiresAdmin: true },
     children: [
       { path: '', component: AdminDashboardComponent },
+      { path: 'games', component: AdminGamesComponent },
     ],
   },
   {
