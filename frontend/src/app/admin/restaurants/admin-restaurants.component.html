@@ -1,0 +1,101 @@
+<div class="admin-page">
+  <header class="page-head">
+    <div>
+      <h1>Gestion des restaurants</h1>
+      <p>CRUD des restaurants liés aux villes.</p>
+    </div>
+    <button class="btn" (click)="openCreateModal()">+ Ajouter un restaurant</button>
+  </header>
+
+  @if (error) {
+    <div class="alert">{{ error }}</div>
+  }
+
+  <section class="card surface">
+    <div class="toolbar">
+      <input type="text" [(ngModel)]="q" placeholder="Rechercher..." (keyup.enter)="search()" />
+      <select [(ngModel)]="sort" (change)="search()">
+        <option value="restaurantId,desc">Plus récents</option>
+        <option value="name,asc">Nom A → Z</option>
+        <option value="rating,desc">Meilleure note</option>
+      </select>
+      <button class="btn" (click)="search()">Rechercher</button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Nom</th>
+            <th>Ville</th>
+            <th>Type cuisine</th>
+            <th>Note</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (restaurant of restaurants; track restaurant.restaurantId) {
+            <tr>
+              <td>{{ restaurant.name }}</td>
+              <td>{{ restaurant.cityName }}</td>
+              <td>{{ restaurant.cuisineType || '—' }}</td>
+              <td>{{ restaurant.rating || '—' }}</td>
+              <td class="actions">
+                <button class="btn ghost" (click)="edit(restaurant)">Modifier</button>
+                <button class="btn danger" (click)="delete(restaurant)">Supprimer</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pager">
+      <span>Total: {{ totalElements }}</span>
+      <div>
+        <button class="btn ghost" [disabled]="page === 0" (click)="changePage(false)">Précédent</button>
+        <span>Page {{ page + 1 }} / {{ totalPages || 1 }}</span>
+        <button class="btn ghost" [disabled]="page + 1 >= totalPages" (click)="changePage(true)">Suivant</button>
+      </div>
+    </div>
+  </section>
+
+  @if (showModal) {
+    <div class="modal-backdrop" (click)="closeModal()"></div>
+    <section class="modal-card" role="dialog" aria-modal="true">
+      <header class="modal-head">
+        <h2>{{ editingId ? 'Modifier un restaurant' : 'Ajouter un restaurant' }}</h2>
+        <button class="btn ghost" (click)="closeModal()">✕</button>
+      </header>
+
+      <div class="form-grid">
+        <label>
+          Ville *
+          <select [(ngModel)]="form.cityId">
+            <option [ngValue]="null">Sélectionner...</option>
+            @for (city of cities; track city.cityId) {
+              <option [ngValue]="city.cityId">{{ city.name }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          Nom *
+          <input type="text" [(ngModel)]="form.name" />
+        </label>
+        <label>
+          Type cuisine
+          <input type="text" [(ngModel)]="form.cuisineType" />
+        </label>
+        <label>
+          Note
+          <input type="number" min="0" max="5" step="0.1" [(ngModel)]="form.rating" />
+        </label>
+      </div>
+
+      <div class="actions">
+        <button class="btn" (click)="save()">{{ editingId ? 'Mettre à jour' : 'Créer' }}</button>
+        <button class="btn ghost" (click)="closeModal()">Annuler</button>
+      </div>
+    </section>
+  }
+</div>
