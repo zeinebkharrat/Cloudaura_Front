@@ -28,6 +28,20 @@
   margin-top: 14px;
 }
 
+.avatar-card {
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 14px;
+  margin-top: 14px;
+}
+
+.avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
 label {
   display: block;
   margin-bottom: 10px;
@@ -55,12 +69,26 @@ select {
 
 .upload-row {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-start;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-bottom: 0;
   border: 1px dashed var(--glass-border);
   border-radius: 12px;
   padding: 10px;
+}
+
+.avatar-placeholder {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 2px dashed var(--glass-border);
+  display: grid;
+  place-items: center;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 8px;
 }
 
 .avatar-preview {
@@ -69,7 +97,7 @@ select {
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid var(--glass-border);
-  margin-bottom: 12px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
 }
 
 .msg {
@@ -94,7 +122,6 @@ select {
   }
 
   .upload-row {
-    flex-direction: column;
-    align-items: flex-start;
+    width: 100%;
   }
 }

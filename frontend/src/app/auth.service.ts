@@ -95,6 +95,21 @@ export class AuthService {
     return this.http.get<CityOption[]>('/api/cities');
   }
 
+  getNationalities() {
+    return this.http
+      .get<Array<{ name?: { common?: string } }>>('https://restcountries.com/v3.1/all?fields=name')
+      .pipe(
+        map((countries) => {
+          const values = countries
+            .map((item) => item.name?.common?.trim() ?? '')
+            .filter((name) => !!name);
+
+          return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b));
+        }),
+        catchError(() => of([] as string[]))
+      );
+  }
+
   fetchMe() {
     return this.http.get<UserProfile>('/api/auth/me').pipe(
       tap((user) => {

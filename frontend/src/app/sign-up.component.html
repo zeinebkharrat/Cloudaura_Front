@@ -33,10 +33,15 @@
       <div class="grid-two">
         <label>
           Nationalite
-          <input type="text" formControlName="nationality" placeholder="Ex: tunisian" />
+          <select formControlName="nationality">
+            <option value="">Choisir une nationalite</option>
+            @for (nationality of nationalities(); track nationality) {
+              <option [value]="nationality">{{ nationality }}</option>
+            }
+          </select>
         </label>
 
-        @if (form.controls.nationality.value.toLowerCase() === 'tunisian') {
+        @if (form.controls.nationality.value.toLowerCase() === 'tunisia') {
           <label>
             Ville (Tunisie)
             <select formControlName="cityId">

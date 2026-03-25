@@ -10,6 +10,22 @@
       <div class="msg success">{{ actionSuccess() }}</div>
     }
 
+    <section class="avatar-card">
+      <h2>Photo de profil</h2>
+      <div class="avatar-row">
+        @if (profileForm.controls.profileImageUrl.value) {
+          <img [src]="profileForm.controls.profileImageUrl.value" alt="Photo de profil" class="avatar-preview" />
+        } @else {
+          <div class="avatar-placeholder">Aucun visuel</div>
+        }
+
+        <div class="upload-row">
+          <input type="file" accept="image/*" (change)="uploadImage($event)" [disabled]="uploadBusy()" />
+          <span class="muted">{{ uploadBusy() ? 'Upload...' : 'Ajoutez une image claire pour votre profil.' }}</span>
+        </div>
+      </div>
+    </section>
+
     <form [formGroup]="profileForm" (ngSubmit)="saveProfile()" class="profile-form">
       <div class="grid-two">
         <label>
@@ -36,9 +52,14 @@
       <div class="grid-two">
         <label>
           Nationalite
-          <input type="text" formControlName="nationality" placeholder="Ex: tunisian" />
+          <select formControlName="nationality">
+            <option value="">Choisir une nationalite</option>
+            @for (nationality of nationalities(); track nationality) {
+              <option [value]="nationality">{{ nationality }}</option>
+            }
+          </select>
         </label>
-        @if (profileForm.controls.nationality.value.toLowerCase() === 'tunisian') {
+        @if (profileForm.controls.nationality.value.toLowerCase() === 'tunisia') {
           <label>
             Ville
             <select formControlName="cityId">
@@ -50,20 +71,6 @@
           </label>
         }
       </div>
-
-      <label>
-        URL image de profil
-        <input type="url" formControlName="profileImageUrl" placeholder="https://..." />
-      </label>
-
-      <div class="upload-row">
-        <input type="file" accept="image/*" (change)="uploadImage($event)" [disabled]="uploadBusy()" />
-        <span class="muted">{{ uploadBusy() ? 'Upload...' : 'Optionnel: importer une image depuis votre appareil.' }}</span>
-      </div>
-
-      @if (profileForm.controls.profileImageUrl.value) {
-        <img [src]="profileForm.controls.profileImageUrl.value" alt="Photo de profil" class="avatar-preview" />
-      }
 
       <button class="btn-primary" type="submit" [disabled]="isSavingProfile()">
         {{ isSavingProfile() ? 'Sauvegarde...' : 'Sauvegarder le profil' }}

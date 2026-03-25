@@ -33,6 +33,7 @@ export class SignUpComponent {
   readonly formError = signal<string | null>(null);
   readonly uploadedImageUrl = signal<string | null>(null);
   readonly cities = signal<CityOption[]>([]);
+  readonly nationalities = signal<string[]>([]);
 
   readonly form = this.fb.nonNullable.group(
     {
@@ -50,6 +51,11 @@ export class SignUpComponent {
   );
 
   constructor() {
+    this.authService.getNationalities().subscribe({
+      next: (list) => this.nationalities.set(list),
+      error: () => this.nationalities.set([]),
+    });
+
     this.authService.getCities().subscribe({
       next: (cities) => this.cities.set(cities),
       error: () => this.cities.set([]),
@@ -66,15 +72,15 @@ export class SignUpComponent {
     this.formError.set(null);
 
     const { confirmPassword: _confirmPassword, ...payload } = this.form.getRawValue();
-    const isTunisian = payload.nationality?.trim().toLowerCase() === 'tunisian';
-    if (isTunisian && !payload.cityId) {
-      this.formError.set('Veuillez selectionner une ville si la nationalite est tunisian.');
+    const isTunisia = payload.nationality?.trim().toLowerCase() === 'tunisia';
+    if (isTunisia && !payload.cityId) {
+      this.formError.set('Veuillez selectionner une ville si vous choisissez Tunisie.');
       this.isLoading.set(false);
       return;
     }
     const finalPayload = {
       ...payload,
-      cityId: isTunisian ? payload.cityId : null,
+      cityId: isTunisia ? payload.cityId : null,
       profileImageUrl: this.uploadedImageUrl(),
     };
 
