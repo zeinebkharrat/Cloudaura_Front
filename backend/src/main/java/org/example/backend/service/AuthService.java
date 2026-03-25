@@ -269,7 +269,7 @@ public class AuthService {
     }
 
     private City resolveCityForNationality(String nationality, Integer cityId) {
-        boolean tunisian = nationality != null && nationality.trim().equalsIgnoreCase("tunisian");
+        boolean tunisian = isTunisiaNationality(nationality);
         if (!tunisian) {
             return null;
         }
@@ -278,6 +278,14 @@ public class AuthService {
         }
         return cityRepository.findById(cityId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid cityId"));
+    }
+
+    private boolean isTunisiaNationality(String nationality) {
+        if (nationality == null) {
+            return false;
+        }
+        String normalized = nationality.trim().toLowerCase(Locale.ROOT);
+        return normalized.equals("tunisia") || normalized.equals("tunisian") || normalized.equals("tunisie");
     }
 
     private User currentUser() {

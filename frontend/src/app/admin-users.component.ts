@@ -1,11 +1,14 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AdminUserService } from './admin-user.service';
 import { AdminUser, CityOption } from './auth.types';
 import { extractApiErrorMessage } from './api-error.util';
 import Swal from 'sweetalert2';
+import type { SweetAlertOptions } from 'sweetalert2';
+import { debounceTime, distinctUntilChanged } from 'rxjs';
 
 @Component({
   selector: 'app-admin-users',
@@ -17,6 +20,7 @@ import Swal from 'sweetalert2';
 export class AdminUsersComponent {
   private readonly adminUserService = inject(AdminUserService);
   private readonly fb = inject(FormBuilder);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly users = signal<AdminUser[]>([]);
   readonly cities = signal<CityOption[]>([]);
@@ -29,9 +33,36 @@ export class AdminUsersComponent {
     q: [''],
   });
 
+  private isTunisiaNationality(value: string | null | undefined): boolean {
+    const normalized = (value ?? '').trim().toLowerCase();
+    return normalized === 'tunisia' || normalized === 'tunisian' || normalized === 'tunisie';
+  }
+
   constructor() {
     this.loadCities();
+
+    this.searchForm.controls.q.valueChanges
+      .pipe(debounceTime(300), distinctUntilChanged(), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.loadUsers());
+
     this.loadUsers();
+  }
+
+  private popup(options: SweetAlertOptions) {
+    return Swal.fire({
+      customClass: {
+        popup: 'bo-popup',
+        title: 'bo-title',
+        htmlContainer: 'bo-content',
+        confirmButton: 'bo-btn bo-btn-confirm',
+        cancelButton: 'bo-btn bo-btn-cancel',
+        denyButton: 'bo-btn bo-btn-deny',
+      },
+      buttonsStyling: false,
+      background: '#0f1720',
+      backdrop: 'rgba(7, 12, 18, 0.75)',
+      ...options,
+    });
   }
 
   private loadCities() {
@@ -63,7 +94,7 @@ export class AdminUsersComponent {
       .map((city) => `<option value="${city.id}" ${user.cityId === city.id ? 'selected' : ''}>${city.name} (${city.region})</option>`)
       .join('');
 
-    const result = await Swal.fire({
+    const result = await this.popup({
       title: `Modifier ${user.username}`,
       width: 760,
       showCancelButton: true,
@@ -84,16 +115,24 @@ export class AdminUsersComponent {
             <option value="">Choisir une ville (si tunisian)</option>
             ${cityOptions}
           </select>
+          <div class="sw-avatar-block">
+            <img id="sw-avatar-preview" class="sw-avatar-preview" src="${user.profileImageUrl ?? ''}" alt="avatar" />
+            <input id="sw-avatar-file" class="sw-input" type="file" accept="image/*" />
+            <input id="sw-avatar-url" class="sw-input" placeholder="Image URL" value="${user.profileImageUrl ?? ''}" />
+          </div>
         </div>
       `,
       didOpen: () => {
         const nationalityEl = document.getElementById('sw-nationality') as HTMLInputElement | null;
         const cityEl = document.getElementById('sw-city') as HTMLSelectElement | null;
+        const avatarUrlEl = document.getElementById('sw-avatar-url') as HTMLInputElement | null;
+        const avatarPreviewEl = document.getElementById('sw-avatar-preview') as HTMLImageElement | null;
+        const avatarFileEl = document.getElementById('sw-avatar-file') as HTMLInputElement | null;
         const updateCityVisibility = () => {
           if (!nationalityEl || !cityEl) {
             return;
           }
-          const tunisian = nationalityEl.value.trim().toLowerCase() === 'tunisian';
+          const tunisian = this.isTunisiaNationality(nationalityEl.value);
           cityEl.disabled = !tunisian;
           if (!tunisian) {
             cityEl.value = '';
@@ -101,6 +140,26 @@ export class AdminUsersComponent {
         };
         nationalityEl?.addEventListener('input', updateCityVisibility);
         updateCityVisibility();
+
+        avatarFileEl?.addEventListener('change', () => {
+          const file = avatarFileEl.files?.[0];
+          if (!file) {
+            return;
+          }
+          this.adminUserService.uploadProfileImage(file).subscribe({
+            next: (response) => {
+              if (avatarUrlEl) {
+                avatarUrlEl.value = response.url;
+              }
+              if (avatarPreviewEl) {
+                avatarPreviewEl.src = response.url;
+              }
+            },
+            error: (error: HttpErrorResponse) => {
+              Swal.showValidationMessage(extractApiErrorMessage(error, 'Upload image impossible.'));
+            },
+          });
+        });
       },
       preConfirm: () => {
         const firstName = (document.getElementById('sw-firstName') as HTMLInputElement | null)?.value?.trim() ?? '';
@@ -110,14 +169,15 @@ export class AdminUsersComponent {
         const status = (document.getElementById('sw-status') as HTMLSelectElement | null)?.value?.trim() ?? 'ACTIVE';
         const nationality = (document.getElementById('sw-nationality') as HTMLInputElement | null)?.value?.trim() ?? '';
         const cityIdRaw = (document.getElementById('sw-city') as HTMLSelectElement | null)?.value ?? '';
+        const profileImageUrl = (document.getElementById('sw-avatar-url') as HTMLInputElement | null)?.value?.trim() ?? '';
         const cityId = cityIdRaw ? Number(cityIdRaw) : null;
 
         if (!firstName || !lastName || !email) {
           Swal.showValidationMessage('Prenom, nom et email sont obligatoires.');
           return null;
         }
-        if (nationality.toLowerCase() === 'tunisian' && !cityId) {
-          Swal.showValidationMessage('Selectionnez une ville pour un utilisateur tunisian.');
+        if (this.isTunisiaNationality(nationality) && !cityId) {
+          Swal.showValidationMessage('Selectionnez une ville si la nationalite est Tunisia.');
           return null;
         }
 
@@ -127,7 +187,8 @@ export class AdminUsersComponent {
           email,
           phone: phone || null,
           nationality: nationality || null,
-          cityId,
+          cityId: this.isTunisiaNationality(nationality) ? cityId : null,
+          profileImageUrl: profileImageUrl || null,
           status,
         };
       },
@@ -141,56 +202,10 @@ export class AdminUsersComponent {
     this.adminUserService.updateUser(user.id, result.value).subscribe({
       next: (updatedUser) => {
         this.syncUpdatedUser(updatedUser);
-        void Swal.fire({ icon: 'success', title: 'Utilisateur modifie', timer: 1300, showConfirmButton: false });
+        void this.popup({ icon: 'success', title: 'Utilisateur modifie', timer: 1300, showConfirmButton: false });
       },
       error: (error: HttpErrorResponse) => {
-        void Swal.fire({ icon: 'error', title: 'Echec', text: extractApiErrorMessage(error, 'Mise a jour impossible.') });
-      },
-      complete: () => this.isSaving.set(false),
-    });
-  }
-
-  async openRolesPopup(user: AdminUser) {
-    if (this.isSaving()) {
-      return;
-    }
-
-    const hasRole = (role: string) => user.roles.includes(role) ? 'checked' : '';
-
-    const result = await Swal.fire({
-      title: `Roles de ${user.username}`,
-      html: `
-        <label class="sw-check"><input type="checkbox" id="sw-role-user" ${hasRole('ROLE_USER')} /> ROLE_USER</label>
-        <label class="sw-check"><input type="checkbox" id="sw-role-admin" ${hasRole('ROLE_ADMIN')} /> ROLE_ADMIN</label>
-        <label class="sw-check"><input type="checkbox" id="sw-role-artisant" ${hasRole('ROLE_ARTISANT')} /> ROLE_ARTISANT</label>
-      `,
-      showCancelButton: true,
-      confirmButtonText: 'Enregistrer',
-      preConfirm: () => {
-        const roles: string[] = [];
-        if ((document.getElementById('sw-role-user') as HTMLInputElement | null)?.checked) roles.push('ROLE_USER');
-        if ((document.getElementById('sw-role-admin') as HTMLInputElement | null)?.checked) roles.push('ROLE_ADMIN');
-        if ((document.getElementById('sw-role-artisant') as HTMLInputElement | null)?.checked) roles.push('ROLE_ARTISANT');
-        if (roles.length === 0) {
-          Swal.showValidationMessage('Au moins un role est obligatoire.');
-          return null;
-        }
-        return roles;
-      },
-    });
-
-    if (!result.isConfirmed || !result.value) {
-      return;
-    }
-
-    this.isSaving.set(true);
-    this.adminUserService.updateRoles(user.id, result.value).subscribe({
-      next: (updatedUser) => {
-        this.syncUpdatedUser(updatedUser);
-        void Swal.fire({ icon: 'success', title: 'Roles mis a jour', timer: 1200, showConfirmButton: false });
-      },
-      error: (error: HttpErrorResponse) => {
-        void Swal.fire({ icon: 'error', title: 'Echec', text: extractApiErrorMessage(error, 'Mise a jour des roles impossible.') });
+        void this.popup({ icon: 'error', title: 'Echec', text: extractApiErrorMessage(error, 'Mise a jour impossible.') });
       },
       complete: () => this.isSaving.set(false),
     });
@@ -201,7 +216,7 @@ export class AdminUsersComponent {
       return;
     }
 
-    const result = await Swal.fire({
+    const result = await this.popup({
       title: `Demande artisan de ${user.username}`,
       text: 'Accepter ou refuser cette demande ?',
       showDenyButton: true,
@@ -219,7 +234,7 @@ export class AdminUsersComponent {
     this.adminUserService.reviewArtisan(user.id, result.isConfirmed).subscribe({
       next: (updatedUser) => {
         this.syncUpdatedUser(updatedUser);
-        void Swal.fire({
+        void this.popup({
           icon: 'success',
           title: result.isConfirmed ? 'Demande acceptee' : 'Demande refusee',
           timer: 1200,
@@ -227,7 +242,7 @@ export class AdminUsersComponent {
         });
       },
       error: (error: HttpErrorResponse) => {
-        void Swal.fire({ icon: 'error', title: 'Echec', text: extractApiErrorMessage(error, 'Action impossible.') });
+        void this.popup({ icon: 'error', title: 'Echec', text: extractApiErrorMessage(error, 'Action impossible.') });
       },
       complete: () => this.isSaving.set(false),
     });
@@ -238,7 +253,7 @@ export class AdminUsersComponent {
       return;
     }
 
-    const result = await Swal.fire({
+    const result = await this.popup({
       icon: 'warning',
       title: `Supprimer ${user.username} ?`,
       text: 'Cette action est definitive.',
@@ -255,10 +270,10 @@ export class AdminUsersComponent {
     this.adminUserService.deleteUser(user.id).subscribe({
       next: () => {
         this.users.set(this.users().filter((item) => item.id !== user.id));
-        void Swal.fire({ icon: 'success', title: 'Utilisateur supprime', timer: 1200, showConfirmButton: false });
+        void this.popup({ icon: 'success', title: 'Utilisateur supprime', timer: 1200, showConfirmButton: false });
       },
       error: (error: HttpErrorResponse) => {
-        void Swal.fire({ icon: 'error', title: 'Echec', text: extractApiErrorMessage(error, 'Suppression impossible.') });
+        void this.popup({ icon: 'error', title: 'Echec', text: extractApiErrorMessage(error, 'Suppression impossible.') });
       },
       complete: () => this.isSaving.set(false),
     });
@@ -270,30 +285,10 @@ export class AdminUsersComponent {
     }
 
     if (user.banned) {
-      const res = await Swal.fire({
-        title: `Debannir ${user.username} ?`,
-        showCancelButton: true,
-        confirmButtonText: 'Debannir',
-        cancelButtonText: 'Annuler',
-      });
-      if (!res.isConfirmed) {
-        return;
-      }
-      this.isSaving.set(true);
-      this.adminUserService.unbanUser(user.id).subscribe({
-        next: (updatedUser) => {
-          this.syncUpdatedUser(updatedUser);
-          void Swal.fire({ icon: 'success', title: 'Utilisateur debanni', timer: 1200, showConfirmButton: false });
-        },
-        error: (error: HttpErrorResponse) => {
-          void Swal.fire({ icon: 'error', title: 'Echec', text: extractApiErrorMessage(error, 'Action de deban impossible.') });
-        },
-        complete: () => this.isSaving.set(false),
-      });
       return;
     }
 
-    const result = await Swal.fire({
+    const result = await this.popup({
       title: `Bannir ${user.username}`,
       showCancelButton: true,
       confirmButtonText: 'Bannir',
@@ -345,13 +340,41 @@ export class AdminUsersComponent {
     this.adminUserService.banUser(user.id, result.value).subscribe({
         next: (updatedUser) => {
           this.syncUpdatedUser(updatedUser);
-          void Swal.fire({ icon: 'success', title: 'Utilisateur banni', timer: 1200, showConfirmButton: false });
+          void this.popup({ icon: 'success', title: 'Utilisateur banni', timer: 1200, showConfirmButton: false });
         },
         error: (error: HttpErrorResponse) => {
-          void Swal.fire({ icon: 'error', title: 'Echec', text: extractApiErrorMessage(error, 'Action de ban impossible.') });
+          void this.popup({ icon: 'error', title: 'Echec', text: extractApiErrorMessage(error, 'Action de ban impossible.') });
         },
         complete: () => this.isSaving.set(false),
       });
+  }
+
+  async openUnbanPopup(user: AdminUser) {
+    if (this.isSaving() || !user.banned) {
+      return;
+    }
+
+    const res = await this.popup({
+      title: `Debannir ${user.username} ?`,
+      showCancelButton: true,
+      confirmButtonText: 'Debannir',
+      cancelButtonText: 'Annuler',
+    });
+    if (!res.isConfirmed) {
+      return;
+    }
+
+    this.isSaving.set(true);
+    this.adminUserService.unbanUser(user.id).subscribe({
+      next: (updatedUser) => {
+        this.syncUpdatedUser(updatedUser);
+        void this.popup({ icon: 'success', title: 'Utilisateur debanni', timer: 1200, showConfirmButton: false });
+      },
+      error: (error: HttpErrorResponse) => {
+        void this.popup({ icon: 'error', title: 'Echec', text: extractApiErrorMessage(error, 'Action de deban impossible.') });
+      },
+      complete: () => this.isSaving.set(false),
+    });
   }
 
   private syncUpdatedUser(updated: AdminUser) {

@@ -47,4 +47,10 @@ export class AdminUserService {
   unbanUser(userId: number) {
     return this.http.delete<AdminUser>(`/api/admin/users/${userId}/ban`);
   }
+
+  uploadProfileImage(file: File) {
+    const body = new FormData();
+    body.append('file', file);
+    return this.http.post<{ url: string }>('/api/public/uploads/profile-image', body);
+  }
 }

@@ -59,7 +59,7 @@
             }
           </select>
         </label>
-        @if (profileForm.controls.nationality.value.toLowerCase() === 'tunisia') {
+        @if (showCityField()) {
           <label>
             Ville
             <select formControlName="cityId">

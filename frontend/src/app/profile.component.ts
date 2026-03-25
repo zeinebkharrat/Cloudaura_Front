@@ -42,6 +42,11 @@ export class ProfileComponent {
     confirmPassword: ['', [Validators.required]],
   });
 
+  private isTunisiaNationality(value: string | null | undefined): boolean {
+    const normalized = (value ?? '').trim().toLowerCase();
+    return normalized === 'tunisia' || normalized === 'tunisian' || normalized === 'tunisie';
+  }
+
   constructor() {
     this.authService.getNationalities().subscribe({
       next: (list) => this.nationalities.set(list),
@@ -103,7 +108,8 @@ export class ProfileComponent {
     this.actionSuccess.set(null);
 
     const payload = this.profileForm.getRawValue();
-    const isTunisia = payload.nationality?.trim().toLowerCase() === 'tunisia';
+    const isTunisia = this.isTunisiaNationality(payload.nationality);
+    const cityId = payload.cityId ? Number(payload.cityId) : null;
     if (isTunisia && !payload.cityId) {
       this.actionError.set('Veuillez selectionner une ville si vous choisissez Tunisie.');
       this.isSavingProfile.set(false);
@@ -117,7 +123,7 @@ export class ProfileComponent {
         email: payload.email,
         phone: payload.phone || null,
         nationality: payload.nationality || null,
-        cityId: isTunisia ? payload.cityId : null,
+        cityId: isTunisia ? cityId : null,
         profileImageUrl: payload.profileImageUrl || null,
       })
       .subscribe({
@@ -170,5 +176,9 @@ export class ProfileComponent {
         },
         complete: () => this.isChangingPassword.set(false),
       });
+  }
+
+  showCityField(): boolean {
+    return this.isTunisiaNationality(this.profileForm.controls.nationality.value);
   }
 }

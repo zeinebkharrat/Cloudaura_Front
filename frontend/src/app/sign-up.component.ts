@@ -50,6 +50,11 @@ export class SignUpComponent {
     { validators: passwordsMatch }
   );
 
+  private isTunisiaNationality(value: string | null | undefined): boolean {
+    const normalized = (value ?? '').trim().toLowerCase();
+    return normalized === 'tunisia' || normalized === 'tunisian' || normalized === 'tunisie';
+  }
+
   constructor() {
     this.authService.getNationalities().subscribe({
       next: (list) => this.nationalities.set(list),
@@ -72,7 +77,8 @@ export class SignUpComponent {
     this.formError.set(null);
 
     const { confirmPassword: _confirmPassword, ...payload } = this.form.getRawValue();
-    const isTunisia = payload.nationality?.trim().toLowerCase() === 'tunisia';
+    const isTunisia = this.isTunisiaNationality(payload.nationality);
+    const cityId = payload.cityId ? Number(payload.cityId) : null;
     if (isTunisia && !payload.cityId) {
       this.formError.set('Veuillez selectionner une ville si vous choisissez Tunisie.');
       this.isLoading.set(false);
@@ -80,7 +86,7 @@ export class SignUpComponent {
     }
     const finalPayload = {
       ...payload,
-      cityId: isTunisia ? payload.cityId : null,
+      cityId: isTunisia ? cityId : null,
       profileImageUrl: this.uploadedImageUrl(),
     };
 
@@ -113,5 +119,9 @@ export class SignUpComponent {
       },
       complete: () => this.isUploadingImage.set(false),
     });
+  }
+
+  showCityField(): boolean {
+    return this.isTunisiaNationality(this.form.controls.nationality.value);
   }
 }

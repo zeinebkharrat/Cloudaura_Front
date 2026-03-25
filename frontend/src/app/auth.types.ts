@@ -63,6 +63,7 @@ export interface AdminUserUpdatePayload {
   phone: string | null;
   nationality: string | null;
   cityId: number | null;
+  profileImageUrl: string | null;
   status: string;
 }
 

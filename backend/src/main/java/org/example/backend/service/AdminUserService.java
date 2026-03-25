@@ -70,6 +70,7 @@ public class AdminUserService {
         user.setPhone(request.phone() != null ? request.phone().trim() : null);
         user.setNationality(request.nationality() != null ? request.nationality().trim() : null);
         user.setCity(resolveCityForNationality(user.getNationality(), request.cityId()));
+        user.setProfileImageUrl(request.profileImageUrl() != null ? request.profileImageUrl().trim() : null);
         user.setStatus(request.status().trim().toUpperCase(Locale.ROOT));
 
         return toAdminUserResponse(userRepository.save(user));
@@ -165,7 +166,7 @@ public class AdminUserService {
     }
 
     private City resolveCityForNationality(String nationality, Integer cityId) {
-        boolean tunisian = nationality != null && nationality.trim().equalsIgnoreCase("tunisian");
+        boolean tunisian = isTunisiaNationality(nationality);
         if (!tunisian) {
             return null;
         }
@@ -174,6 +175,14 @@ public class AdminUserService {
         }
         return cityRepository.findById(cityId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid cityId"));
+    }
+
+    private boolean isTunisiaNationality(String nationality) {
+        if (nationality == null) {
+            return false;
+        }
+        String normalized = nationality.trim().toLowerCase(Locale.ROOT);
+        return normalized.equals("tunisia") || normalized.equals("tunisian") || normalized.equals("tunisie");
     }
 
     private AdminUserResponse toAdminUserResponse(User user) {

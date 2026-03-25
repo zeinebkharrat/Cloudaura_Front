@@ -156,6 +156,63 @@ input {
   flex-wrap: wrap;
 }
 
+.icon-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.03);
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.icon-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.icon-svg {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
+}
+
+.icon-btn.edit {
+  border-color: rgba(56, 189, 248, 0.45);
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+}
+
+.icon-btn.artisan {
+  border-color: rgba(250, 204, 21, 0.45);
+  color: #facc15;
+  background: rgba(250, 204, 21, 0.12);
+}
+
+.icon-btn.ban,
+.icon-btn.delete {
+  border-color: rgba(248, 113, 113, 0.55);
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.12);
+}
+
+.icon-btn.unban {
+  border-color: rgba(74, 222, 128, 0.55);
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.12);
+}
+
+.icon-btn.delete {
+  color: #fb7185;
+  background: rgba(251, 113, 133, 0.14);
+}
+
 .mini {
   width: auto;
   margin-top: 0;
@@ -200,6 +257,45 @@ input {
   align-items: center;
   gap: 8px;
   margin: 6px 0;
+}
+
+::ng-deep .sw-avatar-block {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+::ng-deep .sw-avatar-preview {
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+::ng-deep .bo-btn {
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 10px 14px !important;
+  font-weight: 600 !important;
+  color: #f8fafc !important;
+  margin: 0 6px !important;
+}
+
+::ng-deep .bo-btn-confirm {
+  background: linear-gradient(135deg, #ef4444, #dc2626) !important;
+}
+
+::ng-deep .bo-btn-cancel {
+  background: rgba(148, 163, 184, 0.26) !important;
+}
+
+::ng-deep .bo-btn-deny {
+  background: linear-gradient(135deg, #f59e0b, #d97706) !important;
 }
 
 @media (max-width: 1100px) {
