@@ -20,7 +20,7 @@
 
   <div class="community-layout">
     <section class="create-post glass-panel">
-      @if (!showCreatePostForm()) {
+      <ng-container *ngIf="!showCreatePostForm(); else createPostBlock">
         <button
           type="button"
           class="btn-primary create-post__open"
@@ -28,7 +28,9 @@
         >
           + Nouveau post
         </button>
-      } @else {
+      </ng-container>
+
+      <ng-template #createPostBlock>
         <div class="create-post__inner">
           <div class="create-post__top">
             <h3>Créer un post</h3>
@@ -83,40 +85,49 @@
             {{ isPosting() ? 'Publication...' : 'Publier' }}
           </button>
         </div>
-      }
+      </ng-template>
     </section>
 
     <section class="feed">
-      @if (loadError()) {
-        <div class="feed-error glass-panel">{{ loadError() }}</div>
-      }
+      <div class="feed-error glass-panel" *ngIf="loadError()">
+        {{ loadError() }}
+      </div>
 
-      @if (!loadError() && !feedLoaded()) {
-        <div class="feed-loading glass-panel">Chargement de la communauté...</div>
-      }
+      <div
+        class="feed-loading glass-panel"
+        *ngIf="!loadError() && !feedLoaded()"
+      >
+        Chargement de la communauté...
+      </div>
 
-      @if (feedLoaded()) {
-        @for (post of posts(); track (post.postId ?? post.content ?? 0)) {
-          @if (post.postId != null) {
+      <div *ngIf="feedLoaded()">
+        <ng-container
+          *ngFor="let post of posts(); trackBy: trackByPost"
+        >
+          <ng-container *ngIf="post.postId != null">
             <article class="post-card glass-panel">
               <header class="post-header">
                 <div class="post-author">
                   <span class="avatar" aria-hidden="true"></span>
-                  <span class="author-name">{{ displayName(post.author) }}</span>
+                  <span class="author-name">{{
+                    displayName(post.author)
+                  }}</span>
                 </div>
                 <div class="post-meta">
-                  <span class="meta-date">{{ formatDate(post.createdAt) }}</span>
+                  <span class="meta-date">{{
+                    formatDate(post.createdAt)
+                  }}</span>
                 </div>
               </header>
 
               <p class="post-content">{{ post.content }}</p>
 
-              @if (post.location) {
-                <div class="post-location">📍 {{ post.location }}</div>
-              }
-              @if (post.visibility) {
-                <div class="post-visibility">🔒 {{ post.visibility }}</div>
-              }
+              <div class="post-location" *ngIf="post.location">
+                📍 {{ post.location }}
+              </div>
+              <div class="post-visibility" *ngIf="post.visibility">
+                🔒 {{ post.visibility }}
+              </div>
 
               <div class="post-actions">
                 <button
@@ -130,34 +141,46 @@
                 </button>
 
                 <div class="counts">
-                  <span class="count">{{ getLikeCount(post.postId!) }} likes</span>
-                  <span class="count">{{ getCommentCount(post.postId!) }} commentaires</span>
+                  <span class="count">{{
+                    getLikeCount(post.postId!)
+                  }}
+                    likes</span>
+                  <span class="count">{{
+                    getCommentCount(post.postId!)
+                  }}
+                    commentaires</span>
                 </div>
               </div>
 
-              @if (getMediaForPost(post.postId!).length > 0) {
-                <div class="media-grid">
-                  @for (m of getMediaForPost(post.postId!); track (m.mediaId ?? m.orderIndex ?? 0)) {
-                    @if (m.fileUrl) {
-                      <div class="media-item">
-                        @if (m.mediaType === 'VIDEO') {
-                          <video
-                            class="media-video"
-                            controls
-                            [src]="m.fileUrl"
-                          ></video>
-                        } @else {
-                          <img
-                            class="media-image"
-                            [src]="m.fileUrl"
-                            [alt]="'Media du post ' + post.postId"
-                          />
-                        }
-                      </div>
-                    }
-                  }
-                </div>
-              }
+              <div
+                class="media-grid"
+                *ngIf="getMediaForPost(post.postId!).length > 0"
+              >
+                <ng-container
+                  *ngFor="
+                    let m of getMediaForPost(post.postId!);
+                    trackBy: trackByPostMedia
+                  "
+                >
+                  <ng-container *ngIf="m.fileUrl">
+                    <div class="media-item">
+                      <video
+                        class="media-video"
+                        controls
+                        *ngIf="m.mediaType === 'VIDEO'"
+                        [src]="m.fileUrl"
+                      ></video>
+
+                      <img
+                        class="media-image"
+                        *ngIf="m.mediaType !== 'VIDEO'"
+                        [src]="m.fileUrl"
+                        [alt]="'Media du post ' + post.postId"
+                      />
+                    </div>
+                  </ng-container>
+                </ng-container>
+              </div>
 
               <div class="media-upload">
                 <label class="upload-btn">
@@ -169,7 +192,11 @@
                     [disabled]="uploadingPostId() === post.postId"
                   />
                   <span>
-                    {{ uploadingPostId() === post.postId ? 'Ajout...' : 'Ajouter media' }}
+                    {{
+                      uploadingPostId() === post.postId
+                        ? 'Ajout...'
+                        : 'Ajouter media'
+                    }}
                   </span>
                 </label>
               </div>
@@ -196,32 +223,52 @@
                 </div>
 
                 <div class="comment-thread">
-                  @if (commentTreeForPost(post.postId!).length === 0) {
-                    <p class="empty-thread">Aucun commentaire pour ce post.</p>
-                  }
+                  <p
+                    class="empty-thread"
+                    *ngIf="commentTreeForPost(post.postId!).length === 0"
+                  >
+                    Aucun commentaire pour ce post.
+                  </p>
 
-                  @for (root of commentTreeForPost(post.postId!); track root.commentId) {
+                  <ng-container
+                    *ngFor="
+                      let root of commentTreeForPost(post.postId!);
+                      trackBy: trackByComment
+                    "
+                  >
                     <ng-container
-                      *ngTemplateOutlet="commentTpl; context: { $implicit: root, depth: 0, postId: post.postId! }"
+                      *ngTemplateOutlet="
+                        commentTpl;
+                        context: {
+                          $implicit: root,
+                          depth: 0,
+                          postId: post.postId!
+                        }
+                      "
                     ></ng-container>
-                  }
+                  </ng-container>
                 </div>
               </section>
             </article>
-          }
-        }
-      }
+          </ng-container>
+        </ng-container>
+      </div>
     </section>
   </div>
 
   <ng-template #commentTpl let-comment let-depth="depth" let-postId="postId">
     <div class="comment-item" [style.marginLeft.px]="depth * 18">
       <div class="comment-header">
-        <span class="comment-author">{{ displayName(comment.author) }}</span>
-        @if (comment.createdAt) {
-          <span class="comment-date">{{ formatDate(comment.createdAt) }}</span>
-        }
+        <span class="comment-author">{{
+          displayName(comment.author)
+        }}</span>
+        <span
+          class="comment-date"
+          *ngIf="comment.createdAt"
+          >{{ formatDate(comment.createdAt) }}</span
+        >
       </div>
+
       <p class="comment-content">{{ comment.content }}</p>
 
       <div class="comment-actions">
@@ -235,42 +282,55 @@
         </button>
       </div>
 
-      @if (activeReplyCommentId() === comment.commentId!) {
-        <div class="reply-form glass-panel">
-          <textarea
-            rows="2"
-            [value]="getReplyDraft(comment.commentId!)"
-            (input)="setReplyDraft(comment.commentId!, $any($event.target).value)"
-            placeholder="Votre réponse..."
-          ></textarea>
-          <div class="reply-actions">
-            <button
-              type="button"
-              class="btn-primary btn-primary--small"
-              (click)="addComment(postId, comment.commentId!)"
-              [disabled]="getReplyDraft(comment.commentId!).trim().length === 0"
-            >
-              Répondre
-            </button>
-            <button
-              type="button"
-              class="btn-outline btn-outline--small"
-              (click)="closeReply()"
-            >
-              Annuler
-            </button>
-          </div>
+      <div
+        class="reply-form glass-panel"
+        *ngIf="activeReplyCommentId() === comment.commentId!"
+      >
+        <textarea
+          rows="2"
+          [value]="getReplyDraft(comment.commentId!)"
+          (input)="setReplyDraft(comment.commentId!, $any($event.target).value)"
+          placeholder="Votre réponse..."
+        ></textarea>
+        <div class="reply-actions">
+          <button
+            type="button"
+            class="btn-primary btn-primary--small"
+            (click)="addComment(postId, comment.commentId!)"
+            [disabled]="getReplyDraft(comment.commentId!).trim().length === 0"
+          >
+            Répondre
+          </button>
+          <button
+            type="button"
+            class="btn-outline btn-outline--small"
+            (click)="closeReply()"
+          >
+            Annuler
+          </button>
         </div>
-      }
+      </div>
     </div>
 
-    @if (comment.children?.length) {
-      @for (child of comment.children; track child.commentId) {
+    <ng-container *ngIf="comment.children?.length">
+      <ng-container
+        *ngFor="
+          let child of comment.children;
+          trackBy: trackByComment
+        "
+      >
         <ng-container
-          *ngTemplateOutlet="commentTpl; context: { $implicit: child, depth: depth + 1, postId: postId }"
+          *ngTemplateOutlet="
+            commentTpl;
+            context: {
+              $implicit: child,
+              depth: depth + 1,
+              postId: postId
+            }
+          "
         ></ng-container>
-      }
-    }
+      </ng-container>
+    </ng-container>
   </ng-template>
 </section>
 

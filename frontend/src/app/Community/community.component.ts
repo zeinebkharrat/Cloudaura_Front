@@ -394,5 +394,21 @@ export class CommunityComponent {
       input.value = '';
     }
   }
+
+  // ---------- trackBy helpers (used by template) ----------
+  trackByPost = (_index: number, post: Post): number | string => {
+    return post.postId ?? post.content ?? _index;
+  };
+
+  trackByPostMedia = (_index: number, media: PostMedia): number | string => {
+    return media.mediaId ?? media.orderIndex ?? _index;
+  };
+
+  trackByComment = (
+    _index: number,
+    comment: Comment | CommentWithChildren
+  ): number | string => {
+    return comment.commentId ?? _index;
+  };
 }
 
