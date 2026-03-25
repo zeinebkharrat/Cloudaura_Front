@@ -1,0 +1,166 @@
+<div class="admin-page">
+  <header class="page-head">
+    <div>
+      <h1>Gestion des villes</h1>
+      <p>CRUD complet des villes tunisiennes + médias (ImgBB).</p>
+    </div>
+    <button class="btn" (click)="openCreateModal()">+ Ajouter une ville</button>
+  </header>
+
+  @if (error) {
+    <div class="alert">{{ error }}</div>
+  }
+
+  <section class="card surface">
+    <div class="toolbar">
+      <input type="text" [(ngModel)]="q" placeholder="Rechercher une ville..." (keyup.enter)="searchCities()" />
+      <select [(ngModel)]="sort" (change)="sortChanged()">
+        <option value="cityId,desc">Plus récentes</option>
+        <option value="name,asc">Nom A → Z</option>
+        <option value="name,desc">Nom Z → A</option>
+        <option value="region,asc">Région A → Z</option>
+      </select>
+      <button class="btn" (click)="searchCities()">Rechercher</button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Ville</th>
+            <th>Région</th>
+            <th>Coordonnées</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (city of cities; track city.cityId) {
+            <tr>
+              <td>
+                <div class="title">{{ city.name }}</div>
+                <div class="sub">{{ city.description || '—' }}</div>
+              </td>
+              <td>{{ city.region || '—' }}</td>
+              <td>{{ city.latitude || '—' }}, {{ city.longitude || '—' }}</td>
+              <td class="actions">
+                <button class="btn ghost" (click)="editCity(city)">Modifier</button>
+                <button class="btn danger" (click)="deleteCity(city)">Supprimer</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      @if (!loading && cities.length === 0) {
+        <p class="empty">Aucune ville trouvée.</p>
+      }
+    </div>
+
+    <div class="pager">
+      <span>Total: {{ totalElements }}</span>
+      <div>
+        <button class="btn ghost" [disabled]="page === 0" (click)="changeCityPage(false)">Précédent</button>
+        <span>Page {{ page + 1 }} / {{ totalPages || 1 }}</span>
+        <button class="btn ghost" [disabled]="page + 1 >= totalPages" (click)="changeCityPage(true)">Suivant</button>
+      </div>
+    </div>
+  </section>
+
+  @if (showCityModal) {
+    <div class="modal-backdrop" (click)="closeCityModal()"></div>
+    <section class="modal-card" role="dialog" aria-modal="true">
+      <header class="modal-head">
+        <h2>{{ editingCityId ? 'Modifier la ville' : 'Ajouter une ville' }}</h2>
+        <button class="btn ghost" (click)="closeCityModal()">✕</button>
+      </header>
+
+      <div class="form-grid">
+        <label>
+          Nom *
+          <input type="text" [(ngModel)]="cityForm.name" />
+        </label>
+        <label>
+          Région
+          <input type="text" [(ngModel)]="cityForm.region" />
+        </label>
+        <label>
+          Latitude
+          <input type="number" step="any" [(ngModel)]="cityForm.latitude" />
+        </label>
+        <label>
+          Longitude
+          <input type="number" step="any" [(ngModel)]="cityForm.longitude" />
+        </label>
+        <label class="full">
+          Description
+          <textarea rows="4" [(ngModel)]="cityForm.description"></textarea>
+        </label>
+      </div>
+
+      <div class="media-zone">
+        <div class="media-title">
+          <h3>Upload média</h3>
+          <span>Les images seront envoyées vers ImgBB</span>
+        </div>
+        <div class="upload-box modern">
+          <select [(ngModel)]="mediaType">
+            <option value="IMAGE">IMAGE</option>
+            <option value="VIDEO">VIDEO</option>
+            <option value="PANORAMA">PANORAMA</option>
+          </select>
+          <input type="file" multiple accept="image/*" (change)="onFileChange($event)" />
+          @if (editingCityId) {
+            <button class="btn" [disabled]="uploadFiles.length === 0" (click)="uploadMedia()">Uploader maintenant</button>
+          }
+        </div>
+
+        @if (mediaPreviewUrls.length > 0) {
+          <div class="media-grid previews">
+            @for (url of mediaPreviewUrls; track url) {
+              <article class="media-card">
+                <img [src]="url" alt="Aperçu média" />
+              </article>
+            }
+          </div>
+        }
+
+        @if (editingCityId) {
+          <div class="toolbar compact">
+            <input type="text" [(ngModel)]="mediaQ" placeholder="Rechercher média..." (keyup.enter)="searchMedia()" />
+            <select [(ngModel)]="mediaSort" (change)="searchMedia()">
+              <option value="mediaId,desc">Plus récents</option>
+              <option value="mediaType,asc">Type A → Z</option>
+            </select>
+            <button class="btn ghost" (click)="searchMedia()">Filtrer</button>
+          </div>
+
+          <div class="media-grid">
+            @for (media of mediaItems; track media.mediaId) {
+              <article class="media-card">
+                <img [src]="media.url" [alt]="media.cityName" />
+                <div class="meta">
+                  <span>{{ media.mediaType }}</span>
+                  <button class="btn danger" (click)="deleteMedia(media)">Supprimer</button>
+                </div>
+              </article>
+            }
+          </div>
+
+          <div class="pager">
+            <span>Médias: {{ mediaItems.length }}</span>
+            <div>
+              <button class="btn ghost" [disabled]="mediaPage === 0" (click)="changeMediaPage(false)">Précédent</button>
+              <span>Page {{ mediaPage + 1 }} / {{ mediaTotalPages || 1 }}</span>
+              <button class="btn ghost" [disabled]="mediaPage + 1 >= mediaTotalPages" (click)="changeMediaPage(true)">Suivant</button>
+            </div>
+          </div>
+        }
+      </div>
+
+      <div class="actions">
+        <button class="btn" (click)="saveCity()">{{ editingCityId ? 'Mettre à jour' : 'Créer la ville' }}</button>
+        <button class="btn ghost" (click)="closeCityModal()">Annuler</button>
+      </div>
+    </section>
+  }
+</div>

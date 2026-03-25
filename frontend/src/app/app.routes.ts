@@ -5,6 +5,9 @@ import { FeaturePageComponent } from './feature-page.component';
 import { LoginComponent } from './login/login.component';
 import { AdminLayoutComponent } from './admin/layout/admin-layout.component';
 import { AdminDashboardComponent } from './admin/dashboard/admin-dashboard.component';
+import { AdminCitiesComponent } from './admin/cities/admin-cities.component';
+import { AdminRestaurantsComponent } from './admin/restaurants/admin-restaurants.component';
+import { AdminActivitiesComponent } from './admin/activities/admin-activities.component';
 import { AuthGuard } from './core/auth.guard';
 
 export const routes: Routes = [
@@ -18,6 +21,9 @@ export const routes: Routes = [
     data: { requiresAdmin: true },
     children: [
       { path: '', component: AdminDashboardComponent },
+      { path: 'cities', component: AdminCitiesComponent },
+      { path: 'restaurants', component: AdminRestaurantsComponent },
+      { path: 'activities', component: AdminActivitiesComponent },
     ],
   },
   {
