@@ -40,6 +40,9 @@
       <a class="connexion-btn" routerLink="/signin" routerLinkActive="active-connexion">Connexion</a>
       <a class="signup-btn" routerLink="/signup" routerLinkActive="active-signup">Créer un compte</a>
     } @else {
+      @if (isAdmin()) {
+        <a class="signup-btn" routerLink="/admin/users">Backoffice</a>
+      }
       <span class="nav-user">Salut, {{ currentUser()?.firstName || currentUser()?.username }}</span>
       <button type="button" class="logout-btn" (click)="logout()">Déconnexion</button>
     }

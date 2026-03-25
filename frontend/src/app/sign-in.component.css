@@ -148,9 +148,29 @@ input:focus {
 .social-buttons button {
   border-radius: 999px;
   border: 1px solid var(--glass-border);
-  background: rgba(255, 255, 255, 0.02);
-  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-color);
   padding: 10px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.social-buttons button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(0, 119, 182, 0.6);
+  background: rgba(0, 119, 182, 0.14);
+}
+
+.social-buttons button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.social-hint {
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
 }
 
 .auth-switch {

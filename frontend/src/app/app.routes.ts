@@ -4,10 +4,22 @@ import { VirtualTourPageComponent } from './virtual-tour-page.component';
 import { FeaturePageComponent } from './feature-page.component';
 import { SignInComponent } from './sign-in.component';
 import { SignUpComponent } from './sign-up.component';
+import { authGuard } from './auth.guard';
+import { roleGuard } from './role.guard';
+import { AdminUsersComponent } from './admin-users.component';
 export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'signin', component: SignInComponent },
   { path: 'signup', component: SignUpComponent },
+  {
+    path: 'admin',
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ROLE_ADMIN'] },
+    children: [
+      { path: '', pathMatch: 'full', redirectTo: 'users' },
+      { path: 'users', component: AdminUsersComponent },
+    ],
+  },
   { path: 'virtual-tour', component: VirtualTourPageComponent },
   {
     path: 'destinations',

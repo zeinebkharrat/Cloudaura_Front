@@ -20,6 +20,7 @@ export class AppComponent implements OnInit {
   isDarkMode = signal(true);
   isAuthenticated = this.authService.isAuthenticated;
   currentUser = this.authService.currentUser;
+  isAdmin = () => this.authService.hasRole('ROLE_ADMIN');
 
   ngOnInit() {
     const savedTheme = localStorage.getItem('theme');

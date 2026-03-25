@@ -6,6 +6,11 @@ export const authGuard: CanActivateFn = (_route, state) => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
+  if (!authService.isAuthenticated() && authService.hasStoredToken()) {
+    authService.restoreSession();
+    return true;
+  }
+
   if (authService.isAuthenticated()) {
     return true;
   }

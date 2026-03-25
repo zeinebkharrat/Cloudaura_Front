@@ -46,9 +46,12 @@
     <div class="social-zone">
       <p>Social login (phase 2)</p>
       <div class="social-buttons">
-        <button type="button" disabled>Google bientôt</button>
-        <button type="button" disabled>GitHub bientôt</button>
+        <button type="button" (click)="loginWithGoogle()">Continuer avec Google</button>
+        <button type="button" (click)="loginWithGithub()">Continuer avec GitHub</button>
       </div>
+      @if (!socialProviders().google || !socialProviders().github) {
+        <p class="social-hint">Configurez les variables OAuth2 backend pour activer tous les providers.</p>
+      }
     </div>
 
     <p class="auth-switch">

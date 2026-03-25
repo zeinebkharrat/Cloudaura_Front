@@ -100,6 +100,33 @@ input:focus {
   font-size: 0.83rem;
 }
 
+.artisan-box {
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+.artisan-check {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.artisan-check input {
+  width: auto;
+  margin-top: 0;
+}
+
+.artisan-box p {
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
 .auth-error {
   margin-bottom: 14px;
   padding: 10px 12px;

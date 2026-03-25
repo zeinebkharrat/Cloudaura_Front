@@ -5,6 +5,8 @@ export interface UserProfile {
   firstName: string;
   lastName: string;
   roles: string[];
+  status: string;
+  artisanRequestPending: boolean;
 }
 
 export interface AuthResponse {
@@ -24,4 +26,30 @@ export interface SignUpPayload {
   password: string;
   firstName: string;
   lastName: string;
+  becomeArtisant: boolean;
+}
+
+export interface AdminUser {
+  id: number;
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  phone: string | null;
+  status: string;
+  artisanRequestPending: boolean;
+  roles: string[];
+}
+
+export interface AdminUserUpdatePayload {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string | null;
+  status: string;
+}
+
+export interface SocialProviders {
+  google: boolean;
+  github: boolean;
 }

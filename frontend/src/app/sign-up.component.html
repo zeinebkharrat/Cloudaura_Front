@@ -40,6 +40,16 @@
         <input type="password" formControlName="confirmPassword" placeholder="Confirmez votre mot de passe" autocomplete="new-password" />
       </label>
 
+      <div class="artisan-box">
+        <label class="artisan-check">
+          <input type="checkbox" formControlName="becomeArtisant" />
+          Je souhaite devenir artisan sur YallaTN+
+        </label>
+        @if (form.controls.becomeArtisant.value) {
+          <p>Votre demande artisan sera examinée par un administrateur avant activation du rôle.</p>
+        }
+      </div>
+
       @if (form.hasError('passwordMismatch') && form.controls.confirmPassword.touched) {
         <p class="field-error">Les mots de passe ne correspondent pas.</p>
       }

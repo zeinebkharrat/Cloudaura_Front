@@ -4,6 +4,7 @@ import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Va
 import { Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from './auth.service';
+import { extractApiErrorMessage } from './api-error.util';
 
 function passwordsMatch(group: AbstractControl): ValidationErrors | null {
   const password = group.get('password')?.value;
@@ -37,6 +38,7 @@ export class SignUpComponent {
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(8)]],
       confirmPassword: ['', [Validators.required]],
+      becomeArtisant: [false],
     },
     { validators: passwordsMatch }
   );
@@ -56,7 +58,7 @@ export class SignUpComponent {
       next: () => this.router.navigateByUrl('/'),
       error: (error: HttpErrorResponse) => {
         this.isLoading.set(false);
-        this.formError.set(error.error?.message || 'Inscription impossible. Veuillez réessayer.');
+        this.formError.set(extractApiErrorMessage(error, 'Inscription impossible. Veuillez réessayer.'));
       },
       complete: () => this.isLoading.set(false),
     });

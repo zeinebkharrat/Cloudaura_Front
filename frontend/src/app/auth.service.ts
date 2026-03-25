@@ -1,10 +1,11 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { catchError, map, of, tap } from 'rxjs';
-import { AuthResponse, SignInPayload, SignUpPayload, UserProfile } from './auth.types';
+import { AuthResponse, SignInPayload, SignUpPayload, SocialProviders, UserProfile } from './auth.types';
 
 const TOKEN_STORAGE_KEY = 'auth_token';
 const USER_STORAGE_KEY = 'auth_user';
+const OAUTH_SERVER_URL = 'http://localhost:9091';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -19,6 +20,31 @@ export class AuthService {
       tap((response) => this.storeSession(response)),
       map((response) => response.user)
     );
+  }
+
+  hasStoredToken(): boolean {
+    return !!localStorage.getItem(TOKEN_STORAGE_KEY);
+  }
+
+  completeSocialSignin(token: string) {
+    this.token.set(token);
+    this.isAuthenticated.set(true);
+    localStorage.setItem(TOKEN_STORAGE_KEY, token);
+
+    return this.fetchMe().pipe(map((user) => user));
+  }
+
+  startSocialLogin(provider: 'google' | 'github') {
+    window.location.href = `${OAUTH_SERVER_URL}/oauth2/authorization/${provider}`;
+  }
+
+  getSocialProviders() {
+    return this.http.get<SocialProviders>('/api/auth/social/providers');
+  }
+
+  hasRole(role: string): boolean {
+    const user = this.currentUser();
+    return !!user && user.roles.includes(role);
   }
 
   signup(payload: SignUpPayload) {

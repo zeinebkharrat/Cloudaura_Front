@@ -2,14 +2,15 @@ package org.example.backend.dto;
 
 import java.util.Set;
 
-public record UserSummaryResponse(
+public record AdminUserResponse(
         Integer id,
         String username,
         String email,
         String firstName,
         String lastName,
-        Set<String> roles,
+        String phone,
         String status,
-        Boolean artisanRequestPending
+        Boolean artisanRequestPending,
+        Set<String> roles
 ) {
 }
