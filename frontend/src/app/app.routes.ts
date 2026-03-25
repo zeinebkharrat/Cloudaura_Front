@@ -9,11 +9,17 @@ import { AdminCitiesComponent } from './admin/cities/admin-cities.component';
 import { AdminRestaurantsComponent } from './admin/restaurants/admin-restaurants.component';
 import { AdminActivitiesComponent } from './admin/activities/admin-activities.component';
 import { AuthGuard } from './core/auth.guard';
+import { CityExploreComponent } from './explore/city-explore.component';
+import { RestaurantDetailComponent } from './explore/restaurant-detail.component';
+import { ActivityDetailComponent } from './explore/activity-detail.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'login', component: LoginComponent },
   { path: 'virtual-tour', component: VirtualTourPageComponent },
+  { path: 'city/:cityId', component: CityExploreComponent },
+  { path: 'restaurants/:restaurantId', component: RestaurantDetailComponent },
+  { path: 'activities/:activityId', component: ActivityDetailComponent },
   {
     path: 'admin',
     component: AdminLayoutComponent,

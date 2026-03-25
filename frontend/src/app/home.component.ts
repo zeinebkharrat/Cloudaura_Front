@@ -9,10 +9,11 @@ import {
   ChangeDetectorRef,
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import * as echarts from 'echarts';
 import { tunisiaGeoJson } from './tunisia-map';
 import { GOVERNORATE_LABEL_EN, GOVERNORATE_LABEL_FR } from './tunisia-governorate-labels';
+import { ExploreService } from './explore/explore.service';
 
 const TUNISIA_MAP_NAME_PROP = '_echartsRegionId';
 
@@ -56,7 +57,14 @@ export class HomeComponent implements AfterViewInit {
   @ViewChild('mapContainer', { static: false }) mapContainer!: ElementRef;
 
   mapViewMode = signal<'local' | 'highlights'>('local');
-  selectedRegion = signal<{ name: string; description: string } | null>(null);
+  selectedRegion = signal<{
+    name: string;
+    description: string;
+    cityId: number | null;
+    resolving: boolean;
+    mapRegionId: string | null;
+  } | null>(null);
+  isMapNavigating = signal(false);
 
   private tunisiaMapChart?: echarts.ECharts;
   private mapGeoData?: any;
@@ -64,7 +72,9 @@ export class HomeComponent implements AfterViewInit {
 
   constructor(
     @Inject(PLATFORM_ID) private platformId: Object,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private readonly exploreService: ExploreService,
+    private readonly router: Router
   ) {}
 
   ngAfterViewInit(): void {
@@ -93,8 +103,42 @@ export class HomeComponent implements AfterViewInit {
       const label = this.displayName(params);
       this.selectedRegion.set({
         name: label,
-        description: `Experience the unique culture, stunning landscapes, and rich history of ${label}. Plan your personalized journey to this magnificent Tunisian destination.`,
+        description: `Découverte de ${label} en cours...`,
+        cityId: null,
+        resolving: true,
+        mapRegionId: params?.name ?? null,
       });
+
+      this.exploreService.resolveCityByName(label).subscribe({
+        next: (resolved) => {
+          this.selectedRegion.set({
+            name: resolved.city.name,
+            description:
+              resolved.city.description ||
+              `Découvrez ${resolved.city.name}, une destination tunisienne riche en expériences.`,
+            cityId: resolved.city.cityId,
+            resolving: false,
+            mapRegionId: params?.name ?? null,
+          });
+          this.cdr.detectChanges();
+        },
+        error: () => {
+          this.selectedRegion.update((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  description:
+                    `Aucune ville liée trouvée dans la base pour ${label}.`,
+                  cityId: null,
+                  resolving: false,
+                  mapRegionId: params?.name ?? null,
+                }
+              : null
+          );
+          this.cdr.detectChanges();
+        },
+      });
+
       this.cdr.detectChanges();
     });
 
@@ -208,5 +252,85 @@ export class HomeComponent implements AfterViewInit {
     };
 
     this.tunisiaMapChart.setOption(option, { notMerge: true });
+  }
+
+  goToSelectedCity(): void {
+    const region = this.selectedRegion();
+    if (!region?.cityId || region.resolving) {
+      return;
+    }
+
+    this.isMapNavigating.set(true);
+    this.zoomToRegion(region.mapRegionId);
+    setTimeout(() => {
+      this.router.navigate(['/city', region.cityId]);
+      this.isMapNavigating.set(false);
+    }, 680);
+  }
+
+  private zoomToRegion(mapRegionId: string | null): void {
+    if (!this.tunisiaMapChart || !mapRegionId || !this.mapGeoData?.features) {
+      return;
+    }
+
+    const feature = this.mapGeoData.features.find(
+      (item: any) => item?.properties?.[TUNISIA_MAP_NAME_PROP] === mapRegionId
+    );
+
+    if (!feature) {
+      return;
+    }
+
+    const center = this.extractFeatureCenter(feature.geometry);
+    if (!center) {
+      return;
+    }
+
+    this.tunisiaMapChart.setOption({
+      series: [
+        {
+          nameProperty: TUNISIA_MAP_NAME_PROP,
+          zoom: 2.4,
+          center,
+          animationDurationUpdate: 620,
+          animationEasingUpdate: 'cubicInOut',
+        },
+      ],
+    });
+  }
+
+  private extractFeatureCenter(geometry: any): [number, number] | null {
+    const points: [number, number][] = [];
+
+    const walk = (node: any): void => {
+      if (!Array.isArray(node)) {
+        return;
+      }
+
+      if (
+        node.length >= 2 &&
+        typeof node[0] === 'number' &&
+        typeof node[1] === 'number'
+      ) {
+        points.push([node[0], node[1]]);
+        return;
+      }
+
+      for (const child of node) {
+        walk(child);
+      }
+    };
+
+    walk(geometry?.coordinates);
+    if (!points.length) {
+      return null;
+    }
+
+    const sum = points.reduce(
+      (acc, point) => [acc[0] + point[0], acc[1] + point[1]],
+      [0, 0]
+    );
+
+    return [sum[0] / points.length, sum[1] / points.length];
   }
 }

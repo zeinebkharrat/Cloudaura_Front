@@ -1,46 +1,46 @@
 .shell { display:grid; grid-template-columns:260px 1fr; min-height:100vh; transition:grid-template-columns .3s ease; }
 .shell.collapsed { grid-template-columns:72px 1fr; }
 
-.sidebar { position:sticky; top:0; height:100vh; display:flex; flex-direction:column; background-color:#11161d; border-right:1px solid rgba(255,255,255,.05); z-index:100; transition:all .3s ease; }
+.sidebar { position:sticky; top:0; height:100vh; display:flex; flex-direction:column; background-color:#0f172a; border-right:1px solid rgba(255,255,255,.12); z-index:100; transition:all .3s ease; box-shadow:8px 0 28px rgba(0,0,0,.35); }
 
-.sb-head { display:flex; align-items:center; justify-content:space-between; padding:20px 16px; border-bottom:1px solid rgba(255,255,255,.05); }
+.sb-head { display:flex; align-items:center; justify-content:space-between; padding:20px 16px; border-bottom:1px solid rgba(255,255,255,.12); }
 .sb-logo { font-family:'Outfit',sans-serif; font-weight:800; font-size:1.5rem; display:flex; align-items:center; letter-spacing:-.03em; }
-.sy { color:#ffffff; } .sd { color:#e63946; margin:0 2px; } .st { color:#e63946; }
-.sb-badge { font-size:.65rem; font-weight:700; background:rgba(230,57,70,.15); border:1px solid rgba(230,57,70,.4); color:#ff6b8a; padding:3px 10px; border-radius:20px; text-transform:uppercase; letter-spacing:.08em; margin-left:12px; }
+.sy { color:#f8fafc; } .sd { color:#e63946; margin:0 2px; } .st { color:#e63946; }
+.sb-badge { font-size:.65rem; font-weight:700; background:rgba(230,57,70,.1); border:1px solid rgba(230,57,70,.25); color:#e63946; padding:3px 10px; border-radius:20px; text-transform:uppercase; letter-spacing:.08em; margin-left:12px; }
 
-.tog { background:#1a2028; border:1px solid rgba(255,255,255,.08); color:var(--text-muted); border-radius:8px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:.75rem; transition:all .2s; }
-.tog:hover { border-color:rgba(230,57,70,.5); color:#fff; background:#222a35; }
+.tog { background:#1e293b; border:1px solid rgba(255,255,255,.14); color:#cbd5e1; border-radius:8px; width:32px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:.75rem; transition:all .2s; }
+.tog:hover { border-color:rgba(230,57,70,.45); color:#fff; background:#334155; }
 .tog svg { width:12px; height:12px; }
 
 .sb-nav { flex:1; padding:20px 12px; display:flex; flex-direction:column; gap:8px; overflow-y:auto; }
 
 .sb-item { display:flex; align-items:center; gap:14px; padding:14px 16px; border-radius:14px; text-decoration:none; color:#94a3b8; font-family:'Outfit',sans-serif; font-weight:600; font-size:.95rem; border:1px solid transparent; transition:all .2s; }
-.sb-item:hover { background:rgba(255,255,255,.03); color:#f1f5f9; }
+.sb-item:hover { background:rgba(255,255,255,.06); color:#f8fafc; border-color:rgba(255,255,255,.12); }
 
 /* The exact active state depicted in the screenshot */
-.sb-item.active { background:rgba(230,57,70,.08); border:1px solid rgba(230,57,70,.3); color:#ff6b8a; box-shadow:inset 0 0 20px rgba(230,57,70,.05); }
+.sb-item.active { background:rgba(230,57,70,.08); border:1px solid rgba(230,57,70,.22); color:#e63946; box-shadow:inset 0 0 20px rgba(230,57,70,.04); }
 .sb-item.active .sb-icon { filter:drop-shadow(0 0 4px rgba(230,57,70,.6)); }
 
 .sb-icon { font-size:1.3rem; min-width:26px; text-align:center; transition:transform .2s; }
 .sb-item:hover .sb-icon { transform:scale(1.1); }
 .sb-lbl { white-space:nowrap; }
 
-.sb-foot { padding:20px 12px; border-top:1px solid rgba(255,255,255,.05); }
+.sb-foot { padding:20px 12px; border-top:1px solid rgba(255,255,255,.12); }
 
 /* The user profile card from the screenshot */
-.sb-user { display:flex; align-items:center; gap:14px; padding:14px; border-radius:16px; background:#181820; border:1px solid rgba(255,255,255,.03); margin-bottom:12px; }
+.sb-user { display:flex; align-items:center; gap:14px; padding:14px; border-radius:16px; background:#1e293b; border:1px solid rgba(255,255,255,.12); margin-bottom:12px; }
 .sb-av { width:42px; height:42px; background:#ff2a55; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Outfit',sans-serif; font-weight:800; font-size:1.1rem; color:#fff; flex-shrink:0; box-shadow:0 4px 12px rgba(255,42,85,.3); }
 .sb-uinfo { display:flex; flex-direction:column; }
-.sb-uname { font-family:'Outfit',sans-serif; font-weight:700; font-size:.95rem; color:#fff; letter-spacing:.02em; line-height:1.2; }
-.sb-urole { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#ff5c7c; line-height:1; margin-top:4px; }
+.sb-uname { font-family:'Outfit',sans-serif; font-weight:700; font-size:.95rem; color:#f8fafc; letter-spacing:.02em; line-height:1.2; }
+.sb-urole { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#e63946; line-height:1; margin-top:4px; }
 
 /* The logout button from the screenshot */
-.logout-btn { width:100%; display:flex; align-items:center; justify-content:center; gap:8px; background:rgba(230,57,70,.05); border:1px solid rgba(230,57,70,.25); color:#ff6b8a; padding:14px; border-radius:14px; cursor:pointer; font-size:.9rem; font-family:'Outfit',sans-serif; font-weight:600; transition:all .3s ease; }
+.logout-btn { width:100%; display:flex; align-items:center; justify-content:center; gap:8px; background:rgba(230,57,70,.05); border:1px solid rgba(230,57,70,.2); color:#e63946; padding:14px; border-radius:14px; cursor:pointer; font-size:.9rem; font-family:'Outfit',sans-serif; font-weight:600; transition:all .3s ease; }
 .logout-btn:hover { background:rgba(230,57,70,.15); border-color:rgba(230,57,70,.4); transform:translateY(-1px); box-shadow:0 4px 12px rgba(230,57,70,.1); }
 
 /* Scrollbar for sidebar nav if it overflows */
 .sb-nav::-webkit-scrollbar { width:4px; }
 .sb-nav::-webkit-scrollbar-track { background:transparent; }
-.sb-nav::-webkit-scrollbar-thumb { background:rgba(255,255,255,.1); border-radius:10px; }
+.sb-nav::-webkit-scrollbar-thumb { background:rgba(255,255,255,.16); border-radius:10px; }
 
 .sb-main { overflow-y:auto; min-height:100vh; background:var(--bg-color); position:relative; }

@@ -6,6 +6,10 @@ public record RestaurantResponse(
     String cityName,
     String name,
     String cuisineType,
-    Double rating
+    Double rating,
+    String description,
+    String address,
+    Double latitude,
+    Double longitude
 ) {
 }

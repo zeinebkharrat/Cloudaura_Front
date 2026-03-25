@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { concatMap, from, map, Observable, of, switchMap, toArray } from 'rxjs';
 import Swal from 'sweetalert2';
-import { City, CityMedia, CityRequest, MediaType } from '../admin-api.models';
+import { City, CityMedia, CityRequest } from '../admin-api.models';
 import { CityAdminService } from '../services/city-admin.service';
 
 @Component({
@@ -42,7 +42,6 @@ export class AdminCitiesComponent implements OnInit {
   mediaPage = 0;
   mediaSize = 6;
   mediaTotalPages = 0;
-  mediaType: MediaType = 'IMAGE';
   uploadFiles: File[] = [];
   mediaPreviewUrls: string[] = [];
 
@@ -125,7 +124,6 @@ export class AdminCitiesComponent implements OnInit {
   openCreateModal(): void {
     this.error = '';
     this.resetCityForm();
-    this.mediaType = 'IMAGE';
     this.showCityModal = true;
   }
 
@@ -258,6 +256,21 @@ export class AdminCitiesComponent implements OnInit {
     this.mediaPreviewUrls = accepted.map((file) => URL.createObjectURL(file));
   }
 
+  removeSelectedFile(index: number): void {
+    if (index < 0 || index >= this.uploadFiles.length) {
+      return;
+    }
+    const [removedPreview] = this.mediaPreviewUrls.splice(index, 1);
+    if (removedPreview) {
+      URL.revokeObjectURL(removedPreview);
+    }
+    this.uploadFiles.splice(index, 1);
+  }
+
+  clearUploadSelection(): void {
+    this.clearSelectedFiles();
+  }
+
   uploadMedia(): void {
     if (!this.mediaCity || this.uploadFiles.length === 0) {
       this.error = 'Sélectionne d’abord une ville et un fichier';
@@ -313,7 +326,7 @@ export class AdminCitiesComponent implements OnInit {
     }
 
     return from(this.uploadFiles).pipe(
-      concatMap((file) => this.cityService.uploadCityMedia(cityId, this.mediaType, file)),
+      concatMap((file) => this.cityService.uploadCityMedia(cityId, 'IMAGE', file)),
       toArray()
     );
   }

@@ -6,6 +6,7 @@ public record ActivityResponse(
     String cityName,
     String name,
     String type,
-    Double price
+    Double price,
+    String description
 ) {
 }

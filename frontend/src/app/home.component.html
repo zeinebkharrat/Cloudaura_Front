@@ -98,7 +98,7 @@
 </section>
 
 <section id="map-section" class="destinations map-section">
-  <div class="map-wrapper animate-in delay-2 glass-panel">
+  <div class="map-wrapper animate-in delay-2 glass-panel" [class.map-wrapper--zooming]="isMapNavigating()">
     <div class="map-view-tabs" role="tablist" aria-label="Map display mode">
       <button
         type="button"
@@ -127,7 +127,14 @@
       <button class="close-btn" (click)="selectedRegion.set(null)">&times;</button>
       <h3>{{ selectedRegion()?.name }}</h3>
       <p>{{ selectedRegion()?.description }}</p>
-      <button class="btn-primary" style="margin-top: 15px;">Explore {{ selectedRegion()?.name }}</button>
+      <button
+        class="btn-primary"
+        style="margin-top: 15px;"
+        (click)="goToSelectedCity()"
+        [disabled]="selectedRegion()?.resolving || !selectedRegion()?.cityId"
+      >
+        {{ selectedRegion()?.resolving ? 'Chargement...' : ('Explore ' + selectedRegion()?.name) }}
+      </button>
     </div>
   </div>
 

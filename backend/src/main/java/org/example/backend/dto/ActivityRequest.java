@@ -12,4 +12,5 @@ public class ActivityRequest {
     private String name;
     private String type;
     private Double price;
+    private String description;
 }

@@ -1,0 +1,95 @@
+@if (loading()) {
+  <section class="city-page"><p class="state">Chargement de la ville...</p></section>
+} @else if (error()) {
+  <section class="city-page"><p class="state error">{{ error() }}</p></section>
+} @else {
+  @if (details(); as vm) {
+  <section class="city-page">
+    <button class="back-btn" type="button" (click)="goBack()">← Retour</button>
+
+    <article class="hero-card animate-in">
+      <div class="hero-visual" (click)="onHeroClick($event)">
+        <img class="hero-image" [src]="heroImage()" [alt]="vm.city.name" />
+        <div class="hero-gradient"></div>
+        <div class="hero-caption">
+          <h2>{{ vm.city.name }}</h2>
+          <p>{{ currentCaption() }}</p>
+        </div>
+        @if (hasMultipleImages()) {
+          <div class="hero-nav hero-nav-left">◀</div>
+          <div class="hero-nav hero-nav-right">▶</div>
+          <div class="hero-counter">{{ currentImageIndex() + 1 }} / {{ media().length }}</div>
+        }
+      </div>
+
+      <div class="hero-content">
+        <p class="chip">Explore Tunisia</p>
+        <h1>{{ vm.city.name }}</h1>
+        <p class="hero-description">{{ vm.city.description || 'Découvrez cette ville tunisienne et ses expériences uniques.' }}</p>
+
+        <div class="meta-grid">
+          <div class="meta-item">
+            <span class="meta-label">Région</span>
+            <strong>{{ vm.city.region || '—' }}</strong>
+          </div>
+        </div>
+      </div>
+    </article>
+
+    <section class="block animate-in delay-1">
+      <div class="block-head with-link">
+        <h2>Galerie panoramique</h2>
+        <span class="muted">Clique à droite/gauche de la photo principale</span>
+      </div>
+      <div class="gallery">
+        @for (media of vm.media; track media.mediaId) {
+          <figure class="gallery-item" [class.active]="currentMedia()?.mediaId === media.mediaId" (click)="currentImageIndex.set($index)">
+            <img [src]="media.url" [alt]="vm.city.name" loading="lazy" />
+          </figure>
+        } @empty {
+          <p class="muted">Aucune image disponible pour le moment.</p>
+        }
+      </div>
+    </section>
+
+    <section class="block animate-in delay-2">
+      <div class="block-head">
+        <h2>Restaurants de {{ vm.city.name }}</h2>
+      </div>
+      <div class="list-grid">
+        @for (restaurant of vm.restaurants; track restaurant.restaurantId) {
+          <article class="list-card">
+            <span class="card-icon" aria-hidden="true">🍽️</span>
+            <h3>{{ restaurant.name }}</h3>
+            <p>{{ restaurant.description || ('Cuisine: ' + (restaurant.cuisineType || 'Locale')) }}</p>
+            <a class="btn" [routerLink]="['/restaurants', restaurant.restaurantId]">Détails</a>
+          </article>
+        } @empty {
+          <p class="muted">Aucun restaurant disponible.</p>
+        }
+      </div>
+    </section>
+
+    <section class="block animate-in delay-3">
+      <div class="block-head">
+        <h2>Activités de {{ vm.city.name }}</h2>
+      </div>
+      <div class="list-grid">
+        @for (activity of vm.activities; track activity.activityId) {
+          <article class="list-card">
+            <span class="card-icon" aria-hidden="true">🎯</span>
+            <h3>{{ activity.name }}</h3>
+            <p>{{ activity.description || ('Type: ' + (activity.type || 'Activité touristique')) }}</p>
+            <div class="row">
+              <span>Prix: {{ activity.price ?? '—' }} DT</span>
+              <a class="btn" [routerLink]="['/activities', activity.activityId]">Détails</a>
+            </div>
+          </article>
+        } @empty {
+          <p class="muted">Aucune activité disponible.</p>
+        }
+      </div>
+    </section>
+  </section>
+  }
+}

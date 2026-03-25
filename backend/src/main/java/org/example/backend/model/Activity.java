@@ -10,4 +10,6 @@ public class Activity {
     private String name;
     private String type;
     private Double price;
+    @Lob @Column(columnDefinition="TEXT")
+    private String description;
 }

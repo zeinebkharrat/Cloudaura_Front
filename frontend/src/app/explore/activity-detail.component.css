@@ -1,0 +1,87 @@
+.page {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 28px;
+  display: grid;
+  gap: 16px;
+}
+
+.back-btn {
+  width: fit-content;
+  border: 1px solid var(--border-soft);
+  background: var(--surface-1);
+  color: var(--text-color);
+  padding: 8px 13px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--border-soft);
+  border-radius: 16px;
+  padding: 18px;
+  color: var(--text-color);
+}
+
+h1,
+h2 {
+  margin: 0 0 10px;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.form {
+  display: grid;
+  gap: 12px;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.95rem;
+}
+
+input,
+textarea {
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 10px;
+  color: var(--text-color);
+  padding: 10px;
+}
+
+.btn {
+  width: fit-content;
+  border: 0;
+  border-radius: 10px;
+  background: #e63946;
+  color: #fff;
+  padding: 10px 14px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn.ghost {
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  display: inline-block;
+  color: var(--text-color);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.success {
+  margin-top: 12px;
+  color: #86efac;
+}
+
+.error {
+  color: #ff909c;
+}

@@ -2,7 +2,7 @@
   padding: 28px;
   max-width: 1200px;
   margin: 0 auto;
-  color: #e2e8f0;
+  color: var(--text-color);
   display: grid;
   gap: 18px;
 }
@@ -22,18 +22,18 @@
 
 .page-head p {
   margin: 6px 0 0;
-  color: #94a3b8;
+  color: var(--text-muted);
 }
 
 .card {
-  background: #181d24;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--surface-1);
+  border: 1px solid var(--border-soft);
   border-radius: 16px;
   padding: 18px;
 }
 
 .surface {
-  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.22);
+  box-shadow: var(--shadow-soft);
 }
 
 .toolbar {
@@ -43,6 +43,101 @@
   margin-bottom: 14px;
 }
 
+.search-shell {
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  padding: 10px;
+}
+
+.search-input-wrap {
+  position: relative;
+  min-width: 280px;
+  flex: 1 1 320px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.7;
+}
+
+.search-icon svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.search-input-wrap input {
+  width: 100%;
+  padding-left: 34px;
+}
+
+.icon-btn {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border-soft);
+}
+
+.icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-btn:hover {
+  box-shadow: none;
+  transform: translateY(-1px);
+}
+
+.icon-edit {
+  color: var(--brand, #0ea5e9);
+}
+
+.icon-delete {
+  color: #ef4444;
+}
+
+.file-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.file-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.6rem 0.95rem;
+  border-radius: 999px;
+  border: 1px dashed rgba(14, 165, 233, 0.5);
+  background: rgba(14, 165, 233, 0.08);
+  color: var(--text-main, #0f172a);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.file-trigger svg {
+  width: 15px;
+  height: 15px;
+}
+
+.file-count {
+  color: var(--text-muted, #64748b);
+  font-size: 0.85rem;
+}
+
 .toolbar.compact {
   margin: 12px 0;
 }
@@ -50,9 +145,9 @@
 input,
 select,
 textarea {
-  background: #11161d;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #e2e8f0;
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  color: var(--text-color);
   border-radius: 10px;
   padding: 10px 12px;
   font-size: 0.92rem;
@@ -77,14 +172,14 @@ table {
 
 th,
 td {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--border-soft);
   text-align: left;
   padding: 12px;
   vertical-align: top;
 }
 
 th {
-  color: #94a3b8;
+  color: var(--text-muted);
   font-weight: 600;
   font-size: 0.82rem;
   text-transform: uppercase;
@@ -95,7 +190,7 @@ th {
 }
 
 .sub {
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 0.85rem;
   margin-top: 4px;
 }
@@ -114,18 +209,53 @@ th {
   padding: 8px 12px;
   cursor: pointer;
   font-weight: 600;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(230, 57, 70, 0.22);
 }
 
 .btn.ghost {
   background: transparent;
-  border-color: rgba(255, 255, 255, 0.2);
-  color: #e2e8f0;
+  border-color: var(--border-soft);
+  color: var(--text-color);
 }
 
 .btn.danger {
   background: rgba(230, 57, 70, 0.15);
   border-color: rgba(230, 57, 70, 0.4);
   color: #ff8b96;
+}
+
+.btn.icon-btn {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border-soft);
+}
+
+.btn.icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.btn.icon-btn:hover {
+  box-shadow: none;
+  transform: translateY(-1px);
+}
+
+.btn.icon-btn.icon-edit {
+  color: var(--brand, #0ea5e9);
+}
+
+.btn.icon-btn.icon-delete {
+  color: #ef4444;
 }
 
 .btn:disabled {
@@ -138,7 +268,7 @@ th {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 0.9rem;
 }
 
@@ -157,7 +287,7 @@ th {
 label {
   display: grid;
   gap: 6px;
-  color: #cbd5e1;
+  color: var(--text-color);
   font-size: 0.88rem;
 }
 
@@ -173,11 +303,11 @@ label.full {
 }
 
 .media-zone {
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-soft);
   border-radius: 14px;
   padding: 14px;
   margin: 14px 0;
-  background: rgba(17, 22, 29, 0.7);
+  background: var(--surface-2);
 }
 
 .media-title {
@@ -194,7 +324,7 @@ label.full {
 }
 
 .media-title span {
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 0.82rem;
 }
 
@@ -206,10 +336,13 @@ label.full {
 }
 
 .upload-box.modern {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   padding: 12px;
-  border: 1px dashed rgba(230, 57, 70, 0.45);
+  border: 1px dashed rgba(14, 165, 233, 0.45);
   border-radius: 12px;
-  background: rgba(230, 57, 70, 0.06);
+  background: rgba(14, 165, 233, 0.06);
 }
 
 .media-grid {
@@ -223,10 +356,10 @@ label.full {
 }
 
 .media-card {
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-soft);
   border-radius: 12px;
   overflow: hidden;
-  background: #11161d;
+  background: var(--surface-2);
 }
 
 .media-card img {
@@ -239,7 +372,7 @@ label.full {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.56);
+  background: rgba(15, 23, 42, 0.45);
   backdrop-filter: blur(4px);
   z-index: 1200;
 }
@@ -254,8 +387,8 @@ label.full {
   max-height: calc(100vh - 24px);
   overflow: auto;
   border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: #181d24;
+  border: 1px solid var(--border-soft);
+  background: var(--surface-1);
   box-shadow: 0 28px 60px rgba(0, 0, 0, 0.48);
   padding: 18px;
 }
@@ -276,6 +409,15 @@ label.full {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
+}
+
+.compact-meta span {
+  min-width: 0;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .alert {
@@ -287,7 +429,7 @@ label.full {
 }
 
 .empty {
-  color: #94a3b8;
+  color: var(--text-muted);
   margin: 12px 0;
 }
 

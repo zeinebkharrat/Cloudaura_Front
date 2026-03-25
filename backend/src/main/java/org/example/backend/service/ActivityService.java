@@ -68,6 +68,7 @@ public class ActivityService {
         activity.setName(request.getName());
         activity.setType(request.getType());
         activity.setPrice(request.getPrice());
+        activity.setDescription(request.getDescription());
     }
 
     private ActivityResponse toResponse(Activity activity) {
@@ -77,7 +78,8 @@ public class ActivityService {
             activity.getCity().getName(),
             activity.getName(),
             activity.getType(),
-            activity.getPrice()
+            activity.getPrice(),
+            activity.getDescription()
         );
     }
 }

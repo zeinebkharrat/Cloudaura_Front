@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import * as L from 'leaflet';
 import Swal from 'sweetalert2';
 import { City, Restaurant, RestaurantRequest } from '../admin-api.models';
 import { CityAdminService } from '../services/city-admin.service';
@@ -24,18 +26,36 @@ export class AdminRestaurantsComponent implements OnInit {
   totalElements = 0;
   error = '';
   showModal = false;
+  geocodeMessage = '';
 
   editingId: number | null = null;
-  form: { cityId: number | null; name: string; cuisineType: string; rating: number | null } = {
+  form: {
+    cityId: number | null;
+    name: string;
+    cuisineType: string;
+    rating: number | null;
+    description: string;
+    address: string;
+    latitude: number | null;
+    longitude: number | null;
+  } = {
     cityId: null,
     name: '',
     cuisineType: '',
     rating: null,
+    description: '',
+    address: '',
+    latitude: null,
+    longitude: null,
   };
+
+  private map?: L.Map;
+  private mapMarker?: L.CircleMarker;
 
   constructor(
     private readonly restaurantService: RestaurantAdminService,
-    private readonly cityService: CityAdminService
+    private readonly cityService: CityAdminService,
+    private readonly http: HttpClient
   ) {}
 
   ngOnInit(): void {
@@ -89,19 +109,33 @@ export class AdminRestaurantsComponent implements OnInit {
       name: item.name,
       cuisineType: item.cuisineType ?? '',
       rating: item.rating,
+      description: item.description ?? '',
+      address: item.address ?? '',
+      latitude: item.latitude,
+      longitude: item.longitude,
     };
+    this.geocodeMessage = '';
     this.showModal = true;
+    this.renderMapLater();
   }
 
   openCreateModal(): void {
     this.resetForm();
     this.error = '';
+    this.geocodeMessage = '';
     this.showModal = true;
+    this.renderMapLater();
   }
 
   closeModal(): void {
     this.showModal = false;
     this.resetForm();
+    this.geocodeMessage = '';
+    if (this.map) {
+      this.map.remove();
+      this.map = undefined;
+      this.mapMarker = undefined;
+    }
   }
 
   resetForm(): void {
@@ -111,6 +145,10 @@ export class AdminRestaurantsComponent implements OnInit {
       name: '',
       cuisineType: '',
       rating: null,
+      description: '',
+      address: '',
+      latitude: null,
+      longitude: null,
     };
   }
 
@@ -125,6 +163,10 @@ export class AdminRestaurantsComponent implements OnInit {
       name: this.form.name.trim(),
       cuisineType: this.form.cuisineType.trim() || null,
       rating: this.form.rating,
+      description: this.form.description.trim() || null,
+      address: this.form.address.trim() || null,
+      latitude: this.form.latitude,
+      longitude: this.form.longitude,
     };
 
     const request$ = this.editingId == null
@@ -140,6 +182,124 @@ export class AdminRestaurantsComponent implements OnInit {
         this.error = err?.error?.message ?? 'Erreur lors de la sauvegarde';
       },
     });
+  }
+
+  geocodeFromName(): void {
+    const name = this.form.name.trim();
+    if (!name) {
+      this.geocodeMessage = 'Saisissez un nom de restaurant pour localiser.';
+      return;
+    }
+
+    const selectedCity = this.cities.find((city) => city.cityId === this.form.cityId)?.name ?? '';
+    const query = selectedCity ? `${name}, ${selectedCity}, Tunisia` : `${name}, Tunisia`;
+
+    this.geocodeMessage = 'Localisation en cours...';
+
+    this.http
+      .get<Array<{ lat: string; lon: string; display_name: string }>>(
+        `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`
+      )
+      .subscribe({
+        next: (results) => {
+          if (!results.length) {
+            this.geocodeMessage = 'Aucune localisation trouvée pour ce nom.';
+            return;
+          }
+
+          const first = results[0];
+          this.form.latitude = Number(first.lat);
+          this.form.longitude = Number(first.lon);
+          this.form.address = first.display_name;
+          this.geocodeMessage = 'Restaurant localisé automatiquement.';
+          this.renderMapLater();
+        },
+        error: () => {
+          this.geocodeMessage = 'Échec géolocalisation automatique. Saisissez la latitude/longitude manuellement.';
+        },
+      });
+  }
+
+  openDirectionsFromCurrentPosition(): void {
+    if (this.form.latitude == null || this.form.longitude == null) {
+      return;
+    }
+
+    const targetLat = this.form.latitude;
+    const targetLng = this.form.longitude;
+
+    const openMaps = (fromLat: number, fromLng: number) => {
+      const url = `https://www.google.com/maps/dir/${fromLat},${fromLng}/${targetLat},${targetLng}`;
+      window.open(url, '_blank');
+    };
+
+    if (!navigator.geolocation) {
+      const fallback = `https://www.google.com/maps/search/?api=1&query=${targetLat},${targetLng}`;
+      window.open(fallback, '_blank');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => openMaps(position.coords.latitude, position.coords.longitude),
+      () => {
+        const fallback = `https://www.google.com/maps/search/?api=1&query=${targetLat},${targetLng}`;
+        window.open(fallback, '_blank');
+      }
+    );
+  }
+
+  onCoordinatesChanged(): void {
+    this.renderMapLater();
+  }
+
+  private renderMapLater(): void {
+    setTimeout(() => this.initOrUpdateMap(), 0);
+  }
+
+  private initOrUpdateMap(): void {
+    if (!this.showModal) {
+      return;
+    }
+
+    const mapContainer = document.getElementById('adminRestaurantMap');
+    if (!mapContainer) {
+      return;
+    }
+
+    if (this.form.latitude == null || this.form.longitude == null) {
+      if (this.mapMarker) {
+        this.mapMarker.remove();
+        this.mapMarker = undefined;
+      }
+      return;
+    }
+
+    const lat = this.form.latitude;
+    const lng = this.form.longitude;
+
+    if (!this.map) {
+      this.map = L.map('adminRestaurantMap').setView([lat, lng], 14);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+      }).addTo(this.map);
+    } else {
+      this.map.setView([lat, lng], 14);
+      this.map.invalidateSize();
+    }
+
+    if (this.mapMarker) {
+      this.mapMarker.remove();
+    }
+
+    this.mapMarker = L.circleMarker([lat, lng], {
+      radius: 8,
+      color: '#e63946',
+      fillColor: '#e63946',
+      fillOpacity: 0.9,
+    })
+      .addTo(this.map)
+      .bindPopup(this.form.name || 'Restaurant')
+      .openPopup();
   }
 
   async delete(item: Restaurant): Promise<void> {

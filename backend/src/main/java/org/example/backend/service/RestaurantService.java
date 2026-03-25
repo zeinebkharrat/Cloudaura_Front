@@ -68,6 +68,10 @@ public class RestaurantService {
         restaurant.setName(request.getName());
         restaurant.setCuisineType(request.getCuisineType());
         restaurant.setRating(request.getRating());
+        restaurant.setDescription(request.getDescription());
+        restaurant.setAddress(request.getAddress());
+        restaurant.setLatitude(request.getLatitude());
+        restaurant.setLongitude(request.getLongitude());
     }
 
     private RestaurantResponse toResponse(Restaurant restaurant) {
@@ -77,7 +81,11 @@ public class RestaurantService {
             restaurant.getCity().getName(),
             restaurant.getName(),
             restaurant.getCuisineType(),
-            restaurant.getRating()
+            restaurant.getRating(),
+            restaurant.getDescription(),
+            restaurant.getAddress(),
+            restaurant.getLatitude(),
+            restaurant.getLongitude()
         );
     }
 }

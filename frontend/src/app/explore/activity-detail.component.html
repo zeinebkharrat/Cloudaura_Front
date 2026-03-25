@@ -1,0 +1,74 @@
+<section class="page" *ngIf="!loading; else loadingTpl">
+  <button class="back-btn" type="button" (click)="goBack()">← Retour</button>
+  <div class="error" *ngIf="error">{{ error }}</div>
+
+  <ng-container *ngIf="activity && !error">
+    <article class="card">
+      <h1>{{ activity.name }}</h1>
+      <p class="muted">{{ activity.description || 'Aucune description.' }}</p>
+      <p><strong>Ville:</strong> {{ activity.cityName }}</p>
+      <p><strong>Prix:</strong> {{ activity.price | number: '1.2-2' }} TND</p>
+      <a class="btn ghost" [routerLink]="['/city', activity.cityId]">Retour à la ville</a>
+    </article>
+
+    <article class="card">
+      <h2>Réserver cette activité</h2>
+      <form (ngSubmit)="submitReservation()" #reservationForm="ngForm" class="form">
+        <label>
+          Nombre de participants
+          <input
+            type="number"
+            name="numberOfPeople"
+            required
+            min="1"
+            [(ngModel)]="form.numberOfPeople"
+          />
+        </label>
+
+        <label>
+          Date de réservation
+          <input
+            type="date"
+            name="reservationDate"
+            required
+            [(ngModel)]="form.reservationDate"
+          />
+        </label>
+
+        <label>
+          User ID (optionnel)
+          <input
+            type="number"
+            name="userId"
+            min="1"
+            [(ngModel)]="form.userId"
+          />
+        </label>
+
+        <label>
+          Notes
+          <textarea
+            name="notes"
+            rows="3"
+            placeholder="Informations complémentaires (non envoyées dans ce MVP)"
+            disabled
+          ></textarea>
+        </label>
+
+        <button class="btn" [disabled]="reservationForm.invalid || submitting" type="submit">
+          {{ submitting ? 'Envoi...' : 'Confirmer la réservation' }}
+        </button>
+      </form>
+
+      <p class="success" *ngIf="created">
+        Réservation #{{ created.reservationId }} créée, statut: {{ created.status }}.
+      </p>
+    </article>
+  </ng-container>
+</section>
+
+<ng-template #loadingTpl>
+  <section class="page">
+    <div class="card">Chargement de l'activité...</div>
+  </section>
+</ng-template>

@@ -35,6 +35,10 @@ export interface Restaurant {
   name: string;
   cuisineType: string | null;
   rating: number | null;
+  description: string | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface RestaurantRequest {
@@ -42,6 +46,10 @@ export interface RestaurantRequest {
   name: string;
   cuisineType: string | null;
   rating: number | null;
+  description: string | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface Activity {
