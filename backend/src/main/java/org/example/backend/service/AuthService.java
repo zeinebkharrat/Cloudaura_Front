@@ -1,11 +1,17 @@
 package org.example.backend.service;
 
 import org.example.backend.dto.AuthResponse;
+import org.example.backend.dto.ChangePasswordRequest;
 import org.example.backend.dto.LoginRequest;
+import org.example.backend.dto.ProfileUpdateRequest;
 import org.example.backend.dto.SignupRequest;
 import org.example.backend.dto.UserSummaryResponse;
+import org.example.backend.model.Ban;
+import org.example.backend.model.City;
 import org.example.backend.model.Role;
 import org.example.backend.model.User;
+import org.example.backend.repository.BanRepository;
+import org.example.backend.repository.CityRepository;
 import org.example.backend.repository.RoleRepository;
 import org.example.backend.repository.UserRepository;
 import org.springframework.http.HttpStatus;
@@ -39,17 +45,23 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final BanRepository banRepository;
+    private final CityRepository cityRepository;
 
     public AuthService(UserRepository userRepository,
                        RoleRepository roleRepository,
                        PasswordEncoder passwordEncoder,
                        @Lazy AuthenticationManager authenticationManager,
-                       JwtService jwtService) {
+                       JwtService jwtService,
+                       BanRepository banRepository,
+                       CityRepository cityRepository) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
+        this.banRepository = banRepository;
+        this.cityRepository = cityRepository;
     }
 
     @Transactional
@@ -82,6 +94,9 @@ public class AuthService {
         user.setArtisanRequestPending(becomeArtisant);
         user.setArtisanRequestedAt(becomeArtisant ? new Date() : null);
         user.setAuthProvider("LOCAL");
+        user.setProfileImageUrl(request.profileImageUrl() != null ? request.profileImageUrl().trim() : null);
+        user.setNationality(request.nationality() != null ? request.nationality().trim() : null);
+        user.setCity(resolveCityForNationality(user.getNationality(), request.cityId()));
         user.setRoles(Set.of(userRole));
 
         User savedUser = userRepository.save(user);
@@ -104,6 +119,7 @@ public class AuthService {
         UserDetails principal = (UserDetails) authentication.getPrincipal();
         User user = userRepository.findByUsernameIgnoreCase(principal.getUsername())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
+        ensureNotBanned(user);
 
         String token = jwtService.generateToken(principal);
         return new AuthResponse(token, jwtService.getExpirationMs(), toUserSummary(user));
@@ -130,6 +146,8 @@ public class AuthService {
         User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
                 .orElseGet(() -> createSocialUser(normalizedEmail, firstName, lastName, provider));
 
+        ensureNotBanned(user);
+
         if (user.getFirstName() == null || user.getFirstName().isBlank()) {
             user.setFirstName(firstName);
         }
@@ -144,6 +162,40 @@ public class AuthService {
         UserDetails principal = toUserDetails(user);
         String token = jwtService.generateToken(principal);
         return new AuthResponse(token, jwtService.getExpirationMs(), toUserSummary(user));
+    }
+
+    @Transactional
+    public UserSummaryResponse updateProfile(ProfileUpdateRequest request) {
+        User user = currentUser();
+
+        String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
+        if (userRepository.existsByEmailIgnoreCaseAndUserIdNot(normalizedEmail, user.getUserId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already in use");
+        }
+
+        user.setFirstName(request.firstName().trim());
+        user.setLastName(request.lastName().trim());
+        user.setEmail(normalizedEmail);
+        user.setPhone(request.phone() != null ? request.phone().trim() : null);
+        user.setNationality(request.nationality() != null ? request.nationality().trim() : null);
+        user.setCity(resolveCityForNationality(user.getNationality(), request.cityId()));
+        user.setProfileImageUrl(request.profileImageUrl() != null ? request.profileImageUrl().trim() : null);
+
+        return toUserSummary(userRepository.save(user));
+    }
+
+    @Transactional
+    public void changePassword(ChangePasswordRequest request) {
+        User user = currentUser();
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Current password is invalid");
+        }
+        if (request.currentPassword().equals(request.newPassword())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password must be different from current password");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        userRepository.save(user);
     }
 
     private User createSocialUser(String email, String firstName, String lastName, String provider) {
@@ -216,6 +268,40 @@ public class AuthService {
                 .build();
     }
 
+    private City resolveCityForNationality(String nationality, Integer cityId) {
+        boolean tunisian = nationality != null && nationality.trim().equalsIgnoreCase("tunisian");
+        if (!tunisian) {
+            return null;
+        }
+        if (cityId == null) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "cityId is required for Tunisian users");
+        }
+        return cityRepository.findById(cityId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid cityId"));
+    }
+
+    private User currentUser() {
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        return userRepository.findByUsernameIgnoreCase(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+    }
+
+    private void ensureNotBanned(User user) {
+        banRepository.findTopByUserAndIsActiveTrueOrderByCreatedAtDesc(user)
+                .ifPresent(ban -> {
+                    if (!Boolean.TRUE.equals(ban.getIsActive())) {
+                        return;
+                    }
+                    Date now = new Date();
+                    if (ban.getExpiresAt() != null && !ban.getExpiresAt().after(now)) {
+                        ban.setIsActive(false);
+                        banRepository.save(ban);
+                        return;
+                    }
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Your account is banned");
+                });
+    }
+
     private UserSummaryResponse toUserSummary(User user) {
         Set<String> roles = user.getRoles().stream().map(Role::getName).collect(Collectors.toSet());
         return new UserSummaryResponse(
@@ -224,9 +310,14 @@ public class AuthService {
                 user.getEmail(),
                 user.getFirstName(),
                 user.getLastName(),
+                user.getPhone(),
+                user.getNationality(),
+                user.getCity() != null ? user.getCity().getCityId() : null,
+                user.getCity() != null ? user.getCity().getName() : null,
                 roles,
                 user.getStatus(),
-                Boolean.TRUE.equals(user.getArtisanRequestPending())
+                Boolean.TRUE.equals(user.getArtisanRequestPending()),
+                user.getProfileImageUrl()
         );
     }
 }

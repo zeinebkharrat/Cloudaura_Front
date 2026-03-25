@@ -1,0 +1,47 @@
+<div class="shell" [class.collapsed]="!open()">
+  <aside class="sidebar">
+    <div class="sb-head">
+      @if (open()) {
+        <span class="sb-logo">
+          <span class="sy">Y</span><span class="sd">•</span><span class="st">TN</span>
+          <span class="sb-badge">ADMIN</span>
+        </span>
+      }
+      <button class="tog" (click)="toggle()" id="sidebar-toggle-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+          <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
+        </svg>
+      </button>
+    </div>
+
+    <nav class="sb-nav">
+      @for (item of nav; track item.route) {
+        <a [routerLink]="item.route" routerLinkActive="active"
+           [routerLinkActiveOptions]="{exact: item.route === '/admin'}"
+           class="sb-item" [id]="'nav-' + item.icon">
+          <span class="sb-icon">{{ item.icon }}</span>
+          @if (open()) { <span class="sb-lbl">{{ item.label }}</span> }
+        </a>
+      }
+    </nav>
+
+    @if (open()) {
+      <div class="sb-foot">
+        <div class="sb-user">
+          <div class="sb-av">{{ user()?.username?.charAt(0)?.toUpperCase() }}</div>
+          <div class="sb-uinfo">
+            <div class="sb-uname">{{ user()?.username }}</div>
+            <div class="sb-urole">{{ user()?.roles?.join(', ') }}</div>
+          </div>
+        </div>
+        <button class="logout-btn" (click)="logout()" id="admin-logout-btn">
+          🚪 Déconnexion
+        </button>
+      </div>
+    }
+  </aside>
+
+  <main class="sb-main">
+    <router-outlet />
+  </main>
+</div>

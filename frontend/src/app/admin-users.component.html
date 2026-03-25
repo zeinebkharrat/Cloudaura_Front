@@ -8,105 +8,80 @@
     <a routerLink="/" class="back-link">Retour au site</a>
   </header>
 
-  <div class="admin-grid">
-    <aside class="users-panel glass-panel">
-      <form [formGroup]="searchForm" (ngSubmit)="loadUsers()" class="search-form">
-        <input type="text" formControlName="q" placeholder="Rechercher nom, email..." />
-        <button type="submit" [disabled]="isLoading()">Rechercher</button>
-      </form>
+  <article class="users-panel glass-panel">
+    <form [formGroup]="searchForm" (ngSubmit)="loadUsers()" class="search-form">
+      <input type="text" formControlName="q" placeholder="Rechercher nom, email, nationalite..." />
+      <button type="submit" [disabled]="isLoading()">Rechercher</button>
+    </form>
 
-      <div class="users-list">
-        @if (isLoading()) {
-          <p class="muted">Chargement...</p>
-        } @else if (users().length === 0) {
-          <p class="muted">Aucun utilisateur trouvé.</p>
-        } @else {
-          @for (user of users(); track user.id) {
-            <button
-              type="button"
-              class="user-row"
-              [class.active]="selectedUser()?.id === user.id"
-              (click)="selectUser(user)"
-            >
-              <div class="row-main">
-                <strong>{{ user.firstName }} {{ user.lastName }}</strong>
-                <span>{{ user.email }}</span>
-              </div>
-              <small>{{ user.roles.join(', ') }}</small>
-            </button>
-          }
-        }
-      </div>
-    </aside>
+    @if (actionError()) {
+      <div class="msg error">{{ actionError() }}</div>
+    }
+    @if (actionSuccess()) {
+      <div class="msg success">{{ actionSuccess() }}</div>
+    }
 
-    <article class="details-panel glass-panel">
-      @if (selectedUser()) {
-        <h2>Détails utilisateur</h2>
-
-        @if (actionError()) {
-          <div class="msg error">{{ actionError() }}</div>
-        }
-        @if (actionSuccess()) {
-          <div class="msg success">{{ actionSuccess() }}</div>
-        }
-
-        <form [formGroup]="detailsForm" (ngSubmit)="saveDetails()" class="details-form">
-          <div class="grid-two">
-            <label>
-              Prénom
-              <input type="text" formControlName="firstName" />
-            </label>
-            <label>
-              Nom
-              <input type="text" formControlName="lastName" />
-            </label>
-          </div>
-
-          <label>
-            Email
-            <input type="email" formControlName="email" />
-          </label>
-
-          <div class="grid-two">
-            <label>
-              Téléphone
-              <input type="text" formControlName="phone" />
-            </label>
-            <label>
-              Statut
-              <input type="text" formControlName="status" />
-            </label>
-          </div>
-
-          <button type="submit" class="btn-primary" [disabled]="isSaving()">Sauvegarder profil</button>
-        </form>
-
-        <form [formGroup]="roleForm" (ngSubmit)="saveRoles()" class="roles-form">
-          <h3>Rôles</h3>
-          <div class="role-grid">
-            <label><input type="checkbox" formControlName="ROLE_USER" /> ROLE_USER</label>
-            <label><input type="checkbox" formControlName="ROLE_ADMIN" /> ROLE_ADMIN</label>
-            <label><input type="checkbox" formControlName="ROLE_ARTISANT" /> ROLE_ARTISANT</label>
-          </div>
-          <button type="submit" class="btn-outline" [disabled]="isSaving()">Mettre à jour rôles</button>
-        </form>
-
-        @if (selectedUser()?.artisanRequestPending) {
-          <div class="artisan-review">
-            <h3>Demande artisan en attente</h3>
-            <div class="artisan-actions">
-              <button type="button" class="btn-primary" (click)="reviewArtisan(true)" [disabled]="isSaving()">Approuver</button>
-              <button type="button" class="btn-outline" (click)="reviewArtisan(false)" [disabled]="isSaving()">Refuser</button>
-            </div>
-          </div>
-        }
-
-        <button type="button" class="delete-btn" (click)="deleteSelectedUser()" [disabled]="isSaving()">
-          Supprimer utilisateur
-        </button>
+    <div class="table-wrap">
+      @if (isLoading()) {
+        <p class="muted">Chargement...</p>
+      } @else if (users().length === 0) {
+        <p class="muted">Aucun utilisateur trouvé.</p>
       } @else {
-        <p class="muted">Sélectionnez un utilisateur pour afficher ses détails.</p>
+        <table class="users-table">
+          <thead>
+            <tr>
+              <th>Utilisateur</th>
+              <th>Email</th>
+              <th>Nationalite</th>
+              <th>Ville</th>
+              <th>Roles</th>
+              <th>Etat</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (user of users(); track user.id) {
+              <tr>
+                <td>
+                  <div class="user-cell">
+                    <strong>{{ user.firstName }} {{ user.lastName }}</strong>
+                    <small>{{ user.username }}</small>
+                  </div>
+                </td>
+                <td>{{ user.email }}</td>
+                <td>{{ user.nationality || 'N/A' }}</td>
+                <td>{{ user.cityName || '-' }}</td>
+                <td>
+                  <span class="role-pill">{{ user.roles.join(', ') }}</span>
+                </td>
+                <td>
+                  @if (user.banned) {
+                    <span class="status banned">Banni</span>
+                  } @else {
+                    <span class="status active">Actif</span>
+                  }
+                  @if (user.artisanRequestPending) {
+                    <span class="status pending">Demande artisan</span>
+                  }
+                </td>
+                <td>
+                  <div class="actions">
+                    <button type="button" class="btn-outline" (click)="openEditPopup(user)" [disabled]="isSaving()">Modifier</button>
+                    <button type="button" class="btn-outline" (click)="openRolesPopup(user)" [disabled]="isSaving()">Roles</button>
+                    @if (user.artisanRequestPending) {
+                      <button type="button" class="btn-primary" (click)="openArtisanPopup(user)" [disabled]="isSaving()">Artisan</button>
+                    }
+                    <button type="button" class="btn-outline" (click)="openBanPopup(user)" [disabled]="isSaving()">
+                      {{ user.banned ? 'Debannir' : 'Bannir' }}
+                    </button>
+                    <button type="button" class="delete-btn mini" (click)="deleteUser(user)" [disabled]="isSaving()">Supprimer</button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
       }
-    </article>
-  </div>
+    </div>
+  </article>
 </section>

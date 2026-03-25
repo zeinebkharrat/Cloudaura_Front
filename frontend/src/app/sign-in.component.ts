@@ -50,6 +50,10 @@ export class SignInComponent implements OnInit {
     this.isLoading.set(true);
     this.authService.completeSocialSignin(token).subscribe({
       next: () => {
+        if (this.authService.hasRole('ROLE_ADMIN')) {
+          this.router.navigateByUrl('/admin/dashboard');
+          return;
+        }
         this.router.navigateByUrl(returnUrl);
       },
       error: () => {
@@ -71,6 +75,10 @@ export class SignInComponent implements OnInit {
 
     this.authService.signin(this.form.getRawValue()).subscribe({
       next: () => {
+        if (this.authService.hasRole('ROLE_ADMIN')) {
+          this.router.navigateByUrl('/admin/dashboard');
+          return;
+        }
         const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/';
         this.router.navigateByUrl(returnUrl);
       },

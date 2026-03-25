@@ -89,6 +89,16 @@ input {
   transition: border-color 0.25s ease, transform 0.25s ease;
 }
 
+select {
+  width: 100%;
+  margin-top: 8px;
+  border-radius: 14px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-color);
+  padding: 12px 14px;
+}
+
 input:focus {
   border-color: rgba(232, 0, 45, 0.45);
   transform: translateY(-1px);
@@ -106,6 +116,37 @@ input:focus {
   border-radius: 12px;
   padding: 12px;
   margin-bottom: 14px;
+}
+
+.upload-block {
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.upload-label {
+  margin-bottom: 0;
+}
+
+.upload-state {
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+}
+
+.upload-state.success {
+  color: #90f0cc;
+}
+
+.preview-image {
+  margin-top: 10px;
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--glass-border);
 }
 
 .artisan-check {

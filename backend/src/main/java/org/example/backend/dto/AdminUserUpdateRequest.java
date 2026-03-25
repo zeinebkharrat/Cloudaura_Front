@@ -16,6 +16,9 @@ public record AdminUserUpdateRequest(
         String email,
         @Size(max = 20)
         String phone,
+        @Size(max = 100)
+        String nationality,
+        Integer cityId,
         @NotBlank(message = "Status is required")
         String status
 ) {

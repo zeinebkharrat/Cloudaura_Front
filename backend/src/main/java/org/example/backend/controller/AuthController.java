@@ -50,8 +50,12 @@ public class AuthController {
 
     @GetMapping("/social/providers")
     public SocialProvidersResponse socialProviders() {
-        boolean googleConfigured = googleClientId != null && !googleClientId.startsWith("dummy-");
-        boolean githubConfigured = githubClientId != null && !githubClientId.startsWith("dummy-");
+        boolean googleConfigured = googleClientId != null
+            && !googleClientId.isBlank()
+            && !googleClientId.startsWith("dummy-");
+        boolean githubConfigured = githubClientId != null
+            && !githubClientId.isBlank()
+            && !githubClientId.startsWith("dummy-");
         return new SocialProvidersResponse(googleConfigured, githubConfigured);
     }
 }

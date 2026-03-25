@@ -8,8 +8,13 @@ public record UserSummaryResponse(
         String email,
         String firstName,
         String lastName,
+        String phone,
+        String nationality,
+        Integer cityId,
+        String cityName,
         Set<String> roles,
         String status,
-        Boolean artisanRequestPending
+        Boolean artisanRequestPending,
+        String profileImageUrl
 ) {
 }

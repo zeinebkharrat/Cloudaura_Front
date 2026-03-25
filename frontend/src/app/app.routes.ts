@@ -7,6 +7,10 @@ import { SignUpComponent } from './sign-up.component';
 import { authGuard } from './auth.guard';
 import { roleGuard } from './role.guard';
 import { AdminUsersComponent } from './admin-users.component';
+import { AdminLayoutComponent } from './admin/layout/admin-layout.component';
+import { AdminDashboardComponent } from './admin/dashboard/admin-dashboard.component';
+import { ProfileComponent } from './profile.component';
+
 export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'signin', component: SignInComponent },
@@ -15,11 +19,14 @@ export const routes: Routes = [
     path: 'admin',
     canActivate: [authGuard, roleGuard],
     data: { roles: ['ROLE_ADMIN'] },
+    component: AdminLayoutComponent,
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'users' },
+      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+      { path: 'dashboard', component: AdminDashboardComponent },
       { path: 'users', component: AdminUsersComponent },
     ],
   },
+  { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },
   { path: 'virtual-tour', component: VirtualTourPageComponent },
   {
     path: 'destinations',

@@ -5,6 +5,7 @@ import org.example.backend.dto.AdminUserResponse;
 import org.example.backend.dto.AdminUserRoleUpdateRequest;
 import org.example.backend.dto.AdminUserUpdateRequest;
 import org.example.backend.dto.ArtisanDecisionRequest;
+import org.example.backend.dto.BanUserRequest;
 import org.example.backend.service.AdminUserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -64,5 +65,16 @@ public class AdminUserController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteUser(@PathVariable Integer userId) {
         adminUserService.deleteUser(userId);
+    }
+
+    @PatchMapping("/{userId}/ban")
+    public AdminUserResponse banUser(@PathVariable Integer userId,
+                                     @Valid @RequestBody BanUserRequest request) {
+        return adminUserService.banUser(userId, request);
+    }
+
+    @DeleteMapping("/{userId}/ban")
+    public AdminUserResponse unbanUser(@PathVariable Integer userId) {
+        return adminUserService.unbanUser(userId);
     }
 }

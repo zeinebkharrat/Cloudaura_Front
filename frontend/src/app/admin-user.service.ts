@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { AdminUser, AdminUserUpdatePayload } from './auth.types';
+import { AdminUser, AdminUserUpdatePayload, CityOption } from './auth.types';
 
 @Injectable({ providedIn: 'root' })
 export class AdminUserService {
@@ -24,6 +24,10 @@ export class AdminUserService {
     return this.http.put<AdminUser>(`/api/admin/users/${userId}`, payload);
   }
 
+  listCities() {
+    return this.http.get<CityOption[]>('/api/cities');
+  }
+
   updateRoles(userId: number, roles: string[]) {
     return this.http.patch<AdminUser>(`/api/admin/users/${userId}/roles`, { roles });
   }
@@ -34,5 +38,13 @@ export class AdminUserService {
 
   deleteUser(userId: number) {
     return this.http.delete<void>(`/api/admin/users/${userId}`);
+  }
+
+  banUser(userId: number, payload: { reason: string; permanent: boolean; expiresAt: string | null }) {
+    return this.http.patch<AdminUser>(`/api/admin/users/${userId}/ban`, payload);
+  }
+
+  unbanUser(userId: number) {
+    return this.http.delete<AdminUser>(`/api/admin/users/${userId}/ban`);
   }
 }

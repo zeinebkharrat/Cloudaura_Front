@@ -34,14 +34,7 @@
   color: var(--text-color);
 }
 
-.admin-grid {
-  display: grid;
-  grid-template-columns: 1fr 1.6fr;
-  gap: 20px;
-}
-
-.users-panel,
-.details-panel {
+.users-panel {
   padding: 18px;
 }
 
@@ -71,45 +64,74 @@ input {
   cursor: pointer;
 }
 
-.users-list {
-  display: grid;
-  gap: 10px;
-  max-height: 72vh;
+.table-wrap {
   overflow: auto;
-}
-
-.user-row {
-  text-align: left;
   border: 1px solid var(--glass-border);
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 12px;
-  padding: 10px;
-  color: var(--text-color);
-  cursor: pointer;
-  transition: all 0.2s ease;
+  border-radius: 14px;
 }
 
-.user-row:hover,
-.user-row.active {
-  border-color: rgba(232, 0, 45, 0.5);
-  transform: translateY(-1px);
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 980px;
 }
 
-.row-main {
+.users-table th,
+.users-table td {
+  border-bottom: 1px solid var(--glass-border);
+  padding: 12px;
+  vertical-align: middle;
+}
+
+.users-table th {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-align: left;
+}
+
+.user-cell {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  margin-bottom: 4px;
+  gap: 3px;
 }
 
-.row-main span,
-.user-row small,
+.user-cell small,
 .muted {
   color: var(--text-muted);
 }
 
-.details-panel h2 {
-  margin-bottom: 12px;
+.role-pill {
+  display: inline-block;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 0.78rem;
+}
+
+.status {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 0.74rem;
+  margin-right: 6px;
+  margin-bottom: 4px;
+}
+
+.status.active {
+  background: rgba(0, 186, 124, 0.2);
+  color: #90f0cc;
+}
+
+.status.banned {
+  background: rgba(232, 0, 45, 0.2);
+  color: #ffb7b7;
+}
+
+.status.pending {
+  background: rgba(255, 193, 7, 0.2);
+  color: #ffe596;
 }
 
 .msg {
@@ -128,41 +150,16 @@ input {
   background: rgba(0, 186, 124, 0.12);
 }
 
-.details-form,
-.roles-form,
-.artisan-review {
-  margin-top: 12px;
-  border: 1px solid var(--glass-border);
-  border-radius: 14px;
-  padding: 14px;
-}
-
-.grid-two {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-label {
-  display: block;
-  margin-bottom: 10px;
-}
-
-label input[type='checkbox'] {
-  width: auto;
-  margin-right: 8px;
-}
-
-.role-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin: 10px 0 12px;
-}
-
-.artisan-actions {
+.actions {
   display: flex;
-  gap: 10px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mini {
+  width: auto;
+  margin-top: 0;
+  padding: 8px 12px;
 }
 
 .delete-btn {
@@ -176,13 +173,37 @@ label input[type='checkbox'] {
   cursor: pointer;
 }
 
-@media (max-width: 1100px) {
-  .admin-grid {
-    grid-template-columns: 1fr;
-  }
+::ng-deep .swal2-popup {
+  background: #11161d;
+  color: #e8edf3;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
 
-  .role-grid,
-  .grid-two {
+::ng-deep .sw-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+::ng-deep .sw-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e8edf3;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 8px;
+}
+
+::ng-deep .sw-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+}
+
+@media (max-width: 1100px) {
+  ::ng-deep .sw-grid {
     grid-template-columns: 1fr;
   }
 }

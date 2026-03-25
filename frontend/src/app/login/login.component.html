@@ -1,0 +1,51 @@
+<section class="login-page">
+  <div class="glow glow-red"></div>
+  <div class="glow glow-blue"></div>
+
+  <div class="login-card glass-panel animate-in">
+    <div class="login-logo">
+      <div class="logo-symbol"><span class="ly">Y</span><span class="ldot">•</span><span class="ltn">TN</span></div>
+      <h1 class="login-title">Connexion</h1>
+      <p class="login-sub">Accédez à votre espace Yallatn</p>
+    </div>
+
+    <div class="demo-pills">
+      <button type="button" class="pill pill-admin" (click)="fill('admin')" id="demo-admin-btn">🛡️ Admin</button>
+      <button type="button" class="pill pill-user"  (click)="fill('user')"  id="demo-user-btn">👤 Utilisateur</button>
+    </div>
+
+    @if (error()) {
+      <div class="error-box" role="alert">⚠️ {{ error() }}</div>
+    }
+
+    <form class="login-form" (ngSubmit)="submit()" novalidate>
+      <div class="field">
+        <label for="f-user" class="field-label">Nom d'utilisateur</label>
+        <div class="field-wrap">
+          <span class="fi">👤</span>
+          <input id="f-user" type="text"     class="field-input" placeholder="admin / user"
+                 [(ngModel)]="username" name="username" autocomplete="username" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="f-pass" class="field-label">Mot de passe</label>
+        <div class="field-wrap">
+          <span class="fi">🔒</span>
+          <input id="f-pass" [type]="showPw() ? 'text' : 'password'" class="field-input"
+                 placeholder="••••••••" [(ngModel)]="password" name="password" autocomplete="current-password" />
+          <button type="button" class="eye-btn" (click)="showPw.set(!showPw())" tabindex="-1">
+            {{ showPw() ? '🙈' : '👁️' }}
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-primary submit-btn" [disabled]="loading()" id="login-submit-btn">
+        @if (loading()) { <span class="spin"></span> Connexion… }
+        @else { Se connecter → }
+      </button>
+    </form>
+
+    <p class="back"><a routerLink="/">← Retour à l'accueil</a></p>
+  </div>
+</section>

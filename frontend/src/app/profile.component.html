@@ -1,0 +1,93 @@
+<section class="profile-page">
+  <article class="profile-card glass-panel">
+    <h1>Mon profil</h1>
+    <p class="subtitle">Mettez a jour vos informations personnelles et votre mot de passe.</p>
+
+    @if (actionError()) {
+      <div class="msg error">{{ actionError() }}</div>
+    }
+    @if (actionSuccess()) {
+      <div class="msg success">{{ actionSuccess() }}</div>
+    }
+
+    <form [formGroup]="profileForm" (ngSubmit)="saveProfile()" class="profile-form">
+      <div class="grid-two">
+        <label>
+          Prenom
+          <input type="text" formControlName="firstName" />
+        </label>
+        <label>
+          Nom
+          <input type="text" formControlName="lastName" />
+        </label>
+      </div>
+
+      <div class="grid-two">
+        <label>
+          Email
+          <input type="email" formControlName="email" />
+        </label>
+        <label>
+          Telephone
+          <input type="text" formControlName="phone" />
+        </label>
+      </div>
+
+      <div class="grid-two">
+        <label>
+          Nationalite
+          <input type="text" formControlName="nationality" placeholder="Ex: tunisian" />
+        </label>
+        @if (profileForm.controls.nationality.value.toLowerCase() === 'tunisian') {
+          <label>
+            Ville
+            <select formControlName="cityId">
+              <option [ngValue]="null">Selectionnez une ville</option>
+              @for (city of cities(); track city.id) {
+                <option [ngValue]="city.id">{{ city.name }} ({{ city.region }})</option>
+              }
+            </select>
+          </label>
+        }
+      </div>
+
+      <label>
+        URL image de profil
+        <input type="url" formControlName="profileImageUrl" placeholder="https://..." />
+      </label>
+
+      <div class="upload-row">
+        <input type="file" accept="image/*" (change)="uploadImage($event)" [disabled]="uploadBusy()" />
+        <span class="muted">{{ uploadBusy() ? 'Upload...' : 'Optionnel: importer une image depuis votre appareil.' }}</span>
+      </div>
+
+      @if (profileForm.controls.profileImageUrl.value) {
+        <img [src]="profileForm.controls.profileImageUrl.value" alt="Photo de profil" class="avatar-preview" />
+      }
+
+      <button class="btn-primary" type="submit" [disabled]="isSavingProfile()">
+        {{ isSavingProfile() ? 'Sauvegarde...' : 'Sauvegarder le profil' }}
+      </button>
+    </form>
+
+    <form [formGroup]="passwordForm" (ngSubmit)="changePassword()" class="password-form">
+      <h2>Changer mot de passe</h2>
+      <label>
+        Mot de passe actuel
+        <input type="password" formControlName="currentPassword" />
+      </label>
+      <label>
+        Nouveau mot de passe
+        <input type="password" formControlName="newPassword" />
+      </label>
+      <label>
+        Confirmer le nouveau mot de passe
+        <input type="password" formControlName="confirmPassword" />
+      </label>
+
+      <button class="btn-outline" type="submit" [disabled]="isChangingPassword()">
+        {{ isChangingPassword() ? 'Mise a jour...' : 'Changer le mot de passe' }}
+      </button>
+    </form>
+  </article>
+</section>

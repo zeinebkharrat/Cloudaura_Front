@@ -5,6 +5,7 @@ import { Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from './auth.service';
 import { extractApiErrorMessage } from './api-error.util';
+import { CityOption } from './auth.types';
 
 function passwordsMatch(group: AbstractControl): ValidationErrors | null {
   const password = group.get('password')?.value;
@@ -28,7 +29,10 @@ export class SignUpComponent {
   private readonly router = inject(Router);
 
   readonly isLoading = signal(false);
+  readonly isUploadingImage = signal(false);
   readonly formError = signal<string | null>(null);
+  readonly uploadedImageUrl = signal<string | null>(null);
+  readonly cities = signal<CityOption[]>([]);
 
   readonly form = this.fb.nonNullable.group(
     {
@@ -36,12 +40,21 @@ export class SignUpComponent {
       lastName: ['', [Validators.required, Validators.minLength(2)]],
       username: ['', [Validators.required, Validators.minLength(3)]],
       email: ['', [Validators.required, Validators.email]],
+      nationality: [''],
+      cityId: [null as number | null],
       password: ['', [Validators.required, Validators.minLength(8)]],
       confirmPassword: ['', [Validators.required]],
       becomeArtisant: [false],
     },
     { validators: passwordsMatch }
   );
+
+  constructor() {
+    this.authService.getCities().subscribe({
+      next: (cities) => this.cities.set(cities),
+      error: () => this.cities.set([]),
+    });
+  }
 
   submit() {
     if (this.form.invalid || this.isLoading()) {
@@ -53,14 +66,46 @@ export class SignUpComponent {
     this.formError.set(null);
 
     const { confirmPassword: _confirmPassword, ...payload } = this.form.getRawValue();
+    const isTunisian = payload.nationality?.trim().toLowerCase() === 'tunisian';
+    if (isTunisian && !payload.cityId) {
+      this.formError.set('Veuillez selectionner une ville si la nationalite est tunisian.');
+      this.isLoading.set(false);
+      return;
+    }
+    const finalPayload = {
+      ...payload,
+      cityId: isTunisian ? payload.cityId : null,
+      profileImageUrl: this.uploadedImageUrl(),
+    };
 
-    this.authService.signup(payload).subscribe({
+    this.authService.signup(finalPayload).subscribe({
       next: () => this.router.navigateByUrl('/'),
       error: (error: HttpErrorResponse) => {
         this.isLoading.set(false);
         this.formError.set(extractApiErrorMessage(error, 'Inscription impossible. Veuillez réessayer.'));
       },
       complete: () => this.isLoading.set(false),
+    });
+  }
+
+  onImageSelected(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file || this.isUploadingImage()) {
+      return;
+    }
+
+    this.isUploadingImage.set(true);
+    this.formError.set(null);
+
+    this.authService.uploadProfileImage(file).subscribe({
+      next: (response) => {
+        this.uploadedImageUrl.set(response.url);
+      },
+      error: (error: HttpErrorResponse) => {
+        this.formError.set(extractApiErrorMessage(error, 'Upload image impossible.'));
+      },
+      complete: () => this.isUploadingImage.set(false),
     });
   }
 }

@@ -4,9 +4,14 @@ export interface UserProfile {
   email: string;
   firstName: string;
   lastName: string;
+  phone?: string | null;
+  nationality?: string | null;
+  cityId?: number | null;
+  cityName?: string | null;
   roles: string[];
   status: string;
   artisanRequestPending: boolean;
+  profileImageUrl?: string | null;
 }
 
 export interface AuthResponse {
@@ -27,6 +32,9 @@ export interface SignUpPayload {
   firstName: string;
   lastName: string;
   becomeArtisant: boolean;
+  nationality?: string | null;
+  cityId?: number | null;
+  profileImageUrl?: string | null;
 }
 
 export interface AdminUser {
@@ -36,9 +44,16 @@ export interface AdminUser {
   firstName: string;
   lastName: string;
   phone: string | null;
+  nationality: string | null;
+  cityId: number | null;
+  cityName: string | null;
   status: string;
   artisanRequestPending: boolean;
   roles: string[];
+  profileImageUrl: string | null;
+  banned: boolean;
+  banReason: string | null;
+  banExpiresAt: string | null;
 }
 
 export interface AdminUserUpdatePayload {
@@ -46,10 +61,33 @@ export interface AdminUserUpdatePayload {
   lastName: string;
   email: string;
   phone: string | null;
+  nationality: string | null;
+  cityId: number | null;
   status: string;
 }
 
 export interface SocialProviders {
   google: boolean;
   github: boolean;
+}
+
+export interface ProfileUpdatePayload {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string | null;
+  nationality: string | null;
+  cityId: number | null;
+  profileImageUrl: string | null;
+}
+
+export interface ChangePasswordPayload {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface CityOption {
+  id: number;
+  name: string;
+  region: string;
 }

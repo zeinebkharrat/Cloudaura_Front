@@ -30,6 +30,25 @@
         <input type="email" formControlName="email" placeholder="vous@email.com" autocomplete="email" />
       </label>
 
+      <div class="grid-two">
+        <label>
+          Nationalite
+          <input type="text" formControlName="nationality" placeholder="Ex: tunisian" />
+        </label>
+
+        @if (form.controls.nationality.value.toLowerCase() === 'tunisian') {
+          <label>
+            Ville (Tunisie)
+            <select formControlName="cityId">
+              <option [ngValue]="null">Choisir une ville</option>
+              @for (city of cities(); track city.id) {
+                <option [ngValue]="city.id">{{ city.name }} ({{ city.region }})</option>
+              }
+            </select>
+          </label>
+        }
+      </div>
+
       <label>
         Mot de passe
         <input type="password" formControlName="password" placeholder="Minimum 8 caractères" autocomplete="new-password" />
@@ -39,6 +58,19 @@
         Confirmer le mot de passe
         <input type="password" formControlName="confirmPassword" placeholder="Confirmez votre mot de passe" autocomplete="new-password" />
       </label>
+
+      <div class="upload-block">
+        <label class="upload-label">
+          Photo de profil (optionnel)
+          <input type="file" accept="image/*" (change)="onImageSelected($event)" [disabled]="isUploadingImage()" />
+        </label>
+        @if (isUploadingImage()) {
+          <p class="upload-state">Upload en cours...</p>
+        } @else if (uploadedImageUrl()) {
+          <p class="upload-state success">Image uploadée avec succès.</p>
+          <img [src]="uploadedImageUrl()!" alt="Aperçu profil" class="preview-image" />
+        }
+      </div>
 
       <div class="artisan-box">
         <label class="artisan-check">

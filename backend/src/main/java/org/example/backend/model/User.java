@@ -34,6 +34,12 @@ public class User {
     private Boolean artisanRequestPending;
     private Date artisanRequestedAt;
     private String authProvider;
+    private String profileImageUrl;
+    private String nationality;
+
+    @ManyToOne
+    @JoinColumn(name = "city_id")
+    private City city;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "user_roles",
@@ -151,6 +157,30 @@ public class User {
 
     public void setAuthProvider(String authProvider) {
         this.authProvider = authProvider;
+    }
+
+    public String getProfileImageUrl() {
+        return profileImageUrl;
+    }
+
+    public void setProfileImageUrl(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
+    }
+
+    public String getNationality() {
+        return nationality;
+    }
+
+    public void setNationality(String nationality) {
+        this.nationality = nationality;
+    }
+
+    public City getCity() {
+        return city;
+    }
+
+    public void setCity(City city) {
+        this.city = city;
     }
 
     public Set<Role> getRoles() {

@@ -1,7 +1,16 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { catchError, map, of, tap } from 'rxjs';
-import { AuthResponse, SignInPayload, SignUpPayload, SocialProviders, UserProfile } from './auth.types';
+import {
+  AuthResponse,
+  CityOption,
+  ChangePasswordPayload,
+  ProfileUpdatePayload,
+  SignInPayload,
+  SignUpPayload,
+  SocialProviders,
+  UserProfile,
+} from './auth.types';
 
 const TOKEN_STORAGE_KEY = 'auth_token';
 const USER_STORAGE_KEY = 'auth_user';
@@ -52,6 +61,38 @@ export class AuthService {
       tap((response) => this.storeSession(response)),
       map((response) => response.user)
     );
+  }
+
+  getProfile() {
+    return this.http.get<UserProfile>('/api/profile').pipe(
+      tap((user) => {
+        this.currentUser.set(user);
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+      })
+    );
+  }
+
+  updateProfile(payload: ProfileUpdatePayload) {
+    return this.http.put<UserProfile>('/api/profile', payload).pipe(
+      tap((user) => {
+        this.currentUser.set(user);
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+      })
+    );
+  }
+
+  changePassword(payload: ChangePasswordPayload) {
+    return this.http.patch<void>('/api/profile/password', payload);
+  }
+
+  uploadProfileImage(file: File) {
+    const body = new FormData();
+    body.append('file', file);
+    return this.http.post<{ url: string }>('/api/public/uploads/profile-image', body);
+  }
+
+  getCities() {
+    return this.http.get<CityOption[]>('/api/cities');
   }
 
   fetchMe() {
