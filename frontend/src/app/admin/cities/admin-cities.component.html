@@ -81,10 +81,17 @@
         <button class="btn ghost" (click)="closeCityModal()">✕</button>
       </header>
 
+      @if (modalError) {
+        <div class="alert modal-alert">{{ modalError }}</div>
+      }
+
       <div class="form-grid">
         <label>
           Nom *
-          <input type="text" [(ngModel)]="cityForm.name" />
+          <input type="text" [(ngModel)]="cityForm.name" (ngModelChange)="clearFieldError('name')" [class.input-invalid]="fieldErrors.name" />
+          @if (fieldErrors.name) {
+            <small class="field-error">{{ fieldErrors.name }}</small>
+          }
         </label>
         <label>
           Région
@@ -92,11 +99,17 @@
         </label>
         <label>
           Latitude
-          <input type="number" step="any" [(ngModel)]="cityForm.latitude" />
+          <input type="number" step="any" [(ngModel)]="cityForm.latitude" (ngModelChange)="clearFieldError('latitude')" [class.input-invalid]="fieldErrors.latitude" />
+          @if (fieldErrors.latitude) {
+            <small class="field-error">{{ fieldErrors.latitude }}</small>
+          }
         </label>
         <label>
           Longitude
-          <input type="number" step="any" [(ngModel)]="cityForm.longitude" />
+          <input type="number" step="any" [(ngModel)]="cityForm.longitude" (ngModelChange)="clearFieldError('longitude')" [class.input-invalid]="fieldErrors.longitude" />
+          @if (fieldErrors.longitude) {
+            <small class="field-error">{{ fieldErrors.longitude }}</small>
+          }
         </label>
         <label class="full">
           Description

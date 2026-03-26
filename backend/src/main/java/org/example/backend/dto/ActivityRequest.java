@@ -13,4 +13,7 @@ public class ActivityRequest {
     private String type;
     private Double price;
     private String description;
+    private String address;
+    private Double latitude;
+    private Double longitude;
 }

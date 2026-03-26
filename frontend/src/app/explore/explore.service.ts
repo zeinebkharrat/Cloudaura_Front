@@ -3,6 +3,7 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import {
   Activity,
+  ActivityMedia,
   ActivityReservationResponse,
   CityResolveResponse,
   CreateActivityReservationRequest,
@@ -31,6 +32,10 @@ export class ExploreService {
 
   getActivityDetails(activityId: number): Observable<Activity> {
     return this.http.get<Activity>(`${this.base}/activities/${activityId}`);
+  }
+
+  getActivityMedia(activityId: number): Observable<ActivityMedia[]> {
+    return this.http.get<ActivityMedia[]>(`${this.base}/activities/${activityId}/media`);
   }
 
   reserveActivity(activityId: number, payload: CreateActivityReservationRequest): Observable<ActivityReservationResponse> {

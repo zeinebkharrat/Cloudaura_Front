@@ -85,19 +85,29 @@
         <button class="btn ghost" (click)="closeModal()">✕</button>
       </header>
 
+      @if (modalError) {
+        <div class="alert modal-alert">{{ modalError }}</div>
+      }
+
       <div class="form-grid">
         <label>
           Ville *
-          <select [(ngModel)]="form.cityId">
+          <select [(ngModel)]="form.cityId" (ngModelChange)="clearFieldError('cityId')" [class.input-invalid]="fieldErrors.cityId">
             <option [ngValue]="null">Sélectionner...</option>
             @for (city of cities; track city.cityId) {
               <option [ngValue]="city.cityId">{{ city.name }}</option>
             }
           </select>
+          @if (fieldErrors.cityId) {
+            <small class="field-error">{{ fieldErrors.cityId }}</small>
+          }
         </label>
         <label>
           Nom *
-          <input type="text" [(ngModel)]="form.name" (blur)="geocodeFromName()" />
+          <input type="text" [(ngModel)]="form.name" (ngModelChange)="clearFieldError('name')" [class.input-invalid]="fieldErrors.name" (blur)="geocodeFromName()" />
+          @if (fieldErrors.name) {
+            <small class="field-error">{{ fieldErrors.name }}</small>
+          }
         </label>
         <label>
           Type cuisine
@@ -105,7 +115,10 @@
         </label>
         <label>
           Note
-          <input type="number" min="0" max="5" step="0.1" [(ngModel)]="form.rating" />
+          <input type="number" min="0" max="5" step="0.1" [(ngModel)]="form.rating" (ngModelChange)="clearFieldError('rating')" [class.input-invalid]="fieldErrors.rating" />
+          @if (fieldErrors.rating) {
+            <small class="field-error">{{ fieldErrors.rating }}</small>
+          }
         </label>
         <label class="span-2">
           Description
@@ -139,11 +152,17 @@
         </label>
         <label>
           Latitude
-          <input type="number" step="0.000001" [(ngModel)]="form.latitude" (input)="onCoordinatesChanged()" />
+          <input type="number" step="0.000001" [(ngModel)]="form.latitude" (ngModelChange)="clearFieldError('latitude')" [class.input-invalid]="fieldErrors.latitude" (input)="onCoordinatesChanged()" />
+          @if (fieldErrors.latitude) {
+            <small class="field-error">{{ fieldErrors.latitude }}</small>
+          }
         </label>
         <label>
           Longitude
-          <input type="number" step="0.000001" [(ngModel)]="form.longitude" (input)="onCoordinatesChanged()" />
+          <input type="number" step="0.000001" [(ngModel)]="form.longitude" (ngModelChange)="clearFieldError('longitude')" [class.input-invalid]="fieldErrors.longitude" (input)="onCoordinatesChanged()" />
+          @if (fieldErrors.longitude) {
+            <small class="field-error">{{ fieldErrors.longitude }}</small>
+          }
         </label>
       </div>
 

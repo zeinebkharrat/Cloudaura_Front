@@ -3,78 +3,96 @@
   <div class="error" *ngIf="error">{{ error }}</div>
 
   <ng-container *ngIf="activity && !error">
-    <article class="card hero-card animate-in">
-      <div class="hero-image-wrap">
-        <img class="hero-image" [src]="heroImage" [alt]="activity.cityName" />
-        <div class="hero-overlay"></div>
-        <div class="hero-main">
-          <p class="kicker">Tourist experience</p>
-          <h1>{{ activity.name }}</h1>
-          <p class="description">{{ activity.description || 'Enjoy an immersive local activity.' }}</p>
-          <div class="meta-grid">
-            <div class="meta-item">
-              <span class="label">City</span>
-              <strong>{{ activity.cityName }}</strong>
-            </div>
-            <div class="meta-item">
-              <span class="label">Type</span>
-              <strong>{{ activity.type || 'Tourist activity' }}</strong>
-            </div>
-            <div class="meta-item">
-              <span class="label">Price</span>
-              <strong>{{ activity.price | number: '1.2-2' }} TND</strong>
-            </div>
-          </div>
+    <article class="overview-card animate-in">
+      <div class="image-panel">
+        <img class="cover-image" [src]="heroImage" [alt]="activity.name" />
+        <div class="image-overlay"></div>
+        <span class="badge">Activity</span>
+        <button
+          class="hero-nav hero-nav-left"
+          type="button"
+          (click)="previousMedia()"
+          *ngIf="activityMedia.length > 1"
+          aria-label="Previous image"
+        >◀</button>
+        <button
+          class="hero-nav hero-nav-right"
+          type="button"
+          (click)="nextMedia()"
+          *ngIf="activityMedia.length > 1"
+          aria-label="Next image"
+        >▶</button>
+        <div class="hero-counter" *ngIf="activityMedia.length > 1">
+          {{ currentMediaIndex + 1 }} / {{ activityMedia.length }}
         </div>
       </div>
-      <a class="btn ghost" [routerLink]="['/city', activity.cityId]">Back to city</a>
+
+      <div class="content-panel">
+        <p class="kicker">Immersive experience</p>
+        <h1>{{ activity.name }}</h1>
+        <p class="description">{{ activity.description || 'Enjoy an immersive local activity.' }}</p>
+
+        <div class="chips-row">
+          <span class="chip">{{ activity.type || 'Tourist activity' }}</span>
+          <span class="chip">{{ activity.cityName }}</span>
+          <span class="chip" *ngIf="activity.price != null">{{ activity.price | number: '1.2-2' }} TND</span>
+        </div>
+
+        <div class="info-grid">
+          <article class="info-card">
+            <span>City</span>
+            <strong>{{ activity.cityName }}</strong>
+          </article>
+          <article class="info-card">
+            <span>Address</span>
+            <strong>{{ activity.address || 'Not provided' }}</strong>
+          </article>
+        </div>
+
+        <a class="city-link" [routerLink]="['/city', activity.cityId]">Back to city</a>
+      </div>
     </article>
 
-    <article class="card animate-in delay-1">
+    <article class="map-card animate-in delay-1">
+      <div class="card-head">
+        <h2>Location & directions</h2>
+        <p>Find this activity on the map and navigate instantly.</p>
+      </div>
+
+      <div id="activityMap" class="map" *ngIf="activity.latitude != null && activity.longitude != null"></div>
+      <p class="empty" *ngIf="activity.latitude == null || activity.longitude == null">
+        Coordinates are not available for this activity.
+      </p>
+
+      <button
+        class="primary-btn"
+        type="button"
+        (click)="openDirectionsFromCurrentPosition()"
+        [disabled]="activity.latitude == null || activity.longitude == null"
+      >
+        Directions from my location
+      </button>
+    </article>
+
+    <article class="booking-card animate-in delay-2">
       <h2>Book this activity</h2>
       <form (ngSubmit)="submitReservation()" #reservationForm="ngForm" class="form">
         <label>
           Number of participants
-          <input
-            type="number"
-            name="numberOfPeople"
-            required
-            min="1"
-            [(ngModel)]="form.numberOfPeople"
-          />
+          <input type="number" name="numberOfPeople" required min="1" [(ngModel)]="form.numberOfPeople" />
         </label>
 
         <label>
           Reservation date
-          <input
-            type="date"
-            name="reservationDate"
-            required
-            [(ngModel)]="form.reservationDate"
-          />
+          <input type="date" name="reservationDate" required [(ngModel)]="form.reservationDate" />
         </label>
 
         <label>
-          User ID (optionnel)
-          <input
-            type="number"
-            name="userId"
-            min="1"
-            [(ngModel)]="form.userId"
-          />
+          User ID (optional)
+          <input type="number" name="userId" min="1" [(ngModel)]="form.userId" />
         </label>
 
-        <label>
-          Notes
-          <textarea
-            name="notes"
-            rows="3"
-            placeholder="Informations complémentaires (non envoyées dans ce MVP)"
-            disabled
-          ></textarea>
-        </label>
-
-        <button class="btn" [disabled]="reservationForm.invalid || submitting" type="submit">
+        <button class="primary-btn" [disabled]="reservationForm.invalid || submitting" type="submit">
           {{ submitting ? 'Sending...' : 'Confirm booking' }}
         </button>
       </form>

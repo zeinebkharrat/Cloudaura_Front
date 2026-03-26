@@ -3,6 +3,7 @@ package org.example.backend.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.dto.ActivityResponse;
+import org.example.backend.dto.ActivityMediaResponse;
 import org.example.backend.dto.RestaurantResponse;
 import org.example.backend.dto.publicapi.ActivityReservationResponse;
 import org.example.backend.dto.publicapi.CityResolveResponse;
@@ -13,6 +14,8 @@ import org.example.backend.service.ActivityService;
 import org.example.backend.service.PublicExploreService;
 import org.example.backend.service.RestaurantService;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/public")
@@ -42,6 +45,11 @@ public class PublicExploreController {
     @GetMapping("/activities/{activityId}")
     public ActivityResponse getActivityDetails(@PathVariable Integer activityId) {
         return activityService.getById(activityId);
+    }
+
+    @GetMapping("/activities/{activityId}/media")
+    public List<ActivityMediaResponse> getActivityMedia(@PathVariable Integer activityId) {
+        return publicExploreService.getActivityMedia(activityId);
     }
 
     @PostMapping("/activities/{activityId}/reservations")

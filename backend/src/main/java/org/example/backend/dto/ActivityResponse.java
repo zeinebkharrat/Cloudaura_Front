@@ -7,6 +7,9 @@ public record ActivityResponse(
     String name,
     String type,
     Double price,
-    String description
+    String description,
+    String address,
+    Double latitude,
+    Double longitude
 ) {
 }

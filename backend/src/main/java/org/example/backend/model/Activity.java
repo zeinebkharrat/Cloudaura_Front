@@ -12,4 +12,7 @@ public class Activity {
     private Double price;
     @Lob @Column(columnDefinition="TEXT")
     private String description;
+    private String address;
+    private Double latitude;
+    private Double longitude;
 }

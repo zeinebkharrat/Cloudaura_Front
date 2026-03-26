@@ -2,6 +2,7 @@ package org.example.backend.service;
 
 import lombok.RequiredArgsConstructor;
 import org.example.backend.dto.ActivityResponse;
+import org.example.backend.dto.ActivityMediaResponse;
 import org.example.backend.dto.CityMediaResponse;
 import org.example.backend.dto.CityResponse;
 import org.example.backend.dto.RestaurantResponse;
@@ -9,10 +10,12 @@ import org.example.backend.dto.publicapi.CityResolveResponse;
 import org.example.backend.dto.publicapi.PublicCityDetailsResponse;
 import org.example.backend.exception.ResourceNotFoundException;
 import org.example.backend.model.Activity;
+import org.example.backend.model.ActivityMedia;
 import org.example.backend.model.City;
 import org.example.backend.model.CityMedia;
 import org.example.backend.model.Restaurant;
 import org.example.backend.repository.ActivityRepository;
+import org.example.backend.repository.ActivityMediaRepository;
 import org.example.backend.repository.CityMediaRepository;
 import org.example.backend.repository.CityRepository;
 import org.example.backend.repository.RestaurantRepository;
@@ -29,6 +32,7 @@ public class PublicExploreService {
 
     private final CityRepository cityRepository;
     private final CityMediaRepository cityMediaRepository;
+    private final ActivityMediaRepository activityMediaRepository;
     private final RestaurantRepository restaurantRepository;
     private final ActivityRepository activityRepository;
 
@@ -83,6 +87,16 @@ public class PublicExploreService {
             .toList();
 
         return new PublicCityDetailsResponse(toCityResponse(city), media, restaurants, activities);
+    }
+
+    public List<ActivityMediaResponse> getActivityMedia(Integer activityId) {
+        Activity activity = activityRepository.findById(activityId)
+            .orElseThrow(() -> new ResourceNotFoundException("Activité introuvable: " + activityId));
+
+        return activityMediaRepository.findByActivityActivityIdOrderByMediaIdDesc(activity.getActivityId())
+            .stream()
+            .map(this::toActivityMediaResponse)
+            .toList();
     }
 
     private String normalize(String value) {
@@ -159,7 +173,20 @@ public class PublicExploreService {
             activity.getName(),
             activity.getType(),
             activity.getPrice(),
-            activity.getDescription()
+            activity.getDescription(),
+            activity.getAddress(),
+            activity.getLatitude(),
+            activity.getLongitude()
+        );
+    }
+
+    private ActivityMediaResponse toActivityMediaResponse(ActivityMedia media) {
+        return new ActivityMediaResponse(
+            media.getMediaId(),
+            media.getActivity().getActivityId(),
+            media.getActivity().getName(),
+            media.getUrl(),
+            media.getMediaType()
         );
     }
 }

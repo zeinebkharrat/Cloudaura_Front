@@ -6,6 +6,7 @@ import org.example.backend.dto.CityResponse;
 import org.example.backend.exception.ResourceNotFoundException;
 import org.example.backend.model.City;
 import org.example.backend.repository.ActivityRepository;
+import org.example.backend.repository.ActivityMediaRepository;
 import org.example.backend.repository.CityMediaRepository;
 import org.example.backend.repository.CityRepository;
 import org.example.backend.repository.RestaurantRepository;
@@ -22,6 +23,7 @@ public class CityService {
 
     private final CityRepository cityRepository;
     private final CityMediaRepository cityMediaRepository;
+    private final ActivityMediaRepository activityMediaRepository;
     private final RestaurantRepository restaurantRepository;
     private final ActivityRepository activityRepository;
 
@@ -68,6 +70,7 @@ public class CityService {
     public void delete(Integer id) {
         City city = findCity(id);
         cityMediaRepository.deleteByCityCityId(city.getCityId());
+        activityMediaRepository.deleteByActivityCityCityId(city.getCityId());
         restaurantRepository.deleteByCityCityId(city.getCityId());
         activityRepository.deleteByCityCityId(city.getCityId());
         cityRepository.delete(city);

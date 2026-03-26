@@ -27,6 +27,8 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
   totalElements = 0;
   error = '';
   showModal = false;
+  modalError = '';
+  fieldErrors: Partial<Record<'cityId' | 'name' | 'rating' | 'latitude' | 'longitude', string>> = {};
   geocodeMessage = '';
   imagePreviewUrl: string | null = null;
   selectedImageFile: File | null = null;
@@ -142,6 +144,7 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
     this.setImagePreview(item.imageUrl ?? null);
     this.selectedImageFile = null;
     this.geocodeMessage = '';
+    this.clearValidationErrors();
     this.showModal = true;
     this.renderMapLater();
   }
@@ -149,6 +152,7 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
   openCreateModal(): void {
     this.resetForm();
     this.error = '';
+    this.modalError = '';
     this.geocodeMessage = '';
     this.showModal = true;
     this.renderMapLater();
@@ -178,17 +182,17 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
       longitude: null,
     };
     this.persistedImageUrl = null;
+    this.clearValidationErrors();
     this.clearImageSelection();
   }
 
   save(): void {
-    if (this.form.cityId == null || !this.form.name.trim()) {
-      this.error = 'Ville et nom du restaurant sont obligatoires';
+    if (!this.validateRestaurantForm()) {
       return;
     }
 
     const payload: RestaurantRequest = {
-      cityId: this.form.cityId,
+      cityId: this.form.cityId!,
       name: this.form.name.trim(),
       cuisineType: this.form.cuisineType.trim() || null,
       rating: this.form.rating,
@@ -221,7 +225,7 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
         this.loadRestaurants();
       },
       error: (err) => {
-        this.error = err?.error?.message ?? 'Erreur lors de la sauvegarde';
+        this.modalError = err?.error?.message ?? 'Erreur lors de la sauvegarde';
       },
     });
   }
@@ -304,7 +308,7 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
     }
 
     if (!file.type.startsWith('image/')) {
-      this.error = 'Seules les images sont autorisées pour le restaurant';
+      this.modalError = 'Seules les images sont autorisées pour le restaurant';
       this.clearImageSelection();
       return;
     }
@@ -341,6 +345,61 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
 
   private renderMapLater(): void {
     setTimeout(() => this.initOrUpdateMap(), 0);
+  }
+
+  clearFieldError(field: 'cityId' | 'name' | 'rating' | 'latitude' | 'longitude'): void {
+    delete this.fieldErrors[field];
+    this.modalError = '';
+  }
+
+  private clearValidationErrors(): void {
+    this.fieldErrors = {};
+    this.modalError = '';
+  }
+
+  private validateRestaurantForm(): boolean {
+    this.clearValidationErrors();
+
+    if (this.form.cityId == null) {
+      this.fieldErrors.cityId = 'La ville est obligatoire.';
+    }
+
+    if (!this.form.name.trim()) {
+      this.fieldErrors.name = 'Le nom du restaurant est obligatoire.';
+    }
+
+    if (this.form.rating != null && (this.form.rating < 0 || this.form.rating > 5)) {
+      this.fieldErrors.rating = 'La note doit être comprise entre 0 et 5.';
+    }
+
+    const latitude = this.form.latitude;
+    const longitude = this.form.longitude;
+    const hasLatitude = latitude !== null && latitude !== undefined;
+    const hasLongitude = longitude !== null && longitude !== undefined;
+
+    if (hasLatitude && ((latitude as number) < -90 || (latitude as number) > 90)) {
+      this.fieldErrors.latitude = 'La latitude doit être entre -90 et 90.';
+    }
+
+    if (hasLongitude && ((longitude as number) < -180 || (longitude as number) > 180)) {
+      this.fieldErrors.longitude = 'La longitude doit être entre -180 et 180.';
+    }
+
+    if (hasLatitude !== hasLongitude) {
+      if (!hasLatitude) {
+        this.fieldErrors.latitude = 'La latitude est requise si la longitude est renseignée.';
+      }
+      if (!hasLongitude) {
+        this.fieldErrors.longitude = 'La longitude est requise si la latitude est renseignée.';
+      }
+    }
+
+    if (Object.keys(this.fieldErrors).length > 0) {
+      this.modalError = 'Veuillez corriger les champs en erreur.';
+      return false;
+    }
+
+    return true;
   }
 
   private initOrUpdateMap(): void {

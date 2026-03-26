@@ -39,6 +39,17 @@ export interface Activity {
   type: string | null;
   price: number | null;
   description: string | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+export interface ActivityMedia {
+  mediaId: number;
+  activityId: number;
+  activityName: string;
+  url: string;
+  mediaType: MediaType;
 }
 
 export interface CityResolveResponse {

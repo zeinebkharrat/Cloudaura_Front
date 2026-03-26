@@ -25,6 +25,8 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
   loading = false;
   error = '';
   showCityModal = false;
+  modalError = '';
+  fieldErrors: Partial<Record<'name' | 'latitude' | 'longitude', string>> = {};
 
   editingCityId: number | null = null;
   cityForm: CityRequest = {
@@ -120,6 +122,7 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
     this.mediaCity = city;
     this.mediaPage = 0;
     this.mediaQ = '';
+    this.clearValidationErrors();
     this.loadMedia();
     this.showCityModal = true;
   }
@@ -138,11 +141,13 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
     this.mediaPage = 0;
     this.mediaTotalPages = 0;
     this.mediaQ = '';
+    this.clearValidationErrors();
     this.clearSelectedFiles();
   }
 
   openCreateModal(): void {
     this.error = '';
+    this.modalError = '';
     this.resetCityForm();
     this.showCityModal = true;
   }
@@ -153,6 +158,10 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
   }
 
   saveCity(): void {
+    if (!this.validateCityForm()) {
+      return;
+    }
+
     const isEdit = this.editingCityId != null;
     const payload: CityRequest = {
       name: this.cityForm.name.trim(),
@@ -161,11 +170,6 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
       latitude: this.cityForm.latitude,
       longitude: this.cityForm.longitude,
     };
-
-    if (!payload.name) {
-      this.error = 'Le nom de la ville est obligatoire';
-      return;
-    }
 
     const request$ = !isEdit
       ? this.cityService.createCity(payload).pipe(
@@ -189,7 +193,7 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
         });
       },
       error: (err) => {
-        this.error = err?.error?.message ?? 'Erreur lors de l’enregistrement';
+        this.modalError = err?.error?.message ?? 'Erreur lors de l’enregistrement';
       },
     });
   }
@@ -277,7 +281,7 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
     const files = Array.from(input.files ?? []);
     const accepted = files.filter((file) => file.type.startsWith('image/'));
     if (accepted.length !== files.length) {
-      this.error = 'Seules les images sont autorisées';
+      this.modalError = 'Seules les images sont autorisées';
     }
 
     this.uploadFiles = accepted;
@@ -301,7 +305,7 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
 
   uploadMedia(): void {
     if (!this.mediaCity || this.uploadFiles.length === 0) {
-      this.error = 'Sélectionne d’abord une ville et un fichier';
+      this.modalError = 'Sélectionne d’abord une ville et un fichier';
       return;
     }
 
@@ -311,7 +315,7 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
         this.loadMedia();
       },
       error: (err) => {
-        this.error = err?.error?.message ?? 'Upload image impossible';
+        this.modalError = err?.error?.message ?? 'Upload image impossible';
       },
     });
   }
@@ -346,6 +350,54 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
     }
     const trimmed = value.trim();
     return trimmed ? trimmed : null;
+  }
+
+  clearFieldError(field: 'name' | 'latitude' | 'longitude'): void {
+    delete this.fieldErrors[field];
+    this.modalError = '';
+  }
+
+  private clearValidationErrors(): void {
+    this.fieldErrors = {};
+    this.modalError = '';
+  }
+
+  private validateCityForm(): boolean {
+    this.clearValidationErrors();
+
+    const name = this.cityForm.name.trim();
+    if (!name) {
+      this.fieldErrors.name = 'Le nom de la ville est obligatoire.';
+    }
+
+    const latitude = this.cityForm.latitude;
+    const longitude = this.cityForm.longitude;
+    const hasLatitude = latitude !== null && latitude !== undefined;
+    const hasLongitude = longitude !== null && longitude !== undefined;
+
+    if (hasLatitude && (latitude as number) < -90 || hasLatitude && (latitude as number) > 90) {
+      this.fieldErrors.latitude = 'La latitude doit être entre -90 et 90.';
+    }
+
+    if (hasLongitude && (longitude as number) < -180 || hasLongitude && (longitude as number) > 180) {
+      this.fieldErrors.longitude = 'La longitude doit être entre -180 et 180.';
+    }
+
+    if (hasLatitude !== hasLongitude) {
+      if (!hasLatitude) {
+        this.fieldErrors.latitude = 'La latitude est requise si la longitude est renseignée.';
+      }
+      if (!hasLongitude) {
+        this.fieldErrors.longitude = 'La longitude est requise si la latitude est renseignée.';
+      }
+    }
+
+    if (Object.keys(this.fieldErrors).length > 0) {
+      this.modalError = 'Veuillez corriger les champs en erreur.';
+      return false;
+    }
+
+    return true;
   }
 
   private uploadSelectedMedia(cityId: number): Observable<unknown> {
