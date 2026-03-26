@@ -4,6 +4,9 @@ import { VirtualTourPageComponent } from './virtual-tour-page.component';
 import { FeaturePageComponent } from './feature-page.component';
 import { SignInComponent } from './sign-in.component';
 import { SignUpComponent } from './sign-up.component';
+import { ForgotPasswordComponent } from './forgot-password.component';
+import { ResetPasswordComponent } from './reset-password.component';
+import { VerifyEmailComponent } from './verify-email.component';
 import { authGuard } from './auth.guard';
 import { roleGuard } from './role.guard';
 import { AdminUsersComponent } from './admin-users.component';
@@ -15,6 +18,9 @@ export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'signin', component: SignInComponent },
   { path: 'signup', component: SignUpComponent },
+  { path: 'forgot-password', component: ForgotPasswordComponent },
+  { path: 'reset-password', component: ResetPasswordComponent },
+  { path: 'verify-email', component: VerifyEmailComponent },
   {
     path: 'admin',
     canActivate: [authGuard, roleGuard],

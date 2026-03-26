@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, Renderer2 } from '@angular/core';
+import { Component, HostListener, inject, signal, OnInit, Renderer2 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from './auth.service';
@@ -21,6 +21,7 @@ export class AppComponent implements OnInit {
   isAuthenticated = this.authService.isAuthenticated;
   currentUser = this.authService.currentUser;
   isAdmin = () => this.authService.hasRole('ROLE_ADMIN');
+  isUserMenuOpen = signal(false);
 
   ngOnInit() {
     const savedTheme = localStorage.getItem('theme');
@@ -46,7 +47,22 @@ export class AppComponent implements OnInit {
   }
 
   logout() {
+    this.isUserMenuOpen.set(false);
     this.authService.logout();
     this.router.navigateByUrl('/');
+  }
+
+  toggleUserMenu(event: MouseEvent) {
+    event.stopPropagation();
+    this.isUserMenuOpen.set(!this.isUserMenuOpen());
+  }
+
+  closeUserMenu() {
+    this.isUserMenuOpen.set(false);
+  }
+
+  @HostListener('document:click')
+  onDocumentClick() {
+    this.isUserMenuOpen.set(false);
   }
 }

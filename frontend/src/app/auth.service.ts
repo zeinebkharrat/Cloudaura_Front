@@ -2,10 +2,14 @@ import { inject, Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { catchError, map, of, tap } from 'rxjs';
 import {
+  AuthMessageResponse,
   AuthResponse,
   CityOption,
   ChangePasswordPayload,
+  ForgotPasswordPayload,
   ProfileUpdatePayload,
+  ResendVerificationPayload,
+  ResetPasswordPayload,
   SignInPayload,
   SignUpPayload,
   SocialProviders,
@@ -57,10 +61,23 @@ export class AuthService {
   }
 
   signup(payload: SignUpPayload) {
-    return this.http.post<AuthResponse>('/api/auth/signup', payload).pipe(
-      tap((response) => this.storeSession(response)),
-      map((response) => response.user)
-    );
+    return this.http.post<AuthMessageResponse>('/api/auth/signup', payload);
+  }
+
+  verifyEmail(token: string) {
+    return this.http.get<AuthMessageResponse>('/api/auth/verify-email', { params: { token } });
+  }
+
+  resendVerification(payload: ResendVerificationPayload) {
+    return this.http.post<AuthMessageResponse>('/api/auth/resend-verification', payload);
+  }
+
+  forgotPassword(payload: ForgotPasswordPayload) {
+    return this.http.post<AuthMessageResponse>('/api/auth/forgot-password', payload);
+  }
+
+  resetPassword(payload: ResetPasswordPayload) {
+    return this.http.post<AuthMessageResponse>('/api/auth/reset-password', payload);
   }
 
   getProfile() {

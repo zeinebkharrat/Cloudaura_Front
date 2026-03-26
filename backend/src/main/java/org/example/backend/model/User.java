@@ -36,6 +36,9 @@ public class User {
     private String authProvider;
     private String profileImageUrl;
     private String nationality;
+    private Boolean emailVerified;
+    private Integer failedLoginAttempts;
+    private Date lockedUntil;
 
     @ManyToOne
     @JoinColumn(name = "city_id")
@@ -173,6 +176,30 @@ public class User {
 
     public void setNationality(String nationality) {
         this.nationality = nationality;
+    }
+
+    public Boolean getEmailVerified() {
+        return emailVerified;
+    }
+
+    public void setEmailVerified(Boolean emailVerified) {
+        this.emailVerified = emailVerified;
+    }
+
+    public Integer getFailedLoginAttempts() {
+        return failedLoginAttempts;
+    }
+
+    public void setFailedLoginAttempts(Integer failedLoginAttempts) {
+        this.failedLoginAttempts = failedLoginAttempts;
+    }
+
+    public Date getLockedUntil() {
+        return lockedUntil;
+    }
+
+    public void setLockedUntil(Date lockedUntil) {
+        this.lockedUntil = lockedUntil;
     }
 
     public City getCity() {

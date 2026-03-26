@@ -27,6 +27,11 @@ export class AdminLayoutComponent {
 
   constructor(public auth: AuthService, private router: Router) {}
   toggle() { this.open.set(!this.open()); }
+
+  openProfile() {
+    this.router.navigateByUrl('/profile');
+  }
+
   logout() {
     this.auth.logout();
     this.router.navigateByUrl('/signin');

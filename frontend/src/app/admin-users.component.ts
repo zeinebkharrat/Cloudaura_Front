@@ -4,6 +4,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AdminUserService } from './admin-user.service';
+import { AuthService } from './auth.service';
 import { AdminUser, CityOption } from './auth.types';
 import { extractApiErrorMessage } from './api-error.util';
 import Swal from 'sweetalert2';
@@ -19,6 +20,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
 })
 export class AdminUsersComponent {
   private readonly adminUserService = inject(AdminUserService);
+  private readonly authService = inject(AuthService);
   private readonly fb = inject(FormBuilder);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -78,7 +80,8 @@ export class AdminUsersComponent {
 
     this.adminUserService.listUsers(this.searchForm.controls.q.value).subscribe({
       next: (users) => {
-        this.users.set(users);
+        const currentUserId = this.authService.currentUser()?.id;
+        this.users.set(currentUserId ? users.filter((user) => user.id !== currentUserId) : users);
       },
       error: () => this.actionError.set('Impossible de charger les utilisateurs.'),
       complete: () => this.isLoading.set(false),
@@ -93,6 +96,7 @@ export class AdminUsersComponent {
     const cityOptions = this.cities()
       .map((city) => `<option value="${city.id}" ${user.cityId === city.id ? 'selected' : ''}>${city.name} (${city.region})</option>`)
       .join('');
+    let uploadedImageUrl: string | null = user.profileImageUrl ?? null;
 
     const result = await this.popup({
       title: `Modifier ${user.username}`,
@@ -102,6 +106,15 @@ export class AdminUsersComponent {
       cancelButtonText: 'Annuler',
       html: `
         <div class="sw-grid">
+          <div class="sw-avatar-top">
+            <div class="sw-avatar-frame">
+              <img id="sw-avatar-preview" class="sw-avatar-preview" src="${user.profileImageUrl ?? ''}" alt="avatar" />
+              <div id="sw-avatar-placeholder" class="sw-avatar-placeholder ${user.profileImageUrl ? 'hidden' : ''}">${user.username.charAt(0).toUpperCase()}</div>
+            </div>
+            <label class="sw-upload-btn" for="sw-avatar-file">Choisir une photo</label>
+            <input id="sw-avatar-file" class="sw-avatar-file" type="file" accept="image/*" />
+            <p class="sw-upload-hint">PNG/JPG conseille, image nette de profil.</p>
+          </div>
           <input id="sw-firstName" class="sw-input" placeholder="Prenom" value="${user.firstName}" />
           <input id="sw-lastName" class="sw-input" placeholder="Nom" value="${user.lastName}" />
           <input id="sw-email" class="sw-input" placeholder="Email" value="${user.email}" />
@@ -115,18 +128,13 @@ export class AdminUsersComponent {
             <option value="">Choisir une ville (si tunisian)</option>
             ${cityOptions}
           </select>
-          <div class="sw-avatar-block">
-            <img id="sw-avatar-preview" class="sw-avatar-preview" src="${user.profileImageUrl ?? ''}" alt="avatar" />
-            <input id="sw-avatar-file" class="sw-input" type="file" accept="image/*" />
-            <input id="sw-avatar-url" class="sw-input" placeholder="Image URL" value="${user.profileImageUrl ?? ''}" />
-          </div>
         </div>
       `,
       didOpen: () => {
         const nationalityEl = document.getElementById('sw-nationality') as HTMLInputElement | null;
         const cityEl = document.getElementById('sw-city') as HTMLSelectElement | null;
-        const avatarUrlEl = document.getElementById('sw-avatar-url') as HTMLInputElement | null;
         const avatarPreviewEl = document.getElementById('sw-avatar-preview') as HTMLImageElement | null;
+        const avatarPlaceholderEl = document.getElementById('sw-avatar-placeholder') as HTMLDivElement | null;
         const avatarFileEl = document.getElementById('sw-avatar-file') as HTMLInputElement | null;
         const updateCityVisibility = () => {
           if (!nationalityEl || !cityEl) {
@@ -148,12 +156,11 @@ export class AdminUsersComponent {
           }
           this.adminUserService.uploadProfileImage(file).subscribe({
             next: (response) => {
-              if (avatarUrlEl) {
-                avatarUrlEl.value = response.url;
-              }
+              uploadedImageUrl = response.url;
               if (avatarPreviewEl) {
                 avatarPreviewEl.src = response.url;
               }
+              avatarPlaceholderEl?.classList.add('hidden');
             },
             error: (error: HttpErrorResponse) => {
               Swal.showValidationMessage(extractApiErrorMessage(error, 'Upload image impossible.'));
@@ -169,7 +176,6 @@ export class AdminUsersComponent {
         const status = (document.getElementById('sw-status') as HTMLSelectElement | null)?.value?.trim() ?? 'ACTIVE';
         const nationality = (document.getElementById('sw-nationality') as HTMLInputElement | null)?.value?.trim() ?? '';
         const cityIdRaw = (document.getElementById('sw-city') as HTMLSelectElement | null)?.value ?? '';
-        const profileImageUrl = (document.getElementById('sw-avatar-url') as HTMLInputElement | null)?.value?.trim() ?? '';
         const cityId = cityIdRaw ? Number(cityIdRaw) : null;
 
         if (!firstName || !lastName || !email) {
@@ -188,7 +194,7 @@ export class AdminUsersComponent {
           phone: phone || null,
           nationality: nationality || null,
           cityId: this.isTunisiaNationality(nationality) ? cityId : null,
-          profileImageUrl: profileImageUrl || null,
+          profileImageUrl: uploadedImageUrl,
           status,
         };
       },

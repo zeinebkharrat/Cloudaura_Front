@@ -1,21 +1,29 @@
 package org.example.backend.service;
 
+import org.example.backend.dto.AuthMessageResponse;
 import org.example.backend.dto.AuthResponse;
 import org.example.backend.dto.ChangePasswordRequest;
+import org.example.backend.dto.ForgotPasswordRequest;
 import org.example.backend.dto.LoginRequest;
 import org.example.backend.dto.ProfileUpdateRequest;
+import org.example.backend.dto.ResendVerificationRequest;
+import org.example.backend.dto.ResetPasswordRequest;
 import org.example.backend.dto.SignupRequest;
 import org.example.backend.dto.UserSummaryResponse;
 import org.example.backend.model.Ban;
 import org.example.backend.model.City;
 import org.example.backend.model.Role;
 import org.example.backend.model.User;
+import org.example.backend.model.VerificationToken;
 import org.example.backend.repository.BanRepository;
 import org.example.backend.repository.CityRepository;
 import org.example.backend.repository.RoleRepository;
 import org.example.backend.repository.UserRepository;
+import org.example.backend.repository.VerificationTokenRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.mail.MailException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -28,8 +36,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -38,7 +50,12 @@ import java.util.stream.Collectors;
 public class AuthService {
 
     private static final String DEFAULT_ROLE = "ROLE_USER";
-    private static final String ROLE_ARTISANT = "ROLE_ARTISANT";
+    private static final int MAX_FAILED_ATTEMPTS = 3;
+    private static final long LOGIN_LOCK_DURATION_MS = 15 * 60 * 1000L;
+    private static final long EMAIL_VERIFICATION_EXPIRATION_MS = 24 * 60 * 60 * 1000L;
+    private static final long RESET_PASSWORD_EXPIRATION_MS = 30 * 60 * 1000L;
+    private static final String TOKEN_TYPE_EMAIL_VERIFICATION = "EMAIL_VERIFICATION";
+    private static final String TOKEN_TYPE_RESET_PASSWORD = "RESET_PASSWORD";
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
@@ -47,6 +64,11 @@ public class AuthService {
     private final JwtService jwtService;
     private final BanRepository banRepository;
     private final CityRepository cityRepository;
+    private final VerificationTokenRepository verificationTokenRepository;
+    private final EmailService emailService;
+
+    @Value("${app.frontend.base-url:http://localhost:4200}")
+    private String frontendBaseUrl;
 
     public AuthService(UserRepository userRepository,
                        RoleRepository roleRepository,
@@ -54,7 +76,9 @@ public class AuthService {
                        @Lazy AuthenticationManager authenticationManager,
                        JwtService jwtService,
                        BanRepository banRepository,
-                       CityRepository cityRepository) {
+                       CityRepository cityRepository,
+                       VerificationTokenRepository verificationTokenRepository,
+                       EmailService emailService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
@@ -62,10 +86,12 @@ public class AuthService {
         this.jwtService = jwtService;
         this.banRepository = banRepository;
         this.cityRepository = cityRepository;
+        this.verificationTokenRepository = verificationTokenRepository;
+        this.emailService = emailService;
     }
 
     @Transactional
-    public AuthResponse signup(SignupRequest request) {
+    public AuthMessageResponse signup(SignupRequest request) {
         if (userRepository.existsByEmailIgnoreCase(request.email())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already in use");
         }
@@ -97,29 +123,46 @@ public class AuthService {
         user.setProfileImageUrl(request.profileImageUrl() != null ? request.profileImageUrl().trim() : null);
         user.setNationality(request.nationality() != null ? request.nationality().trim() : null);
         user.setCity(resolveCityForNationality(user.getNationality(), request.cityId()));
+        user.setEmailVerified(false);
+        user.setFailedLoginAttempts(0);
+        user.setLockedUntil(null);
         user.setRoles(Set.of(userRole));
 
         User savedUser = userRepository.save(user);
-        UserDetails principal = toUserDetails(savedUser);
-        String token = jwtService.generateToken(principal);
+        String token = createToken(savedUser, TOKEN_TYPE_EMAIL_VERIFICATION, EMAIL_VERIFICATION_EXPIRATION_MS);
+        String verificationLink = buildFrontendLink("/verify-email", token);
+        try {
+            emailService.sendVerificationEmail(savedUser.getEmail(), savedUser.getFirstName(), verificationLink);
+        } catch (MailException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Email service unavailable. Check SMTP credentials.");
+        }
 
-        return new AuthResponse(token, jwtService.getExpirationMs(), toUserSummary(savedUser));
+        return new AuthMessageResponse("Compte cree. Verifiez votre email avant de vous connecter.");
     }
 
     public AuthResponse signin(LoginRequest request) {
+        Optional<User> candidate = findByIdentifier(request.identifier());
+        candidate.ifPresent(this::ensureAccountNotLocked);
+
         Authentication authentication;
         try {
             authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.identifier(), request.password())
             );
         } catch (BadCredentialsException ex) {
+            if (candidate.isPresent()) {
+                handleFailedSignin(candidate.get());
+            }
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }
 
         UserDetails principal = (UserDetails) authentication.getPrincipal();
         User user = userRepository.findByUsernameIgnoreCase(principal.getUsername())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
+
+        resetFailedSigninState(user);
         ensureNotBanned(user);
+        ensureEmailVerified(user);
 
         String token = jwtService.generateToken(principal);
         return new AuthResponse(token, jwtService.getExpirationMs(), toUserSummary(user));
@@ -157,6 +200,11 @@ public class AuthService {
         if (user.getAuthProvider() == null || user.getAuthProvider().isBlank()) {
             user.setAuthProvider(provider.toUpperCase(Locale.ROOT));
         }
+        if (!Boolean.TRUE.equals(user.getEmailVerified())) {
+            user.setEmailVerified(true);
+        }
+        user.setFailedLoginAttempts(0);
+        user.setLockedUntil(null);
         userRepository.save(user);
 
         UserDetails principal = toUserDetails(user);
@@ -198,6 +246,81 @@ public class AuthService {
         userRepository.save(user);
     }
 
+    @Transactional
+    public AuthMessageResponse verifyEmail(String token) {
+        VerificationToken verificationToken = verificationTokenRepository
+                .findByTokenAndTokenType(token, TOKEN_TYPE_EMAIL_VERIFICATION)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Verification token is invalid"));
+
+        validateUsableToken(verificationToken, "Verification token is expired");
+
+        User user = verificationToken.getUser();
+        user.setEmailVerified(true);
+        userRepository.save(user);
+
+        verificationToken.setUsedAt(new Date());
+        verificationTokenRepository.save(verificationToken);
+
+        return new AuthMessageResponse("Email verifie avec succes. Vous pouvez vous connecter.");
+    }
+
+    @Transactional
+    public AuthMessageResponse resendVerification(ResendVerificationRequest request) {
+        String normalizedIdentifier = request.identifier().trim().toLowerCase(Locale.ROOT);
+        userRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(normalizedIdentifier, normalizedIdentifier)
+                .ifPresent(user -> {
+                    if (Boolean.TRUE.equals(user.getEmailVerified())) {
+                        return;
+                    }
+                    String token = createToken(user, TOKEN_TYPE_EMAIL_VERIFICATION, EMAIL_VERIFICATION_EXPIRATION_MS);
+                    String verificationLink = buildFrontendLink("/verify-email", token);
+                    try {
+                        emailService.sendVerificationEmail(user.getEmail(), user.getFirstName(), verificationLink);
+                    } catch (MailException ex) {
+                        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Email service unavailable. Check SMTP credentials.");
+                    }
+                });
+
+        return new AuthMessageResponse("Si cet email existe, un lien de verification a ete envoye.");
+    }
+
+    @Transactional
+    public AuthMessageResponse forgotPassword(ForgotPasswordRequest request) {
+        String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
+        userRepository.findByEmailIgnoreCase(normalizedEmail)
+                .ifPresent(user -> {
+                    String token = createToken(user, TOKEN_TYPE_RESET_PASSWORD, RESET_PASSWORD_EXPIRATION_MS);
+                    String resetLink = buildFrontendLink("/reset-password", token);
+                    try {
+                        emailService.sendPasswordResetEmail(user.getEmail(), user.getFirstName(), resetLink);
+                    } catch (MailException ex) {
+                        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Email service unavailable. Check SMTP credentials.");
+                    }
+                });
+
+        return new AuthMessageResponse("Si cet email existe, un lien de reinitialisation a ete envoye.");
+    }
+
+    @Transactional
+    public AuthMessageResponse resetPassword(ResetPasswordRequest request) {
+        VerificationToken verificationToken = verificationTokenRepository
+                .findByTokenAndTokenType(request.token(), TOKEN_TYPE_RESET_PASSWORD)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Reset token is invalid"));
+
+        validateUsableToken(verificationToken, "Reset token is expired");
+
+        User user = verificationToken.getUser();
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
+        user.setFailedLoginAttempts(0);
+        user.setLockedUntil(null);
+        userRepository.save(user);
+
+        verificationToken.setUsedAt(new Date());
+        verificationTokenRepository.save(verificationToken);
+
+        return new AuthMessageResponse("Mot de passe reinitialise avec succes.");
+    }
+
     private User createSocialUser(String email, String firstName, String lastName, String provider) {
         Role userRole = roleRepository.findByName(DEFAULT_ROLE)
                 .orElseGet(() -> {
@@ -218,6 +341,9 @@ public class AuthService {
         user.setArtisanRequestPending(false);
         user.setArtisanRequestedAt(null);
         user.setAuthProvider(provider.toUpperCase(Locale.ROOT));
+        user.setEmailVerified(true);
+        user.setFailedLoginAttempts(0);
+        user.setLockedUntil(null);
         user.setRoles(Set.of(userRole));
         return userRepository.save(user);
     }
@@ -268,13 +394,104 @@ public class AuthService {
                 .build();
     }
 
+    private Optional<User> findByIdentifier(String identifier) {
+        String normalized = identifier == null ? "" : identifier.trim().toLowerCase(Locale.ROOT);
+        if (normalized.isBlank()) {
+            return Optional.empty();
+        }
+        return userRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(normalized, normalized);
+    }
+
+    private void handleFailedSignin(User user) {
+        if (!"LOCAL".equalsIgnoreCase(user.getAuthProvider())) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
+        }
+
+        int attempts = user.getFailedLoginAttempts() == null ? 0 : user.getFailedLoginAttempts();
+        attempts++;
+
+        if (attempts >= MAX_FAILED_ATTEMPTS) {
+            user.setFailedLoginAttempts(0);
+            user.setLockedUntil(new Date(System.currentTimeMillis() + LOGIN_LOCK_DURATION_MS));
+            userRepository.save(user);
+            throw new ResponseStatusException(HttpStatus.LOCKED, "3 tentatives invalides. Compte verrouille 15 minutes.");
+        }
+
+        user.setFailedLoginAttempts(attempts);
+        userRepository.save(user);
+        int remaining = MAX_FAILED_ATTEMPTS - attempts;
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Mot de passe invalide. Tentatives restantes: " + remaining);
+    }
+
+    private void ensureAccountNotLocked(User user) {
+        Date lockedUntil = user.getLockedUntil();
+        if (lockedUntil == null) {
+            return;
+        }
+
+        Date now = new Date();
+        if (lockedUntil.after(now)) {
+            throw new ResponseStatusException(HttpStatus.LOCKED, "Compte temporairement verrouille. Reessayez plus tard.");
+        }
+
+        user.setLockedUntil(null);
+        user.setFailedLoginAttempts(0);
+        userRepository.save(user);
+    }
+
+    private void resetFailedSigninState(User user) {
+        if ((user.getFailedLoginAttempts() != null && user.getFailedLoginAttempts() > 0) || user.getLockedUntil() != null) {
+            user.setFailedLoginAttempts(0);
+            user.setLockedUntil(null);
+            userRepository.save(user);
+        }
+    }
+
+    private void ensureEmailVerified(User user) {
+        if (!Boolean.TRUE.equals(user.getEmailVerified())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Email non verifie. Verifiez votre boite mail.");
+        }
+    }
+
+    private String createToken(User user, String tokenType, long expirationMs) {
+        Date now = new Date();
+        List<VerificationToken> previousTokens = verificationTokenRepository.findByUserAndTokenTypeAndUsedAtIsNull(user, tokenType);
+        for (VerificationToken existing : previousTokens) {
+            existing.setUsedAt(now);
+        }
+        verificationTokenRepository.saveAll(previousTokens);
+
+        VerificationToken token = new VerificationToken();
+        token.setToken(UUID.randomUUID().toString());
+        token.setTokenType(tokenType);
+        token.setUser(user);
+        token.setCreatedAt(now);
+        token.setExpiresAt(new Date(now.getTime() + expirationMs));
+        token.setUsedAt(null);
+        return verificationTokenRepository.save(token).getToken();
+    }
+
+    private void validateUsableToken(VerificationToken token, String expiredMessage) {
+        if (token.getUsedAt() != null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Token already used");
+        }
+        if (token.getExpiresAt() == null || !token.getExpiresAt().after(new Date())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, expiredMessage);
+        }
+    }
+
+    private String buildFrontendLink(String path, String token) {
+        String safeToken = URLEncoder.encode(token, StandardCharsets.UTF_8);
+        return frontendBaseUrl + path + "?token=" + safeToken;
+    }
+
     private City resolveCityForNationality(String nationality, Integer cityId) {
         boolean tunisian = isTunisiaNationality(nationality);
         if (!tunisian) {
             return null;
         }
         if (cityId == null) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "cityId is required for Tunisian users");
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, "cityId is required for Tunisian users");
         }
         return cityRepository.findById(cityId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid cityId"));

@@ -39,9 +39,29 @@
       @if (isAdmin()) {
         <a class="signup-btn" routerLink="/admin/dashboard">Backoffice</a>
       }
-      <a class="connexion-btn" routerLink="/profile">Mon profil</a>
-      <span class="nav-user">Salut, {{ currentUser()?.firstName || currentUser()?.username }}</span>
-      <button type="button" class="logout-btn" (click)="logout()">Déconnexion</button>
+      <div class="user-menu-wrap" (click)="$event.stopPropagation()">
+        <button type="button" class="user-chip" (click)="toggleUserMenu($event)">
+          @if (currentUser()?.profileImageUrl) {
+            <img class="user-avatar" [src]="currentUser()!.profileImageUrl!" alt="Photo profil" />
+          } @else {
+            <span class="user-avatar fallback">{{ (currentUser()?.firstName || currentUser()?.username || 'U').charAt(0).toUpperCase() }}</span>
+          }
+          <span class="nav-user">Salut, {{ currentUser()?.firstName || currentUser()?.username }}</span>
+          <svg class="user-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </button>
+
+        @if (isUserMenuOpen()) {
+          <div class="user-dropdown">
+            <a class="user-dd-item" routerLink="/profile" (click)="closeUserMenu()">Mon profil</a>
+            @if (isAdmin()) {
+              <a class="user-dd-item" routerLink="/admin/dashboard" (click)="closeUserMenu()">Backoffice admin</a>
+            }
+            <button type="button" class="user-dd-item danger" (click)="logout()">Déconnexion</button>
+          </div>
+        }
+      </div>
     }
 
     <button type="button" class="theme-toggle-btn" (click)="toggleTheme()" aria-label="Basculer le thème" title="Basculer le thème">

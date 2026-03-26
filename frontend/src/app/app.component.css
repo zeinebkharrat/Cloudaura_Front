@@ -152,10 +152,91 @@
 .nav-user {
   font-size: 0.83rem;
   color: var(--text-muted);
-  max-width: 150px;
+  max-width: 180px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.user-menu-wrap {
+  position: relative;
+}
+
+.user-chip {
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-color);
+  border-radius: 999px;
+  padding: 6px 10px 6px 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.22s ease;
+}
+
+.user-chip:hover {
+  border-color: rgba(232, 0, 45, 0.45);
+  box-shadow: 0 8px 20px rgba(232, 0, 45, 0.15);
+}
+
+.user-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.user-avatar.fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #ff4b4b, var(--tunisia-red));
+  color: #fff;
+  font-weight: 700;
+}
+
+.user-chevron {
+  width: 14px;
+  height: 14px;
+  opacity: 0.8;
+}
+
+.user-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 190px;
+  border-radius: 14px;
+  border: 1px solid var(--glass-border);
+  background: rgba(14, 20, 28, 0.96);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.32);
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+  z-index: 120;
+}
+
+.user-dd-item {
+  width: 100%;
+  text-decoration: none;
+  background: transparent;
+  border: 0;
+  color: var(--text-color);
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: left;
+  font-size: 0.87rem;
+  cursor: pointer;
+}
+
+.user-dd-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.user-dd-item.danger {
+  color: #ff9db0;
 }
 
 .nav-pill {

@@ -29,7 +29,10 @@
 
 /* The user profile card from the screenshot */
 .sb-user { display:flex; align-items:center; gap:14px; padding:14px; border-radius:16px; background:#181820; border:1px solid rgba(255,255,255,.03); margin-bottom:12px; }
+.sb-user { width:100%; text-align:left; cursor:pointer; transition:all .2s ease; }
+.sb-user:hover { border-color:rgba(230,57,70,.35); background:#1d1f29; box-shadow:0 8px 16px rgba(230,57,70,.12); }
 .sb-av { width:42px; height:42px; background:#ff2a55; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Outfit',sans-serif; font-weight:800; font-size:1.1rem; color:#fff; flex-shrink:0; box-shadow:0 4px 12px rgba(255,42,85,.3); }
+.sb-av-img { width:42px; height:42px; border-radius:50%; object-fit:cover; border:1px solid rgba(255,255,255,.22); flex-shrink:0; box-shadow:0 4px 12px rgba(255,42,85,.2); }
 .sb-uinfo { display:flex; flex-direction:column; }
 .sb-uname { font-family:'Outfit',sans-serif; font-weight:700; font-size:.95rem; color:#fff; letter-spacing:.02em; line-height:1.2; }
 .sb-urole { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#ff5c7c; line-height:1; margin-top:4px; }

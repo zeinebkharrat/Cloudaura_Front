@@ -20,7 +20,9 @@ export class SignInComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
 
   readonly isLoading = signal(false);
+  readonly isResendingVerification = signal(false);
   readonly formError = signal<string | null>(null);
+  readonly formSuccess = signal<string | null>(null);
   readonly socialProviders = signal({ google: false, github: false });
 
   readonly form = this.fb.nonNullable.group({
@@ -72,6 +74,7 @@ export class SignInComponent implements OnInit {
 
     this.isLoading.set(true);
     this.formError.set(null);
+    this.formSuccess.set(null);
 
     this.authService.signin(this.form.getRawValue()).subscribe({
       next: () => {
@@ -87,6 +90,29 @@ export class SignInComponent implements OnInit {
         this.formError.set(extractApiErrorMessage(error, 'Connexion impossible. Vérifiez vos identifiants.'));
       },
       complete: () => this.isLoading.set(false),
+    });
+  }
+
+  resendVerificationEmail() {
+    const identifier = this.form.controls.identifier.value.trim();
+    if (!identifier) {
+      this.formError.set('Saisissez email ou username pour renvoyer le lien de verification.');
+      return;
+    }
+    if (this.isResendingVerification()) {
+      return;
+    }
+
+    this.isResendingVerification.set(true);
+    this.formError.set(null);
+    this.formSuccess.set(null);
+
+    this.authService.resendVerification({ identifier }).subscribe({
+      next: (response) => this.formSuccess.set(response.message),
+      error: (error: HttpErrorResponse) => {
+        this.formError.set(extractApiErrorMessage(error, 'Impossible de renvoyer le lien de verification.'));
+      },
+      complete: () => this.isResendingVerification.set(false),
     });
   }
 

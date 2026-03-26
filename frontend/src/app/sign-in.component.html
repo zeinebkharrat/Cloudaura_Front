@@ -37,6 +37,16 @@
       @if (formError()) {
         <div class="auth-error">{{ formError() }}</div>
       }
+      @if (formSuccess()) {
+        <div class="auth-success">{{ formSuccess() }}</div>
+      }
+
+      <div class="auth-links-row">
+        <a routerLink="/forgot-password">Mot de passe oublié ?</a>
+        <button type="button" class="inline-link-btn" (click)="resendVerificationEmail()" [disabled]="isResendingVerification()">
+          {{ isResendingVerification() ? 'Envoi...' : 'Renvoyer email de verification' }}
+        </button>
+      </div>
 
       <button type="submit" class="auth-submit" [disabled]="isLoading()">
         {{ isLoading() ? 'Connexion...' : 'Se connecter' }}

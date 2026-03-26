@@ -31,6 +31,7 @@ export class SignUpComponent {
   readonly isLoading = signal(false);
   readonly isUploadingImage = signal(false);
   readonly formError = signal<string | null>(null);
+  readonly formSuccess = signal<string | null>(null);
   readonly uploadedImageUrl = signal<string | null>(null);
   readonly cities = signal<CityOption[]>([]);
   readonly nationalities = signal<string[]>([]);
@@ -75,6 +76,7 @@ export class SignUpComponent {
 
     this.isLoading.set(true);
     this.formError.set(null);
+    this.formSuccess.set(null);
 
     const { confirmPassword: _confirmPassword, ...payload } = this.form.getRawValue();
     const isTunisia = this.isTunisiaNationality(payload.nationality);
@@ -91,7 +93,12 @@ export class SignUpComponent {
     };
 
     this.authService.signup(finalPayload).subscribe({
-      next: () => this.router.navigateByUrl('/'),
+      next: (response) => {
+        this.formSuccess.set(response.message || 'Compte cree. Verifiez votre email.');
+        setTimeout(() => {
+          this.router.navigateByUrl('/signin');
+        }, 1200);
+      },
       error: (error: HttpErrorResponse) => {
         this.isLoading.set(false);
         this.formError.set(extractApiErrorMessage(error, 'Inscription impossible. Veuillez réessayer.'));

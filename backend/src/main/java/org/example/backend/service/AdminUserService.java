@@ -122,10 +122,10 @@ public class AdminUserService {
 
         boolean permanent = Boolean.TRUE.equals(request.permanent());
         if (!permanent && request.expiresAt() == null) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "expiresAt is required for temporary bans");
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, "expiresAt is required for temporary bans");
         }
         if (permanent && request.expiresAt() != null) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "expiresAt must be omitted for permanent bans");
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, "expiresAt must be omitted for permanent bans");
         }
 
         deactivateActiveBan(user);
@@ -171,7 +171,7 @@ public class AdminUserService {
             return null;
         }
         if (cityId == null) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "cityId is required for Tunisian users");
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, "cityId is required for Tunisian users");
         }
         return cityRepository.findById(cityId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid cityId"));

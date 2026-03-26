@@ -20,6 +20,10 @@ export interface AuthResponse {
   user: UserProfile;
 }
 
+export interface AuthMessageResponse {
+  message: string;
+}
+
 export interface SignInPayload {
   identifier: string;
   password: string;
@@ -85,6 +89,19 @@ export interface ProfileUpdatePayload {
 export interface ChangePasswordPayload {
   currentPassword: string;
   newPassword: string;
+}
+
+export interface ForgotPasswordPayload {
+  email: string;
+}
+
+export interface ResetPasswordPayload {
+  token: string;
+  newPassword: string;
+}
+
+export interface ResendVerificationPayload {
+  identifier: string;
 }
 
 export interface CityOption {

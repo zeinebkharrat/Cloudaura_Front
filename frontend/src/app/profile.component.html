@@ -1,4 +1,7 @@
 <section class="profile-page">
+  <div class="auth-bg-orb auth-bg-orb-left"></div>
+  <div class="auth-bg-orb auth-bg-orb-right"></div>
+
   <article class="profile-card glass-panel">
     <h1>Mon profil</h1>
     <p class="subtitle">Mettez a jour vos informations personnelles et votre mot de passe.</p>
@@ -20,7 +23,8 @@
         }
 
         <div class="upload-row">
-          <input type="file" accept="image/*" (change)="uploadImage($event)" [disabled]="uploadBusy()" />
+          <label class="upload-btn" for="profile-upload">{{ uploadBusy() ? 'Upload...' : 'Uploader une photo' }}</label>
+          <input id="profile-upload" type="file" accept="image/*" (change)="uploadImage($event)" [disabled]="uploadBusy()" />
           <span class="muted">{{ uploadBusy() ? 'Upload...' : 'Ajoutez une image claire pour votre profil.' }}</span>
         </div>
       </div>
