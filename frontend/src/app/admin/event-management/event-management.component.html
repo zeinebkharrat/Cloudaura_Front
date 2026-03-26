@@ -1,1 +1,102 @@
-<p>event-management works!</p>
+<div class="admin-wrapper">
+  <div class="header-content">
+    <div class="text-group">
+      <h1 class="page-title">Event Management</h1>
+      <p class="page-subtitle">Manage and monitor all tourism activities</p>
+    </div>
+    <button class="btn-add-main" (click)="openAddModal()">
+      <span>+</span> New Event
+    </button>
+  </div>
+
+  <div class="table-container shadow-lg">
+    <table class="custom-table">
+      <thead>
+        <tr>
+          <th>Event Details</th>
+          <th>Category</th>
+          <th>Location</th>
+          <th>Schedule</th>
+          <th class="text-right">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let ev of events">
+          <td class="primary-cell">{{ ev.title }}</td>
+          <td><span class="type-badge">{{ ev.eventType }}</span></td>
+          <td class="location-text">📍 {{ ev.venue }}</td>
+          <td class="date-text">
+            {{ ev.startDate | date:'MMM d' }} — {{ ev.endDate | date:'MMM d, y' }}
+          </td>
+          <td class="text-right">
+            <div class="btn-group-actions">
+              <button class="icon-btn edit-btn" (click)="openEditModal(ev)" title="Edit">
+                ✏️
+              </button>
+              <button class="icon-btn delete-btn" (click)="deleteEvent(ev.eventId)" title="Delete">
+                🗑️
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div *ngIf="events.length === 0" class="no-data">
+      <p>No events found. Start by creating a new one.</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" *ngIf="showModal" (click)="closeModal()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3>{{ isEditMode ? 'Update Event' : 'New Event' }}</h3>
+      <button class="close-x" (click)="closeModal()">&times;</button>
+    </div>
+
+    <form (ngSubmit)="saveEvent()" #eventForm="ngForm" class="modal-body">
+      <div class="error-msg" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+      <div class="input-stack">
+        <label>Event Title</label>
+        <input type="text" name="title" [(ngModel)]="currentEvent.title" 
+               required minlength="3" placeholder="e.g. Sahara Festival" #t="ngModel">
+        <small class="hint" *ngIf="t.touched && t.invalid">Minimum 3 characters required</small>
+      </div>
+
+      <div class="input-row">
+        <div class="input-stack flex-1">
+          <label>Location</label>
+          <input type="text" name="venue" [(ngModel)]="currentEvent.venue" required minlength="3">
+        </div>
+        <div class="input-stack flex-1">
+          <label>Category</label>
+          <select name="type" [(ngModel)]="currentEvent.eventType">
+            <option value="CULTURAL">Cultural</option>
+            <option value="SPORT">Sport</option>
+            <option value="FESTIVAL">Festival</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="input-row">
+        <div class="input-stack flex-1">
+          <label>Start Date</label>
+          <input type="date" name="startDate" [(ngModel)]="currentEvent.startDate" required>
+        </div>
+        <div class="input-stack flex-1">
+          <label>End Date</label>
+          <input type="date" name="endDate" [(ngModel)]="currentEvent.endDate" required>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-ghost" (click)="closeModal()">Cancel</button>
+        <button type="submit" class="btn-submit-action" [disabled]="eventForm.invalid">
+          {{ isEditMode ? 'Update Event' : 'Create Event' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
