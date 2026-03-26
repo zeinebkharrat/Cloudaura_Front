@@ -1,5 +1,5 @@
 <section class="page" *ngIf="!loading; else loadingTpl">
-  <button class="back-btn floating-back" type="button" (click)="goBack()" aria-label="Retour">←</button>
+  <button class="back-btn floating-back" type="button" (click)="goBack()" aria-label="Back">←</button>
   <div class="error" *ngIf="error">{{ error }}</div>
 
   <ng-container *ngIf="activity && !error">
@@ -8,33 +8,33 @@
         <img class="hero-image" [src]="heroImage" [alt]="activity.cityName" />
         <div class="hero-overlay"></div>
         <div class="hero-main">
-          <p class="kicker">Expérience touristique</p>
+          <p class="kicker">Tourist experience</p>
           <h1>{{ activity.name }}</h1>
-          <p class="description">{{ activity.description || 'Vivez une activité locale immersive.' }}</p>
+          <p class="description">{{ activity.description || 'Enjoy an immersive local activity.' }}</p>
           <div class="meta-grid">
             <div class="meta-item">
-              <span class="label">Ville</span>
+              <span class="label">City</span>
               <strong>{{ activity.cityName }}</strong>
             </div>
             <div class="meta-item">
               <span class="label">Type</span>
-              <strong>{{ activity.type || 'Activité touristique' }}</strong>
+              <strong>{{ activity.type || 'Tourist activity' }}</strong>
             </div>
             <div class="meta-item">
-              <span class="label">Prix</span>
+              <span class="label">Price</span>
               <strong>{{ activity.price | number: '1.2-2' }} TND</strong>
             </div>
           </div>
         </div>
       </div>
-      <a class="btn ghost" [routerLink]="['/city', activity.cityId]">Retour à la ville</a>
+      <a class="btn ghost" [routerLink]="['/city', activity.cityId]">Back to city</a>
     </article>
 
     <article class="card animate-in delay-1">
-      <h2>Réserver cette activité</h2>
+      <h2>Book this activity</h2>
       <form (ngSubmit)="submitReservation()" #reservationForm="ngForm" class="form">
         <label>
-          Nombre de participants
+          Number of participants
           <input
             type="number"
             name="numberOfPeople"
@@ -45,7 +45,7 @@
         </label>
 
         <label>
-          Date de réservation
+          Reservation date
           <input
             type="date"
             name="reservationDate"
@@ -75,12 +75,12 @@
         </label>
 
         <button class="btn" [disabled]="reservationForm.invalid || submitting" type="submit">
-          {{ submitting ? 'Envoi...' : 'Confirmer la réservation' }}
+          {{ submitting ? 'Sending...' : 'Confirm booking' }}
         </button>
       </form>
 
       <p class="success" *ngIf="created">
-        Réservation #{{ created.reservationId }} créée, statut: {{ created.status }}.
+        Booking #{{ created.reservationId }} created, status: {{ created.status }}.
       </p>
     </article>
   </ng-container>
@@ -88,6 +88,6 @@
 
 <ng-template #loadingTpl>
   <section class="page">
-    <div class="card">Chargement de l'activité...</div>
+    <div class="card">Loading activity...</div>
   </section>
 </ng-template>

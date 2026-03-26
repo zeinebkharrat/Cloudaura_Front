@@ -29,19 +29,19 @@ export class CityExploreComponent implements OnInit, OnDestroy {
   heroImage = computed(() => this.currentMedia()?.url ?? 'assets/sidi_bou.png');
   hasMultipleImages = computed(() => this.media().length > 1);
   currentCaption = computed(() => {
-    const cityName = this.details()?.city.name ?? 'cette destination';
+    const cityName = this.details()?.city.name ?? 'this destination';
     const media = this.currentMedia();
     if (!media) {
-      return `Découvrez ${cityName} et ses lieux iconiques.`;
+      return `Discover ${cityName} and its iconic spots.`;
     }
 
     if (media.mediaType === 'PANORAMA') {
-      return `Vue panoramique immersive de ${cityName}.`;
+      return `Immersive panoramic view of ${cityName}.`;
     }
     if (media.mediaType === 'VIDEO') {
-      return `Instant vivant de ${cityName}, entre culture et atmosphère locale.`;
+      return `A vivid moment in ${cityName}, blending culture and local atmosphere.`;
     }
-    return `Carte postale touristique de ${cityName}.`;
+    return `Postcard-perfect scene from ${cityName}.`;
   });
 
   private sliderTimer: ReturnType<typeof setInterval> | null = null;
@@ -55,7 +55,7 @@ export class CityExploreComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     const cityId = Number(this.route.snapshot.paramMap.get('cityId'));
     if (!cityId) {
-      this.error.set('Ville invalide');
+      this.error.set('Invalid city');
       this.loading.set(false);
       return;
     }
@@ -68,7 +68,7 @@ export class CityExploreComponent implements OnInit, OnDestroy {
         this.loading.set(false);
       },
       error: (err) => {
-        this.error.set(err?.error?.message ?? 'Impossible de charger cette ville');
+        this.error.set(err?.error?.message ?? 'Unable to load this city');
         this.loading.set(false);
       },
     });

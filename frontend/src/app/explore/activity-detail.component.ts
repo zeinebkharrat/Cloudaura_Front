@@ -39,7 +39,7 @@ export class ActivityDetailComponent {
     const id = Number(this.route.snapshot.paramMap.get('activityId'));
     if (!id) {
       this.loading = false;
-      this.error = 'Activité introuvable.';
+      this.error = 'Activity not found.';
       return;
     }
 
@@ -51,7 +51,7 @@ export class ActivityDetailComponent {
       },
       error: (err) => {
         this.loading = false;
-        this.error = err?.error?.message || 'Impossible de charger cette activité.';
+        this.error = err?.error?.message || 'Unable to load this activity.';
       },
     });
   }
@@ -84,8 +84,8 @@ export class ActivityDetailComponent {
           this.submitting = false;
           Swal.fire({
             icon: 'success',
-            title: 'Réservation envoyée',
-            text: `Référence #${res.reservationId}`,
+            title: 'Booking sent',
+            text: `Reference #${res.reservationId}`,
             confirmButtonColor: '#e63946',
           });
         },
@@ -93,8 +93,8 @@ export class ActivityDetailComponent {
           this.submitting = false;
           Swal.fire({
             icon: 'error',
-            title: 'Erreur',
-            text: err?.error?.message || 'La réservation a échoué.',
+            title: 'Error',
+            text: err?.error?.message || 'Booking failed.',
             confirmButtonColor: '#e63946',
           });
         },

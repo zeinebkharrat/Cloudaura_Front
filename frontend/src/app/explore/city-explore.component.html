@@ -1,23 +1,23 @@
 @if (loading()) {
-  <section class="city-page"><p class="state">Chargement de la ville...</p></section>
+  <section class="city-page"><p class="state">Loading city...</p></section>
 } @else if (error()) {
   <section class="city-page"><p class="state error">{{ error() }}</p></section>
 } @else {
   @if (details(); as vm) {
   <section class="city-page">
-    <button class="back-btn floating-back" type="button" (click)="goBack()" aria-label="Retour">←</button>
+    <button class="back-btn floating-back" type="button" (click)="goBack()" aria-label="Back">←</button>
     <article class="hero-card animate-in">
       <div class="hero-visual" (click)="onHeroClick($event)">
         <img class="hero-image" [src]="heroImage()" [alt]="vm.city.name" />
         <div class="hero-gradient"></div>
         <div class="hero-caption hero-overlay-content">
-          <p class="chip">Destination Tunisie</p>
+          <p class="chip">Tunisia Destination</p>
           <h1>{{ vm.city.name }}</h1>
-          <p class="hero-description">{{ vm.city.description || 'Découvrez cette ville tunisienne et ses expériences uniques.' }}</p>
+          <p class="hero-description">{{ vm.city.description || 'Discover this Tunisian city and its unique experiences.' }}</p>
           <p class="hero-subtext">{{ currentCaption() }}</p>
           <div class="hero-actions">
-            <button class="btn" type="button" (click)="scrollToSection('restaurants'); $event.stopPropagation()">Explorer les restaurants</button>
-            <button class="btn ghost" type="button" (click)="scrollToSection('activities'); $event.stopPropagation()">Voir les activités</button>
+            <button class="btn" type="button" (click)="scrollToSection('restaurants'); $event.stopPropagation()">Explore restaurants</button>
+            <button class="btn ghost" type="button" (click)="scrollToSection('activities'); $event.stopPropagation()">See activities</button>
           </div>
         </div>
         @if (hasMultipleImages()) {
@@ -30,8 +30,8 @@
 
     <section class="block animate-in delay-1">
       <div class="block-head with-link">
-        <h2>Galerie panoramique</h2>
-        <span class="muted">Clique à droite/gauche de la photo principale</span>
+        <h2>Panoramic Gallery</h2>
+        <span class="muted">Click right/left on the main photo</span>
       </div>
       <div class="gallery">
         @for (media of vm.media; track media.mediaId) {
@@ -39,14 +39,14 @@
             <img [src]="media.url" [alt]="vm.city.name" loading="lazy" />
           </figure>
         } @empty {
-          <p class="muted">Aucune image disponible pour le moment.</p>
+          <p class="muted">No images available yet.</p>
         }
       </div>
     </section>
 
     <section id="restaurants" class="block animate-in delay-2">
       <div class="block-head">
-        <h2>Restaurants de {{ vm.city.name }}</h2>
+        <h2>{{ vm.city.name }} restaurants</h2>
       </div>
       <div class="list-grid">
         @for (restaurant of vm.restaurants; track restaurant.restaurantId) {
@@ -55,21 +55,21 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v8"></path><path d="M12 3v8"></path><path d="M10 11v10"></path><path d="M17 3v18"></path><path d="M17 10c2 0 4-2 4-4V3"></path></svg>
             </span>
             <h3>{{ restaurant.name }}</h3>
-            <p>{{ restaurant.description || ('Cuisine: ' + (restaurant.cuisineType || 'Locale')) }}</p>
+            <p>{{ restaurant.description || ('Cuisine: ' + (restaurant.cuisineType || 'Local')) }}</p>
             <div class="row">
-              <span class="muted">{{ restaurant.cuisineType || 'Cuisine locale' }}</span>
-              <a class="btn" [routerLink]="['/restaurants', restaurant.restaurantId]">Détails</a>
+              <span class="muted">{{ restaurant.cuisineType || 'Local cuisine' }}</span>
+              <a class="btn" [routerLink]="['/restaurants', restaurant.restaurantId]">Details</a>
             </div>
           </article>
         } @empty {
-          <p class="muted">Aucun restaurant disponible.</p>
+          <p class="muted">No restaurants available.</p>
         }
       </div>
     </section>
 
     <section id="activities" class="block animate-in delay-3">
       <div class="block-head">
-        <h2>Activités de {{ vm.city.name }}</h2>
+        <h2>{{ vm.city.name }} activities</h2>
       </div>
       <div class="list-grid">
         @for (activity of vm.activities; track activity.activityId) {
@@ -78,14 +78,14 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="2"></circle></svg>
             </span>
             <h3>{{ activity.name }}</h3>
-            <p>{{ activity.description || ('Type: ' + (activity.type || 'Activité touristique')) }}</p>
+            <p>{{ activity.description || ('Type: ' + (activity.type || 'Tourist activity')) }}</p>
             <div class="row">
-              <span>Prix: {{ activity.price ?? '—' }} DT</span>
-              <a class="btn" [routerLink]="['/activities', activity.activityId]">Détails</a>
+              <span>Price: {{ activity.price ?? '—' }} DT</span>
+              <a class="btn" [routerLink]="['/activities', activity.activityId]">Details</a>
             </div>
           </article>
         } @empty {
-          <p class="muted">Aucune activité disponible.</p>
+          <p class="muted">No activities available.</p>
         }
       </div>
     </section>

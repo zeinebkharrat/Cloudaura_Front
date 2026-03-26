@@ -31,7 +31,7 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
     const id = Number(this.route.snapshot.paramMap.get('restaurantId'));
     if (!id) {
       this.loading = false;
-      this.error = 'Restaurant introuvable.';
+      this.error = 'Restaurant not found.';
       return;
     }
 
@@ -47,7 +47,7 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
       },
       error: (err) => {
         this.loading = false;
-        this.error = err?.error?.message || 'Impossible de charger ce restaurant.';
+        this.error = err?.error?.message || 'Unable to load this restaurant.';
       },
     });
   }
