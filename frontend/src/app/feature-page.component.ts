@@ -1,6 +1,8 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Data, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { EventService } from './event.service';
+import { Event } from './models/event';
 
 /** Rich content block for feature pages (front-only). */
 export interface FeatureBlock {
@@ -28,6 +30,7 @@ export type FeatureAccent =
 })
 export class FeaturePageComponent implements OnInit {
   private route = inject(ActivatedRoute);
+  private eventService = inject(EventService);
 
   kicker = '';
   title = '';
@@ -35,10 +38,14 @@ export class FeaturePageComponent implements OnInit {
   accent: FeatureAccent = 'coral';
   highlights: string[] = [];
   blocks: FeatureBlock[] = [];
+  events: Event[] = [];
+  isLoadingEvents = false;
+  selectedEvent: Event | null = null;
 
   ngOnInit(): void {
     this.applyData(this.route.snapshot.data);
     this.route.data.subscribe((d) => this.applyData(d));
+    this.loadEvents();
   }
 
   private applyData(d: Data): void {
@@ -59,4 +66,28 @@ export class FeaturePageComponent implements OnInit {
     const b = d['blocks'];
     this.blocks = Array.isArray(b) ? (b as FeatureBlock[]) : [];
   }
+
+  private loadEvents(): void {
+    this.isLoadingEvents = true;
+    this.eventService.getEvents().subscribe({
+      next: (events) => {
+        this.events = events;
+        this.isLoadingEvents = false;
+      },
+      error: (err) => {
+        console.error('Error loading events:', err);
+        this.isLoadingEvents = false;
+      }
+    });
+  }
+
+  selectEvent(event: Event): void {
+  this.selectedEvent = event;
+  document.body.classList.add('modal-open');
+}
+
+closeEventDetails(): void {
+  this.selectedEvent = null;
+  document.body.classList.remove('modal-open');
+}
 }

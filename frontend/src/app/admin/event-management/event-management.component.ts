@@ -14,11 +14,15 @@ import Swal from 'sweetalert2';
   styleUrl: './event-management.component.css'
 })
 export class EventManagementComponent implements OnInit {
+  isDarkMode = true;
   events: Event[] = [];
   showModal = false;
   isEditMode = false;
   uploading = false;
 
+  toggleDarkMode() {
+    this.isDarkMode = !this.isDarkMode;
+  }
   tunisiaCities: City[] = [
     { cityId: 1, name: 'Tunis' }, { cityId: 2, name: 'Ariana' }, { cityId: 3, name: 'Ben Arous' },
     { cityId: 4, name: 'Manouba' }, { cityId: 5, name: 'Nabeul' }, { cityId: 6, name: 'Zaghouan' },

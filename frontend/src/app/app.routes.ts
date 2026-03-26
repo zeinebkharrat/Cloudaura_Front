@@ -185,45 +185,7 @@ export const routes: Routes = [
     path: 'evenements',
     component: FeaturePageComponent,
     data: {
-      kicker: 'Agenda',
-      accent: 'rose',
-      title: 'Événements',
-      description:
-        'Un calendrier vivant : festivals, célébrations, sport, tech et nature — pour participer et partager des moments forts.',
-      blocks: [
-        {
-          icon: '🎉',
-          title: 'Festivals & célébrations',
-          items: [
-            'Listes et calendriers des événements culturels, historiques et religieux.',
-            'Informations pratiques et lieux.',
-          ],
-        },
-        {
-          icon: '🏃',
-          title: 'Sport & innovation',
-          items: [
-            'Hackathons, marathons, randonnées et événements outdoor.',
-            'Encourager la participation et la visibilité des organisateurs.',
-          ],
-        },
-        {
-          icon: '📆',
-          title: 'Calendrier interactif',
-          items: [
-            'Vue calendrier avec filtres et recherche.',
-            'Filtres par thème, région et date.',
-          ],
-        },
-        {
-          icon: '🎫',
-          title: 'Participation & suivi',
-          items: [
-            'Inscriptions, présence et partage d’expériences post-événement.',
-            'Rappels et ajout au carnet de voyage.',
-          ],
-        },
-      ],
+    
     },
   },
   {
