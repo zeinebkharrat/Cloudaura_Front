@@ -84,7 +84,11 @@ public class EmailService {
         private void sendEmail(String toEmail, String subject, String plainText, String htmlText) {
                 MimeMessage message = mailSender.createMimeMessage();
                 try {
-                        MimeMessageHelper helper = new MimeMessageHelper(message, "UTF-8");
+                    MimeMessageHelper helper = new MimeMessageHelper(
+                            message,
+                            MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED,
+                            "UTF-8"
+                    );
                         helper.setFrom(fromAddress);
                         helper.setTo(toEmail);
                         helper.setSubject(subject);

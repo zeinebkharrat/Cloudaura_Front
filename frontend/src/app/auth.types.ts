@@ -109,3 +109,25 @@ export interface CityOption {
   name: string;
   region: string;
 }
+
+export interface AuditLogEntry {
+  id: number;
+  action: string;
+  actor: string;
+  targetUserId: number | null;
+  targetUserEmail: string | null;
+  ipAddress: string | null;
+  userAgent: string | null;
+  details: string;
+  createdAt: string;
+}
+
+export interface AuditLogPage {
+  content: AuditLogEntry[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+  first: boolean;
+  last: boolean;
+}

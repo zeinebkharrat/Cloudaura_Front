@@ -21,6 +21,7 @@ export class AdminLayoutComponent {
     { label: 'Activités',       icon: '📍', route: '/admin/activities' },
     { label: 'Événements',      icon: '📅', route: '/admin/events' },
     { label: 'Artisanat',       icon: '🏺', route: '/admin/crafts' },
+    { label: 'Logs d\'audit',   icon: '📋', route: '/admin/audit-logs' },
     { label: 'Utilisateurs',    icon: '👥', route: '/admin/users' },
     { label: 'Paramètres',      icon: '⚙️',  route: '/admin/settings' }
   ];

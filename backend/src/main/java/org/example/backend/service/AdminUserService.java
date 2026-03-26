@@ -20,6 +20,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -30,15 +32,18 @@ public class AdminUserService {
     private final RoleRepository roleRepository;
     private final BanRepository banRepository;
     private final CityRepository cityRepository;
+    private final AuditService auditService;
 
     public AdminUserService(UserRepository userRepository,
                             RoleRepository roleRepository,
                             BanRepository banRepository,
-                            CityRepository cityRepository) {
+                            CityRepository cityRepository,
+                            AuditService auditService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.banRepository = banRepository;
         this.cityRepository = cityRepository;
+        this.auditService = auditService;
     }
 
     public List<AdminUserResponse> listUsers(String query) {
@@ -59,6 +64,7 @@ public class AdminUserService {
     @Transactional
     public AdminUserResponse updateUser(Integer userId, AdminUserUpdateRequest request) {
         User user = getExistingUser(userId);
+        String previousEmail = user.getEmail();
         String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
         if (userRepository.existsByEmailIgnoreCaseAndUserIdNot(normalizedEmail, userId)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already in use");
@@ -73,7 +79,20 @@ public class AdminUserService {
         user.setProfileImageUrl(request.profileImageUrl() != null ? request.profileImageUrl().trim() : null);
         user.setStatus(request.status().trim().toUpperCase(Locale.ROOT));
 
-        return toAdminUserResponse(userRepository.save(user));
+        User saved = userRepository.save(user);
+        if (!normalizedEmail.equalsIgnoreCase(previousEmail)) {
+            auditService.log(
+                AuditService.ACTION_EMAIL_CHANGE_ADMIN,
+                saved,
+                Map.of(
+                    "oldEmail", previousEmail,
+                    "newEmail", normalizedEmail,
+                    "source", "admin-update"
+                )
+            );
+        }
+
+        return toAdminUserResponse(saved);
     }
 
     @Transactional
@@ -128,7 +147,7 @@ public class AdminUserService {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, "expiresAt must be omitted for permanent bans");
         }
 
-        deactivateActiveBan(user);
+        Ban previousBan = deactivateActiveBan(user);
 
         Ban ban = new Ban();
         ban.setUser(user);
@@ -138,13 +157,33 @@ public class AdminUserService {
         ban.setIsActive(true);
         banRepository.save(ban);
 
+        Map<String, Object> details = new HashMap<>();
+        details.put("reason", request.reason().trim());
+        details.put("permanent", permanent);
+        details.put("expiresAt", request.expiresAt());
+        details.put("closedPreviousBan", previousBan != null);
+
+        auditService.log(
+            AuditService.ACTION_BAN_USER,
+            user,
+            details
+        );
+
         return toAdminUserResponse(user);
     }
 
     @Transactional
     public AdminUserResponse unbanUser(Integer userId) {
         User user = getExistingUser(userId);
-        deactivateActiveBan(user);
+        Ban deactivatedBan = deactivateActiveBan(user);
+        Map<String, Object> details = new HashMap<>();
+        details.put("hadActiveBan", deactivatedBan != null);
+        details.put("previousReason", deactivatedBan != null ? deactivatedBan.getReason() : null);
+        auditService.log(
+            AuditService.ACTION_UNBAN_USER,
+            user,
+            details
+        );
         return toAdminUserResponse(user);
     }
 
@@ -157,12 +196,13 @@ public class AdminUserService {
         return user.getRoles().stream().map(Role::getName).anyMatch(roleName::equals);
     }
 
-    private void deactivateActiveBan(User user) {
-        banRepository.findTopByUserAndIsActiveTrueOrderByCreatedAtDesc(user)
-                .ifPresent(existing -> {
-                    existing.setIsActive(false);
-                    banRepository.save(existing);
-                });
+    private Ban deactivateActiveBan(User user) {
+        Ban existing = banRepository.findTopByUserAndIsActiveTrueOrderByCreatedAtDesc(user).orElse(null);
+        if (existing == null) {
+            return null;
+        }
+        existing.setIsActive(false);
+        return banRepository.save(existing);
     }
 
     private City resolveCityForNationality(String nationality, Integer cityId) {

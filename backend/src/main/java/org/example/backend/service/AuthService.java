@@ -38,9 +38,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -66,6 +68,7 @@ public class AuthService {
     private final CityRepository cityRepository;
     private final VerificationTokenRepository verificationTokenRepository;
     private final EmailService emailService;
+    private final AuditService auditService;
 
     @Value("${app.frontend.base-url:http://localhost:4200}")
     private String frontendBaseUrl;
@@ -78,7 +81,8 @@ public class AuthService {
                        BanRepository banRepository,
                        CityRepository cityRepository,
                        VerificationTokenRepository verificationTokenRepository,
-                       EmailService emailService) {
+                       EmailService emailService,
+                       AuditService auditService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
@@ -88,6 +92,7 @@ public class AuthService {
         this.cityRepository = cityRepository;
         this.verificationTokenRepository = verificationTokenRepository;
         this.emailService = emailService;
+        this.auditService = auditService;
     }
 
     @Transactional
@@ -215,6 +220,7 @@ public class AuthService {
     @Transactional
     public UserSummaryResponse updateProfile(ProfileUpdateRequest request) {
         User user = currentUser();
+        String previousEmail = user.getEmail();
 
         String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
         if (userRepository.existsByEmailIgnoreCaseAndUserIdNot(normalizedEmail, user.getUserId())) {
@@ -229,7 +235,16 @@ public class AuthService {
         user.setCity(resolveCityForNationality(user.getNationality(), request.cityId()));
         user.setProfileImageUrl(request.profileImageUrl() != null ? request.profileImageUrl().trim() : null);
 
-        return toUserSummary(userRepository.save(user));
+        User saved = userRepository.save(user);
+        if (!normalizedEmail.equalsIgnoreCase(previousEmail)) {
+            Map<String, Object> details = new HashMap<>();
+            details.put("oldEmail", previousEmail);
+            details.put("newEmail", normalizedEmail);
+            details.put("source", "self-profile");
+            auditService.log(AuditService.ACTION_EMAIL_CHANGE_SELF, saved, details);
+        }
+
+        return toUserSummary(saved);
     }
 
     @Transactional
@@ -244,6 +259,10 @@ public class AuthService {
 
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         userRepository.save(user);
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("source", "authenticated-user");
+        auditService.log(AuditService.ACTION_PASSWORD_CHANGE, user, details);
     }
 
     @Transactional
@@ -314,6 +333,10 @@ public class AuthService {
         user.setFailedLoginAttempts(0);
         user.setLockedUntil(null);
         userRepository.save(user);
+
+        Map<String, Object> details = new HashMap<>();
+        details.put("source", "reset-token");
+        auditService.log(AuditService.ACTION_PASSWORD_RESET, user, details);
 
         verificationToken.setUsedAt(new Date());
         verificationTokenRepository.save(verificationToken);
