@@ -5,11 +5,13 @@ import org.example.backend.dto.ludification.QuizQuestionInput;
 import org.example.backend.dto.ludification.QuizView;
 import org.example.backend.dto.ludification.RoadmapNodeRequest;
 import org.example.backend.model.Crossword;
+import org.example.backend.model.LudoCard;
 import org.example.backend.model.PuzzleImage;
 import org.example.backend.model.Quiz;
 import org.example.backend.model.QuizQuestion;
 import org.example.backend.model.RoadmapNode;
 import org.example.backend.repository.CrosswordRepository;
+import org.example.backend.repository.LudoCardRepository;
 import org.example.backend.repository.PuzzleImageRepository;
 import org.example.backend.repository.QuizQuestionRepository;
 import org.example.backend.repository.QuizRepository;
@@ -42,18 +44,21 @@ public class LudificationController {
     private final CrosswordRepository crossRepo;
     private final RoadmapNodeRepository roadRepo;
     private final PuzzleImageRepository puzzleRepo;
+    private final LudoCardRepository ludoCardRepo;
 
     public LudificationController(
             QuizRepository quizRepo,
             QuizQuestionRepository quizQuestionRepo,
             CrosswordRepository crossRepo,
             RoadmapNodeRepository roadRepo,
-            PuzzleImageRepository puzzleRepo) {
+            PuzzleImageRepository puzzleRepo,
+            LudoCardRepository ludoCardRepo) {
         this.quizRepo = quizRepo;
         this.quizQuestionRepo = quizQuestionRepo;
         this.crossRepo = crossRepo;
         this.roadRepo = roadRepo;
         this.puzzleRepo = puzzleRepo;
+        this.ludoCardRepo = ludoCardRepo;
     }
 
     // --- QUIZ ---
@@ -304,6 +309,36 @@ public class LudificationController {
             return ResponseEntity.notFound().build();
         }
         puzzleRepo.deleteById(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // --- LUDO TUNISIA ---
+
+    @GetMapping("/ludo/cards")
+    public List<LudoCard> getLudoCards() {
+        return ludoCardRepo.findAll();
+    }
+
+    @PostMapping("/ludo/cards")
+    public ResponseEntity<LudoCard> createLudoCard(@RequestBody LudoCard card) {
+        if (card.getCreatedAt() == null) {
+            card.setCreatedAt(new Date());
+        }
+        if (card.getPublished() == null) {
+            card.setPublished(Boolean.TRUE);
+        }
+        if (card.getEffectSteps() == null) {
+            card.setEffectSteps(0);
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(ludoCardRepo.save(card));
+    }
+
+    @DeleteMapping("/ludo/cards/{id}")
+    public ResponseEntity<Void> deleteLudoCard(@PathVariable Integer id) {
+        if (!ludoCardRepo.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        ludoCardRepo.deleteById(id);
         return ResponseEntity.noContent().build();
     }
 }

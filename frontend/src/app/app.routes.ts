@@ -10,6 +10,7 @@ import { UserGamesComponent } from './games/user-games.component';
 import { QuizPlayerComponent } from './games/quiz-player.component';
 import { CrosswordPlayerComponent } from './games/crossword-player.component';
 import { PuzzlePlayerComponent } from './games/puzzle-player.component';
+import { LudoPlayerComponent } from './games/ludo-player.component';
 import { AuthGuard } from './core/auth.guard';
 
 export const routes: Routes = [
@@ -21,6 +22,7 @@ export const routes: Routes = [
   { path: 'games/quiz/:id', component: QuizPlayerComponent },
   { path: 'games/crossword/:id', component: CrosswordPlayerComponent },
   { path: 'games/puzzle/:id', component: PuzzlePlayerComponent },
+  { path: 'games/ludo', component: LudoPlayerComponent },
   {
     path: 'admin',
     component: AdminLayoutComponent,

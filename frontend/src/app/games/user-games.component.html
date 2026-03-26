@@ -113,4 +113,32 @@
       }
     </div>
   </div>
+
+  <div class="puzzle-section animate-up">
+    <div class="roadmap-section">
+      <span class="line"></span>
+      <h2>Ludo Tunisia</h2>
+      <span class="line"></span>
+    </div>
+    <div class="puzzle-grid">
+      <button class="puzzle-card" (click)="playLudo()">
+        <div class="ludo-cover">🎲</div>
+        <div class="puzzle-card__meta">
+          <h3>Plateau Ludo Tunisia</h3>
+          <span>Jouer →</span>
+        </div>
+      </button>
+      @if (ludoCards().length > 0) {
+        @for (card of ludoCards().slice(0, 3); track card.cardId) {
+          <div class="puzzle-card ludo-card-info">
+            <div class="puzzle-card__meta">
+              <h3>{{ card.title }}</h3>
+              <p>{{ card.description }}</p>
+              <span>Effet: {{ card.effectSteps! > 0 ? '+' : '' }}{{ card.effectSteps }}</span>
+            </div>
+          </div>
+        }
+      }
+    </div>
+  </div>
 </div>

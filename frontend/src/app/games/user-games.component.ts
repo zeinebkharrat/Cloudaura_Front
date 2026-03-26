@@ -1,7 +1,7 @@
 import { Component, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
-import { LudificationService, PuzzleImage, RoadmapNode } from '../core/ludification.service';
+import { LudificationService, PuzzleImage, RoadmapNode, LudoCard } from '../core/ludification.service';
 
 @Component({
   selector: 'app-user-games',
@@ -13,6 +13,7 @@ import { LudificationService, PuzzleImage, RoadmapNode } from '../core/ludificat
 export class UserGamesComponent implements OnInit {
   roadmapNodes = signal<RoadmapNode[]>([]);
   puzzles = signal<PuzzleImage[]>([]);
+  ludoCards = signal<LudoCard[]>([]);
   currentNodeIndex = signal<number>(0);
 
   constructor(private api: LudificationService, private router: Router) {}
@@ -20,6 +21,9 @@ export class UserGamesComponent implements OnInit {
   ngOnInit() {
     this.api.getPuzzles().subscribe((list) => {
       this.puzzles.set((list ?? []).filter((p) => p.published));
+    });
+    this.api.getLudoCards().subscribe((cards) => {
+      this.ludoCards.set((cards ?? []).filter((c) => c.published));
     });
 
     this.api.getRoadmap().subscribe({
@@ -121,5 +125,9 @@ export class UserGamesComponent implements OnInit {
 
   playPuzzle(puzzleId: number): void {
     this.router.navigate(['/games/puzzle', puzzleId]);
+  }
+
+  playLudo(): void {
+    this.router.navigate(['/games/ludo']);
   }
 }

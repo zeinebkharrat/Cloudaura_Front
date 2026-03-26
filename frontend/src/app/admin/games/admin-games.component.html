@@ -26,6 +26,9 @@
     <button class="tab" [class.active]="activeTab() === 'PUZZLE'" (click)="setTab('PUZZLE')">
       🧩 Puzzle image
     </button>
+    <button class="tab" [class.active]="activeTab() === 'LUDO'" (click)="setTab('LUDO')">
+      🎲 Ludo Tunisia
+    </button>
   </div>
 
   <!-- Content Area -->
@@ -136,6 +139,33 @@
         }
       </div>
     }
+
+    @if (activeTab() === 'LUDO') {
+      <div class="grid-cards">
+        @for (card of ludoCards(); track card.cardId) {
+          <div class="game-card glass-card">
+            <div class="gc-head">
+              <div class="gc-icon blue">🎲</div>
+              <div class="gc-status" style="display:flex; gap:8px;">
+                <span class="stat-pill" [class.on]="card.published">{{ card.published ? 'Publié' : 'Brouillon' }}</span>
+                <button class="btn-ghost" (click)="deleteItem(card.cardId, 'LUDO')" title="Supprimer">🗑️</button>
+              </div>
+            </div>
+            <h3 class="gc-title">{{ card.title }}</h3>
+            <p class="gc-desc">{{ card.description }}</p>
+            <div class="gc-foot">
+              <span class="gc-meta">Effet: <strong>{{ card.effectSteps! > 0 ? '+' : '' }}{{ card.effectSteps }}</strong></span>
+              <span class="gc-meta">{{ card.category }}</span>
+            </div>
+          </div>
+        }
+        @if (ludoCards().length === 0) {
+          <div class="empty-state glass-card">
+            Aucune carte Ludo. Créez votre première carte événement.
+          </div>
+        }
+      </div>
+    }
   </div>
 
   <!-- Creation Modal Overlay -->
@@ -147,7 +177,8 @@
             @if (activeTab() === 'QUIZ') { {{ isEditMode() ? 'Modifier le Quiz' : 'Nouveau Quiz' }} }
             @else if (activeTab() === 'CROSSWORD') { {{ isEditMode() ? 'Modifier les Mots Croisés' : 'Nouveaux Mots Croisés' }} }
             @else if (activeTab() === 'ROADMAP') { Nouvelle étape de Parcours }
-            @else { Nouveau Puzzle image }
+            @else if (activeTab() === 'PUZZLE') { Nouveau Puzzle image }
+            @else { Nouvelle carte Ludo Tunisia }
           </h3>
           <button class="btn-close" (click)="closeCreate()">✕</button>
         </div>
@@ -303,6 +334,38 @@
                 <img class="puzzle-preview" [src]="newPuzzle().imageDataUrl" alt="Aperçu puzzle" />
               </div>
             }
+          }
+
+          @if (activeTab() === 'LUDO') {
+            <div class="form-group">
+              <label>Titre de la carte</label>
+              <input type="text" class="g-input" [value]="newLudo().title" (input)="newLudo().title = $any($event.target).value" />
+            </div>
+            <div class="form-group">
+              <label>Description</label>
+              <textarea class="g-input" rows="2" [value]="newLudo().description" (input)="newLudo().description = $any($event.target).value"></textarea>
+            </div>
+            <div class="form-grid-2">
+              <div class="form-group">
+                <label>Effet (cases)</label>
+                <input type="number" class="g-input" [value]="newLudo().effectSteps ?? 0" (input)="newLudo().effectSteps = +$any($event.target).value" />
+              </div>
+              <div class="form-group">
+                <label>Catégorie</label>
+                <select class="g-input" (change)="newLudo().category = $any($event.target).value">
+                  <option value="GENERAL" [selected]="newLudo().category === 'GENERAL'">GENERAL</option>
+                  <option value="BONUS" [selected]="newLudo().category === 'BONUS'">BONUS</option>
+                  <option value="PENALTY" [selected]="newLudo().category === 'PENALTY'">PENALTY</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group-toggle">
+              <label class="tg-label">Publier</label>
+              <label class="switch">
+                <input type="checkbox" [checked]="newLudo().published" (change)="newLudo().published = !newLudo().published" />
+                <span class="slider"></span>
+              </label>
+            </div>
           }
         </div>
         

@@ -57,6 +57,16 @@ export interface PuzzleImage {
   createdAt: string;
 }
 
+export interface LudoCard {
+  cardId?: number;
+  title: string;
+  description: string;
+  effectSteps: number;
+  category?: string;
+  published?: boolean;
+  createdAt?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class LudificationService {
   private readonly http = inject(HttpClient);
@@ -148,6 +158,24 @@ export class LudificationService {
 
   deletePuzzle(id: number): Observable<void> {
     return this.http.delete<void>(`${this.base}/puzzles/${id}`);
+  }
+
+  getLudoCards(): Observable<LudoCard[]> {
+    return this.http.get<LudoCard[]>(`${this.base}/ludo/cards`);
+  }
+
+  createLudoCard(payload: Partial<LudoCard>): Observable<LudoCard> {
+    return this.http.post<LudoCard>(`${this.base}/ludo/cards`, {
+      title: payload.title ?? '',
+      description: payload.description ?? '',
+      effectSteps: payload.effectSteps ?? 0,
+      category: payload.category ?? 'GENERAL',
+      published: payload.published ?? true,
+    });
+  }
+
+  deleteLudoCard(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/ludo/cards/${id}`);
   }
 
   private toQuizUpsertBody(p: Partial<Quiz>): Record<string, unknown> {

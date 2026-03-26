@@ -9,6 +9,7 @@ import {
   RoadmapNode,
   QuizQuestion,
   PuzzleImage,
+  LudoCard,
 } from '../../core/ludification.service';
 
 @Component({
@@ -19,12 +20,13 @@ import {
   styleUrl: './admin-games.component.css'
 })
 export class AdminGamesComponent implements OnInit {
-  activeTab = signal<'QUIZ' | 'CROSSWORD' | 'ROADMAP' | 'PUZZLE'>('QUIZ');
+  activeTab = signal<'QUIZ' | 'CROSSWORD' | 'ROADMAP' | 'PUZZLE' | 'LUDO'>('QUIZ');
   
   quizzes = signal<Quiz[]>([]);
   crosswords = signal<Crossword[]>([]);
   roadmaps = signal<RoadmapNode[]>([]);
   puzzles = signal<PuzzleImage[]>([]);
+  ludoCards = signal<LudoCard[]>([]);
 
   creationMode = signal<boolean>(false);
   isEditMode = signal<boolean>(false);
@@ -40,6 +42,13 @@ export class AdminGamesComponent implements OnInit {
     published: true,
   });
   puzzleFile = signal<File | null>(null);
+  newLudo = signal<Partial<LudoCard>>({
+    title: '',
+    description: '',
+    effectSteps: 0,
+    category: 'GENERAL',
+    published: true,
+  });
   
   constructor(private api: LudificationService) {}
 
@@ -60,9 +69,10 @@ export class AdminGamesComponent implements OnInit {
     this.api.getCrosswords().subscribe(d => this.crosswords.set(d));
     this.api.getRoadmap().subscribe(d => this.roadmaps.set(d));
     this.api.getPuzzles().subscribe(d => this.puzzles.set(d));
+    this.api.getLudoCards().subscribe(d => this.ludoCards.set(d));
   }
   
-  setTab(tab: 'QUIZ' | 'CROSSWORD' | 'ROADMAP' | 'PUZZLE') {
+  setTab(tab: 'QUIZ' | 'CROSSWORD' | 'ROADMAP' | 'PUZZLE' | 'LUDO') {
     this.activeTab.set(tab); this.creationMode.set(false);
   }
 
@@ -77,9 +87,11 @@ export class AdminGamesComponent implements OnInit {
       this.gridCols.set(10);
     }
     else if (this.activeTab() === 'ROADMAP') this.newRoadmap.set({ stepOrder: this.roadmaps().length + 1, nodeLabel: '' });
-    else {
+    else if (this.activeTab() === 'PUZZLE') {
       this.newPuzzle.set({ title: '', imageDataUrl: '', published: true });
       this.puzzleFile.set(null);
+    } else {
+      this.newLudo.set({ title: '', description: '', effectSteps: 0, category: 'GENERAL', published: true });
     }
   }
 
@@ -198,15 +210,34 @@ export class AdminGamesComponent implements OnInit {
           this.refreshAll();
           this.closeCreate();
         });
+    } else if (this.activeTab() === 'LUDO') {
+      const ludo = this.newLudo();
+      if (!String(ludo.title ?? '').trim()) {
+        alert('Donnez un titre à la carte Ludo.');
+        return;
+      }
+      this.api
+        .createLudoCard({
+          title: String(ludo.title ?? '').trim(),
+          description: String(ludo.description ?? '').trim(),
+          effectSteps: Number(ludo.effectSteps ?? 0),
+          category: String(ludo.category ?? 'GENERAL'),
+          published: Boolean(ludo.published ?? true),
+        })
+        .subscribe(() => {
+          this.refreshAll();
+          this.closeCreate();
+        });
     }
   }
 
-  deleteItem(id: number | undefined, type: 'QUIZ' | 'CROSSWORD' | 'ROADMAP' | 'PUZZLE') {
+  deleteItem(id: number | undefined, type: 'QUIZ' | 'CROSSWORD' | 'ROADMAP' | 'PUZZLE' | 'LUDO') {
     if(!id) return;
     if (type === 'QUIZ') this.api.deleteQuiz(id).subscribe(() => this.refreshAll());
     if (type === 'CROSSWORD') this.api.deleteCrossword(id).subscribe(() => this.refreshAll());
     if (type === 'ROADMAP') this.api.deleteRoadmapNode(id).subscribe(() => this.refreshAll());
     if (type === 'PUZZLE') this.api.deletePuzzle(id).subscribe(() => this.refreshAll());
+    if (type === 'LUDO') this.api.deleteLudoCard(id).subscribe(() => this.refreshAll());
   }
 
   onPuzzleFileSelected(event: Event): void {
