@@ -4,7 +4,11 @@
 
   <ng-container *ngIf="activity && !error">
     <article class="overview-card animate-in">
-      <div class="image-panel">
+      <div
+        class="image-panel"
+        [class.hero-anim-next]="heroAnimating && heroAnimationDirection === 'next'"
+        [class.hero-anim-prev]="heroAnimating && heroAnimationDirection === 'prev'"
+      >
         <img class="cover-image" [src]="heroImage" [alt]="activity.name" />
         <div class="image-overlay"></div>
         <span class="badge">Activity</span>

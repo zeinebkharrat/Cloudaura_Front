@@ -166,6 +166,12 @@ public class PublicExploreService {
     }
 
     private ActivityResponse toActivityResponse(Activity activity) {
+        String imageUrl = activityMediaRepository.findByActivityActivityIdOrderByMediaIdDesc(activity.getActivityId())
+            .stream()
+            .findFirst()
+            .map(ActivityMedia::getUrl)
+            .orElse(null);
+
         return new ActivityResponse(
             activity.getActivityId(),
             activity.getCity().getCityId(),
@@ -176,7 +182,8 @@ public class PublicExploreService {
             activity.getDescription(),
             activity.getAddress(),
             activity.getLatitude(),
-            activity.getLongitude()
+            activity.getLongitude(),
+            imageUrl
         );
     }
 

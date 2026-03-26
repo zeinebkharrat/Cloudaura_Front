@@ -42,6 +42,7 @@ export interface Activity {
   address: string | null;
   latitude: number | null;
   longitude: number | null;
+  imageUrl: string | null;
 }
 
 export interface ActivityMedia {

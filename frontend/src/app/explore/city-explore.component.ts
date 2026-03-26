@@ -2,7 +2,7 @@ import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ExploreService } from './explore.service';
-import { PublicCityDetailsResponse } from './explore.models';
+import { Activity, PublicCityDetailsResponse } from './explore.models';
 
 const HOME_MAP_RETURN_CONTEXT_KEY = 'homeMapReturnContext';
 
@@ -17,6 +17,7 @@ export class CityExploreComponent implements OnInit, OnDestroy {
   loading = signal(true);
   error = signal('');
   details = signal<PublicCityDetailsResponse | null>(null);
+  activityImageById = signal<Record<number, string>>({});
   currentImageIndex = signal(0);
 
   media = computed(() => this.details()?.media ?? []);
@@ -68,6 +69,8 @@ export class CityExploreComponent implements OnInit, OnDestroy {
     this.exploreService.getCityDetails(cityId).subscribe({
       next: (details) => {
         this.details.set(details);
+        this.activityImageById.set({});
+        this.loadActivityImages(details.activities);
         this.currentImageIndex.set(0);
         this.startAutoSlide();
         this.loading.set(false);
@@ -189,11 +192,39 @@ export class CityExploreComponent implements OnInit, OnDestroy {
     this.goBack();
   }
 
+  activityCardImage(activity: Activity): string {
+    return (
+      this.activityImageById()[activity.activityId] ||
+      activity.imageUrl ||
+      'assets/sidi_bou.png'
+    );
+  }
+
   scrollToSection(sectionId: 'restaurants' | 'activities'): void {
     const target = document.getElementById(sectionId);
     if (!target) {
       return;
     }
     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  private loadActivityImages(activities: Activity[]): void {
+    for (const activity of activities) {
+      this.exploreService.getActivityMedia(activity.activityId).subscribe({
+        next: (media) => {
+          const mediaImage = media.find((item) => item.mediaType === 'IMAGE')?.url ?? media[0]?.url;
+          if (!mediaImage) {
+            return;
+          }
+
+          this.activityImageById.update((current) => ({
+            ...current,
+            [activity.activityId]: mediaImage,
+          }));
+        },
+        error: () => {
+        },
+      });
+    }
   }
 }

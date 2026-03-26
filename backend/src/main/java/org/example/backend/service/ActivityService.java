@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.backend.dto.ActivityRequest;
 import org.example.backend.dto.ActivityResponse;
 import org.example.backend.exception.ResourceNotFoundException;
+import org.example.backend.model.ActivityMedia;
 import org.example.backend.model.Activity;
 import org.example.backend.repository.ActivityMediaRepository;
 import org.example.backend.repository.ActivityRepository;
@@ -80,6 +81,12 @@ public class ActivityService {
     }
 
     private ActivityResponse toResponse(Activity activity) {
+        String imageUrl = activityMediaRepository.findByActivityActivityIdOrderByMediaIdDesc(activity.getActivityId())
+            .stream()
+            .findFirst()
+            .map(ActivityMedia::getUrl)
+            .orElse(null);
+
         return new ActivityResponse(
             activity.getActivityId(),
             activity.getCity().getCityId(),
@@ -90,7 +97,8 @@ public class ActivityService {
             activity.getDescription(),
             activity.getAddress(),
             activity.getLatitude(),
-            activity.getLongitude()
+            activity.getLongitude(),
+            imageUrl
         );
     }
 }

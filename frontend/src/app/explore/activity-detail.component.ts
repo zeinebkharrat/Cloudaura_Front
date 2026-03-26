@@ -30,11 +30,14 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   loading = true;
   error = '';
   heroImage = 'assets/sidi_bou.png';
+  heroAnimating = false;
+  heroAnimationDirection: 'next' | 'prev' = 'next';
 
   private map?: L.Map;
   private activityMarker?: L.CircleMarker;
   private viewReady = false;
   private sliderTimer: ReturnType<typeof setInterval> | null = null;
+  private animationResetTimer: ReturnType<typeof setTimeout> | null = null;
 
   form: CreateActivityReservationRequest = {
     reservationDate: new Date().toISOString().slice(0, 10),
@@ -69,6 +72,10 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.stopAutoSlide();
+    if (this.animationResetTimer) {
+      clearTimeout(this.animationResetTimer);
+      this.animationResetTimer = null;
+    }
     if (this.map) {
       this.map.remove();
     }
@@ -171,10 +178,12 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  selectMedia(index: number): void {
+  selectMedia(index: number, direction: 'next' | 'prev' = 'next'): void {
     if (index < 0 || index >= this.activityMedia.length) {
       return;
     }
+    this.heroAnimationDirection = direction;
+    this.triggerHeroSlideAnimation();
     this.currentMediaIndex = index;
     this.heroImage = this.activityMedia[index].url;
     this.restartAutoSlide();
@@ -187,7 +196,7 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     }
 
     const nextIndex = (this.currentMediaIndex - 1 + total) % total;
-    this.selectMedia(nextIndex);
+    this.selectMedia(nextIndex, 'prev');
   }
 
   nextMedia(): void {
@@ -197,7 +206,7 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     }
 
     const nextIndex = (this.currentMediaIndex + 1) % total;
-    this.selectMedia(nextIndex);
+    this.selectMedia(nextIndex, 'next');
   }
 
   submitReservation(): void {
@@ -283,5 +292,18 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
 
   private restartAutoSlide(): void {
     this.startAutoSlide();
+  }
+
+  private triggerHeroSlideAnimation(): void {
+    this.heroAnimating = false;
+    requestAnimationFrame(() => {
+      this.heroAnimating = true;
+      if (this.animationResetTimer) {
+        clearTimeout(this.animationResetTimer);
+      }
+      this.animationResetTimer = setTimeout(() => {
+        this.heroAnimating = false;
+      }, 430);
+    });
   }
 }
