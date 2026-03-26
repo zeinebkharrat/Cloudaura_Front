@@ -1,7 +1,7 @@
 import { Component, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
-import { LudificationService, RoadmapNode } from '../core/ludification.service';
+import { LudificationService, PuzzleImage, RoadmapNode } from '../core/ludification.service';
 
 @Component({
   selector: 'app-user-games',
@@ -12,11 +12,16 @@ import { LudificationService, RoadmapNode } from '../core/ludification.service';
 })
 export class UserGamesComponent implements OnInit {
   roadmapNodes = signal<RoadmapNode[]>([]);
+  puzzles = signal<PuzzleImage[]>([]);
   currentNodeIndex = signal<number>(0);
 
   constructor(private api: LudificationService, private router: Router) {}
 
   ngOnInit() {
+    this.api.getPuzzles().subscribe((list) => {
+      this.puzzles.set((list ?? []).filter((p) => p.published));
+    });
+
     this.api.getRoadmap().subscribe({
       next: (nodes: any) => {
         // Gérer le cas où l'API renvoie un objet avec "content" au lieu d'un tableau direct
@@ -32,6 +37,7 @@ export class UserGamesComponent implements OnInit {
             ...node,
             quizId: node.quizId ?? node.quiz?.quizId,
             crosswordId: node.crosswordId ?? node.crossword?.crosswordId,
+            puzzleId: node.puzzleId,
           }));
           this.roadmapNodes.set(
             [...normalized].sort((a, b) => (a.stepOrder ?? 0) - (b.stepOrder ?? 0)),
@@ -92,6 +98,7 @@ export class UserGamesComponent implements OnInit {
     // Si l'utilisateur clique sur le niveau courant ou un niveau débloqué
     const quizId = node.quizId ?? node.quiz?.quizId;
     const crosswordId = node.crosswordId ?? node.crossword?.crosswordId;
+    const puzzleId = node.puzzleId;
 
     if (quizId) {
       this.router.navigate(['/games/quiz', quizId]);
@@ -103,7 +110,16 @@ export class UserGamesComponent implements OnInit {
       return;
     }
 
+    if (puzzleId) {
+      this.router.navigate(['/games/puzzle', puzzleId]);
+      return;
+    }
+
     // Si aucun jeu réel n'est lié au node, on ne redirige pas vers un faux ID.
     alert("Aucun quiz lié à cette étape pour le moment.");
+  }
+
+  playPuzzle(puzzleId: number): void {
+    this.router.navigate(['/games/puzzle', puzzleId]);
   }
 }

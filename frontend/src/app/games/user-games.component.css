@@ -234,3 +234,50 @@
   0%, 100% { transform: translateX(-50%) translateY(0); }
   50% { transform: translateX(-50%) translateY(-5px); }
 }
+
+.puzzle-section {
+  margin-top: 28px;
+}
+
+.puzzle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.puzzle-card {
+  text-align: left;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  overflow: hidden;
+  background: #181d24;
+  cursor: pointer;
+  padding: 0;
+}
+
+.puzzle-card img {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  display: block;
+}
+
+.puzzle-card__meta {
+  padding: 12px;
+}
+
+.puzzle-card__meta h3 {
+  margin: 0 0 6px 0;
+  font-size: 1rem;
+  color: #fff;
+}
+
+.puzzle-card__meta span {
+  color: #7dd3fc;
+  font-size: 0.9rem;
+}
+
+.puzzle-empty {
+  color: #94a3b8;
+  margin: 0;
+}

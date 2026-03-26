@@ -5,40 +5,55 @@ import org.example.backend.dto.ludification.QuizQuestionInput;
 import org.example.backend.dto.ludification.QuizView;
 import org.example.backend.dto.ludification.RoadmapNodeRequest;
 import org.example.backend.model.Crossword;
+import org.example.backend.model.PuzzleImage;
 import org.example.backend.model.Quiz;
 import org.example.backend.model.QuizQuestion;
 import org.example.backend.model.RoadmapNode;
 import org.example.backend.repository.CrosswordRepository;
+import org.example.backend.repository.PuzzleImageRepository;
 import org.example.backend.repository.QuizQuestionRepository;
 import org.example.backend.repository.QuizRepository;
 import org.example.backend.repository.RoadmapNodeRepository;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/ludification")
 @CrossOrigin(origins = "http://localhost:4200", maxAge = 3600)
 public class LudificationController {
+    private static final Path PUZZLE_UPLOAD_DIR = Paths.get("uploads", "puzzles");
 
     private final QuizRepository quizRepo;
     private final QuizQuestionRepository quizQuestionRepo;
     private final CrosswordRepository crossRepo;
     private final RoadmapNodeRepository roadRepo;
+    private final PuzzleImageRepository puzzleRepo;
 
     public LudificationController(
             QuizRepository quizRepo,
             QuizQuestionRepository quizQuestionRepo,
             CrosswordRepository crossRepo,
-            RoadmapNodeRepository roadRepo) {
+            RoadmapNodeRepository roadRepo,
+            PuzzleImageRepository puzzleRepo) {
         this.quizRepo = quizRepo;
         this.quizQuestionRepo = quizQuestionRepo;
         this.crossRepo = crossRepo;
         this.roadRepo = roadRepo;
+        this.puzzleRepo = puzzleRepo;
     }
 
     // --- QUIZ ---
@@ -203,6 +218,7 @@ public class LudificationController {
         if (req.crosswordId() != null) {
             crossRepo.findById(req.crosswordId()).ifPresent(r::setCrossword);
         }
+        r.setPuzzleId(req.puzzleId());
         return roadRepo.save(r);
     }
 
@@ -213,5 +229,81 @@ public class LudificationController {
             return ResponseEntity.ok().build();
         }
         return ResponseEntity.notFound().build();
+    }
+
+    // --- PUZZLE IMAGE ---
+
+    @GetMapping("/puzzles")
+    public List<PuzzleImage> getPuzzles() {
+        return puzzleRepo.findAll();
+    }
+
+    @GetMapping("/puzzles/{id}")
+    public ResponseEntity<PuzzleImage> getPuzzleById(@PathVariable Integer id) {
+        return puzzleRepo.findById(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping("/puzzles")
+    public ResponseEntity<PuzzleImage> createPuzzle(@RequestBody PuzzleImage puzzle) {
+        if (puzzle.getCreatedAt() == null) {
+            puzzle.setCreatedAt(new Date());
+        }
+        if (puzzle.getPublished() == null) {
+            puzzle.setPublished(Boolean.TRUE);
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(puzzleRepo.save(puzzle));
+    }
+
+    @PostMapping(value = "/puzzles/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<PuzzleImage> uploadPuzzle(
+            @RequestParam("title") String title,
+            @RequestParam(value = "published", defaultValue = "true") Boolean published,
+            @RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        try {
+            Files.createDirectories(PUZZLE_UPLOAD_DIR);
+            String ext = "";
+            String original = file.getOriginalFilename();
+            if (original != null && original.lastIndexOf('.') >= 0) {
+                ext = original.substring(original.lastIndexOf('.'));
+            }
+            String filename = UUID.randomUUID() + ext;
+            Path destination = PUZZLE_UPLOAD_DIR.resolve(filename);
+            Files.copy(file.getInputStream(), destination, StandardCopyOption.REPLACE_EXISTING);
+
+            PuzzleImage puzzle = new PuzzleImage();
+            puzzle.setTitle(title);
+            puzzle.setPublished(published);
+            puzzle.setCreatedAt(new Date());
+            puzzle.setImageDataUrl("/api/ludification/puzzles/files/" + filename);
+            return ResponseEntity.status(HttpStatus.CREATED).body(puzzleRepo.save(puzzle));
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @GetMapping("/puzzles/files/{filename:.+}")
+    public ResponseEntity<Resource> getPuzzleFile(@PathVariable String filename) {
+        try {
+            Path file = PUZZLE_UPLOAD_DIR.resolve(filename).normalize();
+            Resource resource = new UrlResource(file.toUri());
+            if (!resource.exists()) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.ok(resource);
+        } catch (Exception ex) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @DeleteMapping("/puzzles/{id}")
+    public ResponseEntity<Void> deletePuzzle(@PathVariable Integer id) {
+        if (!puzzleRepo.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        puzzleRepo.deleteById(id);
+        return ResponseEntity.noContent().build();
     }
 }

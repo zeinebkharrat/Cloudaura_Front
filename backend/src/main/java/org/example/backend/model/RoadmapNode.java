@@ -16,6 +16,8 @@ public class RoadmapNode {
     @ManyToOne
     @JoinColumn(name = "crossword_id")
     private Crossword crossword;
+    @Column(name = "puzzle_id")
+    private Integer puzzleId;
 
     public Integer getNodeId() {
         return nodeId;
@@ -55,5 +57,13 @@ public class RoadmapNode {
 
     public void setCrossword(Crossword crossword) {
         this.crossword = crossword;
+    }
+
+    public Integer getPuzzleId() {
+        return puzzleId;
+    }
+
+    public void setPuzzleId(Integer puzzleId) {
+        this.puzzleId = puzzleId;
     }
 }

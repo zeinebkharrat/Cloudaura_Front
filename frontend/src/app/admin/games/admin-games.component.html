@@ -23,6 +23,9 @@
     <button class="tab" [class.active]="activeTab() === 'ROADMAP'" (click)="setTab('ROADMAP')">
       🗺️ Parcours (Roadmap)
     </button>
+    <button class="tab" [class.active]="activeTab() === 'PUZZLE'" (click)="setTab('PUZZLE')">
+      🧩 Puzzle image
+    </button>
   </div>
 
   <!-- Content Area -->
@@ -96,12 +99,41 @@
                 <p class="rn-type">
                   @if (r.quizId || r.quiz?.quizId) { <span>Lié au Quiz #{{ r.quizId ?? r.quiz?.quizId }}</span> }
                   @if (r.crosswordId || r.crossword?.crosswordId) { <span>Lié aux Mots Croisés #{{ r.crosswordId ?? r.crossword?.crosswordId }}</span> }
+                  @if (r.puzzleId) { <span>Lié au Puzzle #{{ r.puzzleId }}</span> }
                 </p>
               </div>
             </div>
           }
           <button class="btn-add-node" (click)="openCreate()">＋ Ajouter une étape</button>
         </div>
+      </div>
+    }
+
+    <!-- PUZZLE TAB -->
+    @if (activeTab() === 'PUZZLE') {
+      <div class="grid-cards">
+        @for (p of puzzles(); track p.puzzleId) {
+          <div class="game-card glass-card">
+            <div class="gc-head">
+              <div class="gc-icon orange">🖼️</div>
+              <div class="gc-status" style="display:flex; gap:8px;">
+                <span class="stat-pill" [class.on]="p.published">{{ p.published ? 'Publié' : 'Brouillon' }}</span>
+                <button class="btn-ghost" (click)="deleteItem(p.puzzleId, 'PUZZLE')" title="Supprimer">🗑️</button>
+              </div>
+            </div>
+            <h3 class="gc-title">{{ p.title }}</h3>
+            <img class="puzzle-thumb" [src]="p.imageDataUrl" [alt]="p.title" />
+            <div class="gc-foot">
+              <span class="gc-meta">ID puzzle: <strong>#{{ p.puzzleId }}</strong></span>
+              <a class="btn-ghost" [routerLink]="['/games/puzzle', p.puzzleId]">Tester →</a>
+            </div>
+          </div>
+        }
+        @if (puzzles().length === 0) {
+          <div class="empty-state glass-card">
+            Aucun puzzle image. Cliquez sur <strong>Nouveau</strong> pour en créer un.
+          </div>
+        }
       </div>
     }
   </div>
@@ -114,7 +146,8 @@
           <h3>
             @if (activeTab() === 'QUIZ') { {{ isEditMode() ? 'Modifier le Quiz' : 'Nouveau Quiz' }} }
             @else if (activeTab() === 'CROSSWORD') { {{ isEditMode() ? 'Modifier les Mots Croisés' : 'Nouveaux Mots Croisés' }} }
-            @else { Nouvelle étape de Parcours }
+            @else if (activeTab() === 'ROADMAP') { Nouvelle étape de Parcours }
+            @else { Nouveau Puzzle image }
           </h3>
           <button class="btn-close" (click)="closeCreate()">✕</button>
         </div>
@@ -229,6 +262,47 @@
                 }
               </select>
             </div>
+            <div class="form-group">
+              <label>Puzzle Lié (Optionnel)</label>
+              <select class="g-input" (change)="newRoadmap().puzzleId = +$any($event.target).value || undefined">
+                <option value="">-- Aucun puzzle --</option>
+                @for (p of puzzles(); track p.puzzleId) {
+                  <option [value]="p.puzzleId" [selected]="newRoadmap().puzzleId === p.puzzleId">{{ p.title }}</option>
+                }
+              </select>
+            </div>
+          }
+
+          @if (activeTab() === 'PUZZLE') {
+            <div class="form-group">
+              <label>Titre du puzzle</label>
+              <input
+                type="text"
+                class="g-input"
+                [value]="newPuzzle().title"
+                (input)="newPuzzle().title = $any($event.target).value"
+              />
+            </div>
+            <div class="form-group-toggle">
+              <label class="tg-label">Publier</label>
+              <label class="switch">
+                <input
+                  type="checkbox"
+                  [checked]="newPuzzle().published"
+                  (change)="newPuzzle().published = !newPuzzle().published"
+                />
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label>Image du puzzle</label>
+              <input type="file" accept="image/*" class="g-input" (change)="onPuzzleFileSelected($event)" />
+            </div>
+            @if (newPuzzle().imageDataUrl) {
+              <div class="puzzle-preview-wrap">
+                <img class="puzzle-preview" [src]="newPuzzle().imageDataUrl" alt="Aperçu puzzle" />
+              </div>
+            }
           }
         </div>
         

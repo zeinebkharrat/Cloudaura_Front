@@ -1,0 +1,42 @@
+<div class="puzzle-page">
+  <div class="puzzle-card">
+    @if (isLoading()) {
+      <p>Chargement du puzzle...</p>
+    } @else if (loadError()) {
+      <p>{{ loadError() }}</p>
+      <button class="btn" (click)="backToHub()">Retour</button>
+    } @else {
+      <header class="puzzle-head">
+        <button class="btn ghost" (click)="backToHub()">⟵ Quitter</button>
+        <div class="meta">
+          <h2>{{ puzzle()?.title }}</h2>
+          <p>Mouvements : {{ moves() }}</p>
+        </div>
+        <button class="btn" (click)="resetBoard()">Mélanger</button>
+      </header>
+
+      <div class="board" [style.grid-template-columns]="'repeat(' + gridSize + ', 1fr)'">
+        @for (tile of board(); track $index; let i = $index) {
+          <button
+            class="tile"
+            [class.empty]="tile === 0"
+            [ngStyle]="getTileStyle(tile)"
+            (click)="tileClicked(i)"
+            [disabled]="tile === 0"
+            [attr.aria-label]="tile === 0 ? 'case vide' : 'pièce ' + tile"
+          >
+            @if (tile !== 0) {
+              <span class="sr">{{ tile }}</span>
+            }
+          </button>
+        }
+      </div>
+
+      @if (won()) {
+        <div class="win">
+          ✅ Bravo ! Puzzle résolu en <strong>{{ moves() }}</strong> mouvements.
+        </div>
+      }
+    }
+  </div>
+</div>

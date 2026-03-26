@@ -1,21 +1,30 @@
 import { Component, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { LudificationService, Quiz, Crossword, RoadmapNode, QuizQuestion } from '../../core/ludification.service';
+import { RouterModule } from '@angular/router';
+import {
+  LudificationService,
+  Quiz,
+  Crossword,
+  RoadmapNode,
+  QuizQuestion,
+  PuzzleImage,
+} from '../../core/ludification.service';
 
 @Component({
   selector: 'app-admin-games',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './admin-games.component.html',
   styleUrl: './admin-games.component.css'
 })
 export class AdminGamesComponent implements OnInit {
-  activeTab = signal<'QUIZ' | 'CROSSWORD' | 'ROADMAP'>('QUIZ');
+  activeTab = signal<'QUIZ' | 'CROSSWORD' | 'ROADMAP' | 'PUZZLE'>('QUIZ');
   
   quizzes = signal<Quiz[]>([]);
   crosswords = signal<Crossword[]>([]);
   roadmaps = signal<RoadmapNode[]>([]);
+  puzzles = signal<PuzzleImage[]>([]);
 
   creationMode = signal<boolean>(false);
   isEditMode = signal<boolean>(false);
@@ -25,6 +34,12 @@ export class AdminGamesComponent implements OnInit {
   gridRows = signal<number>(10);
   gridCols = signal<number>(10);
   newRoadmap = signal<Partial<RoadmapNode>>({ stepOrder: 1, nodeLabel: '' });
+  newPuzzle = signal<{ title: string; imageDataUrl: string; published: boolean }>({
+    title: '',
+    imageDataUrl: '',
+    published: true,
+  });
+  puzzleFile = signal<File | null>(null);
   
   constructor(private api: LudificationService) {}
 
@@ -44,9 +59,10 @@ export class AdminGamesComponent implements OnInit {
     });
     this.api.getCrosswords().subscribe(d => this.crosswords.set(d));
     this.api.getRoadmap().subscribe(d => this.roadmaps.set(d));
+    this.api.getPuzzles().subscribe(d => this.puzzles.set(d));
   }
   
-  setTab(tab: 'QUIZ' | 'CROSSWORD' | 'ROADMAP') {
+  setTab(tab: 'QUIZ' | 'CROSSWORD' | 'ROADMAP' | 'PUZZLE') {
     this.activeTab.set(tab); this.creationMode.set(false);
   }
 
@@ -60,7 +76,11 @@ export class AdminGamesComponent implements OnInit {
       this.gridRows.set(10);
       this.gridCols.set(10);
     }
-    else this.newRoadmap.set({ stepOrder: this.roadmaps().length + 1, nodeLabel: '' });
+    else if (this.activeTab() === 'ROADMAP') this.newRoadmap.set({ stepOrder: this.roadmaps().length + 1, nodeLabel: '' });
+    else {
+      this.newPuzzle.set({ title: '', imageDataUrl: '', published: true });
+      this.puzzleFile.set(null);
+    }
   }
 
   openEdit(item: any) {
@@ -156,18 +176,55 @@ export class AdminGamesComponent implements OnInit {
         nodeLabel: String(r.nodeLabel || '').trim(),
         quizId: r.quizId,
         crosswordId: r.crosswordId,
+        puzzleId: r.puzzleId,
         quiz: r.quizId ? { quizId: r.quizId } : undefined,
         crossword: r.crosswordId ? { crosswordId: r.crosswordId } : undefined,
       };
       this.api.createRoadmapNode(payload).subscribe(() => { this.refreshAll(); this.closeCreate(); });
+    } else if (this.activeTab() === 'PUZZLE') {
+      const p = this.newPuzzle();
+      const title = p.title.trim();
+      if (!title) {
+        alert('Donnez un titre au puzzle.');
+        return;
+      }
+      if (!this.puzzleFile()) {
+        alert('Ajoutez une image pour créer le puzzle.');
+        return;
+      }
+      this.api
+        .createPuzzleWithFile({ title, file: this.puzzleFile()!, published: p.published })
+        .subscribe(() => {
+          this.refreshAll();
+          this.closeCreate();
+        });
     }
   }
 
-  deleteItem(id: number | undefined, type: 'QUIZ' | 'CROSSWORD' | 'ROADMAP') {
+  deleteItem(id: number | undefined, type: 'QUIZ' | 'CROSSWORD' | 'ROADMAP' | 'PUZZLE') {
     if(!id) return;
     if (type === 'QUIZ') this.api.deleteQuiz(id).subscribe(() => this.refreshAll());
     if (type === 'CROSSWORD') this.api.deleteCrossword(id).subscribe(() => this.refreshAll());
     if (type === 'ROADMAP') this.api.deleteRoadmapNode(id).subscribe(() => this.refreshAll());
+    if (type === 'PUZZLE') this.api.deletePuzzle(id).subscribe(() => this.refreshAll());
+  }
+
+  onPuzzleFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Sélectionnez un fichier image.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const imageDataUrl = typeof reader.result === 'string' ? reader.result : '';
+      this.newPuzzle.update((old) => ({ ...old, imageDataUrl }));
+      this.puzzleFile.set(file);
+    };
+    reader.readAsDataURL(file);
   }
 
   get gridPreview(): string[][] {

@@ -90,4 +90,27 @@
     </div>
     
   </div>
+
+  <div class="puzzle-section animate-up">
+    <div class="roadmap-section">
+      <span class="line"></span>
+      <h2>Puzzles Images</h2>
+      <span class="line"></span>
+    </div>
+
+    <div class="puzzle-grid">
+      @for (p of puzzles(); track p.puzzleId) {
+        <button class="puzzle-card" (click)="playPuzzle(p.puzzleId)">
+          <img [src]="p.imageDataUrl" [alt]="p.title" />
+          <div class="puzzle-card__meta">
+            <h3>{{ p.title }}</h3>
+            <span>Jouer →</span>
+          </div>
+        </button>
+      }
+      @if (puzzles().length === 0) {
+        <p class="puzzle-empty">Aucun puzzle publié pour le moment.</p>
+      }
+    </div>
+  </div>
 </div>

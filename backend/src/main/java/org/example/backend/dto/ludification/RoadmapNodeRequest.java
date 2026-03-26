@@ -4,4 +4,5 @@ public record RoadmapNodeRequest(
         Integer stepOrder,
         String nodeLabel,
         Integer quizId,
-        Integer crosswordId) {}
+        Integer crosswordId,
+        Integer puzzleId) {}

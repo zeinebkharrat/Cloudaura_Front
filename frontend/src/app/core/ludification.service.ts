@@ -44,8 +44,17 @@ export interface RoadmapNode {
   nodeLabel?: string;
   quizId?: number;
   crosswordId?: number;
+  puzzleId?: number;
   quiz?: { quizId?: number };
   crossword?: { crosswordId?: number };
+}
+
+export interface PuzzleImage {
+  puzzleId: number;
+  title: string;
+  imageDataUrl: string;
+  published: boolean;
+  createdAt: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -103,12 +112,42 @@ export class LudificationService {
       nodeLabel: payload.nodeLabel ?? null,
       quizId: payload.quizId ?? null,
       crosswordId: payload.crosswordId ?? null,
+      puzzleId: payload.puzzleId ?? null,
     };
     return this.http.post<RoadmapNode>(`${this.base}/roadmap`, body);
   }
 
   deleteRoadmapNode(id: number): Observable<void> {
     return this.http.delete<void>(`${this.base}/roadmap/${id}`);
+  }
+
+  // --- Puzzle image (front local storage) ---
+  getPuzzles(): Observable<PuzzleImage[]> {
+    return this.http.get<PuzzleImage[]>(`${this.base}/puzzles`);
+  }
+
+  getPuzzleById(id: number): Observable<PuzzleImage> {
+    return this.http.get<PuzzleImage>(`${this.base}/puzzles/${id}`);
+  }
+
+  createPuzzle(payload: { title: string; imageDataUrl: string; published?: boolean }): Observable<PuzzleImage> {
+    return this.http.post<PuzzleImage>(`${this.base}/puzzles`, {
+      title: payload.title.trim(),
+      imageDataUrl: payload.imageDataUrl,
+      published: payload.published ?? true,
+    });
+  }
+
+  createPuzzleWithFile(payload: { title: string; file: File; published?: boolean }): Observable<PuzzleImage> {
+    const form = new FormData();
+    form.append('title', payload.title.trim());
+    form.append('published', String(payload.published ?? true));
+    form.append('file', payload.file);
+    return this.http.post<PuzzleImage>(`${this.base}/puzzles/upload`, form);
+  }
+
+  deletePuzzle(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/puzzles/${id}`);
   }
 
   private toQuizUpsertBody(p: Partial<Quiz>): Record<string, unknown> {
@@ -126,4 +165,5 @@ export class LudificationService {
       })),
     };
   }
+
 }
