@@ -9,10 +9,16 @@ import { AdminCitiesComponent } from './admin/cities/admin-cities.component';
 import { AdminRestaurantsComponent } from './admin/restaurants/admin-restaurants.component';
 import { AdminActivitiesComponent } from './admin/activities/admin-activities.component';
 import { AuthGuard } from './core/auth.guard';
+import { ProductsAdminComponent } from './admin/entities/products/products-admin.component';
+import { OrdersAdminComponent } from './admin/entities/orders/orders-admin.component';
+import { CartPageComponent } from './shop/cart-page.component';
+
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'login', component: LoginComponent },
+  { path: 'panier', component: CartPageComponent },
+
   { path: 'virtual-tour', component: VirtualTourPageComponent },
   {
     path: 'admin',
@@ -24,6 +30,11 @@ export const routes: Routes = [
       { path: 'cities', component: AdminCitiesComponent },
       { path: 'restaurants', component: AdminRestaurantsComponent },
       { path: 'activities', component: AdminActivitiesComponent },
+      //{ path: 'panier', component: CartPageComponent },
+      { path: 'orders', component: OrdersAdminComponent },
+      { path: 'products', component: ProductsAdminComponent },
+
+
     ],
   },
   {

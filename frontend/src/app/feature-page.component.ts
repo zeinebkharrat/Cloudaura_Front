@@ -1,6 +1,10 @@
-import { Component, OnInit, inject } from '@angular/core';
-import { ActivatedRoute, Data, RouterLink } from '@angular/router';
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { ActivatedRoute, Data, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { API_BASE_URL, API_FALLBACK_ORIGIN } from './core/api-url';
+import { AuthService } from './core/auth.service';
+import { ShopService } from './core/shop.service';
 
 /** Rich content block for feature pages (front-only). */
 export interface FeatureBlock {
@@ -19,6 +23,16 @@ export type FeatureAccent =
   | 'emerald'
   | 'rose';
 
+/** Produit affiché sur la vitrine Artisanat (API /api/products). */
+export interface CatalogProduct {
+  productId: number;
+  name: string;
+  imageUrl?: string | null;
+  price?: number | null;
+  stock?: number | null;
+  user?: { username?: string | null };
+}
+
 @Component({
   selector: 'app-feature-page',
   standalone: true,
@@ -28,6 +42,10 @@ export type FeatureAccent =
 })
 export class FeaturePageComponent implements OnInit {
   private route = inject(ActivatedRoute);
+  private http = inject(HttpClient);
+  private router = inject(Router);
+  readonly auth = inject(AuthService);
+  readonly shop = inject(ShopService);
 
   kicker = '';
   title = '';
@@ -36,8 +54,17 @@ export class FeaturePageComponent implements OnInit {
   highlights: string[] = [];
   blocks: FeatureBlock[] = [];
 
+  /** Si `'products'`, charge et affiche le catalogue sous les blocs informatifs. */
+  catalog: 'none' | 'products' = 'none';
+  catalogProducts: CatalogProduct[] = [];
+  catalogLoading = false;
+  catalogError: string | null = null;
+  readonly addingProductId = signal<number | null>(null);
+  readonly cartToast = signal<string | null>(null);
+
   ngOnInit(): void {
-    this.applyData(this.route.snapshot.data);
+        this.applyData(this.route.snapshot.data);
+
     this.route.data.subscribe((d) => this.applyData(d));
   }
 
@@ -58,5 +85,88 @@ export class FeaturePageComponent implements OnInit {
     this.highlights = Array.isArray(h) ? (h as string[]) : [];
     const b = d['blocks'];
     this.blocks = Array.isArray(b) ? (b as FeatureBlock[]) : [];
+
+    const cat = d['catalog'];
+    this.catalog = cat === 'products' ? 'products' : 'none';
+    if (this.catalog === 'products') {
+      this.loadCatalogProducts();
+    } else {
+      this.catalogProducts = [];
+      this.catalogError = null;
+    }
+  }
+
+  private loadCatalogProducts(): void {
+    this.catalogLoading = true;
+    this.catalogError = null;
+    const primary = `${API_BASE_URL}/api/products` as string;
+    const fallback = `${API_FALLBACK_ORIGIN}/api/products`;
+    const tryFallback = API_BASE_URL === '';
+    this.http.get<CatalogProduct[]>(primary).subscribe({
+      next: (list) => {
+        this.catalogProducts = list ?? [];
+        this.catalogLoading = false;
+      },
+      error: () => {
+        if (tryFallback) {
+          this.http.get<CatalogProduct[]>(fallback).subscribe({
+            next: (list) => {
+              this.catalogProducts = list ?? [];
+              this.catalogLoading = false;
+            },
+            error: () => {
+              this.catalogError =
+                'Impossible de charger le catalogue. Lancez le backend (port 8081) et utilisez « ng serve » avec le proxy.';
+              this.catalogLoading = false;
+            },
+          });
+        } else {
+          this.catalogError =
+            'Impossible de charger le catalogue. Vérifiez que le backend tourne sur le port 8081.';
+          this.catalogLoading = false;
+        }
+      },
+    });
+  }
+
+  productImageSrc(url: string | null | undefined): string {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://')) return url;
+    return url.startsWith('/') ? url : `/${url}`;
+  }
+
+  formatPrice(p: number | null | undefined): string {
+    if (p == null || Number.isNaN(Number(p))) return '—';
+    return new Intl.NumberFormat('fr-TN', {
+      style: 'currency',
+      currency: 'TND',
+      minimumFractionDigits: 2,
+    }).format(Number(p));
+  }
+
+  addToCart(p: CatalogProduct): void {
+    this.cartToast.set(null);
+    if (!this.auth.isLoggedIn()) {
+      this.router.navigate(['/login']);
+      return;
+    }
+    const stock = p.stock ?? 0;
+    if (stock <= 0) {
+      this.cartToast.set('Ce produit n’est pas disponible (stock).');
+      return;
+    }
+    this.addingProductId.set(p.productId);
+    this.shop.addToCart(p.productId, 1).subscribe({
+      next: () => {
+        this.addingProductId.set(null);
+        this.shop.refreshCartCount();
+        this.cartToast.set('Ajouté au panier.');
+        setTimeout(() => this.cartToast.set(null), 2500);
+      },
+      error: () => {
+        this.addingProductId.set(null);
+        this.cartToast.set('Impossible d’ajouter au panier (stock ou connexion).');
+      },
+    });
   }
 }

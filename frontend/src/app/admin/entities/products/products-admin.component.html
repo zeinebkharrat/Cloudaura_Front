@@ -1,0 +1,29 @@
+<section class="entity-page">
+  <header class="head"><h1>Gestion des produits</h1><button class="btn ghost" (click)="reset()">Nouveau</button></header>
+  @if (error()) { <p class="error">{{ error() }}</p> }
+  <div class="layout">
+    <article class="panel">
+      <h2>{{ selectedId() ? 'Modifier' : 'Ajouter' }}</h2>
+      <div class="grid">
+        <div class="field"><label>Nom</label><input [ngModel]="form().name" (ngModelChange)="setField('name', $event)" /></div>
+        <div class="field"><label>Image produit (depuis PC)</label><input type="file" accept="image/*" (change)="onFileSelected($event)" /></div>
+        <div class="field"><label>Prix</label><input type="number" [ngModel]="form().price" (ngModelChange)="setField('price', $event)" /></div>
+        <div class="field"><label>Stock</label><input type="number" [ngModel]="form().stock" (ngModelChange)="setField('stock', $event)" /></div>
+      </div>
+      @if (form().imageUrl) {
+        <div class="image-preview">
+          <img [src]="resolveImageUrl(form().imageUrl)" alt="Apercu produit" />
+        </div>
+      }
+      <div class="actions"><button class="btn primary" (click)="save()">Sauvegarder</button><button class="btn ghost" (click)="reset()">Annuler</button></div>
+    </article>
+    <article class="panel">
+      <h2>Liste</h2>
+      @if (loading()) { <p>Chargement...</p> } @else if (uploading()) { <p>Upload image en cours...</p> } @else {
+        <div class="table-wrap"><table><thead><tr><th>User</th><th>Nom</th><th>Image</th><th>Prix</th><th>Stock</th><th>Actions</th></tr></thead>
+          <tbody>@for (item of items(); track item.productId) {<tr><td>{{ item.user?.username }}</td><td>{{ item.name }}</td><td>@if (item.imageUrl) {<img class="thumb" [src]="resolveImageUrl(item.imageUrl)" alt="Produit" />} @else { - }</td><td>{{ item.price }}</td><td>{{ item.stock }}</td><td class="row-actions"><button class="btn ghost" (click)="edit(item)">Editer</button><button class="btn danger" (click)="remove(item)">Supprimer</button></td></tr>}</tbody>
+        </table></div>
+      }
+    </article>
+  </div>
+</section>

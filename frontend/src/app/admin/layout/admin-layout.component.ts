@@ -24,7 +24,9 @@ export class AdminLayoutComponent {
     { label: 'Événements',      icon: '📅', route: '/admin/events' },
     { label: 'Artisanat',       icon: '🏺', route: '/admin/crafts' },
     { label: 'Utilisateurs',    icon: '👥', route: '/admin/users' },
-    { label: 'Paramètres',      icon: '⚙️',  route: '/admin/settings' }
+    { label: 'Paramètres',      icon: '⚙️',  route: '/admin/settings' },
+    { label: 'Produits',        icon: '🏺', route: '/admin/products' },
+    { label: 'Commandes',       icon: '🧾', route: '/admin/orders' }
   ];
 
   constructor(public auth: AuthService, private router: Router) {}

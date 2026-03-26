@@ -1,0 +1,97 @@
+<main class="cart-page">
+  <a routerLink="/artisanat" class="back">← Artisanat</a>
+
+  <header class="cart-head">
+    <h1>Mon panier</h1>
+    <p class="lead">Validez votre commande — statut initial : en attente (PENDING).</p>
+  </header>
+
+  @if (orderDone()) {
+    <section class="order-success glass-panel">
+      <h2>Commande confirmée</h2>
+      <p>
+        Numéro de commande : <strong>#{{ orderDone()!.orderId }}</strong> — total
+        {{ formatPrice(orderDone()!.totalAmount) }} — statut {{ orderDone()!.status }}.
+      </p>
+      <a routerLink="/artisanat" class="btn primary">Continuer les achats</a>
+    </section>
+  } @else {
+    @if (loading()) {
+      <p class="state">Chargement…</p>
+    } @else if (error()) {
+      <p class="state err">{{ error() }}</p>
+      <button type="button" class="btn ghost" (click)="load()">Réessayer</button>
+    } @else if (cart() && cart()!.items.length === 0) {
+      <div class="empty glass-panel">
+        <p>Votre panier est vide.</p>
+        <a routerLink="/artisanat" class="btn primary">Voir les produits</a>
+      </div>
+    } @else if (cart()) {
+      <ul class="lines">
+        @for (line of cart()!.items; track line.cartItemId) {
+          <li class="line glass-panel">
+            <div class="line-media">
+              @if (line.imageUrl) {
+                <img [src]="imageSrc(line.imageUrl)" [alt]="line.name" />
+              } @else {
+                <div class="ph">Produit</div>
+              }
+            </div>
+            <div class="line-body">
+              <h2>{{ line.name }}</h2>
+              <div class="qty-row">
+                <span class="unit-price">{{ formatPrice(line.unitPrice) }}</span>
+                <div class="qty-stepper">
+                  <button
+                    type="button"
+                    class="qty-btn"
+                    [disabled]="qtyUpdatingId() === line.cartItemId"
+                    (click)="changeQty(line, -1)"
+                    aria-label="Diminuer"
+                  >
+                    −
+                  </button>
+                  <span class="qty-value">{{ line.quantity }}</span>
+                  <button
+                    type="button"
+                    class="qty-btn"
+                    [disabled]="qtyUpdatingId() === line.cartItemId || line.quantity >= maxStock(line)"
+                    (click)="changeQty(line, 1)"
+                    aria-label="Augmenter"
+                  >
+                    +
+                  </button>
+                </div>
+                <span class="line-sum">
+                  = <strong>{{ formatPrice(line.lineTotal) }}</strong>
+                </span>
+              </div>
+              @if (line.stock != null) {
+                <p class="stock-hint">Stock disponible : {{ line.stock }}</p>
+              }
+            </div>
+            <button type="button" class="btn danger ghost" (click)="remove(line)">Retirer</button>
+          </li>
+        }
+      </ul>
+
+      <footer class="cart-footer glass-panel">
+        <div class="total">
+          Total : <strong>{{ formatPrice(cart()!.total) }}</strong>
+        </div>
+        <button
+          type="button"
+          class="btn primary"
+          [disabled]="checkoutLoading()"
+          (click)="checkout()"
+        >
+          @if (checkoutLoading()) {
+            Commande…
+          } @else {
+            Commander
+          }
+        </button>
+      </footer>
+    }
+  }
+</main>

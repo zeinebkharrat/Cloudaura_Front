@@ -11,6 +11,56 @@
     <div class="feature-page__divider" aria-hidden="true"></div>
   </header>
 
+  <!-- Catalogue produits : placé sous le hero sur /artisanat pour être visible tout de suite -->
+  <section *ngIf="catalog === 'products'" class="product-catalog glass-panel" aria-labelledby="catalog-heading">
+    <div class="product-catalog__head">
+      <h2 id="catalog-heading" class="product-catalog__title">Catalogue produits</h2>
+      <p class="product-catalog__subtitle">Sélection issue de la plateforme — fait main et souvenirs.</p>
+    </div>
+
+    <p *ngIf="catalogLoading" class="product-catalog__state">Chargement du catalogue…</p>
+    <p *ngIf="catalogError" class="product-catalog__state product-catalog__state--error">{{ catalogError }}</p>
+    <p *ngIf="cartToast()" class="product-catalog__toast">{{ cartToast() }}</p>
+
+    <div *ngIf="!catalogLoading && !catalogError && catalogProducts.length === 0" class="product-catalog__empty">
+      Aucun produit pour le moment. Revenez bientôt ou parcourez les autres sections du site.
+    </div>
+
+    <ul *ngIf="!catalogLoading && catalogProducts.length" class="product-catalog__grid">
+      <li *ngFor="let p of catalogProducts" class="product-card">
+        <div class="product-card__media">
+          <img
+            *ngIf="p.imageUrl"
+            [src]="productImageSrc(p.imageUrl)"
+            [alt]="'Photo : ' + p.name"
+            loading="lazy"
+          />
+          <div *ngIf="!p.imageUrl" class="product-card__placeholder" aria-hidden="true">Artisanat</div>
+        </div>
+        <div class="product-card__body">
+          <h3 class="product-card__name">{{ p.name }}</h3>
+          <p *ngIf="p.user?.username" class="product-card__vendor">Par {{ p.user?.username }}</p>
+          <div class="product-card__meta">
+            <span class="product-card__price">{{ formatPrice(p.price) }}</span>
+            <span *ngIf="p.stock != null" class="product-card__stock">Stock : {{ p.stock }}</span>
+          </div>
+          <div class="product-card__actions">
+            <button
+              type="button"
+              class="btn-cart"
+              *ngIf="auth.isLoggedIn()"
+              (click)="addToCart(p)"
+              [disabled]="addingProductId() === p.productId || (p.stock != null && p.stock <= 0)"
+            >
+              {{ addingProductId() === p.productId ? 'Ajout…' : 'Ajouter au panier' }}
+            </button>
+            <a *ngIf="!auth.isLoggedIn()" routerLink="/login" class="btn-cart btn-cart--ghost">Connexion pour commander</a>
+          </div>
+        </div>
+      </li>
+    </ul>
+  </section>
+
   <div class="feature-page__grid" *ngIf="blocks.length">
     <article
       class="feature-block glass-panel"

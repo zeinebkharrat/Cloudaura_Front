@@ -26,6 +26,14 @@
     <li>
       <a routerLink="/artisanat" routerLinkActive="active">Artisanat</a>
     </li>
+     <li>
+      <a routerLink="/panier" routerLinkActive="active" class="nav-cart">
+        Panier
+        @if (shop.cartCount() > 0) {
+          <span class="nav-cart__badge">{{ shop.cartCount() }}</span>
+        }
+      </a>
+    </li>
     <li>
       <a routerLink="/virtual-tour" routerLinkActive="active">360° Tour</a>
     </li>

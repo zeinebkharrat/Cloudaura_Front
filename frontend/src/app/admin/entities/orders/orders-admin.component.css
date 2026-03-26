@@ -1,0 +1,93 @@
+.orders-admin .hint {
+  margin: 0 0 16px;
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.orders-admin code {
+  font-size: 0.82rem;
+  color: var(--text-color);
+  opacity: 0.85;
+}
+
+.orders-admin .panel {
+  margin-bottom: 20px;
+}
+
+.orders-admin .panel h2 {
+  margin-top: 0;
+  font-size: 1.1rem;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+.pill {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: rgba(232, 0, 45, 0.15);
+  color: #ffb4b4;
+}
+
+.entity-page {
+  display: grid;
+  gap: 16px;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.head h1 {
+  margin: 0;
+}
+
+.panel {
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 14px;
+  background: var(--glass-bg);
+}
+
+.table-wrap {
+  overflow: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  border-bottom: 1px solid var(--glass-border);
+  padding: 8px 6px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.error {
+  color: #ff8f8f;
+  margin: 0;
+}
+
+.btn {
+  border-radius: 10px;
+  padding: 9px 12px;
+  border: 0;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn.ghost {
+  background: transparent;
+  border: 1px solid var(--glass-border);
+  color: var(--text-color);
+}

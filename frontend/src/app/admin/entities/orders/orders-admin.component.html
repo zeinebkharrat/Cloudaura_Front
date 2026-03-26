@@ -1,0 +1,84 @@
+<section class="entity-page orders-admin">
+  <header class="head">
+    <h1>Commandes produits</h1>
+    <button type="button" class="btn ghost" (click)="loadAll()">Actualiser</button>
+  </header>
+  <p class="hint">
+    Données issues des tables existantes via <code>GET /api/orders</code> et
+    <code>GET /api/order-items</code> (OrderEntityController, OrderItemController).
+  </p>
+
+  @if (error()) {
+    <p class="error">{{ error() }}</p>
+  }
+
+  @if (loading()) {
+    <p class="muted">Chargement…</p>
+  } @else {
+    <article class="panel">
+      <h2>Commandes</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Client</th>
+              <th>Total</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (o of orders(); track o.orderId) {
+              <tr>
+                <td>{{ o.orderId }}</td>
+                <td>{{ o.user?.username ?? '—' }}</td>
+                <td>{{ formatPrice(o.totalAmount) }}</td>
+                <td><span class="pill">{{ o.status }}</span></td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="4">Aucune commande.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </article>
+
+    <article class="panel">
+      <h2>Lignes de commande (produits)</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Ligne #</th>
+              <th>Commande #</th>
+              <th>Client</th>
+              <th>Produit</th>
+              <th>Prix unit.</th>
+              <th>Qté</th>
+              <th>Sous-total</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (it of orderItems(); track it.orderItemId) {
+              <tr>
+                <td>{{ it.orderItemId }}</td>
+                <td>{{ it.order?.orderId ?? '—' }}</td>
+                <td>{{ it.order?.user?.username ?? '—' }}</td>
+                <td>{{ it.product?.name ?? '—' }}</td>
+                <td>{{ formatPrice(it.product?.price ?? null) }}</td>
+                <td>{{ it.quantity ?? '—' }}</td>
+                <td>{{ lineTotal(it) }}</td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7">Aucune ligne.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </article>
+  }
+</section>

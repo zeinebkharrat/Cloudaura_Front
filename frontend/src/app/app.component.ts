@@ -2,6 +2,7 @@ import { Component, inject, signal, OnInit, Renderer2 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from './core/auth.service';
+import { ShopService } from './core/shop.service';
 
 
 @Component({
@@ -16,10 +17,12 @@ export class AppComponent implements OnInit {
   private readonly router   = inject(Router);
   private readonly renderer = inject(Renderer2);
   readonly auth             = inject(AuthService);
+  readonly shop             = inject(ShopService);
 
   isDarkMode = signal(true);
 
   ngOnInit() {
+    this.shop.refreshCartCount();
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'light') {
       this.isDarkMode.set(false);
@@ -31,6 +34,11 @@ export class AppComponent implements OnInit {
 
   isAdminArea(): boolean {
     return this.router.url.startsWith('/admin');
+  }
+
+  logout(): void {
+    this.shop.cartCount.set(0);
+    this.auth.logout();
   }
 
   toggleTheme() {
