@@ -1,17 +1,36 @@
 <section class="page" *ngIf="!loading; else loadingTpl">
-  <button class="back-btn" type="button" (click)="goBack()">← Retour</button>
+  <button class="back-btn floating-back" type="button" (click)="goBack()" aria-label="Retour">←</button>
   <div class="error" *ngIf="error">{{ error }}</div>
 
   <ng-container *ngIf="activity && !error">
-    <article class="card">
-      <h1>{{ activity.name }}</h1>
-      <p class="muted">{{ activity.description || 'Aucune description.' }}</p>
-      <p><strong>Ville:</strong> {{ activity.cityName }}</p>
-      <p><strong>Prix:</strong> {{ activity.price | number: '1.2-2' }} TND</p>
+    <article class="card hero-card animate-in">
+      <div class="hero-image-wrap">
+        <img class="hero-image" [src]="heroImage" [alt]="activity.cityName" />
+        <div class="hero-overlay"></div>
+        <div class="hero-main">
+          <p class="kicker">Expérience touristique</p>
+          <h1>{{ activity.name }}</h1>
+          <p class="description">{{ activity.description || 'Vivez une activité locale immersive.' }}</p>
+          <div class="meta-grid">
+            <div class="meta-item">
+              <span class="label">Ville</span>
+              <strong>{{ activity.cityName }}</strong>
+            </div>
+            <div class="meta-item">
+              <span class="label">Type</span>
+              <strong>{{ activity.type || 'Activité touristique' }}</strong>
+            </div>
+            <div class="meta-item">
+              <span class="label">Prix</span>
+              <strong>{{ activity.price | number: '1.2-2' }} TND</strong>
+            </div>
+          </div>
+        </div>
+      </div>
       <a class="btn ghost" [routerLink]="['/city', activity.cityId]">Retour à la ville</a>
     </article>
 
-    <article class="card">
+    <article class="card animate-in delay-1">
       <h2>Réserver cette activité</h2>
       <form (ngSubmit)="submitReservation()" #reservationForm="ngForm" class="form">
         <label>

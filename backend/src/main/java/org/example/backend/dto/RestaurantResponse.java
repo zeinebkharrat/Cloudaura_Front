@@ -10,6 +10,7 @@ public record RestaurantResponse(
     String description,
     String address,
     Double latitude,
-    Double longitude
+    Double longitude,
+    String imageUrl
 ) {
 }

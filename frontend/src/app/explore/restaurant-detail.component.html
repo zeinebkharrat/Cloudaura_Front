@@ -1,38 +1,55 @@
 <section class="page" *ngIf="!loading; else loadingTpl">
-  <button class="back-btn" type="button" (click)="goBack()">← Retour</button>
+  <button class="back-btn floating-back" type="button" (click)="goBack()" aria-label="Retour">←</button>
+  <header class="topbar animate-in">
+    <a class="city-link" *ngIf="restaurant" [routerLink]="['/city', restaurant.cityId]">Voir la ville</a>
+  </header>
+
   <div class="error" *ngIf="error">{{ error }}</div>
 
   <ng-container *ngIf="restaurant && !error">
-    <article class="hero-card animate-in">
-      <div class="hero-main">
-        <p class="kicker">Restaurant recommandé</p>
+    <article class="overview-card animate-in delay-1">
+      <div class="image-panel">
+        <img class="cover-image" [src]="heroImage" [alt]="restaurant.name" />
+        <div class="image-overlay"></div>
+        <span class="badge">Restaurant</span>
+      </div>
+
+      <div class="content-panel">
+        <p class="kicker">Expérience culinaire</p>
         <h1>{{ restaurant.name }}</h1>
         <p class="description">{{ restaurant.description || 'Une expérience culinaire authentique vous attend.' }}</p>
-        <div class="meta-grid">
-          <div class="meta-item">
-            <span class="label">Ville</span>
+
+        <div class="chips-row">
+          <span class="chip">{{ restaurant.cuisineType || 'Cuisine locale' }}</span>
+          <span class="chip" *ngIf="restaurant.rating != null">★ {{ restaurant.rating }}/5</span>
+          <span class="chip">{{ restaurant.cityName }}</span>
+        </div>
+
+        <div class="info-grid">
+          <article class="info-card">
+            <span>Ville</span>
             <strong>{{ restaurant.cityName }}</strong>
-          </div>
-          <div class="meta-item">
-            <span class="label">Adresse</span>
+          </article>
+          <article class="info-card">
+            <span>Adresse</span>
             <strong>{{ restaurant.address || 'Non renseignée' }}</strong>
-          </div>
-          <div class="meta-item" *ngIf="restaurant.rating != null">
-            <span class="label">Note</span>
-            <strong>{{ restaurant.rating }}/5</strong>
-          </div>
+          </article>
         </div>
       </div>
-      <a class="btn ghost" [routerLink]="['/city', restaurant.cityId]">Retour à la ville</a>
     </article>
 
-    <article class="card animate-in delay-1">
-      <h2>Carte & itinéraire</h2>
+    <article class="map-card animate-in delay-2">
+      <div class="card-head">
+        <h2>Localisation & itinéraire</h2>
+        <p>Consulte la position et ouvre la navigation instantanément.</p>
+      </div>
+
       <div id="restaurantMap" class="map" *ngIf="restaurant.latitude && restaurant.longitude"></div>
-      <p class="muted" *ngIf="!restaurant.latitude || !restaurant.longitude">
+      <p class="empty" *ngIf="!restaurant.latitude || !restaurant.longitude">
         Coordonnées indisponibles pour ce restaurant.
       </p>
-      <button class="btn" type="button" (click)="openDirectionsFromCurrentPosition()" [disabled]="!restaurant.latitude || !restaurant.longitude">
+
+      <button class="primary-btn" type="button" (click)="openDirectionsFromCurrentPosition()" [disabled]="!restaurant.latitude || !restaurant.longitude">
         Itinéraire depuis ma position
       </button>
     </article>
@@ -41,6 +58,6 @@
 
 <ng-template #loadingTpl>
   <section class="page">
-    <div class="card">Chargement du restaurant...</div>
+    <div class="loading-card">Chargement du restaurant...</div>
   </section>
 </ng-template>

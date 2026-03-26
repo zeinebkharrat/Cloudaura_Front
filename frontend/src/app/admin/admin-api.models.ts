@@ -39,6 +39,7 @@ export interface Restaurant {
   address: string | null;
   latitude: number | null;
   longitude: number | null;
+  imageUrl: string | null;
 }
 
 export interface RestaurantRequest {
@@ -50,6 +51,7 @@ export interface RestaurantRequest {
   address: string | null;
   latitude: number | null;
   longitude: number | null;
+  imageUrl: string | null;
 }
 
 export interface Activity {

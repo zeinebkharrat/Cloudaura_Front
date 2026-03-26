@@ -2,6 +2,7 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { map, of, switchMap } from 'rxjs';
 import * as L from 'leaflet';
 import Swal from 'sweetalert2';
 import { City, Restaurant, RestaurantRequest } from '../admin-api.models';
@@ -27,6 +28,9 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
   error = '';
   showModal = false;
   geocodeMessage = '';
+  imagePreviewUrl: string | null = null;
+  selectedImageFile: File | null = null;
+  persistedImageUrl: string | null = null;
 
   editingId: number | null = null;
   form: {
@@ -68,6 +72,7 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
     if (this.searchDebounceTimer) {
       clearTimeout(this.searchDebounceTimer);
     }
+    this.revokeImagePreviewIfBlob();
     if (this.map) {
       this.map.remove();
       this.map = undefined;
@@ -134,6 +139,8 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
       latitude: item.latitude,
       longitude: item.longitude,
     };
+    this.setImagePreview(item.imageUrl ?? null);
+    this.selectedImageFile = null;
     this.geocodeMessage = '';
     this.showModal = true;
     this.renderMapLater();
@@ -170,6 +177,8 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
       latitude: null,
       longitude: null,
     };
+    this.persistedImageUrl = null;
+    this.clearImageSelection();
   }
 
   save(): void {
@@ -187,13 +196,26 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
       address: this.form.address.trim() || null,
       latitude: this.form.latitude,
       longitude: this.form.longitude,
+      imageUrl: this.persistedImageUrl,
     };
 
     const request$ = this.editingId == null
       ? this.restaurantService.create(payload)
       : this.restaurantService.update(this.editingId, payload);
 
-    request$.subscribe({
+    request$
+      .pipe(
+        switchMap((savedRestaurant) => {
+          if (!this.selectedImageFile) {
+            return of(savedRestaurant);
+          }
+
+          return this.restaurantService
+            .uploadImage(savedRestaurant.restaurantId, this.selectedImageFile)
+            .pipe(map(() => savedRestaurant));
+        })
+      )
+      .subscribe({
       next: () => {
         this.closeModal();
         this.loadRestaurants();
@@ -270,6 +292,51 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
 
   onCoordinatesChanged(): void {
     this.renderMapLater();
+  }
+
+  onImageFileChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = (input.files ?? [])[0] ?? null;
+
+    if (!file) {
+      this.clearImageSelection();
+      return;
+    }
+
+    if (!file.type.startsWith('image/')) {
+      this.error = 'Seules les images sont autorisées pour le restaurant';
+      this.clearImageSelection();
+      return;
+    }
+
+    this.revokeImagePreviewIfBlob();
+    this.selectedImageFile = file;
+    this.imagePreviewUrl = URL.createObjectURL(file);
+  }
+
+  clearImageSelection(): void {
+    this.selectedImageFile = null;
+    this.revokeImagePreviewIfBlob();
+    this.imagePreviewUrl = this.persistedImageUrl;
+  }
+
+  removeCurrentImage(): void {
+    this.selectedImageFile = null;
+    this.persistedImageUrl = null;
+    this.revokeImagePreviewIfBlob();
+    this.imagePreviewUrl = null;
+  }
+
+  private setImagePreview(url: string | null): void {
+    this.revokeImagePreviewIfBlob();
+    this.persistedImageUrl = url;
+    this.imagePreviewUrl = url;
+  }
+
+  private revokeImagePreviewIfBlob(): void {
+    if (this.imagePreviewUrl?.startsWith('blob:')) {
+      URL.revokeObjectURL(this.imagePreviewUrl);
+    }
   }
 
   private renderMapLater(): void {

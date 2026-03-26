@@ -20,6 +20,7 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
   restaurant?: Restaurant;
   loading = true;
   error = '';
+  heroImage = 'assets/sidi_bou.png';
 
   private map?: L.Map;
   private cityMarker?: L.CircleMarker;
@@ -37,12 +38,34 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
     this.exploreService.getRestaurantDetails(id).subscribe({
       next: (res) => {
         this.restaurant = res;
+        if (res.imageUrl) {
+          this.heroImage = res.imageUrl;
+        }
+        this.loadCityHeroImage(res.cityId);
         this.loading = false;
         setTimeout(() => this.tryInitMap(), 80);
       },
       error: (err) => {
         this.loading = false;
         this.error = err?.error?.message || 'Impossible de charger ce restaurant.';
+      },
+    });
+  }
+
+  private loadCityHeroImage(cityId: number): void {
+    if (this.restaurant?.imageUrl) {
+      return;
+    }
+
+    this.exploreService.getCityDetails(cityId).subscribe({
+      next: (details) => {
+        const firstImage = details.media.find((m) => m.mediaType === 'IMAGE')?.url ?? details.media[0]?.url;
+        if (firstImage) {
+          this.heroImage = firstImage;
+        }
+      },
+      error: () => {
+        this.heroImage = 'assets/sidi_bou.png';
       },
     });
   }

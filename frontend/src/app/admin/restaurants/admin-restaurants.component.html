@@ -30,6 +30,7 @@
         <thead>
           <tr>
             <th>Nom</th>
+            <th>Image</th>
             <th>Ville</th>
             <th>Type cuisine</th>
             <th>Description</th>
@@ -41,6 +42,13 @@
           @for (restaurant of restaurants; track restaurant.restaurantId) {
             <tr>
               <td>{{ restaurant.name }}</td>
+              <td>
+                @if (restaurant.imageUrl) {
+                  <img class="thumb" [src]="restaurant.imageUrl" [alt]="restaurant.name" />
+                } @else {
+                  —
+                }
+              </td>
               <td>{{ restaurant.cityName }}</td>
               <td>{{ restaurant.cuisineType || '—' }}</td>
               <td>{{ restaurant.description || '—' }}</td>
@@ -102,6 +110,28 @@
         <label class="span-2">
           Description
           <textarea rows="3" [(ngModel)]="form.description" placeholder="Description touristique du restaurant"></textarea>
+        </label>
+        <label class="span-2">
+          Image du restaurant
+          <div class="upload-box modern single-image">
+            <input id="restaurantImageInput" class="file-native" type="file" accept="image/*" (change)="onImageFileChange($event)" />
+            <label class="file-trigger" for="restaurantImageInput">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5-5 5 5"/><path d="M12 5v12"/></svg>
+              Choisir une image
+            </label>
+            @if (selectedImageFile) {
+              <span class="file-count">{{ selectedImageFile.name }}</span>
+              <button class="btn ghost" type="button" (click)="clearImageSelection()">Retirer</button>
+            } @else if (imagePreviewUrl) {
+              <span class="file-count">Image actuelle</span>
+              <button class="btn ghost" type="button" (click)="removeCurrentImage()">Supprimer l'image</button>
+            }
+          </div>
+          @if (imagePreviewUrl) {
+            <div class="image-preview-card">
+              <img [src]="imagePreviewUrl" alt="Aperçu image restaurant" />
+            </div>
+          }
         </label>
         <label class="span-2">
           Adresse

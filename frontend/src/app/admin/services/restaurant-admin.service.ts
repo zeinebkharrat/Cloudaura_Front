@@ -30,6 +30,12 @@ export class RestaurantAdminService {
     return this.http.put<Restaurant>(`${this.base}/${id}`, payload);
   }
 
+  uploadImage(id: number, file: File): Observable<Restaurant> {
+    const formData = new FormData();
+    formData.set('file', file, file.name);
+    return this.http.post<Restaurant>(`${this.base}/${id}/upload-image`, formData);
+  }
+
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${this.base}/${id}`);
   }

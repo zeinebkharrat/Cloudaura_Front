@@ -146,7 +146,8 @@ public class PublicExploreService {
             restaurant.getDescription(),
             restaurant.getAddress(),
             restaurant.getLatitude(),
-            restaurant.getLongitude()
+            restaurant.getLongitude(),
+            restaurant.getImageUrl()
         );
     }
 

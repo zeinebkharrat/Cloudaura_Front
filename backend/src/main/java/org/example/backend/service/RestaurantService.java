@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 @RequiredArgsConstructor
@@ -18,6 +19,7 @@ public class RestaurantService {
 
     private final RestaurantRepository restaurantRepository;
     private final CityService cityService;
+    private final ImgBbService imgBbService;
 
     public Page<RestaurantResponse> list(String q, Pageable pageable) {
         Specification<Restaurant> spec = (root, query, cb) -> {
@@ -58,6 +60,19 @@ public class RestaurantService {
         restaurantRepository.delete(findRestaurant(id));
     }
 
+    @Transactional
+    public RestaurantResponse uploadImage(Integer id, MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Le fichier image est obligatoire");
+        }
+
+        Restaurant restaurant = findRestaurant(id);
+        String url = imgBbService.uploadImage(file);
+        restaurant.setImageUrl(url);
+
+        return toResponse(restaurantRepository.save(restaurant));
+    }
+
     private Restaurant findRestaurant(Integer id) {
         return restaurantRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Restaurant introuvable: " + id));
@@ -72,6 +87,7 @@ public class RestaurantService {
         restaurant.setAddress(request.getAddress());
         restaurant.setLatitude(request.getLatitude());
         restaurant.setLongitude(request.getLongitude());
+        restaurant.setImageUrl(request.getImageUrl());
     }
 
     private RestaurantResponse toResponse(Restaurant restaurant) {
@@ -85,7 +101,8 @@ public class RestaurantService {
             restaurant.getDescription(),
             restaurant.getAddress(),
             restaurant.getLatitude(),
-            restaurant.getLongitude()
+            restaurant.getLongitude(),
+            restaurant.getImageUrl()
         );
     }
 }

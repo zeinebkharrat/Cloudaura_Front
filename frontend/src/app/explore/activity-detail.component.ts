@@ -25,6 +25,7 @@ export class ActivityDetailComponent {
   activity?: Activity;
   loading = true;
   error = '';
+  heroImage = 'assets/sidi_bou.png';
 
   form: CreateActivityReservationRequest = {
     reservationDate: new Date().toISOString().slice(0, 10),
@@ -45,11 +46,26 @@ export class ActivityDetailComponent {
     this.exploreService.getActivityDetails(id).subscribe({
       next: (res) => {
         this.activity = res;
+        this.loadCityHeroImage(res.cityId);
         this.loading = false;
       },
       error: (err) => {
         this.loading = false;
         this.error = err?.error?.message || 'Impossible de charger cette activité.';
+      },
+    });
+  }
+
+  private loadCityHeroImage(cityId: number): void {
+    this.exploreService.getCityDetails(cityId).subscribe({
+      next: (details) => {
+        const firstImage = details.media.find((m) => m.mediaType === 'IMAGE')?.url ?? details.media[0]?.url;
+        if (firstImage) {
+          this.heroImage = firstImage;
+        }
+      },
+      error: () => {
+        this.heroImage = 'assets/sidi_bou.png';
       },
     });
   }

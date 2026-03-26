@@ -147,4 +147,12 @@ export class CityExploreComponent implements OnInit, OnDestroy {
   goBack(): void {
     this.location.back();
   }
+
+  scrollToSection(sectionId: 'restaurants' | 'activities'): void {
+    const target = document.getElementById(sectionId);
+    if (!target) {
+      return;
+    }
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 }
