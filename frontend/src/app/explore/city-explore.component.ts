@@ -1,8 +1,10 @@
 import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
-import { CommonModule, Location } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ExploreService } from './explore.service';
 import { PublicCityDetailsResponse } from './explore.models';
+
+const HOME_MAP_RETURN_CONTEXT_KEY = 'homeMapReturnContext';
 
 @Component({
   selector: 'app-city-explore',
@@ -45,14 +47,17 @@ export class CityExploreComponent implements OnInit, OnDestroy {
   });
 
   private sliderTimer: ReturnType<typeof setInterval> | null = null;
+  private returnRegionId: string | null = null;
 
   constructor(
     private readonly route: ActivatedRoute,
     private readonly exploreService: ExploreService,
-    private readonly location: Location
+    private readonly router: Router
   ) {}
 
   ngOnInit(): void {
+    this.returnRegionId = this.route.snapshot.queryParamMap.get('region');
+
     const cityId = Number(this.route.snapshot.paramMap.get('cityId'));
     if (!cityId) {
       this.error.set('Invalid city');
@@ -145,7 +150,43 @@ export class CityExploreComponent implements OnInit, OnDestroy {
   }
 
   goBack(): void {
-    this.location.back();
+    const routeCityId = Number(this.route.snapshot.paramMap.get('cityId'));
+    const city = this.details()?.city;
+    const cityName = city?.name ?? null;
+    const cityId = city?.cityId ?? (Number.isNaN(routeCityId) ? null : routeCityId);
+    const cityLat = city?.latitude ?? null;
+    const cityLng = city?.longitude ?? null;
+    const returnRegion = this.returnRegionId ?? cityName ?? undefined;
+
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem(
+        HOME_MAP_RETURN_CONTEXT_KEY,
+        JSON.stringify({
+          zoomOut: 1,
+          returnRegion,
+          returnCity: cityName ?? undefined,
+          returnCityId: cityId ?? undefined,
+          returnLat: cityLat ?? undefined,
+          returnLng: cityLng ?? undefined,
+        })
+      );
+    }
+
+    this.router.navigate(['/'], {
+      fragment: 'map-section',
+      queryParams: {
+        zoomOut: 1,
+        returnRegion,
+        returnCity: cityName ?? undefined,
+        returnCityId: cityId ?? undefined,
+        returnLat: cityLat ?? undefined,
+        returnLng: cityLng ?? undefined,
+      },
+    });
+  }
+
+  goToMapZoomOut(): void {
+    this.goBack();
   }
 
   scrollToSection(sectionId: 'restaurants' | 'activities'): void {

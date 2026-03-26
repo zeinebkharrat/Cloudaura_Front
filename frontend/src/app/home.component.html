@@ -133,7 +133,7 @@
         (click)="goToSelectedCity()"
         [disabled]="selectedRegion()?.resolving || !selectedRegion()?.cityId"
       >
-        {{ selectedRegion()?.resolving ? 'Chargement...' : ('Explore ' + selectedRegion()?.name) }}
+        {{ selectedRegion()?.resolving ? 'Loading...' : ('Explore ' + selectedRegion()?.name) }}
       </button>
     </div>
   </div>

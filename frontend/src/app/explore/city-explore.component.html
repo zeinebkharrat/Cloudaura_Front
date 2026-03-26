@@ -18,6 +18,7 @@
           <div class="hero-actions">
             <button class="btn" type="button" (click)="scrollToSection('restaurants'); $event.stopPropagation()">Explore restaurants</button>
             <button class="btn ghost" type="button" (click)="scrollToSection('activities'); $event.stopPropagation()">See activities</button>
+            <button class="btn ghost" type="button" (click)="goToMapZoomOut(); $event.stopPropagation()">Back to map</button>
           </div>
         </div>
         @if (hasMultipleImages()) {
