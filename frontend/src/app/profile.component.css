@@ -1,0 +1,127 @@
+.profile-page {
+  min-height: 100vh;
+  padding: 130px 5% 40px;
+}
+
+.profile-card {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.subtitle,
+.muted {
+  color: var(--text-muted);
+}
+
+.grid-two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.profile-form,
+.password-form {
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 14px;
+  margin-top: 14px;
+}
+
+.avatar-card {
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 14px;
+  margin-top: 14px;
+}
+
+.avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+label {
+  display: block;
+  margin-bottom: 10px;
+}
+
+input {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  padding: 10px 12px;
+  margin-top: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-color);
+}
+
+select {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  padding: 10px 12px;
+  margin-top: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-color);
+}
+
+.upload-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 0;
+  border: 1px dashed var(--glass-border);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.avatar-placeholder {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  border: 2px dashed var(--glass-border);
+  display: grid;
+  place-items: center;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 8px;
+}
+
+.avatar-preview {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--glass-border);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+}
+
+.msg {
+  padding: 10px 12px;
+  border-radius: 10px;
+  margin-top: 10px;
+}
+
+.msg.error {
+  border: 1px solid rgba(232, 0, 45, 0.45);
+  background: rgba(232, 0, 45, 0.13);
+}
+
+.msg.success {
+  border: 1px solid rgba(0, 186, 124, 0.45);
+  background: rgba(0, 186, 124, 0.12);
+}
+
+@media (max-width: 900px) {
+  .grid-two {
+    grid-template-columns: 1fr;
+  }
+
+  .upload-row {
+    width: 100%;
+  }
+}

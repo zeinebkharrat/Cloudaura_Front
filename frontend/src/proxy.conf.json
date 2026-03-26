@@ -11,5 +11,13 @@
     "target": "http://localhost:8081",
     "secure": false,
     "changeOrigin": true
-  }
+  },
+
+  "/post": { "target": "http://localhost:8081", "secure": false, "changeOrigin": true },
+  "/comment": { "target": "http://localhost:8081", "secure": false, "changeOrigin": true },
+  "/like": { "target": "http://localhost:8081", "secure": false, "changeOrigin": true },
+  "/media": { "target": "http://localhost:8081", "secure": false, "changeOrigin": true },
+  "/auth": { "target": "http://localhost:8081", "secure": false, "changeOrigin": true },
+  "/cities": { "target": "http://localhost:8081", "secure": false, "changeOrigin": true },
+  "/public": { "target": "http://localhost:8081", "secure": false, "changeOrigin": true }
 }

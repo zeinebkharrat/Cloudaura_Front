@@ -1,0 +1,107 @@
+<section class="auth-page">
+  <div class="auth-bg-orb auth-bg-orb-left"></div>
+  <div class="auth-bg-orb auth-bg-orb-right"></div>
+
+  <article class="auth-card animate-in">
+    <p class="auth-kicker">Tunisia Travel Access</p>
+    <h1>Créer un compte voyageur</h1>
+    <p class="auth-subtitle">Rejoignez la communauté YallaTN+ pour planifier vos aventures en Tunisie.</p>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <div class="grid-two">
+        <label>
+          Prénom
+          <input type="text" formControlName="firstName" placeholder="Votre prénom" autocomplete="given-name" />
+        </label>
+
+        <label>
+          Nom
+          <input type="text" formControlName="lastName" placeholder="Votre nom" autocomplete="family-name" />
+        </label>
+      </div>
+
+      <label>
+        Nom d’utilisateur
+        <input type="text" formControlName="username" placeholder="ex: explorer_sousse" autocomplete="username" />
+      </label>
+
+      <label>
+        Email
+        <input type="email" formControlName="email" placeholder="vous@email.com" autocomplete="email" />
+      </label>
+
+      <div class="grid-two">
+        <label>
+          Nationalite
+          <select formControlName="nationality">
+            <option value="">Choisir une nationalite</option>
+            @for (nationality of nationalities(); track nationality) {
+              <option [value]="nationality">{{ nationality }}</option>
+            }
+          </select>
+        </label>
+
+        @if (showCityField()) {
+          <label>
+            Ville (Tunisie)
+            <select formControlName="cityId">
+              <option [ngValue]="null">Choisir une ville</option>
+              @for (city of cities(); track city.id) {
+                <option [ngValue]="city.id">{{ city.name }} ({{ city.region }})</option>
+              }
+            </select>
+          </label>
+        }
+      </div>
+
+      <label>
+        Mot de passe
+        <input type="password" formControlName="password" placeholder="Minimum 8 caractères" autocomplete="new-password" />
+      </label>
+
+      <label>
+        Confirmer le mot de passe
+        <input type="password" formControlName="confirmPassword" placeholder="Confirmez votre mot de passe" autocomplete="new-password" />
+      </label>
+
+      <div class="upload-block">
+        <label class="upload-label">
+          Photo de profil (optionnel)
+          <input type="file" accept="image/*" (change)="onImageSelected($event)" [disabled]="isUploadingImage()" />
+        </label>
+        @if (isUploadingImage()) {
+          <p class="upload-state">Upload en cours...</p>
+        } @else if (uploadedImageUrl()) {
+          <p class="upload-state success">Image uploadée avec succès.</p>
+          <img [src]="uploadedImageUrl()!" alt="Aperçu profil" class="preview-image" />
+        }
+      </div>
+
+      <div class="artisan-box">
+        <label class="artisan-check">
+          <input type="checkbox" formControlName="becomeArtisant" />
+          Je souhaite devenir artisan sur YallaTN+
+        </label>
+        @if (form.controls.becomeArtisant.value) {
+          <p>Votre demande artisan sera examinée par un administrateur avant activation du rôle.</p>
+        }
+      </div>
+
+      @if (form.hasError('passwordMismatch') && form.controls.confirmPassword.touched) {
+        <p class="field-error">Les mots de passe ne correspondent pas.</p>
+      }
+
+      @if (formError()) {
+        <div class="auth-error">{{ formError() }}</div>
+      }
+
+      <button type="submit" class="auth-submit" [disabled]="isLoading()">
+        {{ isLoading() ? 'Création en cours...' : 'Créer mon compte' }}
+      </button>
+    </form>
+
+    <p class="auth-switch">
+      Déjà inscrit ? <a routerLink="/signin">Se connecter</a>
+    </p>
+  </article>
+</section>

@@ -1,0 +1,124 @@
+<div class="dash">
+  <header class="dash-head">
+    <div>
+      <h1 class="dash-h1">Tableau de Bord Global</h1>
+      <p class="dash-p">Bienvenue, <strong class="user-pill">{{ user()?.username }} 👋</strong> — Aperçu de l'activité sur YallaTN</p>
+    </div>
+    <div class="dash-actions">
+      <button class="btn-refresh" title="Actualiser les données">🔄 Actualiser</button>
+      <button class="btn-export">⬇ Exporter PDF</button>
+    </div>
+  </header>
+
+  <!-- Big KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi-card glass-card">
+      <div class="kpi-icon icon-users">👥</div>
+      <div class="kpi-info">
+        <span class="kpi-lbl">Utilisateurs Inscrits</span>
+        <span class="kpi-val">12,450</span>
+        <span class="kpi-trend pos">↑ +12.5%</span>
+      </div>
+    </div>
+    
+    <div class="kpi-card glass-card">
+      <div class="kpi-icon icon-bookings">📅</div>
+      <div class="kpi-info">
+        <span class="kpi-lbl">Réservations Globales</span>
+        <span class="kpi-val">3,245</span>
+        <span class="kpi-trend pos">↑ +8.2%</span>
+      </div>
+    </div>
+
+    <div class="kpi-card glass-card">
+      <div class="kpi-icon icon-revenue">💰</div>
+      <div class="kpi-info">
+        <span class="kpi-lbl">Volume d'Affaire (Mensuel)</span>
+        <span class="kpi-val">45,820 DT</span>
+        <span class="kpi-trend pos">↑ +21.4%</span>
+      </div>
+    </div>
+
+    <div class="kpi-card glass-card">
+      <div class="kpi-icon icon-alert">⚠️</div>
+      <div class="kpi-info">
+        <span class="kpi-lbl">Signalements</span>
+        <span class="kpi-val">12</span>
+        <span class="kpi-trend neg">↓ -2.5%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts Layout -->
+  <div class="charts-layout">
+    
+    <!-- Left: Line Chart -->
+    <div class="chart-panel main-chart glass-card">
+      <div class="panel-head">
+        <h2 class="panel-title">Évolution des réservations (6 derniers mois)</h2>
+        <div class="btn-group">
+          <button class="bt-mini active">Mensuel</button>
+          <button class="bt-mini">Annuel</button>
+        </div>
+      </div>
+      <div class="chart-container-line">
+        <canvas #lineChart id="lineChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Right: Doughnut Chart -->
+    <div class="chart-panel side-chart glass-card">
+      <div class="panel-head">
+        <h2 class="panel-title">Répartition Globale</h2>
+        <button class="bt-more">⋮</button>
+      </div>
+      <div class="chart-container-doughnut">
+        <canvas #doughnutChart id="doughnutChart"></canvas>
+      </div>
+      
+      <div class="chart-meta">
+        <p class="meta-label">Catégorie dominante</p>
+        <p class="meta-value">Hébergements (45%)</p>
+      </div>
+    </div>
+    
+  </div>
+
+  <!-- Bottom: Activity feed or generic table placeholder -->
+  <div class="bottom-layout">
+    <div class="glass-card feed-card">
+      <h2 class="panel-title mb-4">Dernières Inscriptions & Activités</h2>
+      <ul class="activity-list">
+        <li>
+          <div class="av">JS</div>
+          <div class="act-det">
+            <span class="txt"><strong>Jean Dupont</strong> a réservé l'activité <em>Plongée Tabarka</em></span>
+            <span class="time">il y a 12 min</span>
+          </div>
+        </li>
+        <li>
+          <div class="av hotel">H</div>
+          <div class="act-det">
+            <span class="txt">Nouvel hébergement ajouté : <strong>Dar El Medina</strong> (Tunis)</span>
+            <span class="time">il y a 2 heures</span>
+          </div>
+        </li>
+        <li>
+          <div class="av trans">T</div>
+          <div class="act-det">
+            <span class="txt"><strong>Louage Premium</strong> a maj ses horaires.</span>
+            <span class="time">il y a 5 heures</span>
+          </div>
+        </li>
+        <li>
+          <div class="av alert">!</div>
+          <div class="act-det">
+            <span class="txt">Rupture de stock : Artisanat <em>Tapis Kairouan XXL</em></span>
+            <span class="time">il y a 1 jour</span>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+</div>

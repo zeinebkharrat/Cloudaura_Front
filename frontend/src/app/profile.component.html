@@ -1,0 +1,100 @@
+<section class="profile-page">
+  <article class="profile-card glass-panel">
+    <h1>Mon profil</h1>
+    <p class="subtitle">Mettez a jour vos informations personnelles et votre mot de passe.</p>
+
+    @if (actionError()) {
+      <div class="msg error">{{ actionError() }}</div>
+    }
+    @if (actionSuccess()) {
+      <div class="msg success">{{ actionSuccess() }}</div>
+    }
+
+    <section class="avatar-card">
+      <h2>Photo de profil</h2>
+      <div class="avatar-row">
+        @if (profileForm.controls.profileImageUrl.value) {
+          <img [src]="profileForm.controls.profileImageUrl.value" alt="Photo de profil" class="avatar-preview" />
+        } @else {
+          <div class="avatar-placeholder">Aucun visuel</div>
+        }
+
+        <div class="upload-row">
+          <input type="file" accept="image/*" (change)="uploadImage($event)" [disabled]="uploadBusy()" />
+          <span class="muted">{{ uploadBusy() ? 'Upload...' : 'Ajoutez une image claire pour votre profil.' }}</span>
+        </div>
+      </div>
+    </section>
+
+    <form [formGroup]="profileForm" (ngSubmit)="saveProfile()" class="profile-form">
+      <div class="grid-two">
+        <label>
+          Prenom
+          <input type="text" formControlName="firstName" />
+        </label>
+        <label>
+          Nom
+          <input type="text" formControlName="lastName" />
+        </label>
+      </div>
+
+      <div class="grid-two">
+        <label>
+          Email
+          <input type="email" formControlName="email" />
+        </label>
+        <label>
+          Telephone
+          <input type="text" formControlName="phone" />
+        </label>
+      </div>
+
+      <div class="grid-two">
+        <label>
+          Nationalite
+          <select formControlName="nationality">
+            <option value="">Choisir une nationalite</option>
+            @for (nationality of nationalities(); track nationality) {
+              <option [value]="nationality">{{ nationality }}</option>
+            }
+          </select>
+        </label>
+        @if (showCityField()) {
+          <label>
+            Ville
+            <select formControlName="cityId">
+              <option [ngValue]="null">Selectionnez une ville</option>
+              @for (city of cities(); track city.id) {
+                <option [ngValue]="city.id">{{ city.name }} ({{ city.region }})</option>
+              }
+            </select>
+          </label>
+        }
+      </div>
+
+      <button class="btn-primary" type="submit" [disabled]="isSavingProfile()">
+        {{ isSavingProfile() ? 'Sauvegarde...' : 'Sauvegarder le profil' }}
+      </button>
+    </form>
+
+    <form [formGroup]="passwordForm" (ngSubmit)="changePassword()" class="password-form">
+      <h2>Changer mot de passe</h2>
+      <label>
+        Mot de passe actuel
+        <input type="password" formControlName="currentPassword" />
+      </label>
+      <label>
+        Nouveau mot de passe
+        <input type="password" formControlName="newPassword" />
+      </label>
+      <label>
+        Confirmer le nouveau mot de passe
+        <input type="password" formControlName="confirmPassword" />
+      </label>
+
+      <button class="btn-outline" type="submit" [disabled]="isChangingPassword()">
+        {{ isChangingPassword() ? 'Mise a jour...' : 'Changer le mot de passe' }}
+      </button>
+    </form>
+  </article>
+</section>
