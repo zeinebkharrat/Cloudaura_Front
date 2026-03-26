@@ -32,7 +32,10 @@
       </div>
 
       <div class="content-panel">
-        <p class="kicker">Immersive experience</p>
+        <div class="content-top">
+          <p class="kicker">Immersive experience</p>
+          <button class="book-btn" type="button" (click)="openBookingModal()">Book this activity</button>
+        </div>
         <h1>{{ activity.name }}</h1>
         <p class="description">{{ activity.description || 'Enjoy an immersive local activity.' }}</p>
 
@@ -54,6 +57,9 @@
         </div>
 
         <a class="city-link" [routerLink]="['/city', activity.cityId]">Back to city</a>
+        <p class="success" *ngIf="created">
+          Booking #{{ created.reservationId }} created, status: {{ created.status }}.
+        </p>
       </div>
     </article>
 
@@ -78,8 +84,13 @@
       </button>
     </article>
 
-    <article class="booking-card animate-in delay-2">
-      <h2>Book this activity</h2>
+    <div class="booking-modal-backdrop" *ngIf="showBookingModal" (click)="closeBookingModal()"></div>
+    <section class="booking-modal" *ngIf="showBookingModal" role="dialog" aria-modal="true" aria-label="Book this activity">
+      <header class="booking-modal-head">
+        <h3>Book this activity</h3>
+        <button class="city-link" type="button" (click)="closeBookingModal()" [disabled]="submitting">✕</button>
+      </header>
+
       <form (ngSubmit)="submitReservation()" #reservationForm="ngForm" class="form">
         <label>
           Number of participants
@@ -100,11 +111,7 @@
           {{ submitting ? 'Sending...' : 'Confirm booking' }}
         </button>
       </form>
-
-      <p class="success" *ngIf="created">
-        Booking #{{ created.reservationId }} created, status: {{ created.status }}.
-      </p>
-    </article>
+    </section>
   </ng-container>
 </section>
 

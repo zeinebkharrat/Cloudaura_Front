@@ -150,6 +150,13 @@
   gap: 14px;
 }
 
+.content-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
 .kicker {
   margin: 0;
   font-size: 0.8rem;
@@ -157,6 +164,23 @@
   text-transform: uppercase;
   color: #e63946;
   font-weight: 700;
+}
+
+.book-btn {
+  border: 1px solid rgba(230, 57, 70, 0.65);
+  border-radius: 12px;
+  background: #e63946;
+  color: #fff;
+  padding: 9px 14px;
+  cursor: pointer;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.book-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px rgba(230, 57, 70, 0.32);
 }
 
 h1 {
@@ -218,13 +242,48 @@ h1 {
 }
 
 .map-card,
-.booking-card,
 .loading-card {
   border-radius: 24px;
   border: 1px solid var(--border-soft);
   background: var(--surface-1);
   box-shadow: var(--shadow-soft);
   padding: clamp(14px, 2vw, 22px);
+}
+
+.booking-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(3px);
+  z-index: 1400;
+}
+
+.booking-modal {
+  position: fixed;
+  z-index: 1401;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(520px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+  border-radius: 18px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface-1);
+  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.45);
+  padding: 16px;
+}
+
+.booking-modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.booking-modal-head h3 {
+  margin: 0;
+  color: var(--text-color);
 }
 
 .card-head {
@@ -359,6 +418,10 @@ textarea {
 
   .info-grid {
     grid-template-columns: 1fr;
+  }
+
+  .content-top {
+    flex-wrap: wrap;
   }
 }
 

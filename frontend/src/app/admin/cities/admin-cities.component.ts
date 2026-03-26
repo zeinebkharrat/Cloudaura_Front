@@ -25,8 +25,9 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
   loading = false;
   error = '';
   showCityModal = false;
+  showDetailsModal = false;
   modalError = '';
-  fieldErrors: Partial<Record<'name' | 'latitude' | 'longitude', string>> = {};
+  fieldErrors: Partial<Record<'name' | 'region' | 'description' | 'latitude' | 'longitude', string>> = {};
 
   editingCityId: number | null = null;
   cityForm: CityRequest = {
@@ -39,10 +40,13 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
 
   mediaCity: City | null = null;
   mediaItems: CityMedia[] = [];
+  detailsCity: City | null = null;
+  detailsMediaItems: CityMedia[] = [];
+  detailsLoadingMedia = false;
   mediaQ = '';
   mediaSort = 'mediaId,desc';
   mediaPage = 0;
-  mediaSize = 6;
+  mediaSize = 200;
   mediaTotalPages = 0;
   uploadFiles: File[] = [];
   mediaPreviewUrls: string[] = [];
@@ -157,6 +161,30 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
     this.resetCityForm();
   }
 
+  openDetails(city: City): void {
+    this.detailsCity = city;
+    this.detailsMediaItems = [];
+    this.detailsLoadingMedia = true;
+    this.showDetailsModal = true;
+
+    this.cityService.listCityMedia(city.cityId, '', 0, 24, 'mediaId,desc').subscribe({
+      next: (res) => {
+        this.detailsMediaItems = res.content;
+        this.detailsLoadingMedia = false;
+      },
+      error: () => {
+        this.detailsLoadingMedia = false;
+      },
+    });
+  }
+
+  closeDetailsModal(): void {
+    this.showDetailsModal = false;
+    this.detailsCity = null;
+    this.detailsMediaItems = [];
+    this.detailsLoadingMedia = false;
+  }
+
   saveCity(): void {
     if (!this.validateCityForm()) {
       return;
@@ -219,6 +247,9 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
       next: async () => {
         if (this.mediaCity?.cityId === city.cityId && this.showCityModal) {
           this.closeCityModal();
+        }
+        if (this.detailsCity?.cityId === city.cityId && this.showDetailsModal) {
+          this.closeDetailsModal();
         }
         this.loadCities();
         await Swal.fire({
@@ -330,6 +361,9 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
       confirmButtonColor: '#e63946',
       background: '#181d24',
       color: '#e2e8f0',
+      customClass: {
+        container: 'swal-on-top',
+      },
     });
 
     if (!confirmation.isConfirmed) {
@@ -352,7 +386,7 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
     return trimmed ? trimmed : null;
   }
 
-  clearFieldError(field: 'name' | 'latitude' | 'longitude'): void {
+  clearFieldError(field: 'name' | 'region' | 'description' | 'latitude' | 'longitude'): void {
     delete this.fieldErrors[field];
     this.modalError = '';
   }
@@ -368,6 +402,16 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
     const name = this.cityForm.name.trim();
     if (!name) {
       this.fieldErrors.name = 'Le nom de la ville est obligatoire.';
+    }
+
+    const region = this.nullIfBlank(this.cityForm.region);
+    if (!region) {
+      this.fieldErrors.region = 'La région est obligatoire.';
+    }
+
+    const description = this.nullIfBlank(this.cityForm.description);
+    if (!description) {
+      this.fieldErrors.description = 'La description est obligatoire.';
     }
 
     const latitude = this.cityForm.latitude;

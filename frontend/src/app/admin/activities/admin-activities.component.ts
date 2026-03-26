@@ -28,14 +28,18 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
   error = '';
   modalError = '';
   showModal = false;
+  showDetailsModal = false;
   geocodeMessage = '';
   fieldErrors: Partial<Record<'cityId' | 'name' | 'price' | 'latitude' | 'longitude', string>> = {};
 
   mediaItems: ActivityMedia[] = [];
+  detailsActivity: Activity | null = null;
+  detailsMediaItems: ActivityMedia[] = [];
+  detailsLoadingMedia = false;
   mediaQ = '';
   mediaSort = 'mediaId,desc';
   mediaPage = 0;
-  mediaSize = 6;
+  mediaSize = 200;
   mediaTotalPages = 0;
   uploadFiles: File[] = [];
   mediaPreviewUrls: string[] = [];
@@ -180,6 +184,30 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
       this.map = undefined;
       this.mapMarker = undefined;
     }
+  }
+
+  openDetails(item: Activity): void {
+    this.detailsActivity = item;
+    this.detailsMediaItems = [];
+    this.detailsLoadingMedia = true;
+    this.showDetailsModal = true;
+
+    this.activityService.listMedia(item.activityId, '', 0, 24, 'mediaId,desc').subscribe({
+      next: (res) => {
+        this.detailsMediaItems = res.content;
+        this.detailsLoadingMedia = false;
+      },
+      error: () => {
+        this.detailsLoadingMedia = false;
+      },
+    });
+  }
+
+  closeDetailsModal(): void {
+    this.showDetailsModal = false;
+    this.detailsActivity = null;
+    this.detailsMediaItems = [];
+    this.detailsLoadingMedia = false;
   }
 
   resetForm(): void {
@@ -395,22 +423,7 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
     });
   }
 
-  async deleteMedia(media: ActivityMedia): Promise<void> {
-    const confirmation = await Swal.fire({
-      title: 'Supprimer ce média ?',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonText: 'Supprimer',
-      cancelButtonText: 'Annuler',
-      confirmButtonColor: '#e63946',
-      background: '#181d24',
-      color: '#e2e8f0',
-    });
-
-    if (!confirmation.isConfirmed) {
-      return;
-    }
-
+  deleteMedia(media: ActivityMedia): void {
     this.activityService.deleteMedia(media.mediaId).subscribe({
       next: () => this.loadMedia(),
       error: (err) => {
@@ -570,6 +583,9 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
 
     this.activityService.delete(item.activityId).subscribe({
       next: async () => {
+        if (this.detailsActivity?.activityId === item.activityId && this.showDetailsModal) {
+          this.closeDetailsModal();
+        }
         this.loadActivities();
         await Swal.fire({
           icon: 'success',

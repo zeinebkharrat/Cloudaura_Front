@@ -46,6 +46,7 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
 
   submitting = false;
   created?: ActivityReservationResponse;
+  showBookingModal = false;
 
   ngAfterViewInit(): void {
     this.viewReady = true;
@@ -221,6 +222,7 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
         next: (res) => {
           this.created = res;
           this.submitting = false;
+          this.showBookingModal = false;
           Swal.fire({
             icon: 'success',
             title: 'Booking sent',
@@ -238,6 +240,17 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
           });
         },
       });
+  }
+
+  openBookingModal(): void {
+    this.showBookingModal = true;
+  }
+
+  closeBookingModal(): void {
+    if (this.submitting) {
+      return;
+    }
+    this.showBookingModal = false;
   }
 
   goBack(): void {

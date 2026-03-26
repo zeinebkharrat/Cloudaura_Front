@@ -27,12 +27,14 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
   totalElements = 0;
   error = '';
   showModal = false;
+  showDetailsModal = false;
   modalError = '';
   fieldErrors: Partial<Record<'cityId' | 'name' | 'rating' | 'latitude' | 'longitude', string>> = {};
   geocodeMessage = '';
   imagePreviewUrl: string | null = null;
   selectedImageFile: File | null = null;
   persistedImageUrl: string | null = null;
+  detailsRestaurant: Restaurant | null = null;
 
   editingId: number | null = null;
   form: {
@@ -167,6 +169,16 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
       this.map = undefined;
       this.mapMarker = undefined;
     }
+  }
+
+  openDetails(item: Restaurant): void {
+    this.detailsRestaurant = item;
+    this.showDetailsModal = true;
+  }
+
+  closeDetailsModal(): void {
+    this.showDetailsModal = false;
+    this.detailsRestaurant = null;
   }
 
   resetForm(): void {
@@ -467,6 +479,9 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
 
     this.restaurantService.delete(item.restaurantId).subscribe({
       next: async () => {
+        if (this.detailsRestaurant?.restaurantId === item.restaurantId && this.showDetailsModal) {
+          this.closeDetailsModal();
+        }
         this.loadRestaurants();
         await Swal.fire({
           icon: 'success',
