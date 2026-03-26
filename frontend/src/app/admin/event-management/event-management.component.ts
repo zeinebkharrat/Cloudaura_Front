@@ -77,22 +77,42 @@ export class EventManagementComponent implements OnInit {
     }
   }
 
+
   saveEvent() {
+    if (!this.validateDates()) return;
+
     this.currentEvent.city.cityId = Number(this.currentEvent.city.cityId);
     
     if (this.isEditMode && this.currentEvent.eventId) {
       this.eventService.updateEvent(this.currentEvent.eventId, this.currentEvent).subscribe({
         next: () => this.handleResponse('Updated'),
-        error: (err) => console.error(err)
+        error: (err) => Swal.fire('Error', 'Update failed', 'error')
       });
     } else {
       this.eventService.createEvent(this.currentEvent).subscribe({
         next: () => this.handleResponse('Created'),
-        error: (err) => console.error(err)
+        error: (err) => Swal.fire('Error', 'Creation failed', 'error')
       });
     }
   }
 
+  validateDates(): boolean {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(this.currentEvent.startDate);
+    const end = new Date(this.currentEvent.endDate);
+
+    if (start < today) {
+      Swal.fire('Date Error', 'Start date cannot be in the past!', 'error');
+      return false;
+    }
+    if (end < start) {
+      Swal.fire('Date Error', 'End date must be after start date!', 'error');
+      return false;
+    }
+    return true;
+  }
+  
   handleResponse(msg: string) {
     this.loadEvents();
     this.showModal = false;

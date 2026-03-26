@@ -2,7 +2,7 @@
   <div class="header-flex">
     <div>
       <h1 style="margin:0; font-size: 1.8rem;">Event Dashboard</h1>
-      <p style="color: #94a3b8; margin-top: 5px;">Manage your tourism activities</p>
+      <p style="color: #94a3b8; margin-top: 5px;">Manage tourism activities with strict validation</p>
     </div>
     <button class="btn-primary" (click)="openAddModal()">+ New Event</button>
   </div>
@@ -54,47 +54,63 @@
 <div class="modal-backdrop" *ngIf="showModal">
   <div class="modal-content">
     <h2 style="margin-top:0; color: white; margin-bottom: 20px;">
-      {{ isEditMode ? 'Edit Event Details' : 'Create New Event' }}
+      {{ isEditMode ? 'Edit Event' : 'New Event' }}
     </h2>
     
-    <form (ngSubmit)="saveEvent()" #eventForm="ngForm">
+    <form (ngSubmit)="saveEvent()" #eventForm="ngForm" novalidate>
       
       <div class="form-group">
-        <label>Event Name</label>
-        <input type="text" name="title" [(ngModel)]="currentEvent.title" required placeholder="Enter event title...">
+        <label>Event Name *</label>
+        <input type="text" name="title" [(ngModel)]="currentEvent.title" 
+               #titleVar="ngModel" required minlength="5"
+               placeholder="Enter at least 5 characters"
+               [style.border-color]="titleVar.invalid && titleVar.touched ? '#ef4444' : '#334155'">
+        
+        <div *ngIf="titleVar.invalid && titleVar.touched" style="color: #ef4444; font-size: 0.75rem; margin-top: 4px;">
+          <span *ngIf="titleVar.errors?.['required']">Name is required.</span>
+          <span *ngIf="titleVar.errors?.['minlength']">Required: at least 5 characters.</span>
+        </div>
       </div>
 
       <div class="row">
         <div class="form-group col">
-          <label>City (Tunisia)</label>
-          <select name="cityId" [(ngModel)]="currentEvent.city.cityId">
+          <label>City (Tunisia) *</label>
+          <select name="cityId" [(ngModel)]="currentEvent.city.cityId" required>
             <option *ngFor="let c of tunisiaCities" [value]="c.cityId">{{c.name}}</option>
           </select>
         </div>
         <div class="form-group col">
-          <label>Category</label>
-          <select name="type" [(ngModel)]="currentEvent.eventType">
+          <label>Category *</label>
+          <select name="type" [(ngModel)]="currentEvent.eventType" required>
             <option value="CULTURAL">Cultural</option>
             <option value="SPORT">Sport</option>
             <option value="FESTIVAL">Festival</option>
-            <option value="HIKING">Hiking</option>
+            <option value="TECH">Technology</option>
           </select>
         </div>
       </div>
 
       <div class="form-group">
-        <label>Venue / Address</label>
-        <input type="text" name="venue" [(ngModel)]="currentEvent.venue" required placeholder="Ex: Amphitheatre of El Jem">
+        <label>Venue / Address *</label>
+        <input type="text" name="venue" [(ngModel)]="currentEvent.venue" 
+               #venueVar="ngModel" required minlength="5"
+               placeholder="Enter at least 5 characters"
+               [style.border-color]="venueVar.invalid && venueVar.touched ? '#ef4444' : '#334155'">
+        
+        <div *ngIf="venueVar.invalid && venueVar.touched" style="color: #ef4444; font-size: 0.75rem; margin-top: 4px;">
+          <span *ngIf="venueVar.errors?.['required']">Venue is required.</span>
+          <span *ngIf="venueVar.errors?.['minlength']">Required: at least 5 characters.</span>
+        </div>
       </div>
 
       <div class="row">
         <div class="form-group col">
-          <label>Start Date</label>
+          <label>Start Date *</label>
           <input type="date" name="startDate" [(ngModel)]="currentEvent.startDate" required>
         </div>
 
         <div class="form-group col" *ngIf="!isEditMode">
-          <label>End Date</label>
+          <label>End Date *</label>
           <input type="date" name="endDate" [(ngModel)]="currentEvent.endDate" required>
         </div>
 
@@ -109,15 +125,15 @@
       </div>
 
       <div class="form-group" *ngIf="isEditMode">
-        <label>End Date</label>
+        <label>End Date *</label>
         <input type="date" name="endDateEdit" [(ngModel)]="currentEvent.endDate" required>
       </div>
 
       <div class="form-group">
         <label>Event Image (Upload)</label>
         <input type="file" (change)="onFileSelected($event)" class="file-input">
-        <div *ngIf="uploading" style="color: #3b82f6; font-size: 0.8rem; margin-top: 5px;">
-          ⏳ Uploading image to server...
+        <div *ngIf="uploading" style="color: #3b82f6; font-size: 0.8rem; margin-top: 5px; font-weight: bold;">
+          ⌛ Uploading... please wait.
         </div>
       </div>
 
@@ -126,7 +142,9 @@
           Cancel
         </button>
         
-        <button type="submit" class="btn-primary" [disabled]="eventForm.invalid || uploading">
+        <button type="submit" class="btn-primary" 
+                [disabled]="eventForm.invalid || uploading"
+                [style.opacity]="eventForm.invalid || uploading ? '0.5' : '1'">
           {{ isEditMode ? 'Save Changes' : 'Create Event' }}
         </button>
       </div>
