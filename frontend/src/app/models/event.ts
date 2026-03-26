@@ -1,13 +1,17 @@
+export interface City {
+  cityId: number;
+  name?: string;
+  region?: string;
+}
+
 export interface Event {
-  eventId?: number;      
+  eventId?: number;
   title: string;
   eventType: string;
   startDate: string;
   endDate: string;
   venue: string;
   status: string;
-  city?: {
-    cityId: number;
-    cityName?: string;
-  };
+  imageUrl?: string;
+  city: City;
 }

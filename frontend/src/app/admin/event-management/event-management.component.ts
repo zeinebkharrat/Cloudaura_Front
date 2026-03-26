@@ -1,8 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { EventService } from '../../event.service';
-import { Event } from '../../models/event';
+import { Event, City } from '../../models/event';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-event-management',
@@ -15,79 +17,95 @@ export class EventManagementComponent implements OnInit {
   events: Event[] = [];
   showModal = false;
   isEditMode = false;
-  errorMessage = '';
+  uploading = false;
 
-  currentEvent: Event = this.getEmptyEvent();
+  tunisiaCities: City[] = [
+    { cityId: 1, name: 'Tunis' }, { cityId: 2, name: 'Ariana' }, { cityId: 3, name: 'Ben Arous' },
+    { cityId: 4, name: 'Manouba' }, { cityId: 5, name: 'Nabeul' }, { cityId: 6, name: 'Zaghouan' },
+    { cityId: 7, name: 'Bizerte' }, { cityId: 8, name: 'Béja' }, { cityId: 9, name: 'Jendouba' },
+    { cityId: 10, name: 'Le Kef' }, { cityId: 11, name: 'Siliana' }, { cityId: 12, name: 'Kairouan' },
+    { cityId: 13, name: 'Sidi Bouzid' }, { cityId: 14, name: 'Kassérine' }, { cityId: 15, name: 'Sousse' },
+    { cityId: 16, name: 'Monastir' }, { cityId: 17, name: 'Mahdia' }, { cityId: 18, name: 'Sfax' },
+    { cityId: 19, name: 'Gafsa' }, { cityId: 20, name: 'Tozeur' }, { cityId: 21, name: 'Kebili' },
+    { cityId: 22, name: 'Gabès' }, { cityId: 23, name: 'Médenine' }, { cityId: 24, name: 'Tataouine' }
+  ];
 
-  constructor(private eventService: EventService) {}
+  currentEvent: Event = this.initEmptyEvent();
 
-  ngOnInit(): void {
-    this.loadEvents();
+  constructor(private eventService: EventService, private http: HttpClient) {}
+
+  ngOnInit(): void { this.loadEvents(); }
+
+  loadEvents() {
+    this.eventService.getEvents().subscribe(data => this.events = data);
   }
 
-  loadEvents(): void {
-    this.eventService.getEvents().subscribe({
-      next: (data) => this.events = data,
-      error: (err) => console.error('API Error:', err)
-    });
-  }
-
-  private getEmptyEvent(): Event {
-    return { title: '', eventType: 'CULTURAL', venue: '', startDate: '', endDate: '', status: 'UPCOMING' };
+  initEmptyEvent(): Event {
+    return {
+      title: '', eventType: 'CULTURAL', venue: '',
+      startDate: '', endDate: '', status: 'UPCOMING',
+      imageUrl: '', city: { cityId: 1 }
+    };
   }
 
   openAddModal() {
     this.isEditMode = false;
-    this.errorMessage = '';
-    this.currentEvent = this.getEmptyEvent();
+    this.currentEvent = this.initEmptyEvent();
     this.showModal = true;
   }
 
   openEditModal(event: Event) {
     this.isEditMode = true;
-    this.errorMessage = '';
-    this.currentEvent = { ...event };
+    this.currentEvent = JSON.parse(JSON.stringify(event)); // Deep copy
     this.showModal = true;
   }
 
-  closeModal() {
-    this.showModal = false;
-  }
-
-  validateDates(): boolean {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const start = new Date(this.currentEvent.startDate);
-    const end = new Date(this.currentEvent.endDate);
-
-    if (start < today && !this.isEditMode) {
-      this.errorMessage = "Start date cannot be in the past.";
-      return false;
+  onFileSelected(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      this.uploading = true;
+      const formData = new FormData();
+      formData.append('image', file);
+      this.http.post('https://api.imgbb.com/1/upload?key=7360a2c39349f4d87d8c057a177810e7', formData)
+        .subscribe({
+          next: (res: any) => {
+            this.currentEvent.imageUrl = res.data.url;
+            this.uploading = false;
+          },
+          error: () => this.uploading = false
+        });
     }
-    if (end < start) {
-      this.errorMessage = "End date must be after start date.";
-      return false;
-    }
-    this.errorMessage = '';
-    return true;
   }
 
   saveEvent() {
-    if (!this.validateDates()) return;
-
-    const request = this.isEditMode && this.currentEvent.eventId
-      ? this.eventService.updateEvent(this.currentEvent.eventId, this.currentEvent)
-      : this.eventService.createEvent(this.currentEvent);
-
-    request.subscribe({
-      next: () => { this.loadEvents(); this.closeModal(); },
-      error: () => this.errorMessage = "An error occurred while saving."
-    });
+    this.currentEvent.city.cityId = Number(this.currentEvent.city.cityId);
+    
+    if (this.isEditMode && this.currentEvent.eventId) {
+      this.eventService.updateEvent(this.currentEvent.eventId, this.currentEvent).subscribe({
+        next: () => this.handleResponse('Updated'),
+        error: (err) => console.error(err)
+      });
+    } else {
+      this.eventService.createEvent(this.currentEvent).subscribe({
+        next: () => this.handleResponse('Created'),
+        error: (err) => console.error(err)
+      });
+    }
   }
 
-  deleteEvent(id: number | undefined): void {
-    if (id && confirm('Are you sure you want to delete this event?')) {
-      this.eventService.deleteEvent(id).subscribe(() => this.loadEvents());
-    }
+  handleResponse(msg: string) {
+    this.loadEvents();
+    this.showModal = false;
+    Swal.fire('Success', `Event ${msg} successfully`, 'success');
+  }
+
+  deleteEvent(id: any) {
+    Swal.fire({
+      title: 'Delete?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes'
+    }).then((res) => {
+      if (res.isConfirmed) {
+        this.eventService.deleteEvent(id).subscribe(() => this.loadEvents());
+      }
+    });
   }
 }

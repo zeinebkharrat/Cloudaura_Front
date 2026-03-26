@@ -1,100 +1,133 @@
-<div class="admin-wrapper">
-  <div class="header-content">
-    <div class="text-group">
-      <h1 class="page-title">Event Management</h1>
-      <p class="page-subtitle">Manage and monitor all tourism activities</p>
+<div class="admin-container">
+  <div class="header-flex">
+    <div>
+      <h1 style="margin:0; font-size: 1.8rem;">Event Dashboard</h1>
+      <p style="color: #94a3b8; margin-top: 5px;">Manage your tourism activities</p>
     </div>
-    <button class="btn-add-main" (click)="openAddModal()">
-      <span>+</span> New Event
-    </button>
+    <button class="btn-primary" (click)="openAddModal()">+ New Event</button>
   </div>
 
-  <div class="table-container shadow-lg">
-    <table class="custom-table">
+  <div class="table-card">
+    <table>
       <thead>
         <tr>
-          <th>Event Details</th>
-          <th>Category</th>
+          <th>Name</th>
           <th>Location</th>
-          <th>Schedule</th>
-          <th class="text-right">Actions</th>
+          <th>Type</th>
+          <th>Status</th>
+          <th>Dates</th>
+          <th>Image</th>
+          <th style="text-align: right;">Actions</th>
         </tr>
       </thead>
       <tbody>
         <tr *ngFor="let ev of events">
           <td class="primary-cell">{{ ev.title }}</td>
-          <td><span class="type-badge">{{ ev.eventType }}</span></td>
-          <td class="location-text">📍 {{ ev.venue }}</td>
-          <td class="date-text">
-            {{ ev.startDate | date:'MMM d' }} — {{ ev.endDate | date:'MMM d, y' }}
+          <td>
+            <div style="font-size: 0.9rem;">📍 {{ ev.venue }}</div>
+            <small style="color: #3b82f6;">{{ ev.city?.name }}</small>
           </td>
-          <td class="text-right">
-            <div class="btn-group-actions">
-              <button class="icon-btn edit-btn" (click)="openEditModal(ev)" title="Edit">
-                ✏️
-              </button>
-              <button class="icon-btn delete-btn" (click)="deleteEvent(ev.eventId)" title="Delete">
-                🗑️
-              </button>
+          <td><span class="badge">{{ ev.eventType }}</span></td>
+          <td>
+            <small class="status-label" [style.color]="ev.status === 'COMPLETED' ? '#94a3b8' : '#10b981'">
+              {{ ev.status }}
+            </small>
+          </td>
+          <td style="font-size: 0.85rem; color: #cbd5e1;">
+            {{ ev.startDate | date:'dd/MM/yy' }} - {{ ev.endDate | date:'dd/MM/yy' }}
+          </td>
+          <td>
+            <img [src]="ev.imageUrl || 'assets/placeholder.png'" class="event-img" alt="event">
+          </td>
+          <td style="text-align: right;">
+            <div class="action-btns">
+              <button class="btn-icon" (click)="openEditModal(ev)" title="Edit">📝</button>
+              <button class="btn-icon" (click)="deleteEvent(ev.eventId)" title="Delete">🗑️</button>
             </div>
           </td>
         </tr>
       </tbody>
     </table>
-
-    <div *ngIf="events.length === 0" class="no-data">
-      <p>No events found. Start by creating a new one.</p>
-    </div>
   </div>
 </div>
 
-<div class="modal-overlay" *ngIf="showModal" (click)="closeModal()">
-  <div class="modal-box" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <h3>{{ isEditMode ? 'Update Event' : 'New Event' }}</h3>
-      <button class="close-x" (click)="closeModal()">&times;</button>
-    </div>
-
-    <form (ngSubmit)="saveEvent()" #eventForm="ngForm" class="modal-body">
-      <div class="error-msg" *ngIf="errorMessage">{{ errorMessage }}</div>
-
-      <div class="input-stack">
-        <label>Event Title</label>
-        <input type="text" name="title" [(ngModel)]="currentEvent.title" 
-               required minlength="3" placeholder="e.g. Sahara Festival" #t="ngModel">
-        <small class="hint" *ngIf="t.touched && t.invalid">Minimum 3 characters required</small>
+<div class="modal-backdrop" *ngIf="showModal">
+  <div class="modal-content">
+    <h2 style="margin-top:0; color: white; margin-bottom: 20px;">
+      {{ isEditMode ? 'Edit Event Details' : 'Create New Event' }}
+    </h2>
+    
+    <form (ngSubmit)="saveEvent()" #eventForm="ngForm">
+      
+      <div class="form-group">
+        <label>Event Name</label>
+        <input type="text" name="title" [(ngModel)]="currentEvent.title" required placeholder="Enter event title...">
       </div>
 
-      <div class="input-row">
-        <div class="input-stack flex-1">
-          <label>Location</label>
-          <input type="text" name="venue" [(ngModel)]="currentEvent.venue" required minlength="3">
+      <div class="row">
+        <div class="form-group col">
+          <label>City (Tunisia)</label>
+          <select name="cityId" [(ngModel)]="currentEvent.city.cityId">
+            <option *ngFor="let c of tunisiaCities" [value]="c.cityId">{{c.name}}</option>
+          </select>
         </div>
-        <div class="input-stack flex-1">
+        <div class="form-group col">
           <label>Category</label>
           <select name="type" [(ngModel)]="currentEvent.eventType">
             <option value="CULTURAL">Cultural</option>
             <option value="SPORT">Sport</option>
             <option value="FESTIVAL">Festival</option>
+            <option value="HIKING">Hiking</option>
           </select>
         </div>
       </div>
 
-      <div class="input-row">
-        <div class="input-stack flex-1">
+      <div class="form-group">
+        <label>Venue / Address</label>
+        <input type="text" name="venue" [(ngModel)]="currentEvent.venue" required placeholder="Ex: Amphitheatre of El Jem">
+      </div>
+
+      <div class="row">
+        <div class="form-group col">
           <label>Start Date</label>
           <input type="date" name="startDate" [(ngModel)]="currentEvent.startDate" required>
         </div>
-        <div class="input-stack flex-1">
+
+        <div class="form-group col" *ngIf="!isEditMode">
           <label>End Date</label>
           <input type="date" name="endDate" [(ngModel)]="currentEvent.endDate" required>
         </div>
+
+        <div class="form-group col" *ngIf="isEditMode">
+          <label>Status</label>
+          <select name="status" [(ngModel)]="currentEvent.status">
+            <option value="UPCOMING">Upcoming</option>
+            <option value="ONGOING">Ongoing</option>
+            <option value="COMPLETED">Completed</option>
+          </select>
+        </div>
       </div>
 
-      <div class="modal-footer">
-        <button type="button" class="btn-ghost" (click)="closeModal()">Cancel</button>
-        <button type="submit" class="btn-submit-action" [disabled]="eventForm.invalid">
-          {{ isEditMode ? 'Update Event' : 'Create Event' }}
+      <div class="form-group" *ngIf="isEditMode">
+        <label>End Date</label>
+        <input type="date" name="endDateEdit" [(ngModel)]="currentEvent.endDate" required>
+      </div>
+
+      <div class="form-group">
+        <label>Event Image (Upload)</label>
+        <input type="file" (change)="onFileSelected($event)" class="file-input">
+        <div *ngIf="uploading" style="color: #3b82f6; font-size: 0.8rem; margin-top: 5px;">
+          ⏳ Uploading image to server...
+        </div>
+      </div>
+
+      <div class="footer-btns">
+        <button type="button" (click)="showModal = false" class="btn-cancel">
+          Cancel
+        </button>
+        
+        <button type="submit" class="btn-primary" [disabled]="eventForm.invalid || uploading">
+          {{ isEditMode ? 'Save Changes' : 'Create Event' }}
         </button>
       </div>
     </form>
