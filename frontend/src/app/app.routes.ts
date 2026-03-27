@@ -14,14 +14,24 @@ import { AdminLayoutComponent } from './admin/layout/admin-layout.component';
 import { AdminDashboardComponent } from './admin/dashboard/admin-dashboard.component';
 import { ProfileComponent } from './profile.component';
 import { AuditLogsComponent } from './audit-logs.component';
+import { AdminCitiesComponent } from './admin/cities/admin-cities.component';
+import { AdminRestaurantsComponent } from './admin/restaurants/admin-restaurants.component';
+import { AdminActivitiesComponent } from './admin/activities/admin-activities.component';
+import { CityExploreComponent } from './explore/city-explore.component';
+import { RestaurantDetailComponent } from './explore/restaurant-detail.component';
+import { ActivityDetailComponent } from './explore/activity-detail.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
+  { path: 'login', component: SignInComponent },
   { path: 'signin', component: SignInComponent },
   { path: 'signup', component: SignUpComponent },
   { path: 'forgot-password', component: ForgotPasswordComponent },
   { path: 'reset-password', component: ResetPasswordComponent },
   { path: 'verify-email', component: VerifyEmailComponent },
+  { path: 'city/:cityId', component: CityExploreComponent },
+  { path: 'restaurants/:restaurantId', component: RestaurantDetailComponent },
+  { path: 'activities/:activityId', component: ActivityDetailComponent },
   {
     path: 'admin',
     canActivate: [authGuard, roleGuard],
@@ -32,6 +42,9 @@ export const routes: Routes = [
       { path: 'dashboard', component: AdminDashboardComponent },
       { path: 'audit-logs', component: AuditLogsComponent },
       { path: 'users', component: AdminUsersComponent },
+      { path: 'cities', component: AdminCitiesComponent },
+      { path: 'restaurants', component: AdminRestaurantsComponent },
+      { path: 'activities', component: AdminActivitiesComponent },
     ],
   },
   { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },

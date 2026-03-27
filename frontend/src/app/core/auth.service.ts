@@ -7,7 +7,7 @@ export interface User { username: string; role: 'ADMIN' | 'USER'; }
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private readonly API = 'http://localhost:8081/api/auth';
+  private readonly API = '/api/auth';
   private readonly KEY = 'yallatn_session';
 
   currentUser = signal<User | null>(this._load());

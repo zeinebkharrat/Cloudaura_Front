@@ -95,3 +95,17 @@
   </div>
 </footer>
 }
+
+<button
+  type="button"
+  class="theme-toggle-floating"
+  (click)="toggleTheme()"
+  aria-label="Basculer le thème global"
+  title="Basculer le thème"
+>
+  @if (isDarkMode()) {
+    ☀️
+  } @else {
+    🌙
+  }
+</button>
