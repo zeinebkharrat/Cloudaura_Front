@@ -11,4 +11,9 @@ public class City {
     private String description;
     private Double latitude;
     private Double longitude;
+
+    public Integer getCityId() { return cityId; }
+    public void setCityId(Integer cityId) { this.cityId = cityId; }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 }

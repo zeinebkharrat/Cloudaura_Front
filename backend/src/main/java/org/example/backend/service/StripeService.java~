@@ -12,7 +12,7 @@ public class StripeService {
 
     @PostConstruct
     public void init() {
-        Stripe.apiKey = "pk_test_51TFAEsBCrgk7EbwDBJOgFQ4XLe147tO3l5BlTw4pDOUO4XPT7v5fZucKgyyQuqczW9Bcxd9v3qeY9HImpIFiCvMz007Bg1Okcw";
+        Stripe.apiKey = "sk_test_ton_secret_key_ici";
     }
 
     public String createCheckoutSession(PaymentRequest paymentRequest) throws Exception {
