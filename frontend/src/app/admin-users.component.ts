@@ -40,6 +40,10 @@ export class AdminUsersComponent {
     return normalized === 'tunisia' || normalized === 'tunisian' || normalized === 'tunisie';
   }
 
+  private isValidPhone(value: string): boolean {
+    return /^\+?[0-9\s-]{8,20}$/.test(value);
+  }
+
   constructor() {
     this.loadCities();
 
@@ -97,7 +101,11 @@ export class AdminUsersComponent {
     }
 
     const cityOptions = this.cities()
-      .map((city) => `<option value="${city.id}" ${user.cityId === city.id ? 'selected' : ''}>${city.name} (${city.region})</option>`)
+      .map((city) => {
+        const cityId = city.id ?? city.cityId;
+        const selected = user.cityId != null && cityId != null && Number(user.cityId) === Number(cityId);
+        return `<option value="${cityId ?? ''}" ${selected ? 'selected' : ''}>${city.name} (${city.region})</option>`;
+      })
       .join('');
     let uploadedImageUrl: string | null = user.profileImageUrl ?? null;
 
@@ -184,6 +192,10 @@ export class AdminUsersComponent {
 
         if (!firstName || !lastName || !email) {
           Swal.showValidationMessage('Prenom, nom et email sont obligatoires.');
+          return null;
+        }
+        if (phone && !this.isValidPhone(phone)) {
+          Swal.showValidationMessage('Numéro téléphone invalide (8 à 20 chiffres, espaces ou tirets autorisés).');
           return null;
         }
         if (this.isTunisiaNationality(nationality) && !cityId) {

@@ -30,8 +30,14 @@ public class AuthController {
     @Value("${app.oauth2.google-client-id}")
     private String googleClientId;
 
+    @Value("${app.oauth2.google-client-secret}")
+    private String googleClientSecret;
+
     @Value("${app.oauth2.github-client-id}")
     private String githubClientId;
+
+    @Value("${app.oauth2.github-client-secret}")
+    private String githubClientSecret;
 
     public AuthController(AuthService authService) {
         this.authService = authService;
@@ -55,13 +61,18 @@ public class AuthController {
 
     @GetMapping("/social/providers")
     public SocialProvidersResponse socialProviders() {
-        boolean googleConfigured = googleClientId != null
-            && !googleClientId.isBlank()
-            && !googleClientId.startsWith("dummy-");
-        boolean githubConfigured = githubClientId != null
-            && !githubClientId.isBlank()
-            && !githubClientId.startsWith("dummy-");
+        boolean googleConfigured = isConfigured(googleClientId, googleClientSecret);
+        boolean githubConfigured = isConfigured(githubClientId, githubClientSecret);
         return new SocialProvidersResponse(googleConfigured, githubConfigured);
+    }
+
+    private boolean isConfigured(String clientId, String clientSecret) {
+        return clientId != null
+            && clientSecret != null
+            && !clientId.isBlank()
+            && !clientSecret.isBlank()
+            && !clientId.startsWith("disabled-")
+            && !clientSecret.startsWith("disabled-");
     }
 
     @GetMapping("/verify-email")

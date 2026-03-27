@@ -43,7 +43,15 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/auth/**").permitAll()
+                    .requestMatchers(
+                        "/api/auth/signin",
+                        "/api/auth/signup",
+                        "/api/auth/verify-email",
+                        "/api/auth/resend-verification",
+                        "/api/auth/forgot-password",
+                        "/api/auth/reset-password",
+                        "/api/auth/social/providers"
+                    ).permitAll()
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/cities/**").permitAll()
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()

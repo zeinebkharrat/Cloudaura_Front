@@ -35,6 +35,8 @@ export class SignUpComponent {
   readonly uploadedImageUrl = signal<string | null>(null);
   readonly cities = signal<CityOption[]>([]);
   readonly nationalities = signal<string[]>([]);
+  readonly captchaQuestion = signal('');
+  private captchaExpectedAnswer = 0;
 
   readonly form = this.fb.nonNullable.group(
     {
@@ -42,10 +44,12 @@ export class SignUpComponent {
       lastName: ['', [Validators.required, Validators.minLength(2)]],
       username: ['', [Validators.required, Validators.minLength(3)]],
       email: ['', [Validators.required, Validators.email]],
+      phone: ['', [Validators.pattern(/^\+?[0-9\s-]{8,20}$/)]],
       nationality: [''],
       cityId: [null as number | null],
       password: ['', [Validators.required, Validators.minLength(8)]],
       confirmPassword: ['', [Validators.required]],
+      captchaAnswer: ['', [Validators.required]],
       becomeArtisant: [false],
     },
     { validators: passwordsMatch }
@@ -66,6 +70,48 @@ export class SignUpComponent {
       next: (cities) => this.cities.set(cities),
       error: () => this.cities.set([]),
     });
+
+    this.generateCaptcha();
+  }
+
+  controlInvalid(controlName: 'firstName' | 'lastName' | 'username' | 'email' | 'phone' | 'password' | 'confirmPassword' | 'captchaAnswer' | 'cityId'): boolean {
+    const control = this.form.controls[controlName];
+    return control.invalid && control.touched;
+  }
+
+  private generateCaptcha(): void {
+    const a = Math.floor(Math.random() * 8) + 2;
+    const b = Math.floor(Math.random() * 8) + 2;
+    this.captchaExpectedAnswer = a + b;
+    this.captchaQuestion.set(`${a} + ${b} = ?`);
+  }
+
+  regenerateCaptcha(): void {
+    this.form.controls.captchaAnswer.setValue('');
+    this.form.controls.captchaAnswer.markAsUntouched();
+    this.generateCaptcha();
+  }
+
+  private captchaIsValid(): boolean {
+    const answer = Number(this.form.controls.captchaAnswer.value?.trim());
+    return !Number.isNaN(answer) && answer === this.captchaExpectedAnswer;
+  }
+
+  phoneErrorMessage(): string {
+    return 'Numéro téléphone invalide (8 à 20 chiffres, espaces ou tirets autorisés).';
+  }
+
+  private normalizePhone(value: string): string | null {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    return trimmed;
+  }
+
+  cityErrorVisible(): boolean {
+    const control = this.form.controls.cityId;
+    return this.showCityField() && (control.touched || this.form.touched) && (control.value == null || Number.isNaN(Number(control.value)));
   }
 
   submit() {
@@ -78,16 +124,26 @@ export class SignUpComponent {
     this.formError.set(null);
     this.formSuccess.set(null);
 
-    const { confirmPassword: _confirmPassword, ...payload } = this.form.getRawValue();
+    if (!this.captchaIsValid()) {
+      this.form.controls.captchaAnswer.markAsTouched();
+      this.formError.set('Captcha invalide. Merci de réessayer.');
+      this.isLoading.set(false);
+      this.regenerateCaptcha();
+      return;
+    }
+
+    const { confirmPassword: _confirmPassword, captchaAnswer: _captchaAnswer, ...payload } = this.form.getRawValue();
     const isTunisia = this.isTunisiaNationality(payload.nationality);
     const cityId = payload.cityId != null ? Number(payload.cityId) : null;
     if (isTunisia && (cityId == null || Number.isNaN(cityId))) {
+      this.form.controls.cityId.markAsTouched();
       this.formError.set('Veuillez selectionner une ville si vous choisissez Tunisie.');
       this.isLoading.set(false);
       return;
     }
     const finalPayload = {
       ...payload,
+      phone: this.normalizePhone(payload.phone),
       cityId: isTunisia ? cityId : null,
       profileImageUrl: this.uploadedImageUrl(),
     };
@@ -95,6 +151,7 @@ export class SignUpComponent {
     this.authService.signup(finalPayload).subscribe({
       next: (response) => {
         this.formSuccess.set(response.message || 'Compte cree. Verifiez votre email.');
+        this.regenerateCaptcha();
         setTimeout(() => {
           this.router.navigateByUrl('/signin');
         }, 1200);

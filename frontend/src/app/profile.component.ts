@@ -32,7 +32,7 @@ export class ProfileComponent {
     firstName: ['', [Validators.required, Validators.minLength(2)]],
     lastName: ['', [Validators.required, Validators.minLength(2)]],
     email: ['', [Validators.required, Validators.email]],
-    phone: [''],
+    phone: ['', [Validators.pattern(/^\+?[0-9\s-]{8,20}$/)]],
     nationality: [''],
     cityId: [null as number | null],
     profileImageUrl: [''],
@@ -70,6 +70,35 @@ export class ProfileComponent {
         this.actionError.set('Impossible de charger votre profil.');
       },
     });
+
+    this.profileForm.controls.nationality.valueChanges.subscribe((nationality) => {
+      if (!this.isTunisiaNationality(nationality)) {
+        this.profileForm.controls.cityId.setValue(null);
+        this.profileForm.controls.cityId.setErrors(null);
+      }
+    });
+  }
+
+  controlInvalid(controlName: 'firstName' | 'lastName' | 'email' | 'phone' | 'cityId'): boolean {
+    const control = this.profileForm.controls[controlName];
+    return control.invalid && control.touched;
+  }
+
+  phoneErrorMessage(): string {
+    return 'Numéro téléphone invalide (8 à 20 chiffres, espaces ou tirets autorisés).';
+  }
+
+  private normalizePhone(value: string): string | null {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return null;
+    }
+    return trimmed;
+  }
+
+  cityErrorVisible(): boolean {
+    const cityControl = this.profileForm.controls.cityId;
+    return this.showCityField() && cityControl.touched && (cityControl.value == null || Number.isNaN(Number(cityControl.value)));
   }
 
   uploadImage(event: Event) {
@@ -107,6 +136,8 @@ export class ProfileComponent {
     const isTunisia = this.isTunisiaNationality(payload.nationality);
     const cityId = payload.cityId != null ? Number(payload.cityId) : null;
     if (isTunisia && (cityId == null || Number.isNaN(cityId))) {
+      this.profileForm.controls.cityId.setErrors({ required: true });
+      this.profileForm.controls.cityId.markAsTouched();
       this.actionError.set('Veuillez selectionner une ville si vous choisissez Tunisie.');
       this.isSavingProfile.set(false);
       return;
@@ -117,7 +148,7 @@ export class ProfileComponent {
         firstName: payload.firstName,
         lastName: payload.lastName,
         email: payload.email,
-        phone: payload.phone || null,
+        phone: this.normalizePhone(payload.phone),
         nationality: payload.nationality || null,
         cityId: isTunisia ? cityId : null,
         profileImageUrl: payload.profileImageUrl || null,

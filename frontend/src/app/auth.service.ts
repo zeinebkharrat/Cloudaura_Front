@@ -23,13 +23,21 @@ const OAUTH_SERVER_URL = 'http://localhost:9091';
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
+  private readonly apiBase = this.resolveApiBase();
 
   readonly token = signal<string | null>(null);
   readonly currentUser = signal<UserProfile | null>(null);
   readonly isAuthenticated = signal(false);
 
+  private resolveApiBase(): string {
+    if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+      return 'http://localhost:9091/api';
+    }
+    return '/api';
+  }
+
   signin(payload: SignInPayload) {
-    return this.http.post<AuthResponse>('/api/auth/signin', payload).pipe(
+    return this.http.post<AuthResponse>(`${this.apiBase}/auth/signin`, payload).pipe(
       tap((response) => this.storeSession(response)),
       map((response) => response.user)
     );
@@ -52,7 +60,7 @@ export class AuthService {
   }
 
   getSocialProviders() {
-    return this.http.get<SocialProviders>('/api/auth/social/providers');
+    return this.http.get<SocialProviders>(`${this.apiBase}/auth/social/providers`);
   }
 
   hasRole(role: string): boolean {
@@ -61,27 +69,27 @@ export class AuthService {
   }
 
   signup(payload: SignUpPayload) {
-    return this.http.post<AuthMessageResponse>('/api/auth/signup', payload);
+    return this.http.post<AuthMessageResponse>(`${this.apiBase}/auth/signup`, payload);
   }
 
   verifyEmail(token: string) {
-    return this.http.get<AuthMessageResponse>('/api/auth/verify-email', { params: { token } });
+    return this.http.get<AuthMessageResponse>(`${this.apiBase}/auth/verify-email`, { params: { token } });
   }
 
   resendVerification(payload: ResendVerificationPayload) {
-    return this.http.post<AuthMessageResponse>('/api/auth/resend-verification', payload);
+    return this.http.post<AuthMessageResponse>(`${this.apiBase}/auth/resend-verification`, payload);
   }
 
   forgotPassword(payload: ForgotPasswordPayload) {
-    return this.http.post<AuthMessageResponse>('/api/auth/forgot-password', payload);
+    return this.http.post<AuthMessageResponse>(`${this.apiBase}/auth/forgot-password`, payload);
   }
 
   resetPassword(payload: ResetPasswordPayload) {
-    return this.http.post<AuthMessageResponse>('/api/auth/reset-password', payload);
+    return this.http.post<AuthMessageResponse>(`${this.apiBase}/auth/reset-password`, payload);
   }
 
   getProfile() {
-    return this.http.get<UserProfile>('/api/profile').pipe(
+    return this.http.get<UserProfile>(`${this.apiBase}/profile`).pipe(
       tap((user) => {
         this.currentUser.set(user);
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
@@ -90,7 +98,7 @@ export class AuthService {
   }
 
   updateProfile(payload: ProfileUpdatePayload) {
-    return this.http.put<UserProfile>('/api/profile', payload).pipe(
+    return this.http.put<UserProfile>(`${this.apiBase}/profile`, payload).pipe(
       tap((user) => {
         this.currentUser.set(user);
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
@@ -99,17 +107,17 @@ export class AuthService {
   }
 
   changePassword(payload: ChangePasswordPayload) {
-    return this.http.patch<void>('/api/profile/password', payload);
+    return this.http.patch<void>(`${this.apiBase}/profile/password`, payload);
   }
 
   uploadProfileImage(file: File) {
     const body = new FormData();
     body.append('file', file);
-    return this.http.post<{ url: string }>('/api/public/uploads/profile-image', body);
+    return this.http.post<{ url: string }>(`${this.apiBase}/public/uploads/profile-image`, body);
   }
 
   getCities() {
-    return this.http.get<Array<CityOption & { cityId?: number; id?: number }>>('/api/cities').pipe(
+    return this.http.get<Array<CityOption & { cityId?: number; id?: number }>>(`${this.apiBase}/cities`).pipe(
       map((cities) => {
         const normalized: CityOption[] = [];
         for (const city of cities) {
@@ -145,7 +153,7 @@ export class AuthService {
   }
 
   fetchMe() {
-    return this.http.get<UserProfile>('/api/auth/me').pipe(
+    return this.http.get<UserProfile>(`${this.apiBase}/auth/me`).pipe(
       tap((user) => {
         this.currentUser.set(user);
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));

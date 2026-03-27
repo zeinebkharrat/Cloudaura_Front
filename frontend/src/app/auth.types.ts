@@ -32,6 +32,7 @@ export interface SignInPayload {
 export interface SignUpPayload {
   username: string;
   email: string;
+  phone?: string | null;
   password: string;
   firstName: string;
   lastName: string;

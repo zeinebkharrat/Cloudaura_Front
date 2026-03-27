@@ -66,7 +66,9 @@ public class AdminUserService {
         User user = getExistingUser(userId);
         String previousEmail = user.getEmail();
         String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
-        if (userRepository.existsByEmailIgnoreCaseAndUserIdNot(normalizedEmail, userId)) {
+        String currentNormalizedEmail = previousEmail == null ? "" : previousEmail.trim().toLowerCase(Locale.ROOT);
+        if (!normalizedEmail.equals(currentNormalizedEmail)
+            && userRepository.existsByEmailIgnoreCaseAndUserIdNot(normalizedEmail, userId)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already in use");
         }
 

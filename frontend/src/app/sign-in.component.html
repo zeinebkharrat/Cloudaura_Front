@@ -15,9 +15,10 @@
           formControlName="identifier"
           placeholder="ex: sara.bizerte ou sara@email.com"
           autocomplete="username"
+          [class.input-invalid]="controlInvalid('identifier')"
         />
       </label>
-      @if (form.controls.identifier.invalid && form.controls.identifier.touched) {
+      @if (controlInvalid('identifier')) {
         <p class="field-error">Ce champ est obligatoire.</p>
       }
 
@@ -28,10 +29,11 @@
           formControlName="password"
           placeholder="Votre mot de passe"
           autocomplete="current-password"
+          [class.input-invalid]="controlInvalid('password')"
         />
       </label>
-      @if (form.controls.password.invalid && form.controls.password.touched) {
-        <p class="field-error">Le mot de passe doit contenir au moins 8 caractères.</p>
+      @if (controlInvalid('password')) {
+        <p class="field-error">{{ passwordErrorMessage() }}</p>
       }
 
       @if (formError()) {

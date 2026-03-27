@@ -30,6 +30,19 @@ export class SignInComponent implements OnInit {
     password: ['', [Validators.required, Validators.minLength(8)]],
   });
 
+  controlInvalid(controlName: 'identifier' | 'password'): boolean {
+    const control = this.form.controls[controlName];
+    return control.invalid && control.touched;
+  }
+
+  passwordErrorMessage(): string {
+    const control = this.form.controls.password;
+    if (control.hasError('required')) {
+      return 'Le mot de passe est obligatoire.';
+    }
+    return 'Le mot de passe doit contenir au moins 8 caractères.';
+  }
+
   ngOnInit() {
     this.authService.getSocialProviders().subscribe({
       next: (providers) => this.socialProviders.set(providers),

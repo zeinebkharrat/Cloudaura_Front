@@ -111,6 +111,18 @@ select {
   color: var(--text-color);
 }
 
+.input-invalid {
+  border-color: rgba(225, 29, 72, 0.75) !important;
+  box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.12);
+}
+
+.field-error {
+  margin-top: 2px;
+  color: #e11d48;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
 .upload-row {
   display: flex;
   flex-direction: column;
@@ -209,6 +221,10 @@ select {
 
 :root[data-theme="dark"] .msg.error {
   color: #ffb4b4;
+}
+
+:root[data-theme="dark"] .field-error {
+  color: #ff9ab5;
 }
 
 :root[data-theme="dark"] .msg.success {

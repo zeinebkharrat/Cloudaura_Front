@@ -1,5 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import { map } from 'rxjs';
 import { AdminUser, AdminUserUpdatePayload, CityOption } from './auth.types';
 
 @Injectable({ providedIn: 'root' })
@@ -25,7 +26,24 @@ export class AdminUserService {
   }
 
   listCities() {
-    return this.http.get<CityOption[]>('/api/cities');
+    return this.http.get<Array<CityOption & { cityId?: number; id?: number }>>('/api/cities').pipe(
+      map((cities) => {
+        const normalized: CityOption[] = [];
+        for (const city of cities) {
+          const resolvedId = city.id ?? city.cityId;
+          if (resolvedId == null) {
+            continue;
+          }
+          normalized.push({
+            id: Number(resolvedId),
+            cityId: city.cityId ?? Number(resolvedId),
+            name: city.name,
+            region: city.region,
+          });
+        }
+        return normalized;
+      })
+    );
   }
 
   updateRoles(userId: number, roles: string[]) {

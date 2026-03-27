@@ -1,10 +1,19 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from './auth.service';
 import { extractApiErrorMessage } from './api-error.util';
+
+function passwordsMatch(group: AbstractControl): ValidationErrors | null {
+  const password = group.get('newPassword')?.value;
+  const confirmPassword = group.get('confirmPassword')?.value;
+  if (!password || !confirmPassword) {
+    return null;
+  }
+  return password === confirmPassword ? null : { passwordMismatch: true };
+}
 
 @Component({
   selector: 'app-reset-password',
@@ -23,10 +32,29 @@ export class ResetPasswordComponent {
   readonly formError = signal<string | null>(null);
   readonly formSuccess = signal<string | null>(null);
 
-  readonly form = this.fb.nonNullable.group({
-    newPassword: ['', [Validators.required, Validators.minLength(8)]],
-    confirmPassword: ['', [Validators.required]],
-  });
+  readonly form = this.fb.nonNullable.group(
+    {
+      newPassword: ['', [Validators.required, Validators.minLength(8)]],
+      confirmPassword: ['', [Validators.required]],
+    },
+    { validators: passwordsMatch }
+  );
+
+  controlInvalid(controlName: 'newPassword' | 'confirmPassword'): boolean {
+    const control = this.form.controls[controlName];
+    return control.invalid && control.touched;
+  }
+
+  passwordMismatchVisible(): boolean {
+    return this.form.hasError('passwordMismatch') && this.form.controls.confirmPassword.touched;
+  }
+
+  newPasswordErrorMessage(): string {
+    if (this.form.controls.newPassword.hasError('required')) {
+      return 'Le nouveau mot de passe est obligatoire.';
+    }
+    return 'Le nouveau mot de passe doit contenir au moins 8 caractères.';
+  }
 
   submit() {
     if (this.form.invalid || this.isLoading()) {
@@ -41,10 +69,6 @@ export class ResetPasswordComponent {
     }
 
     const raw = this.form.getRawValue();
-    if (raw.newPassword !== raw.confirmPassword) {
-      this.formError.set('La confirmation du mot de passe est invalide.');
-      return;
-    }
 
     this.isLoading.set(true);
     this.formError.set(null);

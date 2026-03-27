@@ -34,22 +34,34 @@
       <div class="grid-two">
         <label>
           Prenom
-          <input type="text" formControlName="firstName" />
+          <input type="text" formControlName="firstName" [class.input-invalid]="controlInvalid('firstName')" />
+          @if (controlInvalid('firstName')) {
+            <small class="field-error">Le prénom est obligatoire (min. 2 caractères).</small>
+          }
         </label>
         <label>
           Nom
-          <input type="text" formControlName="lastName" />
+          <input type="text" formControlName="lastName" [class.input-invalid]="controlInvalid('lastName')" />
+          @if (controlInvalid('lastName')) {
+            <small class="field-error">Le nom est obligatoire (min. 2 caractères).</small>
+          }
         </label>
       </div>
 
       <div class="grid-two">
         <label>
           Email
-          <input type="email" formControlName="email" />
+          <input type="email" formControlName="email" [class.input-invalid]="controlInvalid('email')" />
+          @if (controlInvalid('email')) {
+            <small class="field-error">Veuillez saisir un email valide.</small>
+          }
         </label>
         <label>
           Telephone
-          <input type="text" formControlName="phone" />
+          <input type="text" formControlName="phone" [class.input-invalid]="controlInvalid('phone')" />
+          @if (controlInvalid('phone')) {
+            <small class="field-error">{{ phoneErrorMessage() }}</small>
+          }
         </label>
       </div>
 
@@ -66,12 +78,15 @@
         @if (showCityField()) {
           <label>
             Ville
-            <select formControlName="cityId">
+            <select formControlName="cityId" [class.input-invalid]="cityErrorVisible()">
               <option [ngValue]="null">Selectionnez une ville</option>
               @for (city of cities(); track city.id) {
                 <option [ngValue]="city.id">{{ city.name }} ({{ city.region }})</option>
               }
             </select>
+            @if (cityErrorVisible()) {
+              <small class="field-error">La ville est obligatoire pour la nationalité tunisienne.</small>
+            }
           </label>
         }
       </div>

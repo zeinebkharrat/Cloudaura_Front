@@ -25,6 +25,18 @@ export class ForgotPasswordComponent {
     email: ['', [Validators.required, Validators.email]],
   });
 
+  controlInvalid(): boolean {
+    const control = this.form.controls.email;
+    return control.invalid && control.touched;
+  }
+
+  emailErrorMessage(): string {
+    if (this.form.controls.email.hasError('required')) {
+      return 'L\'email est obligatoire.';
+    }
+    return 'Veuillez saisir un email valide.';
+  }
+
   submit() {
     if (this.form.invalid || this.isLoading()) {
       this.form.markAllAsTouched();

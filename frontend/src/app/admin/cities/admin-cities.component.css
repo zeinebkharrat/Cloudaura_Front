@@ -412,13 +412,28 @@ label.full {
   margin-bottom: 12px;
 }
 
+.form-intro {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-soft);
+  background: color-mix(in srgb, var(--surface-2) 84%, transparent);
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
 .field-error {
-  color: #ef4444;
+  color: #e11d48;
   font-size: 0.78rem;
+  font-weight: 600;
 }
 
 .input-invalid {
   border-color: rgba(239, 68, 68, 0.8) !important;
+}
+
+:root[data-theme="dark"] .field-error {
+  color: #ff9ab5;
 }
 
 :host ::ng-deep .swal-on-top {

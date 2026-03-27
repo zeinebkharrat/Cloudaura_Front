@@ -28,6 +28,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -115,6 +116,7 @@ public class AuthService {
         User user = new User();
         user.setUsername(request.username().trim());
         user.setEmail(request.email().trim().toLowerCase());
+        user.setPhone(request.phone() != null ? request.phone().trim() : null);
         user.setFirstName(request.firstName().trim());
         user.setLastName(request.lastName().trim());
         user.setPasswordHash(passwordEncoder.encode(request.password()));
@@ -223,7 +225,9 @@ public class AuthService {
         String previousEmail = user.getEmail();
 
         String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
-        if (userRepository.existsByEmailIgnoreCaseAndUserIdNot(normalizedEmail, user.getUserId())) {
+        String currentNormalizedEmail = previousEmail == null ? "" : previousEmail.trim().toLowerCase(Locale.ROOT);
+        if (!normalizedEmail.equals(currentNormalizedEmail)
+            && userRepository.existsByEmailIgnoreCaseAndUserIdNot(normalizedEmail, user.getUserId())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already in use");
         }
 
@@ -529,7 +533,12 @@ public class AuthService {
     }
 
     private User currentUser() {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated() || authentication instanceof AnonymousAuthenticationToken) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+        }
+
+        String username = authentication.getName();
         return userRepository.findByUsernameIgnoreCase(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
