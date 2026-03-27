@@ -15,45 +15,44 @@
     </div>
 
     <nav class="sb-nav">
-  @for (item of nav; track item.route) {
-    
-    @if (item.label === 'Événements') {
-      <div class="sb-item-container">
-        <div class="sb-item" (click)="toggleEventsMenu()" style="cursor: pointer;">
-          <span class="sb-icon">📅</span>
-          @if (open()) {
-            <span class="sb-lbl">{{ item.label }}</span>
-            <span [style.transform]="isEventsMenuOpen ? 'rotate(180deg)' : 'rotate(0)'" 
-                  style="transition: 0.3s; margin-left: auto; font-size: 0.7rem;">▼</span>
-          }
-        </div>
+      @for (item of nav; track $index) { 
+        
+        @if (item.label === 'Événements') {
+          <div class="sb-item-container">
+            <div class="sb-item" (click)="toggleEventsMenu()" style="cursor: pointer;">
+              <span class="sb-icon">📅</span>
+              @if (open()) {
+                <span class="sb-lbl">{{ item.label }}</span>
+                <span [style.transform]="isEventsMenuOpen ? 'rotate(180deg)' : 'rotate(0)'" 
+                      style="transition: 0.3s; margin-left: auto; font-size: 0.7rem;">▼</span>
+              }
+            </div>
 
-        @if (isEventsMenuOpen && open()) {
-          <div class="sub-menu" style="display: flex; flex-direction: column; padding-left: 35px; gap: 8px; margin-top: 5px; margin-bottom: 10px;">
-            <a routerLink="/admin/events/dashboard" routerLinkActive="active-sub" 
-               style="text-decoration: none; color: #94a3b8; font-size: 0.85rem; display: flex; align-items: center; gap: 8px;">
-              <span>📊</span> Dashboard
-            </a>
-            <a routerLink="/admin/events/calendar" routerLinkActive="active-sub" 
-               style="text-decoration: none; color: #94a3b8; font-size: 0.85rem; display: flex; align-items: center; gap: 8px;">
-              <span>📅</span> Calendrier
-            </a>
+            @if (isEventsMenuOpen && open()) {
+              <div class="sub-menu" style="display: flex; flex-direction: column; padding-left: 35px; gap: 8px; margin-top: 5px; margin-bottom: 10px;">
+                <a routerLink="/admin/events/dashboard" routerLinkActive="active-sub" 
+                   style="text-decoration: none; color: #94a3b8; font-size: 0.85rem; display: flex; align-items: center; gap: 8px;">
+                  <span>📊</span> Dashboard
+                </a>
+                <a routerLink="/admin/events/calendar" routerLinkActive="active-sub" 
+                   style="text-decoration: none; color: #94a3b8; font-size: 0.85rem; display: flex; align-items: center; gap: 8px;">
+                  <span>📅</span> Calendrier
+                </a>
+              </div>
+            }
           </div>
+        } 
+        
+        @else {
+          <a [routerLink]="item.route" routerLinkActive="active"
+             [routerLinkActiveOptions]="{exact: item.route === '/admin'}"
+             class="sb-item" [id]="'nav-' + (item.icon || $index)">
+            <span class="sb-icon">{{ item.icon }}</span>
+            @if (open()) { <span class="sb-lbl">{{ item.label }}</span> }
+          </a>
         }
-      </div>
-    } 
-    
-    @else {
-      <a [routerLink]="item.route" routerLinkActive="active"
-         [routerLinkActiveOptions]="{exact: item.route === '/admin'}"
-         class="sb-item" [id]="'nav-' + item.icon">
-        <span class="sb-icon">{{ item.icon }}</span>
-        @if (open()) { <span class="sb-lbl">{{ item.label }}</span> }
-      </a>
-    }
-
-  }
-</nav>
+      }
+    </nav>
     
     @if (open()) {
       <div class="sb-foot">
