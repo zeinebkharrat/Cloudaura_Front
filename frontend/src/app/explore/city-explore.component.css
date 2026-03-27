@@ -282,6 +282,97 @@
   box-shadow: 0 22px 36px rgba(15, 23, 42, 0.14);
 }
 
+.activities-carousel {
+  margin-top: 16px;
+  position: relative;
+}
+
+.activities-carousel.with-controls {
+  padding: 0 54px;
+}
+
+.carousel-viewport {
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.carousel-track {
+  display: flex;
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+.carousel-page {
+  flex: 0 0 100%;
+  min-width: 100%;
+}
+
+.activity-grid-page {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.activity-card {
+  min-height: 100%;
+}
+
+.carousel-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  background: var(--surface-1);
+  color: var(--text-color);
+  font-size: 1.45rem;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.16);
+  z-index: 4;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.carousel-nav:hover {
+  transform: translateY(-50%) scale(1.06);
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.22);
+}
+
+.carousel-nav.prev {
+  left: 2px;
+}
+
+.carousel-nav.next {
+  right: 2px;
+}
+
+.carousel-dots {
+  margin-top: 14px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 0;
+  background: rgba(148, 163, 184, 0.45);
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.dot.active {
+  background: #2563eb;
+  transform: scale(1.15);
+}
+
 .card-icon {
   width: 38px;
   height: 38px;
@@ -380,4 +471,28 @@
     width: calc(100% - 20px);
   }
   .hero-caption { max-width: 82%; }
+
+  .activities-carousel.with-controls {
+    padding: 0 44px;
+  }
+
+  .activity-grid-page {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .activities-carousel.with-controls {
+    padding: 0 36px;
+  }
+
+  .activity-grid-page {
+    grid-template-columns: 1fr;
+  }
+
+  .carousel-nav {
+    width: 34px;
+    height: 34px;
+    font-size: 1.25rem;
+  }
 }

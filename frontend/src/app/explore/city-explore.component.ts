@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ExploreService } from './explore.service';
@@ -19,6 +19,8 @@ export class CityExploreComponent implements OnInit, OnDestroy {
   details = signal<PublicCityDetailsResponse | null>(null);
   activityImageById = signal<Record<number, string>>({});
   currentImageIndex = signal(0);
+  activitiesPerPage = signal(2);
+  activityPageIndex = signal(0);
 
   media = computed(() => this.details()?.media ?? []);
   currentMedia = computed(() => {
@@ -46,8 +48,21 @@ export class CityExploreComponent implements OnInit, OnDestroy {
     }
     return `Postcard-perfect scene from ${cityName}.`;
   });
+  activityPages = computed(() => {
+    const activities = this.details()?.activities ?? [];
+    const perPage = Math.max(1, this.activitiesPerPage());
+    const pages: Activity[][] = [];
+
+    for (let index = 0; index < activities.length; index += perPage) {
+      pages.push(activities.slice(index, index + perPage));
+    }
+
+    return pages;
+  });
+  hasActivityCarouselControls = computed(() => this.activityPages().length > 1);
 
   private sliderTimer: ReturnType<typeof setInterval> | null = null;
+  private activitySliderTimer: ReturnType<typeof setInterval> | null = null;
   private returnRegionId: string | null = null;
 
   constructor(
@@ -58,6 +73,7 @@ export class CityExploreComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.returnRegionId = this.route.snapshot.queryParamMap.get('region');
+    this.activitiesPerPage.set(this.getActivitiesPerPage());
 
     const cityId = Number(this.route.snapshot.paramMap.get('cityId'));
     if (!cityId) {
@@ -70,9 +86,11 @@ export class CityExploreComponent implements OnInit, OnDestroy {
       next: (details) => {
         this.details.set(details);
         this.activityImageById.set({});
+        this.activityPageIndex.set(0);
         this.loadActivityImages(details.activities);
         this.currentImageIndex.set(0);
         this.startAutoSlide();
+        this.startActivitiesAutoSlide();
         this.loading.set(false);
       },
       error: (err) => {
@@ -84,6 +102,12 @@ export class CityExploreComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.stopAutoSlide();
+    this.stopActivitiesAutoSlide();
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.updateActivitiesPerPage();
   }
 
   onHeroClick(event: MouseEvent): void {
@@ -150,6 +174,36 @@ export class CityExploreComponent implements OnInit, OnDestroy {
 
   private restartAutoSlide(): void {
     this.startAutoSlide();
+  }
+
+  nextActivityPage(): void {
+    const pages = this.activityPages();
+    if (pages.length <= 1) {
+      return;
+    }
+
+    this.activityPageIndex.set((this.activityPageIndex() + 1) % pages.length);
+    this.restartActivitiesAutoSlide();
+  }
+
+  previousActivityPage(): void {
+    const pages = this.activityPages();
+    if (pages.length <= 1) {
+      return;
+    }
+
+    this.activityPageIndex.set((this.activityPageIndex() - 1 + pages.length) % pages.length);
+    this.restartActivitiesAutoSlide();
+  }
+
+  goToActivityPage(index: number): void {
+    const pages = this.activityPages();
+    if (index < 0 || index >= pages.length) {
+      return;
+    }
+
+    this.activityPageIndex.set(index);
+    this.restartActivitiesAutoSlide();
   }
 
   goBack(): void {
@@ -226,5 +280,61 @@ export class CityExploreComponent implements OnInit, OnDestroy {
         },
       });
     }
+  }
+
+  private updateActivitiesPerPage(): void {
+    const nextPerPage = this.getActivitiesPerPage();
+    if (this.activitiesPerPage() === nextPerPage) {
+      return;
+    }
+
+    this.activitiesPerPage.set(nextPerPage);
+    const maxPageIndex = Math.max(0, this.activityPages().length - 1);
+    if (this.activityPageIndex() > maxPageIndex) {
+      this.activityPageIndex.set(maxPageIndex);
+    }
+    this.restartActivitiesAutoSlide();
+  }
+
+  private getActivitiesPerPage(): number {
+    if (typeof window === 'undefined') {
+      return 3;
+    }
+
+    if (window.innerWidth < 760) {
+      return 1;
+    }
+
+    if (window.innerWidth < 1180) {
+      return 2;
+    }
+
+    return 3;
+  }
+
+  private startActivitiesAutoSlide(): void {
+    this.stopActivitiesAutoSlide();
+    if (!this.hasActivityCarouselControls()) {
+      return;
+    }
+
+    this.activitySliderTimer = setInterval(() => {
+      const pages = this.activityPages();
+      if (pages.length <= 1) {
+        return;
+      }
+      this.activityPageIndex.set((this.activityPageIndex() + 1) % pages.length);
+    }, 5200);
+  }
+
+  private stopActivitiesAutoSlide(): void {
+    if (this.activitySliderTimer) {
+      clearInterval(this.activitySliderTimer);
+      this.activitySliderTimer = null;
+    }
+  }
+
+  private restartActivitiesAutoSlide(): void {
+    this.startActivitiesAutoSlide();
   }
 }
