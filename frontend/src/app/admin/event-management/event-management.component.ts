@@ -5,6 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { EventService } from '../../event.service';
 import { Event, City } from '../../models/event';
 import Swal from 'sweetalert2';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-event-management',
@@ -36,7 +37,7 @@ export class EventManagementComponent implements OnInit {
 
   currentEvent: Event = this.initEmptyEvent();
 
-  constructor(private eventService: EventService, private http: HttpClient) {}
+  constructor(private route: ActivatedRoute,private eventService: EventService, private http: HttpClient) {}
   searchQuery: string = '';
   filterType: string = '';
   filterStatus: string = '';
@@ -44,7 +45,21 @@ export class EventManagementComponent implements OnInit {
   filteredEvents: Event[] = [];
 
 
-  ngOnInit(): void { this.loadEvents(); }
+  ngOnInit(): void { this.loadEvents();
+    this.route.queryParams.subscribe(params => {
+    if (params['editId']) {
+      // Si on vient du calendrier pour éditer
+      const eventToEdit = this.events.find(e => e.eventId == params['editId']);
+      if (eventToEdit) this.openEditModal(eventToEdit);
+    } else if (params['action'] === 'new') {
+      // Si on vient du calendrier pour créer
+      this.openAddModal();
+      if (params['date']) {
+        this.currentEvent.startDate = params['date']; // Pré-remplit la date
+      }
+    }
+  });
+   }
 
  loadEvents() {
   this.eventService.getEvents().subscribe({
@@ -89,6 +104,7 @@ resetFilters() {
 
   initEmptyEvent(): Event {
     return {
+      eventId: 0,
       title: '', eventType: 'CULTURAL', venue: '',
       startDate: '', endDate: '', status: 'UPCOMING',
       imageUrl: '', price: 0, city: { cityId: 1, name: '' }
@@ -127,22 +143,41 @@ resetFilters() {
 
 
   saveEvent() {
-    if (!this.validateDates()) return;
+  if (!this.validateDates()) return;
 
-    this.currentEvent.city.cityId = Number(this.currentEvent.city.cityId);
-    
-    if (this.isEditMode && this.currentEvent.eventId) {
-      this.eventService.updateEvent(this.currentEvent.eventId, this.currentEvent).subscribe({
-        next: () => this.handleResponse('Updated'),
-        error: (err) => Swal.fire('Error', 'Update failed', 'error')
-      });
-    } else {
-      this.eventService.createEvent(this.currentEvent).subscribe({
-        next: () => this.handleResponse('Created'),
-        error: (err) => Swal.fire('Error', 'Creation failed', 'error')
-      });
-    }
+  // 1. Créer une copie de l'événement pour ne pas modifier l'affichage pendant l'envoi
+  const eventToSave = JSON.parse(JSON.stringify(this.currentEvent));
+
+  // 2. Nettoyer l'objet City : Le backend veut juste l'ID pour le mapping Hibernate
+  if (eventToSave.city && eventToSave.city.cityId) {
+    eventToSave.city = { 
+      cityId: Number(eventToSave.city.cityId) 
+    };
   }
+
+  // 3. Gérer l'ID pour la création (certains backends n'aiment pas recevoir eventId: 0)
+  if (!this.isEditMode) {
+    delete eventToSave.eventId; 
+  }
+
+  if (this.isEditMode && this.currentEvent.eventId) {
+    this.eventService.updateEvent(this.currentEvent.eventId, eventToSave).subscribe({
+      next: () => this.handleResponse('Updated'),
+      error: (err) => {
+        console.error("Update Error:", err);
+        Swal.fire('Error', 'Update failed', 'error');
+      }
+    });
+  } else {
+    this.eventService.createEvent(eventToSave).subscribe({
+      next: () => this.handleResponse('Created'),
+      error: (err) => {
+        console.error("Full Creation Error Detail:", err); // Regarde ceci dans ta console F12
+        Swal.fire('Error', 'Creation failed. Check console for details.', 'error');
+      }
+    });
+  }
+}
 
   validateDates(): boolean {
     const today = new Date();

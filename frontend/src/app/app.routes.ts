@@ -8,7 +8,7 @@ import { AdminDashboardComponent } from './admin/dashboard/admin-dashboard.compo
 import { AuthGuard } from './core/auth.guard';
 
 import { EventManagementComponent } from './admin/event-management/event-management.component';
-
+import { EventCalendarComponent } from './admin/event-calendar/event-calendar.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -22,6 +22,8 @@ export const routes: Routes = [
     children: [
       { path: '', component: AdminDashboardComponent },
       { path: 'events', component: EventManagementComponent },
+      { path: 'events/dashboard', component: EventManagementComponent },
+      { path: 'events/calendar', component: EventCalendarComponent },
     ],
   },
   {
