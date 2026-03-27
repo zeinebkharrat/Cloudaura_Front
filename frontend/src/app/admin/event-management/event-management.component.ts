@@ -37,12 +37,55 @@ export class EventManagementComponent implements OnInit {
   currentEvent: Event = this.initEmptyEvent();
 
   constructor(private eventService: EventService, private http: HttpClient) {}
+  searchQuery: string = '';
+  filterType: string = '';
+  filterStatus: string = '';
+  filterCity: string = '';
+  filteredEvents: Event[] = [];
+
 
   ngOnInit(): void { this.loadEvents(); }
 
-  loadEvents() {
-    this.eventService.getEvents().subscribe(data => this.events = data);
-  }
+ loadEvents() {
+  this.eventService.getEvents().subscribe({
+    next: (data) => {
+      this.events = data;
+      this.filteredEvents = data; // <--- TRÈS IMPORTANT
+      this.applyFilters(); // Force un premier tri si des filtres sont déjà remplis
+    },
+    error: (err) => console.error("Erreur chargement:", err)
+  });
+}
+
+applyFilters() {
+  console.log('Filtrage en cours...', this.searchQuery); // Regarde dans la console (F12) si ça s'affiche !
+
+  const query = this.searchQuery.toLowerCase().trim();
+
+  this.filteredEvents = this.events.filter(ev => {
+    // Sécurité : on transforme tout en string pour éviter les erreurs sur NULL
+    const title = (ev.title || '').toLowerCase();
+    const venue = (ev.venue || '').toLowerCase();
+    const type = ev.eventType || '';
+    const status = ev.status || '';
+    const cityName = ev.city?.name || '';
+
+    const matchesSearch = title.includes(query) || venue.includes(query);
+    const matchesType = !this.filterType || type === this.filterType;
+    const matchesStatus = !this.filterStatus || status === this.filterStatus;
+    const matchesCity = !this.filterCity || cityName === this.filterCity;
+
+    return matchesSearch && matchesType && matchesStatus && matchesCity;
+  });
+}
+
+resetFilters() {
+  this.searchQuery = '';
+  this.filterType = '';
+  this.filterStatus = '';
+  this.filterCity = '';
+  this.filteredEvents = this.events;
+}
 
   initEmptyEvent(): Event {
     return {

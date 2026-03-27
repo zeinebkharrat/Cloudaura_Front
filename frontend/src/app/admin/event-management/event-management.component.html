@@ -15,6 +15,40 @@
       </div>
     </div>
 
+    <div class="filter-bar">
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" 
+               [(ngModel)]="searchQuery" 
+               (ngModelChange)="applyFilters()" 
+               placeholder="Search by name or venue...">
+      </div>
+
+      <div class="filters-group">
+        <select [(ngModel)]="filterType" (ngModelChange)="applyFilters()" class="filter-select">
+          <option value="">All Types</option>
+          <option value="CULTURAL">Cultural</option>
+          <option value="SPORT">Sport</option>
+          <option value="FESTIVAL">Festival</option>
+          <option value="TECH">Technology</option>
+        </select>
+
+        <select [(ngModel)]="filterStatus" (ngModelChange)="applyFilters()" class="filter-select">
+          <option value="">All Status</option>
+          <option value="UPCOMING">Upcoming</option>
+          <option value="ONGOING">Ongoing</option>
+          <option value="COMPLETED">Completed</option>
+        </select>
+
+        <select [(ngModel)]="filterCity" (ngModelChange)="applyFilters()" class="filter-select">
+          <option value="">All Cities</option>
+          <option *ngFor="let c of tunisiaCities" [value]="c.name">{{c.name}}</option>
+        </select>
+
+        <button type="button" class="btn-reset" (click)="resetFilters()">Reset</button>
+      </div>
+    </div>
+
     <div class="table-card">
       <table>
         <thead>
@@ -30,7 +64,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let ev of events">
+          <tr *ngFor="let ev of filteredEvents">
             <td class="primary-cell">{{ ev.title }}</td>
             <td>
               <div class="venue-text">📍 {{ ev.venue }}</div>
@@ -45,7 +79,7 @@
             <td class="date-cell">
               {{ ev.startDate | date:'dd/MM/yy' }} - {{ ev.endDate | date:'dd/MM/yy' }}
             </td>
-            <td>{{ ev.price }}TN</td>
+            <td class="price-cell"><strong>{{ ev.price }} TN</strong></td>
             <td>
               <img [src]="ev.imageUrl || 'assets/placeholder.png'" class="event-img" alt="event">
             </td>
@@ -58,10 +92,13 @@
           </tr>
         </tbody>
       </table>
+
+      <div *ngIf="filteredEvents.length === 0" class="no-results-msg">
+        <p>No events match your current filters. Try resetting them!</p>
+      </div>
     </div>
   </div>
 
-  <!-- MODAL -->
   <div class="modal-backdrop" *ngIf="showModal">
     <div class="modal-content">
       <h2 class="modal-title">{{ isEditMode ? 'Edit Event' : 'New Event' }}</h2>
@@ -69,7 +106,7 @@
       <form (ngSubmit)="saveEvent()" #eventForm="ngForm" novalidate>
         
         <div class="form-group">
-          <label>Event Name </label>
+          <label>Event Name</label>
           <input type="text" name="title" [(ngModel)]="currentEvent.title" 
                  #titleVar="ngModel" required minlength="5"
                  placeholder="Enter event title..."
@@ -77,19 +114,19 @@
                  [style.border-color]="titleVar.invalid && titleVar.touched ? '#ef4444' : ''">
           <div *ngIf="titleVar.invalid && titleVar.touched" class="error-msg">
             <span *ngIf="titleVar.errors?.['required']">Name is required.</span>
-            <span *ngIf="titleVar.errors?.['minlength']">Required: at least 5 characters.</span>
+            <span *ngIf="titleVar.errors?.['minlength']">At least 5 characters.</span>
           </div>
         </div>
 
         <div class="row">
           <div class="form-group col">
-            <label>City (Tunisia) </label>
+            <label>City (Tunisia)</label>
             <select name="cityId" [(ngModel)]="currentEvent.city.cityId" class="form-input" required>
               <option *ngFor="let c of tunisiaCities" [value]="c.cityId">{{c.name}}</option>
             </select>
           </div>
           <div class="form-group col">
-            <label>Category </label>
+            <label>Category</label>
             <select name="type" [(ngModel)]="currentEvent.eventType" class="form-input" required>
               <option value="CULTURAL">Cultural</option>
               <option value="SPORT">Sport</option>
@@ -100,29 +137,26 @@
         </div>
 
         <div class="form-group">
-          <label>Venue / Address </label>
+          <label>Venue / Address</label>
           <input type="text" name="venue" [(ngModel)]="currentEvent.venue" 
                  #venueVar="ngModel" required minlength="5"
                  class="form-input"
                  [style.border-color]="venueVar.invalid && venueVar.touched ? '#ef4444' : ''">
-          <div *ngIf="venueVar.invalid && venueVar.touched" class="error-msg">
-            <span *ngIf="venueVar.errors?.['required']">Venue is required.</span>
-            <span *ngIf="venueVar.errors?.['minlength']">Required: at least 5 characters.</span>
-          </div>
         </div>
 
         <div class="row">
           <div class="form-group col">
-            <label>Start Date </label>
+            <label>Start Date</label>
             <input type="date" name="startDate" [(ngModel)]="currentEvent.startDate" class="form-input" required>
           </div>
-
-          <div class="form-group col" *ngIf="!isEditMode">
-            <label>End Date </label>
+          <div class="form-group col">
+            <label>End Date</label>
             <input type="date" name="endDate" [(ngModel)]="currentEvent.endDate" class="form-input" required>
           </div>
+        </div>
 
-          <div class="form-group col" *ngIf="isEditMode">
+        <div class="row" *ngIf="isEditMode">
+          <div class="form-group col">
             <label>Status</label>
             <select name="status" [(ngModel)]="currentEvent.status" class="form-input">
               <option value="UPCOMING">Upcoming</option>
@@ -132,14 +166,9 @@
           </div>
         </div>
 
-        <div class="form-group" *ngIf="isEditMode">
-          <label>End Date </label>
-          <input type="date" name="endDateEdit" [(ngModel)]="currentEvent.endDate" class="form-input" required>
-        </div>
-
         <div class="form-group">
           <label>Price TN</label>
-          <input type="number" name="price" [(ngModel)]="currentEvent.price" class="form-input" required min="0" step="0.01">
+          <input type="number" name="price" [(ngModel)]="currentEvent.price" class="form-input" required min="0" step="0.5">
         </div>
 
         <div class="form-group">
