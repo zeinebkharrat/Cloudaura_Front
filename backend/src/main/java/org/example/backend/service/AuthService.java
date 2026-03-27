@@ -176,10 +176,7 @@ public class AuthService {
     }
 
     public UserSummaryResponse me() {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        User user = userRepository.findByUsernameIgnoreCase(username)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        return toUserSummary(user);
+        return toUserSummary(currentUser());
     }
 
     @Transactional
@@ -540,6 +537,7 @@ public class AuthService {
 
         String username = authentication.getName();
         return userRepository.findByUsernameIgnoreCase(username)
+                .or(() -> userRepository.findByEmailIgnoreCase(username))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 

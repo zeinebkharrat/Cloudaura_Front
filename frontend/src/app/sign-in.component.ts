@@ -71,9 +71,9 @@ export class SignInComponent implements OnInit {
         }
         this.router.navigateByUrl(returnUrl);
       },
-      error: () => {
+      error: (error: HttpErrorResponse) => {
         this.isLoading.set(false);
-        this.formError.set('Token social invalide. Merci de réessayer.');
+        this.formError.set(extractApiErrorMessage(error, 'Token social invalide. Merci de réessayer.'));
       },
       complete: () => this.isLoading.set(false),
     });
