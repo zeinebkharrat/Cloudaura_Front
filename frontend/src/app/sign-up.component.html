@@ -45,9 +45,9 @@
           <label>
             Ville (Tunisie)
             <select formControlName="cityId">
-              <option [ngValue]="null">Choisir une ville</option>
+              <option value="">Choisir une ville</option>
               @for (city of cities(); track city.id) {
-                <option [ngValue]="city.id">{{ city.name }} ({{ city.region }})</option>
+                <option [value]="city.id">{{ city.name }} ({{ city.region }})</option>
               }
             </select>
           </label>

@@ -80,8 +80,8 @@ export class SignUpComponent {
 
     const { confirmPassword: _confirmPassword, ...payload } = this.form.getRawValue();
     const isTunisia = this.isTunisiaNationality(payload.nationality);
-    const cityId = payload.cityId ? Number(payload.cityId) : null;
-    if (isTunisia && !payload.cityId) {
+    const cityId = payload.cityId != null ? Number(payload.cityId) : null;
+    if (isTunisia && (cityId == null || Number.isNaN(cityId))) {
       this.formError.set('Veuillez selectionner une ville si vous choisissez Tunisie.');
       this.isLoading.set(false);
       return;

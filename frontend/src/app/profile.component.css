@@ -59,7 +59,16 @@
   border-radius: 18px;
   padding: 16px;
   margin-top: 14px;
-  background: rgba(255, 255, 255, 0.02);
+  background: color-mix(in srgb, var(--surface-1) 82%, transparent);
+}
+
+.compact-note {
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.compact-note h2 {
+  margin-bottom: 6px;
 }
 
 .avatar-card {
@@ -67,7 +76,7 @@
   border-radius: 18px;
   padding: 16px;
   margin-top: 14px;
-  background: rgba(255, 255, 255, 0.02);
+  background: color-mix(in srgb, var(--surface-1) 82%, transparent);
 }
 
 .avatar-row {
@@ -88,7 +97,7 @@ input {
   border: 1px solid var(--glass-border);
   padding: 10px 12px;
   margin-top: 6px;
-  background: rgba(255, 255, 255, 0.03);
+  background: color-mix(in srgb, var(--surface-1) 88%, transparent);
   color: var(--text-color);
 }
 
@@ -98,7 +107,7 @@ select {
   border: 1px solid var(--glass-border);
   padding: 10px 12px;
   margin-top: 6px;
-  background: rgba(255, 255, 255, 0.03);
+  background: color-mix(in srgb, var(--surface-1) 88%, transparent);
   color: var(--text-color);
 }
 
@@ -111,6 +120,7 @@ select {
   border: 1px dashed var(--glass-border);
   border-radius: 14px;
   padding: 14px;
+  background: color-mix(in srgb, var(--surface-1) 78%, transparent);
 }
 
 .upload-row input[type='file'] {
@@ -164,12 +174,97 @@ select {
 
 .msg.error {
   border: 1px solid rgba(232, 0, 45, 0.45);
-  background: rgba(232, 0, 45, 0.13);
+  background: rgba(232, 0, 45, 0.1);
+  color: #b42318;
 }
 
 .msg.success {
   border: 1px solid rgba(0, 186, 124, 0.45);
-  background: rgba(0, 186, 124, 0.12);
+  background: rgba(0, 186, 124, 0.1);
+  color: #067647;
+}
+
+.profile-actions {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.profile-actions .btn-primary,
+.profile-actions .profile-password-btn {
+  min-height: 44px;
+  min-width: 220px;
+}
+
+.profile-password-btn {
+  border-width: 1px;
+  background: color-mix(in srgb, var(--surface-1) 85%, transparent);
+}
+
+.profile-password-btn:hover {
+  box-shadow: 0 10px 24px rgba(0, 119, 182, 0.14);
+}
+
+:root[data-theme="dark"] .msg.error {
+  color: #ffb4b4;
+}
+
+:root[data-theme="dark"] .msg.success {
+  color: #9df7d4;
+}
+
+::ng-deep .profile-swal-popup {
+  border-radius: 20px !important;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: 0 28px 54px rgba(0, 0, 0, 0.35) !important;
+}
+
+::ng-deep .profile-swal-title {
+  font-size: 1.26rem !important;
+  letter-spacing: -0.02em;
+}
+
+::ng-deep .profile-swal-form {
+  display: grid;
+  gap: 10px;
+}
+
+::ng-deep .profile-swal-note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  text-align: left;
+}
+
+::ng-deep .profile-swal-input {
+  margin: 0 !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--glass-border) !important;
+  background: color-mix(in srgb, var(--surface-1) 88%, transparent) !important;
+  color: var(--text-color) !important;
+  padding: 11px 12px !important;
+}
+
+::ng-deep .profile-swal-confirm,
+::ng-deep .profile-swal-cancel {
+  border: none !important;
+  border-radius: 999px !important;
+  padding: 10px 16px !important;
+  font-weight: 700 !important;
+}
+
+::ng-deep .profile-swal-confirm {
+  color: #fff !important;
+  background: linear-gradient(135deg, #ff4b4b, var(--tunisia-red)) !important;
+  box-shadow: 0 10px 24px var(--tunisia-red-glow) !important;
+}
+
+::ng-deep .profile-swal-cancel {
+  color: var(--text-color) !important;
+  background: color-mix(in srgb, var(--surface-2) 88%, transparent) !important;
+  border: 1px solid var(--glass-border) !important;
 }
 
 @keyframes floatOrb {
@@ -184,5 +279,16 @@ select {
 
   .upload-row {
     width: 100%;
+  }
+
+  .profile-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .profile-actions .btn-primary,
+  .profile-actions .profile-password-btn {
+    width: 100%;
+    min-width: 0;
   }
 }

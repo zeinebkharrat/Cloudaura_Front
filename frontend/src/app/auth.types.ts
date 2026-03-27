@@ -106,6 +106,7 @@ export interface ResendVerificationPayload {
 
 export interface CityOption {
   id: number;
+  cityId?: number;
   name: string;
   region: string;
 }

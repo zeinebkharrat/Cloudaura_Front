@@ -76,29 +76,19 @@
         }
       </div>
 
-      <button class="btn-primary" type="submit" [disabled]="isSavingProfile()">
-        {{ isSavingProfile() ? 'Sauvegarde...' : 'Sauvegarder le profil' }}
-      </button>
+      <div class="profile-actions">
+        <button class="btn-primary" type="submit" [disabled]="isSavingProfile()">
+          {{ isSavingProfile() ? 'Sauvegarde...' : 'Sauvegarder le profil' }}
+        </button>
+        <button class="btn-outline profile-password-btn" type="button" (click)="openChangePasswordPopup()" [disabled]="isChangingPassword()">
+          {{ isChangingPassword() ? 'Mise a jour...' : 'Changer mot de passe' }}
+        </button>
+      </div>
     </form>
 
-    <form [formGroup]="passwordForm" (ngSubmit)="changePassword()" class="password-form">
-      <h2>Changer mot de passe</h2>
-      <label>
-        Mot de passe actuel
-        <input type="password" formControlName="currentPassword" />
-      </label>
-      <label>
-        Nouveau mot de passe
-        <input type="password" formControlName="newPassword" />
-      </label>
-      <label>
-        Confirmer le nouveau mot de passe
-        <input type="password" formControlName="confirmPassword" />
-      </label>
-
-      <button class="btn-outline" type="submit" [disabled]="isChangingPassword()">
-        {{ isChangingPassword() ? 'Mise a jour...' : 'Changer le mot de passe' }}
-      </button>
-    </form>
+    <section class="password-form compact-note">
+      <h2>Securite</h2>
+      <p class="muted">Le changement de mot de passe se fait via un popup securise pour eviter l'affichage permanent des champs sensibles.</p>
+    </section>
   </article>
 </section>

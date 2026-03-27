@@ -119,8 +119,8 @@ input:focus {
 }
 
 .upload-block {
-  border: 1px dashed rgba(255, 255, 255, 0.25);
-  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed var(--glass-border);
+  background: color-mix(in srgb, var(--surface-1) 70%, transparent);
   border-radius: 14px;
   padding: 14px;
   margin-bottom: 14px;
@@ -162,7 +162,7 @@ input:focus {
 }
 
 .upload-state.success {
-  color: #90f0cc;
+  color: #0f9f6f;
 }
 
 .preview-image {
@@ -190,7 +190,7 @@ input:focus {
 
 .artisan-box p {
   margin-top: 8px;
-  color: var(--text-muted);
+  background: color-mix(in srgb, var(--surface-1) 80%, transparent);
   font-size: 0.86rem;
 }
 
@@ -199,8 +199,8 @@ input:focus {
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid rgba(232, 0, 45, 0.5);
-  background: rgba(232, 0, 45, 0.12);
-  color: #ff9a9a;
+  background: rgba(232, 0, 45, 0.1);
+  color: #b42318;
 }
 
 .auth-success {
@@ -208,7 +208,19 @@ input:focus {
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px solid rgba(0, 186, 124, 0.45);
-  background: rgba(0, 186, 124, 0.12);
+  background: rgba(0, 186, 124, 0.1);
+  color: #067647;
+}
+
+:root[data-theme="dark"] .upload-state.success {
+  color: #8ef0cb;
+}
+
+:root[data-theme="dark"] .auth-error {
+  color: #ffb4b4;
+}
+
+:root[data-theme="dark"] .auth-success {
   color: #9df7d4;
 }
 

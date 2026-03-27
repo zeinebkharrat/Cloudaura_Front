@@ -20,6 +20,9 @@
   --btn-outline-color: #1d2433;
   --btn-outline-border: rgba(15, 23, 42, 0.22);
   --btn-outline-hover-bg: rgba(15, 23, 42, 0.06);
+  --menu-bg: rgba(255, 255, 255, 0.97);
+  --menu-hover-bg: rgba(15, 23, 42, 0.06);
+  --input-bg: rgba(255, 255, 255, 0.76);
 }
 
 :root[data-theme="dark"] {
@@ -39,6 +42,9 @@
   --btn-outline-color: #eef2f7;
   --btn-outline-border: rgba(255, 255, 255, 0.25);
   --btn-outline-hover-bg: rgba(255, 255, 255, 0.08);
+  --menu-bg: rgba(14, 20, 28, 0.96);
+  --menu-hover-bg: rgba(255, 255, 255, 0.08);
+  --input-bg: rgba(255, 255, 255, 0.04);
 }
 
 

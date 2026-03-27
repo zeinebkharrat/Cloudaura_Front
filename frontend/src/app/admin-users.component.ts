@@ -51,9 +51,11 @@ export class AdminUsersComponent {
   }
 
   private popup(options: SweetAlertOptions) {
+    const darkMode = document.documentElement.getAttribute('data-theme') === 'dark';
+    const popupThemeClass = darkMode ? 'bo-popup bo-popup-dark' : 'bo-popup bo-popup-light';
     return Swal.fire({
       customClass: {
-        popup: 'bo-popup',
+        popup: popupThemeClass,
         title: 'bo-title',
         htmlContainer: 'bo-content',
         confirmButton: 'bo-btn bo-btn-confirm',
@@ -61,8 +63,9 @@ export class AdminUsersComponent {
         denyButton: 'bo-btn bo-btn-deny',
       },
       buttonsStyling: false,
-      background: '#0f1720',
-      backdrop: 'rgba(7, 12, 18, 0.75)',
+      background: darkMode ? '#0f1720' : '#f8fbff',
+      color: darkMode ? '#e8edf3' : '#10243f',
+      backdrop: darkMode ? 'rgba(7, 12, 18, 0.75)' : 'rgba(145, 159, 180, 0.38)',
       ...options,
     });
   }
@@ -107,6 +110,7 @@ export class AdminUsersComponent {
       html: `
         <div class="sw-grid">
           <div class="sw-avatar-top">
+            <div class="sw-chip">Profil utilisateur</div>
             <div class="sw-avatar-frame">
               <img id="sw-avatar-preview" class="sw-avatar-preview" src="${user.profileImageUrl ?? ''}" alt="avatar" />
               <div id="sw-avatar-placeholder" class="sw-avatar-placeholder ${user.profileImageUrl ? 'hidden' : ''}">${user.username.charAt(0).toUpperCase()}</div>
@@ -115,19 +119,19 @@ export class AdminUsersComponent {
             <input id="sw-avatar-file" class="sw-avatar-file" type="file" accept="image/*" />
             <p class="sw-upload-hint">PNG/JPG conseille, image nette de profil.</p>
           </div>
-          <input id="sw-firstName" class="sw-input" placeholder="Prenom" value="${user.firstName}" />
-          <input id="sw-lastName" class="sw-input" placeholder="Nom" value="${user.lastName}" />
-          <input id="sw-email" class="sw-input" placeholder="Email" value="${user.email}" />
-          <input id="sw-phone" class="sw-input" placeholder="Telephone" value="${user.phone ?? ''}" />
-          <select id="sw-status" class="sw-input">
+          <label class="sw-field">Prenom<input id="sw-firstName" class="sw-input" placeholder="Prenom" value="${user.firstName}" /></label>
+          <label class="sw-field">Nom<input id="sw-lastName" class="sw-input" placeholder="Nom" value="${user.lastName}" /></label>
+          <label class="sw-field">Email<input id="sw-email" class="sw-input" placeholder="Email" value="${user.email}" /></label>
+          <label class="sw-field">Telephone<input id="sw-phone" class="sw-input" placeholder="Telephone" value="${user.phone ?? ''}" /></label>
+          <label class="sw-field">Statut<select id="sw-status" class="sw-input">
             <option value="ACTIVE" ${user.status === 'ACTIVE' ? 'selected' : ''}>ACTIVE</option>
             <option value="INACTIVE" ${user.status === 'INACTIVE' ? 'selected' : ''}>INACTIVE</option>
-          </select>
-          <input id="sw-nationality" class="sw-input" placeholder="Nationality" value="${user.nationality ?? ''}" />
-          <select id="sw-city" class="sw-input">
+          </select></label>
+          <label class="sw-field">Nationalite<input id="sw-nationality" class="sw-input" placeholder="Nationality" value="${user.nationality ?? ''}" /></label>
+          <label class="sw-field">Ville<select id="sw-city" class="sw-input">
             <option value="">Choisir une ville (si tunisian)</option>
             ${cityOptions}
-          </select>
+          </select></label>
         </div>
       `,
       didOpen: () => {
@@ -300,9 +304,21 @@ export class AdminUsersComponent {
       confirmButtonText: 'Bannir',
       cancelButtonText: 'Annuler',
       html: `
-        <textarea id="sw-ban-reason" class="sw-input" placeholder="Raison"></textarea>
-        <label class="sw-check"><input type="checkbox" id="sw-ban-permanent" checked /> Ban permanent</label>
-        <input id="sw-ban-expires" class="sw-input" type="datetime-local" />
+        <div class="ban-dialog">
+          <div class="ban-head">
+            <strong>Action sensible</strong>
+            <span>Ce compte sera bloque immediatement et la trace sera enregistree dans les logs d'audit.</span>
+          </div>
+          <div class="ban-grid">
+            <label class="sw-field">Raison du ban
+              <textarea id="sw-ban-reason" class="sw-textarea" placeholder="Expliquez la raison du ban"></textarea>
+            </label>
+            <label class="sw-switch"><input type="checkbox" id="sw-ban-permanent" checked /> Ban permanent</label>
+            <label class="sw-field">Expiration (si temporaire)
+              <input id="sw-ban-expires" class="sw-input" type="datetime-local" />
+            </label>
+          </div>
+        </div>
       `,
       didOpen: () => {
         const permanentEl = document.getElementById('sw-ban-permanent') as HTMLInputElement | null;
@@ -323,7 +339,7 @@ export class AdminUsersComponent {
         const permanent = !!(document.getElementById('sw-ban-permanent') as HTMLInputElement | null)?.checked;
         const expiresRaw = (document.getElementById('sw-ban-expires') as HTMLInputElement | null)?.value ?? '';
         if (!reason) {
-          Swal.showValidationMessage('La raison est obligatoire.');
+          Swal.showValidationMessage('Ajoutez une raison pour ce ban.');
           return null;
         }
         if (!permanent && !expiresRaw) {
@@ -362,6 +378,14 @@ export class AdminUsersComponent {
 
     const res = await this.popup({
       title: `Debannir ${user.username} ?`,
+      html: `
+        <div class="ban-dialog">
+          <div class="ban-head">
+            <strong>Confirmation de deban</strong>
+            <span>Le compte pourra se reconnecter immediatement apres confirmation.</span>
+          </div>
+        </div>
+      `,
       showCancelButton: true,
       confirmButtonText: 'Debannir',
       cancelButtonText: 'Annuler',

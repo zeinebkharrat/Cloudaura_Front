@@ -66,40 +66,45 @@
                 </td>
                 <td>
                   <div class="actions">
-                    <button type="button" class="icon-btn edit" title="Modifier" (click)="openEditPopup(user)" [disabled]="isSaving()">
+                    <button type="button" class="action-btn edit" title="Modifier" (click)="openEditPopup(user)" [disabled]="isSaving()">
                       <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M12 20h9" />
                         <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" />
                       </svg>
+                      <span>Modifier</span>
                     </button>
                     @if (user.artisanRequestPending) {
-                      <button type="button" class="icon-btn artisan" title="Demande artisan" (click)="openArtisanPopup(user)" [disabled]="isSaving()">
+                      <button type="button" class="action-btn artisan" title="Demande artisan" (click)="openArtisanPopup(user)" [disabled]="isSaving()">
                         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                           <path d="M14 5c2.5 0 4 1.5 4 4v8H6V9c0-2.5 1.5-4 4-4" />
                           <path d="M9 5a3 3 0 0 1 6 0" />
                         </svg>
+                        <span>Artisan</span>
                       </button>
                     }
                     @if (user.banned) {
-                      <button type="button" class="icon-btn unban" title="Debannir" (click)="openUnbanPopup(user)" [disabled]="isSaving()">
+                      <button type="button" class="action-btn unban" title="Debannir" (click)="openUnbanPopup(user)" [disabled]="isSaving()">
                         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                           <path d="M20 6 9 17l-5-5" />
                         </svg>
+                        <span>Debannir</span>
                       </button>
                     } @else {
-                      <button type="button" class="icon-btn ban" title="Bannir" (click)="openBanPopup(user)" [disabled]="isSaving()">
+                      <button type="button" class="action-btn ban" title="Bannir" (click)="openBanPopup(user)" [disabled]="isSaving()">
                         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                           <circle cx="12" cy="12" r="9" />
                           <path d="M5 5l14 14" />
                         </svg>
+                        <span>Bannir</span>
                       </button>
                     }
-                    <button type="button" class="icon-btn delete" title="Supprimer" (click)="deleteUser(user)" [disabled]="isSaving()">
+                    <button type="button" class="action-btn delete" title="Supprimer" (click)="deleteUser(user)" [disabled]="isSaving()">
                       <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M3 6h18" />
                         <path d="M8 6V4h8v2" />
                         <path d="M19 6l-1 14H6L5 6" />
                       </svg>
+                      <span>Supprimer</span>
                     </button>
                   </div>
                 </td>
