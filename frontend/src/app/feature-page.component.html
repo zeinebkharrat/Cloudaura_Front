@@ -5,7 +5,6 @@
   <a routerLink="/" class="back-home">← Accueil</a>
 
   <header class="feature-page__hero glass-panel">
-    <p class="feature-page__kicker">{{ kicker }}</p>
     <h1 class="feature-page__title">{{ title }}</h1>
     <p class="feature-page__lead">{{ description }}</p>
     <div class="feature-page__divider" aria-hidden="true"></div>
@@ -30,19 +29,9 @@
     </article>
   </div>
 
-  <section class="feature-page__legacy glass-panel" *ngIf="!blocks.length && highlights.length">
-    <h2 class="feature-page__legacy-title">Axes fonctionnels</h2>
-    <ul class="feature-page__legacy-list">
-      <li *ngFor="let item of highlights">{{ item }}</li>
-    </ul>
-  </section>
-
-  <p class="feature-page__empty" *ngIf="!blocks.length && !highlights.length">
-    Détail du module à définir.
-  </p>
 
   <!-- Dynamically loaded events section -->
-  <section class="events-section" *ngIf="events.length > 0" [class.events-section--blurred]="selectedEvent">
+<section class="events-section" *ngIf="title === 'Events' && events.length > 0" [class.events-section--blurred]="selectedEvent">
     <h2 class="events-title">Our Events</h2>
     <div class="events-grid">
       <article 
@@ -69,30 +58,25 @@
 
   <div class="events-focus-overlay" *ngIf="selectedEvent" (click)="closeEventDetails()"></div>
 
-<div class="event-detail-modal" *ngIf="selectedEvent" (click)="closeEventDetails()">
-  
-  <article class="event-detail-card glass-panel" (click)="$event.stopPropagation()">
-    
-    <button class="event-detail-close" (click)="closeEventDetails()">×</button>
-    
-    <div class="event-detail-image" *ngIf="selectedEvent.imageUrl">
-      <img [src]="selectedEvent.imageUrl" [alt]="selectedEvent.title" />
-    </div>
-
-    <div class="event-detail-content">
-      <h2>{{ selectedEvent.title }}</h2>
+  <div class="event-detail-modal" *ngIf="selectedEvent">
+    <article class="event-detail-card glass-panel">
+      <button class="event-detail-close" (click)="closeEventDetails()">×</button>
       
-      <div class="detail-grid">
-         <p><strong>📍 Venue:</strong> {{ selectedEvent.venue }}</p>
-         <p><strong>🎭 Type:</strong> {{ selectedEvent.eventType }}</p>
-         <p><strong>📅 Date:</strong> {{ selectedEvent.startDate | date:'dd MMM yyyy' }}</p>
-         <p><strong>⚡ Status:</strong> <span class="status-badge">{{ selectedEvent.status }}</span></p>
+      <div class="event-detail-image" *ngIf="selectedEvent.imageUrl">
+        <img [src]="selectedEvent.imageUrl" [alt]="selectedEvent.title" />
       </div>
-      
-  
-    </div>
-  </article>
-</div>
+
+      <div class="event-detail-content" style="padding: 25px;">
+        <h2 style="margin-bottom: 15px; font-size: 1.8rem;">{{ selectedEvent.title }}</h2>
+        <div class="detail-grid">
+           <p><strong>📍 Venue:</strong> {{ selectedEvent.venue }}</p>
+           <p><strong>🎭 Type:</strong> {{ selectedEvent.eventType }}</p>
+           <p><strong>📅 Date:</strong> {{ selectedEvent.startDate | date:'dd MMM yyyy' }}</p>
+           <p><strong>Status:</strong> <span class="status-badge">{{ selectedEvent.status }}</span></p>
+        </div>
+      </div>
+    </article>
+  </div>
 
   <p class="feature-page__empty" *ngIf="isLoadingEvents">
     Loading events...

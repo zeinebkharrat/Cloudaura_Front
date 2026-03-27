@@ -579,3 +579,16 @@
   z-index: 101 !important;
   font-weight: bold !important;
 }
+
+.events-title {
+  text-align: center;      /* Centre le texte horizontalement */
+  width: 100%;             /* S'assure que le titre prend toute la largeur */
+  margin-bottom: 40px;     /* Ajoute un espace avec la grille d'événements */
+  font-size: 2.5rem;       /* Taille adaptée au style YallaTN+ */
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+.feature-page__lead {
+  white-space: pre-wrap; /* <-- C'est cette ligne qui fait tout le travail */
+}

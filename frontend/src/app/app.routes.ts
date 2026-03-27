@@ -185,8 +185,11 @@ export const routes: Routes = [
     path: 'evenements',
     component: FeaturePageComponent,
     data: {
-    
-    },
+      kicker: 'Agenda',
+      accent: 'rose',
+      title: 'Events',
+      description: "Experience Tunisia's heartbeat with YallaTN+.\nDiscover authentic festivals, sports, and tech events.",
+     },
   },
   {
     path: 'artisanat',
