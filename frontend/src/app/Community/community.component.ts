@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { forkJoin, firstValueFrom, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import {
@@ -12,11 +13,11 @@ import {
   UserRef,
 } from './community.types';
 import { CommentService } from './comment.service';
-import { LikeService } from './like.service';
+import { LikeService, LikesByPostResponse } from './like.service';
 import { PostMediaService } from './post-media.service';
 import { PostService } from './post.service';
-
-const USER_ID_STORAGE_KEY = 'currentUserId';
+import { AuthService } from '../auth.service';
+import { OwnershipUtil } from './ownership.util';
 
 @Component({
   selector: 'app-community',
@@ -30,18 +31,19 @@ export class CommunityComponent {
   private readonly commentService = inject(CommentService);
   private readonly likeService = inject(LikeService);
   private readonly postMediaService = inject(PostMediaService);
+  public readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
 
   // Feed state
   readonly posts = signal<Post[]>([]);
   readonly likes = signal<LikeEntity[]>([]);
   readonly comments = signal<Comment[]>([]);
   readonly medias = signal<PostMedia[]>([]);
+  readonly likeStatuses = signal<Map<number, boolean>>(new Map());
+  readonly likeUserNicknames = signal<Map<number, string[]>>(new Map());
 
   readonly loadError = signal<string | null>(null);
   readonly feedLoaded = signal(false);
-
-  // Demo "current user" (for like/unlike + author fields)
-  readonly currentUserId = signal<number>(this.readCurrentUserId());
 
   // Create post form
   readonly newPostContent = signal<string>('');
@@ -49,6 +51,8 @@ export class CommunityComponent {
   readonly newPostVisibility = signal<string>('public');
   readonly isPosting = signal<boolean>(false);
   readonly showCreatePostForm = signal<boolean>(false);
+  readonly newPostMediaFiles = signal<File[]>([]);
+  readonly newPostMediaPreviews = signal<{ file: File; url: string; type: string }[]>([]);
 
   // Like toggle
   readonly togglingLikePostId = signal<number | null>(null);
@@ -61,34 +65,17 @@ export class CommunityComponent {
   // Media uploads
   readonly uploadingPostId = signal<number | null>(null);
 
+  // UI State Modals & Toggles
+  readonly activeLikersPostId = signal<number | null>(null);
+  readonly activeCommentsPostId = signal<number | null>(null);
+  readonly expandedCommentsPostIds = signal<Set<number>>(new Set());
+
   constructor() {
-    // Ensure we have a stable default user id for like/unlike
-    if (this.readCurrentUserId() === 0) {
-      this.persistUserId(1);
-      this.currentUserId.set(1);
-    }
+    // No more manual userId selection - use JWT authentication
   }
 
   ngOnInit(): void {
     this.loadFeed();
-  }
-
-  private readCurrentUserId(): number {
-    try {
-      const raw = localStorage.getItem(USER_ID_STORAGE_KEY);
-      const n = raw ? Number(raw) : 0;
-      return Number.isFinite(n) ? n : 0;
-    } catch {
-      return 0;
-    }
-  }
-
-  private persistUserId(id: number): void {
-    try {
-      localStorage.setItem(USER_ID_STORAGE_KEY, String(id));
-    } catch {
-      // ignore
-    }
   }
 
   private loadFeed(): void {
@@ -97,51 +84,490 @@ export class CommunityComponent {
 
     const safePosts$ = this.postService.getAllPosts().pipe(
       catchError((err) => {
-        this.loadError.set(
-          err?.message ??
-            'Impossible de charger les posts (API indisponible).'
-        );
-        return of([] as Post[]);
+        console.error('Failed to load posts:', err);
+        this.loadError.set('Failed to load posts');
+        return of([]);
       })
     );
 
     const safeLikes$ = this.likeService.getAllLikes().pipe(
-      catchError(() => of([] as LikeEntity[]))
+      catchError((err) => {
+        console.error('Failed to load likes:', err);
+        return of([]);
+      })
     );
 
     const safeComments$ = this.commentService.getAllComments().pipe(
-      catchError(() => of([] as Comment[]))
+      catchError((err) => {
+        console.error('Failed to load comments:', err);
+        return of([]);
+      })
     );
 
     const safeMedias$ = this.postMediaService.getAllMedias().pipe(
-      catchError(() => of([] as PostMedia[]))
+      catchError((err) => {
+        console.error('Failed to load media:', err);
+        return of([]);
+      })
     );
 
-    forkJoin({
-      posts: safePosts$,
-      likes: safeLikes$,
-      comments: safeComments$,
-      medias: safeMedias$,
-    }).subscribe({
-      next: ({ posts, likes, comments, medias }) => {
-        this.posts.set(posts ?? []);
-        this.likes.set(likes ?? []);
-        this.comments.set(comments ?? []);
-        this.medias.set(medias ?? []);
+    forkJoin([safePosts$, safeLikes$, safeComments$, safeMedias$]).subscribe({
+      next: ([posts, likes, comments, medias]) => {
+        this.posts.set(posts || []);
+        this.likes.set(likes || []);
+        this.comments.set(comments || []);
+        this.medias.set(medias || []);
+        this.feedLoaded.set(true);
+        
+        // Load like statuses and nicknames for each post
+        this.loadLikeStatusesAndNicknames();
+      },
+      error: (err) => {
+        console.error('Error loading feed:', err);
+        this.loadError.set('Error loading feed');
         this.feedLoaded.set(true);
       },
     });
   }
 
-  setUserId(value: string): void {
-    const n = Number(value);
-    if (!Number.isFinite(n) || n <= 0) return;
-    this.persistUserId(n);
-    this.currentUserId.set(n);
-    // Like buttons depend on current user, so recomputation is immediate via template calls.
+  private loadLikeStatusesAndNicknames(): void {
+    if (!this.authService.isAuthenticated()) {
+      return;
+    }
+
+    const posts = this.posts();
+    const likeStatusMap = new Map<number, boolean>();
+    const nicknameMap = new Map<number, string[]>();
+
+    const likeObservables = posts.map(post => 
+      this.likeService.getLikesByPost(post.postId!).pipe(
+        catchError(() => of({
+          likes: [],
+          count: 0,
+          isLikedByCurrentUser: false,
+          userNicknames: []
+        } as LikesByPostResponse))
+      )
+    );
+
+    forkJoin(likeObservables).subscribe({
+      next: (responses: LikesByPostResponse[]) => {
+        posts.forEach((post, index) => {
+          const response = responses[index];
+          likeStatusMap.set(post.postId!, response.isLikedByCurrentUser);
+          nicknameMap.set(post.postId!, response.userNicknames);
+        });
+        this.likeStatuses.set(likeStatusMap);
+        this.likeUserNicknames.set(nicknameMap);
+      },
+      error: (err) => {
+        console.error('Error loading like statuses:', err);
+      }
+    });
   }
 
-  // ---------- Display helpers ----------
+  // Post creation
+  toggleCreatePostForm(): void {
+    if (!this.authService.isAuthenticated()) {
+      this.router.navigate(['/auth/signin']);
+      return;
+    }
+    this.showCreatePostForm.set(!this.showCreatePostForm());
+  }
+
+  async createPost(): Promise<void> {
+    if (!this.authService.isAuthenticated()) {
+      this.router.navigate(['/auth/signin']);
+      return;
+    }
+
+    const content = this.newPostContent().trim();
+    if (!content) {
+      return;
+    }
+
+    this.isPosting.set(true);
+
+    try {
+      const newPost: Omit<Post, 'postId' | 'author' | 'createdAt' | 'updatedAt'> = {
+        content,
+        location: this.newPostLocation() || null,
+        visibility: this.newPostVisibility() || 'public',
+        likesCount: 0,
+        commentsCount: 0,
+      };
+
+      const createdPost = await firstValueFrom(this.postService.addPost(newPost));
+      
+      // Upload media files if any
+      const mediaFiles = this.newPostMediaFiles();
+      if (createdPost?.postId && mediaFiles.length > 0) {
+        for (let i = 0; i < mediaFiles.length; i++) {
+          const file = mediaFiles[i];
+          const mediaType = file.type.startsWith('video/') ? 'VIDEO' : 'IMAGE';
+          try {
+            await firstValueFrom(
+              this.postMediaService.uploadMedia(file, createdPost.postId, mediaType as MediaType, i)
+            );
+          } catch (mediaErr) {
+            console.error('Error uploading media file:', mediaErr);
+          }
+        }
+      }
+      
+      // Reset form
+      this.newPostContent.set('');
+      this.newPostLocation.set('');
+      this.newPostVisibility.set('public');
+      this.clearNewPostMedia();
+      this.showCreatePostForm.set(false);
+      
+      // Reload feed to show new post
+      this.loadFeed();
+    } catch (error) {
+      console.error('Error creating post:', error);
+      this.loadError.set('Failed to create post');
+    } finally {
+      this.isPosting.set(false);
+    }
+  }
+
+  // Media selection for new post
+  onNewPostMediaSelect(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const files = input.files;
+    if (!files || files.length === 0) return;
+
+    const currentFiles = [...this.newPostMediaFiles()];
+    const currentPreviews = [...this.newPostMediaPreviews()];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      currentFiles.push(file);
+      currentPreviews.push({
+        file,
+        url: URL.createObjectURL(file),
+        type: file.type.startsWith('video/') ? 'video' : 'image',
+      });
+    }
+
+    this.newPostMediaFiles.set(currentFiles);
+    this.newPostMediaPreviews.set(currentPreviews);
+    input.value = ''; // reset so same file can be re-selected
+  }
+
+  removeNewPostMedia(index: number): void {
+    const files = [...this.newPostMediaFiles()];
+    const previews = [...this.newPostMediaPreviews()];
+    URL.revokeObjectURL(previews[index].url);
+    files.splice(index, 1);
+    previews.splice(index, 1);
+    this.newPostMediaFiles.set(files);
+    this.newPostMediaPreviews.set(previews);
+  }
+
+  private clearNewPostMedia(): void {
+    const previews = this.newPostMediaPreviews();
+    previews.forEach(p => URL.revokeObjectURL(p.url));
+    this.newPostMediaFiles.set([]);
+    this.newPostMediaPreviews.set([]);
+  }
+
+  // Like functionality
+  async toggleLike(postId: number): Promise<void> {
+    if (!this.authService.isAuthenticated()) {
+      this.router.navigate(['/auth/signin']);
+      return;
+    }
+
+    this.togglingLikePostId.set(postId);
+
+    try {
+      const response = await firstValueFrom(this.likeService.toggleLike(postId));
+      
+      // Update like status locally without reloading
+      const currentStatuses = this.likeStatuses();
+      currentStatuses.set(postId, response.liked);
+      this.likeStatuses.set(new Map(currentStatuses));
+      
+      // Reload like nicknames for this post
+      this.loadLikeStatusesAndNicknames();
+      
+    } catch (error) {
+      console.error('Error toggling like:', error);
+    } finally {
+      this.togglingLikePostId.set(null);
+    }
+  }
+
+  // Navigation
+  goToMyPosts(): void {
+    if (!this.authService.isAuthenticated()) {
+      this.router.navigate(['/auth/signin']);
+      return;
+    }
+    this.router.navigate(['/communaute/my-posts']);
+  }
+
+  // Ownership helpers
+  canEditPost(post: Post): boolean {
+    return OwnershipUtil.canEditPost(post, this.authService);
+  }
+
+  canDeletePost(post: Post): boolean {
+    return OwnershipUtil.canDeletePost(post, this.authService);
+  }
+
+  canEditComment(comment: Comment): boolean {
+    return OwnershipUtil.canEditComment(comment, this.authService);
+  }
+
+  canDeleteComment(comment: Comment): boolean {
+    return OwnershipUtil.canDeleteComment(comment, this.authService);
+  }
+
+  canInteract(): boolean {
+    return OwnershipUtil.canInteract(this.authService);
+  }
+
+  // Get like nicknames for display
+  getLikeNicknames(postId: number): string[] {
+    return this.likeUserNicknames().get(postId) || [];
+  }
+
+  // Format like display text
+  formatLikeText(postId: number): string {
+    const nicknames = this.getLikeNicknames(postId);
+    const count = nicknames.length;
+    
+    if (count === 0) {
+      return 'No likes yet';
+    } else if (count === 1) {
+      return `${nicknames[0]} likes this`;
+    } else if (count <= 3) {
+      return nicknames.join(', ') + ' like this';
+    } else {
+      return `${nicknames.slice(0, 2).join(', ')} and ${count - 2} others like this`;
+    }
+  }
+
+  // Comment functionality
+  setCommentDraft(postId: number, content: string): void {
+    const drafts = this.postCommentDrafts();
+    drafts[postId] = content;
+    this.postCommentDrafts.set({ ...drafts });
+  }
+
+  getCommentDraft(postId: number): string {
+    return this.postCommentDrafts()[postId] || '';
+  }
+
+  // Media upload
+  async uploadMedia(event: Event, postId: number): Promise<void> {
+    if (!this.authService.isAuthenticated()) {
+      this.router.navigate(['/auth/signin']);
+      return;
+    }
+
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) {
+      return;
+    }
+
+    // Check if user is post owner
+    const post = this.posts().find(p => p.postId === postId);
+    if (!post || !OwnershipUtil.canEditPost(post, this.authService)) {
+      alert('Only the post owner can upload media');
+      return;
+    }
+
+    this.uploadingPostId.set(postId);
+
+    try {
+      const mediaType = file.type.startsWith('video/') ? 'VIDEO' : 'IMAGE';
+      await firstValueFrom(
+        this.postMediaService.uploadMedia(file, postId, mediaType as MediaType)
+      );
+      
+      // Reload feed to show new media
+      this.loadFeed();
+    } catch (error) {
+      console.error('Error uploading media:', error);
+      alert('Failed to upload media');
+    } finally {
+      this.uploadingPostId.set(null);
+    }
+  }
+
+  // Delete post
+  async deletePost(postId: number): Promise<void> {
+    if (!confirm('Are you sure you want to delete this post?')) {
+      return;
+    }
+
+    try {
+      await firstValueFrom(this.postService.deletePost(postId));
+      this.loadFeed();
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      alert('Failed to delete post');
+    }
+  }
+
+  // Delete comment
+  async deleteComment(commentId: number): Promise<void> {
+    if (!confirm('Are you sure you want to delete this comment?')) {
+      return;
+    }
+
+    try {
+      await firstValueFrom(this.commentService.deleteComment(commentId));
+      this.loadFeed();
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      alert('Failed to delete comment');
+    }
+  }
+
+  // Edit post functionality
+  startEditPost(post: Post): void {
+    // Implementation for editing posts
+    console.log('Edit post:', post.postId);
+    // TODO: Implement edit post modal/form
+  }
+
+  // Reply functionality
+  openReply(commentId: number): void {
+    this.activeReplyCommentId.set(commentId);
+  }
+
+  closeReply(): void {
+    this.activeReplyCommentId.set(null);
+  }
+
+  // Modals & Section Toggles
+  toggleLikersModal(postId: number | null): void {
+    this.activeLikersPostId.set(postId);
+  }
+
+  toggleComments(postId: number): void {
+    const expanded = new Set(this.expandedCommentsPostIds());
+    if (expanded.has(postId)) {
+      expanded.delete(postId);
+    } else {
+      expanded.add(postId);
+    }
+    this.expandedCommentsPostIds.set(expanded);
+  }
+
+  isCommentsExpanded(postId: number): boolean {
+    return this.expandedCommentsPostIds().has(postId);
+  }
+
+  // Comments modal
+  openCommentsModal(postId: number): void {
+    this.activeCommentsPostId.set(postId);
+  }
+
+  closeCommentsModal(): void {
+    this.activeCommentsPostId.set(null);
+  }
+
+  getFirstComment(postId: number): CommentWithChildren | null {
+    const tree = this.commentTreeForPost(postId);
+    return tree.length > 0 ? tree[0] : null;
+  }
+
+  // TrackBy functions for performance
+  trackByComment(index: number, comment: Comment): number {
+    return comment.commentId || index;
+  }
+
+  trackByPost(index: number, post: Post): number {
+    return post.postId || index;
+  }
+
+  trackByMedia(index: number, media: PostMedia): number {
+    return media.mediaId || index;
+  }
+
+  trackByNickname(index: number, nickname: string): string {
+    return nickname;
+  }
+
+  // Legacy methods for HTML template compatibility
+  currentUserId(): number {
+    return this.authService.currentUser()?.id || 0;
+  }
+
+  setUserId(value: string): void {
+    // This method is deprecated - userId is now handled by JWT authentication
+    console.warn('setUserId is deprecated - using JWT authentication');
+  }
+
+  trackByPostMedia(index: number, media: PostMedia): number {
+    return media.mediaId || index;
+  }
+
+  onAddMediaFiles(postId: number, event: Event): void {
+    this.uploadMedia(event, postId);
+  }
+
+  getPostDraft(postId: number): string {
+    return this.getCommentDraft(postId);
+  }
+
+  setPostDraft(postId: number, value: string): void {
+    this.setCommentDraft(postId, value);
+  }
+
+  getReplyDraft(commentId: number): string {
+    return this.replyDrafts()[commentId] || '';
+  }
+
+  setReplyDraft(commentId: number, value: string): void {
+    const drafts = this.replyDrafts();
+    drafts[commentId] = value;
+    this.replyDrafts.set({ ...drafts });
+  }
+
+  // Add comment with optional parent for replies
+  async addComment(postId: number, parentCommentId?: number): Promise<void> {
+    if (!this.authService.isAuthenticated()) {
+      this.router.navigate(['/auth/signin']);
+      return;
+    }
+
+    const isReply = parentCommentId != null;
+    const draft = isReply
+      ? this.getReplyDraft(parentCommentId)
+      : this.getCommentDraft(postId);
+    const content = draft.trim();
+    if (!content) return;
+
+    try {
+      const newComment: Omit<Comment, 'commentId' | 'author' | 'createdAt' | 'updatedAt'> = {
+        post: { postId },
+        content,
+        parent: isReply ? { commentId: parentCommentId } : null,
+      };
+
+      await firstValueFrom(this.commentService.addComment(newComment));
+      
+      // Clear draft and reload feed
+      if (isReply) {
+        this.setReplyDraft(parentCommentId, '');
+        this.activeReplyCommentId.set(null);
+      } else {
+        this.setCommentDraft(postId, '');
+      }
+      this.loadFeed();
+    } catch (error) {
+      console.error('Error adding comment:', error);
+    }
+  }
+
+  // Helper methods used in HTML template
   displayName(user?: UserRef): string {
     return (
       user?.username ??
@@ -171,17 +597,7 @@ export class CommunityComponent {
   }
 
   isPostLiked(postId: number): boolean {
-    const uid = this.currentUserId();
-    return this.likes().some(
-      (l) => l.post?.postId === postId && l.user?.userId === uid
-    );
-  }
-
-  private getLikeForCurrentUser(postId: number): LikeEntity | undefined {
-    const uid = this.currentUserId();
-    return this.likes().find(
-      (l) => l.post?.postId === postId && l.user?.userId === uid
-    );
+    return this.likeStatuses().get(postId) || false;
   }
 
   getMediaForPost(postId: number): PostMedia[] {
@@ -189,13 +605,6 @@ export class CommunityComponent {
       .filter((m) => m.post?.postId === postId)
       .slice()
       .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
-  }
-
-  private sortComments(a: Comment, b: Comment): number {
-    const da = this.parseDate(a.createdAt ?? null);
-    const db = this.parseDate(b.createdAt ?? null);
-    if (da !== db) return db - da; // newest first
-    return (b.commentId ?? 0) - (a.commentId ?? 0);
   }
 
   commentTreeForPost(postId: number): CommentWithChildren[] {
@@ -236,179 +645,10 @@ export class CommunityComponent {
     return roots;
   }
 
-  getPostDraft(postId: number): string {
-    return this.postCommentDrafts()[postId] ?? '';
+  private sortComments(a: Comment, b: Comment): number {
+    const da = this.parseDate(a.createdAt ?? null);
+    const db = this.parseDate(b.createdAt ?? null);
+    if (da !== db) return db - da; // newest first
+    return (b.commentId ?? 0) - (a.commentId ?? 0);
   }
-
-  setPostDraft(postId: number, value: string): void {
-    this.postCommentDrafts.update((d) => ({ ...d, [postId]: value }));
-  }
-
-  getReplyDraft(commentId: number): string {
-    return this.replyDrafts()[commentId] ?? '';
-  }
-
-  setReplyDraft(commentId: number, value: string): void {
-    this.replyDrafts.update((d) => ({ ...d, [commentId]: value }));
-  }
-
-  // ---------- Actions ----------
-  async createPost(): Promise<void> {
-    const content = this.newPostContent().trim();
-    if (!content) return;
-
-    this.isPosting.set(true);
-    try {
-      const payload = {
-        author: { userId: this.currentUserId() },
-        content,
-        location: this.newPostLocation().trim() || null,
-        visibility: this.newPostVisibility() || null,
-        likesCount: 0,
-        commentsCount: 0,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      } satisfies Partial<Post>;
-
-      const created = await firstValueFrom(
-        this.postService.addPost(payload as Post)
-      );
-
-      this.posts.update((arr) => [created, ...arr]);
-      this.newPostContent.set('');
-      this.newPostLocation.set('');
-      this.newPostVisibility.set('public');
-      this.showCreatePostForm.set(false);
-    } finally {
-      this.isPosting.set(false);
-    }
-  }
-
-  async toggleLike(postId: number): Promise<void> {
-    if (this.togglingLikePostId() != null) return;
-    this.togglingLikePostId.set(postId);
-
-    const liked = this.getLikeForCurrentUser(postId);
-    try {
-      if (liked?.likeId != null) {
-        await firstValueFrom(this.likeService.deleteLike(liked.likeId));
-        this.likes.update((arr) =>
-          arr.filter((l) => l.likeId !== liked.likeId)
-        );
-      } else {
-        const payload = {
-          user: { userId: this.currentUserId() },
-          post: { postId },
-          createdAt: new Date().toISOString(),
-        } satisfies Partial<LikeEntity>;
-
-        const created = await firstValueFrom(
-          this.likeService.addLike(payload as LikeEntity)
-        );
-        this.likes.update((arr) => [created, ...arr]);
-      }
-    } finally {
-      this.togglingLikePostId.set(null);
-    }
-  }
-
-  async addComment(postId: number, parentCommentId?: number | null): Promise<void> {
-    const isReply = parentCommentId != null;
-    const draft = isReply
-      ? this.getReplyDraft(parentCommentId!)
-      : this.getPostDraft(postId);
-    const content = draft.trim();
-    if (!content) return;
-
-    try {
-      const payload = {
-        post: { postId },
-        author: { userId: this.currentUserId() },
-        parent: isReply ? { commentId: parentCommentId } : null,
-        content,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      } satisfies Partial<Comment>;
-
-      const created = await firstValueFrom(
-        this.commentService.addComment(payload as Comment)
-      );
-
-      this.comments.update((arr) => [created, ...arr]);
-      if (isReply) {
-        this.setReplyDraft(parentCommentId!, '');
-        this.activeReplyCommentId.set(null);
-      } else {
-        this.setPostDraft(postId, '');
-      }
-    } catch {
-      // ignore errors for now
-    }
-  }
-
-  openReply(commentId: number): void {
-    this.activeReplyCommentId.set(commentId);
-  }
-
-  closeReply(): void {
-    this.activeReplyCommentId.set(null);
-  }
-
-  private getMaxMediaOrderIndex(postId: number): number {
-    const list = this.getMediaForPost(postId);
-    if (list.length === 0) return 0;
-    return Math.max(...list.map((m) => m.orderIndex ?? 0));
-  }
-
-  async onAddMediaFiles(postId: number, event: Event): Promise<void> {
-    const input = event.target as HTMLInputElement;
-    const files = input.files;
-    if (!files || files.length === 0) return;
-
-    const fileArray = Array.from(files);
-    this.uploadingPostId.set(postId);
-
-    try {
-      let orderIndex = this.getMaxMediaOrderIndex(postId) + 1;
-      for (const file of fileArray) {
-        const mediaType: MediaType = file.type.startsWith('video/')
-          ? 'VIDEO'
-          : file.type.startsWith('image/')
-            ? 'IMAGE'
-            : 'IMAGE';
-
-        const created = await firstValueFrom(
-          this.postMediaService.uploadMedia(
-            file,
-            postId,
-            mediaType,
-            orderIndex
-          )
-        );
-        this.medias.update((arr) => [...arr, created]);
-        orderIndex++;
-      }
-    } finally {
-      this.uploadingPostId.set(null);
-      // allow selecting the same file again
-      input.value = '';
-    }
-  }
-
-  // ---------- trackBy helpers (used by template) ----------
-  trackByPost = (_index: number, post: Post): number | string => {
-    return post.postId ?? post.content ?? _index;
-  };
-
-  trackByPostMedia = (_index: number, media: PostMedia): number | string => {
-    return media.mediaId ?? media.orderIndex ?? _index;
-  };
-
-  trackByComment = (
-    _index: number,
-    comment: Comment | CommentWithChildren
-  ): number | string => {
-    return comment.commentId ?? _index;
-  };
 }
-

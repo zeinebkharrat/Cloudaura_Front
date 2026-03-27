@@ -10,5 +10,6 @@ public interface IPostService {
     Post updatePost(Post post);
     Post retrievePost(Integer postId);
     void removePost(Integer postId);
+    List<Post> findPostsByAuthor(Integer authorId);
 }
 

@@ -89,4 +89,9 @@ public class PostService implements IPostService {
     public void removePost(Integer postId) {
         postRepo.deleteById(postId);
     }
+    
+    @Override
+    public List<Post> findPostsByAuthor(Integer authorId) {
+        return postRepo.findByAuthorUserIdOrderByCreatedAtDesc(authorId);
+    }
 }

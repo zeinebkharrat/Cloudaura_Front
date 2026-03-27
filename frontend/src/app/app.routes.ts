@@ -3,6 +3,7 @@ import { HomeComponent } from './home.component';
 import { VirtualTourPageComponent } from './virtual-tour-page.component';
 import { FeaturePageComponent } from './feature-page.component';
 import { CommunityComponent } from './Community/community.component';
+import { MyPostsComponent } from './Community/my-posts.component';
 import { SignInComponent } from './sign-in.component';
 import { SignUpComponent } from './sign-up.component';
 import { authGuard } from './auth.guard';
@@ -333,6 +334,11 @@ export const routes: Routes = [
         },
       ],
     },
+  },
+  {
+    path: 'communaute/my-posts',
+    component: MyPostsComponent,
+    canActivate: [authGuard],
   },
   { path: '**', redirectTo: '' },
 ];

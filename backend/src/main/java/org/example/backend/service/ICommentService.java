@@ -10,4 +10,7 @@ public interface ICommentService {
     Comment updateComment(Comment comment);
     Comment retrieveComment(Integer commentId);
     void removeComment(Integer commentId);
+    
+    // New JWT-authenticated method
+    List<Comment> retrieveCommentsByPost(Integer postId);
 }

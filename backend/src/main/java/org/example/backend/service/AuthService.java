@@ -261,18 +261,21 @@ public class AuthService {
     }
 
     private UserDetails toUserDetails(User user) {
-        return org.springframework.security.core.userdetails.User.builder()
-                .username(user.getUsername())
-                .password(user.getPasswordHash())
-                .authorities(user.getRoles().stream().map(Role::getName).toArray(String[]::new))
-                .build();
+        return new org.example.backend.service.CustomUserDetailsService.CustomUserDetails(user);
     }
 
     private City resolveCityForNationality(String nationality, Integer cityId) {
+        // If no nationality specified, don't require city
+        if (nationality == null || nationality.trim().isEmpty()) {
+            return null;
+        }
+        
         boolean tunisian = isTunisiaNationality(nationality);
         if (!tunisian) {
             return null;
         }
+        
+        // For Tunisian users, cityId is required
         if (cityId == null) {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "cityId is required for Tunisian users");
         }

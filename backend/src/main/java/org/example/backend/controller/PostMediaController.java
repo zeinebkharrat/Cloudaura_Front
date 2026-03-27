@@ -8,11 +8,16 @@ import java.util.UUID;
 
 import org.example.backend.model.PostMedia;
 import org.example.backend.model.MediaType;
+import org.example.backend.model.User;
 import org.example.backend.service.IPostMediaService;
 import org.example.backend.repository.PostRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import org.example.backend.model.Post;
 
@@ -55,6 +60,7 @@ public class PostMediaController {
 
     /**
      * Uploads an image/video to the backend filesystem and creates a PostMedia record.
+     * Only the post owner can upload media.
      * Consumed by the Angular CommunityComponent.
      */
     @PostMapping(
@@ -73,6 +79,12 @@ public class PostMediaController {
 
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new IllegalArgumentException("Post introuvable : " + postId));
+
+        // Check if current user is the post owner
+        User currentUser = getCurrentUser();
+        if (!post.getAuthor().getUserId().equals(currentUser.getUserId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the post owner can upload media");
+        }
 
         // Store uploads under: <project>/uploads/post-media/
         Path uploadRoot = Paths.get(System.getProperty("user.dir"), "uploads", "post-media");
@@ -99,6 +111,21 @@ public class PostMediaController {
         media.setOrderIndex(orderIndex != null ? orderIndex : 0);
 
         return mediaService.addMedia(media);
+    }
+    
+    private User getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
+        }
+        
+        // Extract User entity from CustomUserDetails
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof org.example.backend.service.CustomUserDetailsService.CustomUserDetails) {
+            return ((org.example.backend.service.CustomUserDetailsService.CustomUserDetails) principal).getUser();
+        }
+        
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid authentication principal");
     }
 }
 

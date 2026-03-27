@@ -1,0 +1,190 @@
+<section class="my-posts-page">
+  <!-- Header -->
+  <div class="my-posts-header glass-panel">
+    <div class="my-posts-header__left">
+      <button type="button" class="back-btn" (click)="goToCommunity()" title="Retour à la communauté">
+        <span class="back-icon">←</span>
+      </button>
+      <div>
+        <h2>Mes Publications</h2>
+        <p>Gérez vos posts : modifiez, supprimez ou consultez vos contenus.</p>
+      </div>
+    </div>
+    <div class="my-posts-header__stats" *ngIf="feedLoaded()">
+      <div class="stat-badge glass-panel">
+        <span class="stat-number">{{ posts().length }}</span>
+        <span class="stat-label">Posts</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="feed-loading glass-panel" *ngIf="!loadError() && !feedLoaded()">
+    <div class="loading-spinner"></div>
+    <span>Chargement de vos publications...</span>
+  </div>
+
+  <!-- Error State -->
+  <div class="feed-error glass-panel" *ngIf="loadError()">
+    <span class="error-icon">⚠️</span>
+    <span>{{ loadError() }}</span>
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state glass-panel" *ngIf="feedLoaded() && posts().length === 0">
+    <div class="empty-state__content">
+      <div class="empty-icon">📭</div>
+      <h3>Aucune publication</h3>
+      <p>Vous n'avez pas encore créé de post. Retournez à la communauté pour en créer un!</p>
+      <button type="button" class="btn-primary" (click)="goToCommunity()">
+        🚀 Aller à la communauté
+      </button>
+    </div>
+  </div>
+
+  <!-- Posts Grid -->
+  <div class="posts-grid" *ngIf="feedLoaded() && posts().length > 0">
+    <ng-container *ngFor="let post of posts(); trackBy: trackByPost">
+      <article class="post-card glass-panel" *ngIf="post.postId != null" [class.post-card--editing]="editingPostId() === post.postId">
+        
+        <!-- Post Header -->
+        <header class="post-header">
+          <div class="post-author">
+            <div class="avatar">{{ displayName(post.author).charAt(0).toUpperCase() || 'U' }}</div>
+            <div class="author-info">
+              <span class="author-name">{{ displayName(post.author) }}</span>
+              <span class="post-time">{{ formatDate(post.createdAt) }}</span>
+            </div>
+          </div>
+          <div class="post-badge" *ngIf="post.visibility === 'private'">
+            <span>🔒 Privé</span>
+          </div>
+        </header>
+
+        <!-- Normal View -->
+        <ng-container *ngIf="editingPostId() !== post.postId">
+          <div class="post-body">
+            <p class="post-text">{{ post.content }}</p>
+            <div class="post-location" *ngIf="post.location">
+              <span class="location-icon">📍</span>
+              <span>{{ post.location }}</span>
+            </div>
+          </div>
+
+          <!-- Media -->
+          <div class="media-grid" *ngIf="getMediaForPost(post.postId!).length > 0">
+            <ng-container *ngFor="let m of getMediaForPost(post.postId!)">
+              <ng-container *ngIf="m.fileUrl">
+                <div class="media-item">
+                  <video class="media-video" controls *ngIf="m.mediaType === 'VIDEO'" [src]="m.fileUrl"></video>
+                  <img class="media-image" *ngIf="m.mediaType !== 'VIDEO'" [src]="m.fileUrl" [alt]="'Media du post ' + post.postId" />
+                </div>
+              </ng-container>
+            </ng-container>
+          </div>
+
+          <!-- Stats Bar -->
+          <div class="post-stats">
+            <div class="stat-item">
+              <span class="stat-icon">{{ isPostLiked(post.postId!) ? '❤️' : '🤍' }}</span>
+              <span>{{ getLikeNicknames(post.postId!).length }} likes</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-icon">💬</span>
+              <span>{{ getCommentCount(post.postId!) }} commentaires</span>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="post-actions-row">
+            <button type="button" class="action-btn action-btn--edit" (click)="startEditPost(post)" title="Modifier">
+              <span class="action-icon">✏️</span>
+              <span>Modifier</span>
+            </button>
+            <button type="button" class="action-btn action-btn--delete" (click)="startDeletePost(post.postId!)" title="Supprimer">
+              <span class="action-icon">🗑️</span>
+              <span>Supprimer</span>
+            </button>
+          </div>
+        </ng-container>
+
+        <!-- Edit Mode -->
+        <ng-container *ngIf="editingPostId() === post.postId">
+          <div class="edit-form">
+            <div class="edit-form__header">
+              <h4>✏️ Modifier le post</h4>
+            </div>
+
+            <label class="field-label">
+              <span>📝 Contenu</span>
+              <textarea
+                rows="4"
+                [value]="editPostContent()"
+                (input)="editPostContent.set($any($event.target).value)"
+                placeholder="Modifiez votre publication..."
+                class="form-textarea"
+              ></textarea>
+            </label>
+
+            <div class="edit-form__row">
+              <label class="field-label">
+                <span>📍 Lieu</span>
+                <input
+                  type="text"
+                  [value]="editPostLocation()"
+                  (input)="editPostLocation.set($any($event.target).value)"
+                  placeholder="Ex: Sidi Bou Saïd"
+                  class="form-input"
+                />
+              </label>
+
+              <label class="field-label">
+                <span>👁 Visibilité</span>
+                <select
+                  [value]="editPostVisibility()"
+                  (change)="editPostVisibility.set($any($event.target).value)"
+                  class="form-select"
+                >
+                  <option value="public">🌍 Public</option>
+                  <option value="private">🔒 Privé</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="edit-form__actions">
+              <button type="button" class="btn-outline" (click)="cancelEdit()">
+                Annuler
+              </button>
+              <button
+                type="button"
+                class="btn-primary"
+                (click)="saveEdit()"
+                [disabled]="!editPostContent().trim() || isEditing()"
+              >
+                <span *ngIf="!isEditing()">💾 Enregistrer</span>
+                <span *ngIf="isEditing()">⏳ Sauvegarde...</span>
+              </button>
+            </div>
+          </div>
+        </ng-container>
+      </article>
+    </ng-container>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div class="delete-modal-backdrop" *ngIf="deletingPostId()" (click)="cancelDelete()">
+    <div class="delete-modal glass-panel" (click)="$event.stopPropagation()">
+      <div class="delete-modal__icon">🗑️</div>
+      <h3>Supprimer ce post ?</h3>
+      <p>Cette action est irréversible. Le post et tout son contenu (commentaires, likes, médias) seront définitivement supprimés.</p>
+      <div class="delete-modal__actions">
+        <button type="button" class="btn-outline" (click)="cancelDelete()">
+          Annuler
+        </button>
+        <button type="button" class="btn-danger" (click)="confirmDelete()">
+          🗑️ Supprimer définitivement
+        </button>
+      </div>
+    </div>
+  </div>
+</section>

@@ -18,12 +18,18 @@ export class CommentService {
     );
   }
 
-  addComment(comment: Comment): Observable<Comment> {
+  getCommentsByPost(postId: number): Observable<Comment[]> {
+    return this.http.get<Comment[]>(`${this.baseUrl}/comment/byPost/${postId}`);
+  }
+
+  addComment(comment: Omit<Comment, 'commentId' | 'author' | 'createdAt' | 'updatedAt'>): Observable<Comment> {
+    // Backend will automatically set the author from JWT token
     return this.http.post<Comment>(`${this.baseUrl}/comment/addComment`, comment);
   }
 
-  updateComment(comment: Comment): Observable<Comment> {
-    return this.http.put<Comment>(`${this.baseUrl}/comment/updateComment`, comment);
+  updateComment(commentId: number, comment: Omit<Comment, 'commentId' | 'author' | 'createdAt' | 'updatedAt'>): Observable<Comment> {
+    // Backend will automatically set the author from JWT token
+    return this.http.put<Comment>(`${this.baseUrl}/comment/updateComment/${commentId}`, comment);
   }
 
   deleteComment(commentId: number): Observable<void> {

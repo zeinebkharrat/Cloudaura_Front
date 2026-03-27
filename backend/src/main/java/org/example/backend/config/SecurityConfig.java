@@ -43,10 +43,16 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/auth/**").permitAll()
-                    .requestMatchers("/api/public/**").permitAll()
+                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/public/**").permitAll()
+                        .requestMatchers("/cities/**").permitAll()
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                         .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
+                        // Community endpoints - read access for all, write access for authenticated users
+                        .requestMatchers(HttpMethod.GET, "/post/**", "/comment/**", "/like/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/post/**", "/comment/**", "/like/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/post/**", "/comment/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/post/**", "/comment/**").authenticated()
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated()
                 )

@@ -1,7 +1,9 @@
 package org.example.backend.service;
 
 import org.example.backend.model.Comment;
+import org.example.backend.model.Post;
 import org.example.backend.repository.CommentRepository;
+import org.example.backend.repository.PostRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +21,9 @@ public class CommentService implements ICommentService {
 
     @Autowired
     CommentRepository commentRepo;
+    
+    @Autowired
+    PostRepository postRepo;
 
     @Autowired
     JdbcTemplate jdbcTemplate;
@@ -84,5 +89,13 @@ public class CommentService implements ICommentService {
     @Override
     public void removeComment(Integer commentId) {
         commentRepo.deleteById(commentId);
+    }
+    
+    // New JWT-authenticated method
+    @Override
+    public List<Comment> retrieveCommentsByPost(Integer postId) {
+        Post post = postRepo.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Post not found"));
+        return commentRepo.findByPost(post);
     }
 }
