@@ -114,6 +114,8 @@ onJoinEvent(event: Event): void {
       error: (err) => console.error("Database error:", err)
     }
   );
+
+  
   }
 }
 }

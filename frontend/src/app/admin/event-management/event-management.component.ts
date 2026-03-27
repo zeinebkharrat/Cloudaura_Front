@@ -48,7 +48,7 @@ export class EventManagementComponent implements OnInit {
     return {
       title: '', eventType: 'CULTURAL', venue: '',
       startDate: '', endDate: '', status: 'UPCOMING',
-      imageUrl: '', city: { cityId: 1 }
+      imageUrl: '', price: 0, city: { cityId: 1, name: '' }
     };
   }
 
@@ -63,6 +63,7 @@ export class EventManagementComponent implements OnInit {
     this.currentEvent = JSON.parse(JSON.stringify(event)); // Deep copy
     this.showModal = true;
   }
+
 
   onFileSelected(event: any) {
     const file = event.target.files[0];

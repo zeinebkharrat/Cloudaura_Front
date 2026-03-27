@@ -13,5 +13,7 @@ export interface Event {
   venue: string;
   status: string;
   imageUrl?: string;
+  price?: number;
   city: City;
+  
 }

@@ -73,6 +73,12 @@
            <p><strong>📍 Venue:</strong> {{ selectedEvent.venue }}</p>
            <p><strong>🎭 Type:</strong> {{ selectedEvent.eventType }}</p>
            <p><strong>📅 Date:</strong> {{ selectedEvent.startDate | date:'dd MMM yyyy' }}</p>
+           <p class="detail-price">
+            <strong>💰 Price:</strong> 
+            <span class="price-amount">
+                {{ (selectedEvent?.price ?? 0) > 0 ? (selectedEvent?.price | number:'1.2-2') + ' TND' : 'Free' }}
+            </span>
+        </p>
            <p><strong>Status:</strong> <span class="status-badge">{{ selectedEvent.status }}</span></p>
         </div>
         <div class="modal-actions">
