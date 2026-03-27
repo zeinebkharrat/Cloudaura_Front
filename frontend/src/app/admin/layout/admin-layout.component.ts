@@ -13,6 +13,9 @@ import { AuthService } from '../../auth.service';
 export class AdminLayoutComponent {
   open = signal(true);
   user = computed(() => this.auth.currentUser());
+  
+  // 1. AJOUT : État pour le menu déroulant des événements
+  isEventsMenuOpen = false;
 
   nav = [
     { label: 'Tableau de bord', icon: '📊', route: '/admin/dashboard' },
@@ -21,6 +24,7 @@ export class AdminLayoutComponent {
     { label: 'Activités',      icon: '📍', route: '/admin/activities' },
     { label: 'Hébergements',    icon: '🏨', route: '/admin/accommodations' },
     { label: 'Transports',      icon: '🚌', route: '/admin/transports' },
+    { label: 'Activités',       icon: '📍', route: '/admin/activities' },
     { label: 'Événements',      icon: '📅', route: '/admin/events' },
     { label: 'Artisanat',       icon: '🏺', route: '/admin/crafts' },
     { label: 'Logs d\'audit',   icon: '📋', route: '/admin/audit-logs' },
@@ -30,13 +34,5 @@ export class AdminLayoutComponent {
 
   constructor(public auth: AuthService, private router: Router) {}
   toggle() { this.open.set(!this.open()); }
-
-  openProfile() {
-    this.router.navigateByUrl('/profile');
-  }
-
-  logout() {
-    this.auth.logout();
-    this.router.navigateByUrl('/signin');
-  }
+  logout() { this.auth.logout(); }
 }

@@ -12,6 +12,10 @@ import { roleGuard } from './role.guard';
 import { AdminUsersComponent } from './admin-users.component';
 import { AdminLayoutComponent } from './admin/layout/admin-layout.component';
 import { AdminDashboardComponent } from './admin/dashboard/admin-dashboard.component';
+import { AuthGuard } from './core/auth.guard';
+
+import { EventManagementComponent } from './admin/event-management/event-management.component';
+import { EventCalendarComponent } from './admin/event-calendar/event-calendar.component';
 import { ProfileComponent } from './profile.component';
 import { AuditLogsComponent } from './audit-logs.component';
 import { AdminCitiesComponent } from './admin/cities/admin-cities.component';
@@ -38,6 +42,10 @@ export const routes: Routes = [
     data: { roles: ['ROLE_ADMIN'] },
     component: AdminLayoutComponent,
     children: [
+      { path: '', component: AdminDashboardComponent },
+      { path: 'events', component: EventManagementComponent },
+      { path: 'events/dashboard', component: EventManagementComponent },
+      { path: 'events/calendar', component: EventCalendarComponent },
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       { path: 'dashboard', component: AdminDashboardComponent },
       { path: 'audit-logs', component: AuditLogsComponent },
@@ -212,44 +220,9 @@ export const routes: Routes = [
     data: {
       kicker: 'Agenda',
       accent: 'rose',
-      title: 'Événements',
-      description:
-        'Un calendrier vivant : festivals, célébrations, sport, tech et nature — pour participer et partager des moments forts.',
-      blocks: [
-        {
-          icon: '🎉',
-          title: 'Festivals & célébrations',
-          items: [
-            'Listes et calendriers des événements culturels, historiques et religieux.',
-            'Informations pratiques et lieux.',
-          ],
-        },
-        {
-          icon: '🏃',
-          title: 'Sport & innovation',
-          items: [
-            'Hackathons, marathons, randonnées et événements outdoor.',
-            'Encourager la participation et la visibilité des organisateurs.',
-          ],
-        },
-        {
-          icon: '📆',
-          title: 'Calendrier interactif',
-          items: [
-            'Vue calendrier avec filtres et recherche.',
-            'Filtres par thème, région et date.',
-          ],
-        },
-        {
-          icon: '🎫',
-          title: 'Participation & suivi',
-          items: [
-            'Inscriptions, présence et partage d’expériences post-événement.',
-            'Rappels et ajout au carnet de voyage.',
-          ],
-        },
-      ],
-    },
+      title: 'Events',
+      description: "Experience Tunisia's heartbeat with YallaTN+.\nDiscover authentic festivals, sports, and tech events.",
+     },
   },
   {
     path: 'artisanat',

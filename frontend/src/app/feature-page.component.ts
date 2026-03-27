@@ -1,7 +1,11 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { ActivatedRoute, Data, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { EventService } from './event.service';
+import { Event } from './models/event';
 
+import { loadStripe } from '@stripe/stripe-js';
+import { PaymentService } from './payment.service';
 /** Rich content block for feature pages (front-only). */
 export interface FeatureBlock {
   title: string;
@@ -28,6 +32,7 @@ export type FeatureAccent =
 })
 export class FeaturePageComponent implements OnInit {
   private route = inject(ActivatedRoute);
+  private eventService = inject(EventService);
 
   kicker = '';
   title = '';
@@ -35,10 +40,14 @@ export class FeaturePageComponent implements OnInit {
   accent: FeatureAccent = 'coral';
   highlights: string[] = [];
   blocks: FeatureBlock[] = [];
+  events: Event[] = [];
+  isLoadingEvents = false;
+  selectedEvent: Event | null = null;
 
   ngOnInit(): void {
     this.applyData(this.route.snapshot.data);
     this.route.data.subscribe((d) => this.applyData(d));
+    this.loadEvents();
   }
 
   private applyData(d: Data): void {
@@ -59,4 +68,54 @@ export class FeaturePageComponent implements OnInit {
     const b = d['blocks'];
     this.blocks = Array.isArray(b) ? (b as FeatureBlock[]) : [];
   }
+
+  private loadEvents(): void {
+    this.isLoadingEvents = true;
+    this.eventService.getEvents().subscribe({
+      next: (events) => {
+        this.events = events;
+        this.isLoadingEvents = false;
+      },
+      error: (err) => {
+        console.error('Error loading events:', err);
+        this.isLoadingEvents = false;
+      }
+    });
+  }
+
+  selectEvent(event: Event): void {
+  this.selectedEvent = event;
+  document.body.classList.add('modal-open');
+}
+
+closeEventDetails(): void {
+  this.selectedEvent = null;
+  document.body.classList.remove('modal-open');
+}
+
+onJoinEvent(event: Event): void {
+  // 1. Simulation du succès Stripe (Mode Test)
+  const fakeStripeSuccess = true; 
+
+  if (fakeStripeSuccess) {
+    const reservationData = {
+      event_id: event.eventId,
+      user_id: 1, // À remplacer par l'ID de l'utilisateur connecté
+      total_amount: 10.00, // Le prix de l'event
+      status: 'CONFIRMED'
+    };
+
+    // 2. Appel au service pour enregistrer dans event_reservations
+    this.eventService.createReservation(reservationData).subscribe({
+      next: (res) => {
+        alert(`Payment successful! Reservation #${res.event_reservation_id} created.`);
+        this.closeEventDetails();
+      },
+      error: (err) => console.error("Database error:", err)
+    }
+  );
+
+  
+  }
+}
 }

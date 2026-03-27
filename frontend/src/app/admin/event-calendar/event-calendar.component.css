@@ -1,0 +1,80 @@
+.calendar-wrapper {
+  padding: 2rem;
+  color: #f8fafc;
+}
+
+.calendar-header {
+  margin-bottom: 2rem;
+}
+
+.calendar-title {
+  font-size: 1.875rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.calendar-subtitle {
+  color: #94a3b8;
+}
+
+.calendar-card {
+  background: #1e293b; /* Bleu nuit de ton dashboard */
+  padding: 1.5rem;
+  border-radius: 1rem;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* --- Styles spécifiques à FullCalendar --- */
+:host ::ng-deep .fc {
+  font-family: inherit;
+  --fc-border-color: rgba(255, 255, 255, 0.1);
+  --fc-button-bg-color: #3b82f6;
+  --fc-button-border-color: #3b82f6;
+  --fc-button-hover-bg-color: #2563eb;
+  --fc-today-bg-color: rgba(99, 102, 241, 0.1);
+}
+
+:host ::ng-deep .fc-toolbar-title {
+  color: #f8fafc !important;
+  font-size: 1.25rem !important;
+}
+
+:host ::ng-deep .fc-daygrid-day-number {
+  color: #94a3b8;
+  padding: 8px !important;
+  text-decoration: none;
+}
+
+:host ::ng-deep .fc-event {
+  padding: 2px 4px;
+  font-size: 0.85rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Force la police et les couleurs du calendrier */
+:host ::ng-deep .fc {
+  font-family: 'Inter', sans-serif;
+}
+
+/* Style des noms de jours (Mon, Tue, etc.) */
+:host ::ng-deep .fc-col-header-cell-cushion {
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+  color: #94a3b8;
+  padding: 10px 0 !important;
+}
+
+/* Style des titres des événements dans les cases */
+:host ::ng-deep .fc-event-title {
+  font-weight: 600;
+  padding: 2px 4px;
+}
+
+/* Customisation de la popup SweetAlert si besoin */
+.my-custom-popup-class {
+  border-radius: 15px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
