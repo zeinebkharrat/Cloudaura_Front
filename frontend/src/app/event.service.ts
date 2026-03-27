@@ -28,4 +28,7 @@ export class EventService {
   deleteEvent(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
+  createReservation(data: any): Observable<any> {
+  return this.http.post(`${this.apiUrl}/reservations`, data);
+}
 }

@@ -52,6 +52,7 @@
           <p class="event-card__detail"><strong>Type:</strong> {{ event.eventType }}</p>
           <p class="event-card__detail"><strong>Status:</strong> {{ event.status }}</p>
         </div>
+        
       </article>
     </div>
   </section>
@@ -74,6 +75,14 @@
            <p><strong>📅 Date:</strong> {{ selectedEvent.startDate | date:'dd MMM yyyy' }}</p>
            <p><strong>Status:</strong> <span class="status-badge">{{ selectedEvent.status }}</span></p>
         </div>
+        <div class="modal-actions">
+    <button class="btn-secondary" (click)="closeEventDetails()">Cancel</button>
+    <button class="btn-join" (click)="onJoinEvent(selectedEvent)">
+      <span>Join Event</span>
+      <i class="icon-arrow">→</i>
+      
+    </button>
+  </div>
       </div>
     </article>
   </div>

@@ -4,6 +4,8 @@ import { CommonModule } from '@angular/common';
 import { EventService } from './event.service';
 import { Event } from './models/event';
 
+import { loadStripe } from '@stripe/stripe-js';
+import { PaymentService } from './payment.service';
 /** Rich content block for feature pages (front-only). */
 export interface FeatureBlock {
   title: string;
@@ -89,5 +91,29 @@ export class FeaturePageComponent implements OnInit {
 closeEventDetails(): void {
   this.selectedEvent = null;
   document.body.classList.remove('modal-open');
+}
+
+onJoinEvent(event: Event): void {
+  // 1. Simulation du succès Stripe (Mode Test)
+  const fakeStripeSuccess = true; 
+
+  if (fakeStripeSuccess) {
+    const reservationData = {
+      event_id: event.eventId,
+      user_id: 1, // À remplacer par l'ID de l'utilisateur connecté
+      total_amount: 10.00, // Le prix de l'event
+      status: 'CONFIRMED'
+    };
+
+    // 2. Appel au service pour enregistrer dans event_reservations
+    this.eventService.createReservation(reservationData).subscribe({
+      next: (res) => {
+        alert(`Payment successful! Reservation #${res.event_reservation_id} created.`);
+        this.closeEventDetails();
+      },
+      error: (err) => console.error("Database error:", err)
+    }
+  );
+  }
 }
 }
