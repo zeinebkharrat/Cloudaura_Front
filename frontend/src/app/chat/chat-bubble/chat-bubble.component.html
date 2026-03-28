@@ -1,0 +1,127 @@
+<div class="chat-bubble-wrapper" [class.open]="isOpen()">
+  <!-- Main popup card -->
+  <div class="chat-popup" *ngIf="isOpen()">
+    <!-- Header -->
+    <div class="chat-header">
+      <div class="header-left">
+        <button class="icon-btn back-btn" *ngIf="activeChatRoomId()" (click)="backToList()" aria-label="Retour">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </button>
+        <h3>{{ activeChatRoomId() ? activeConversation()?.otherUsername : 'Discussions' }}</h3>
+      </div>
+      <div class="header-right">
+        <button class="icon-btn expand-btn" (click)="openFullChat()" aria-label="Ouvrir dans une nouvelle page" title="Ouvrir">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+        </button>
+        <button class="icon-btn close-btn" (click)="toggleBubble()" aria-label="Fermer" title="Fermer">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Body: Conversation List -->
+    <div class="chat-body" *ngIf="!activeChatRoomId()">
+      <div class="empty-state" *ngIf="conversations().length === 0">
+        <div class="empty-icon">💬</div>
+        <p>Aucune discussion pour l'instant.</p>
+        <button class="start-chat-btn" (click)="openFullChat()">Nouvelle discussion</button>
+      </div>
+
+      <div class="conversations-list">
+        <div class="conversation-item" *ngFor="let conv of conversations()" (click)="selectConversation(conv)">
+          <div class="avatar-wrapper">
+            <div class="avatar">{{ getInitials(conv.otherUsername) }}</div>
+            <div class="status-indicator" [class.online]="isUserOnline(conv.otherUserId)"></div>
+          </div>
+          <div class="conv-details">
+            <div class="conv-header">
+              <span class="conv-name" [class.unread]="conv.unreadCount > 0">{{ conv.otherUsername }}</span>
+            </div>
+            <span class="conv-last-message" [class.unread]="conv.unreadCount > 0">
+              {{ conv.lastMessage || 'Nouvelle conversation' }}
+            </span>
+          </div>
+          <div class="conv-meta">
+            <div class="unread-badge" *ngIf="conv.unreadCount > 0">
+              {{ conv.unreadCount }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Body: Active Chat -->
+    <div class="chat-body active-chat-body" *ngIf="activeChatRoomId()">
+      <div class="messages-container" #messagesContainer>
+        <div class="loading-spinner" *ngIf="messagesLoading()">
+          <div class="spinner"></div>
+        </div>
+        
+        <div class="empty-state" *ngIf="messages().length === 0 && !messagesLoading()">
+          Dites bonjour ! 👋
+        </div>
+
+        <div class="message-wrapper" *ngFor="let msg of messages()" [class.own]="isOwnMessage(msg)">
+          <div class="message-bubble">
+            <span class="message-text">{{ msg.content }}</span>
+            <span class="message-time">{{ formatMessageTime(msg.sentAt) }}</span>
+          </div>
+        </div>
+
+        <div class="typing-indicator-container" *ngIf="getTypingText()">
+          <div class="message-wrapper">
+             <div class="message-bubble typing-bubble">
+                <div class="dots">
+                  <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                </div>
+             </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-input-area">
+        <input type="text" #messageInput [(ngModel)]="newMessage" 
+               (keydown)="onMessageKeydown($event)" 
+               (input)="onTyping()" 
+               placeholder="Votre message..." />
+        <button class="send-btn" (click)="sendMessage()" [disabled]="!newMessage().trim()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Button -->
+  <button class="floating-btn" (click)="toggleBubble()" [attr.aria-expanded]="isOpen()">
+    <div class="global-unread-badge" *ngIf="unreadTotal() > 0 && !isOpen()">
+      {{ unreadTotal() > 99 ? '99+' : unreadTotal() }}
+    </div>
+    
+    <svg *ngIf="!isOpen()" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+    </svg>
+
+    <svg *ngIf="isOpen()" xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18"></line>
+      <line x1="6" y1="6" x2="18" y2="18"></line>
+    </svg>
+  </button>
+</div>

@@ -1,0 +1,461 @@
+<section class="community-page">
+  <div class="community-header glass-panel">
+    <div class="community-header__left">
+      <h2>Communauté</h2>
+      <p>Un mini fil social : posts, likes, commentaires et media.</p>
+    </div>
+
+    <div class="community-header__right">
+      <button 
+        type="button"
+        class="btn-primary my-posts-btn"
+        (click)="goToMyPosts()"
+        *ngIf="authService.isAuthenticated()"
+      >
+        <span class="icon">📝</span>
+        My Posts
+      </button>
+    </div>
+  </div>
+
+  <!-- Floating Add Post Button -->
+  <button 
+    type="button"
+    class="floating-add-btn"
+    (click)="toggleCreatePostForm()"
+    [title]="!authService.isAuthenticated() ? 'Please login to create a post' : 'Create new post'"
+  >
+    <span class="plus-icon">+</span>
+  </button>
+
+  <div class="community-layout">
+    <!-- Create Post Modal/Form -->
+    <div class="create-post-modal glass-panel" *ngIf="showCreatePostForm()">
+      <div class="create-post__inner">
+        <div class="create-post__top">
+          <h3>✨ Créer un post</h3>
+          <button
+            type="button"
+            class="btn-close"
+            (click)="toggleCreatePostForm()"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div class="create-post__content">
+          <label class="field-label">
+            <span>📝 Contenu</span>
+            <textarea
+              rows="4"
+              [value]="newPostContent()"
+              (input)="newPostContent.set($any($event.target).value)"
+              placeholder="Partagez une expérience, une idée, un avis..."
+              class="form-textarea"
+            ></textarea>
+          </label>
+
+          <div class="form-row">
+            <label class="field-label">
+              <span>📍 Lieu (optionnel)</span>
+              <input
+                type="text"
+                [value]="newPostLocation()"
+                (input)="newPostLocation.set($any($event.target).value)"
+                placeholder="Ex: Sidi Bou Saïd"
+                class="form-input"
+              />
+            </label>
+
+            <label class="field-label">
+              <span>👁 Visibilité</span>
+              <select
+                [value]="newPostVisibility()"
+                (change)="newPostVisibility.set($any($event.target).value)"
+                class="form-select"
+              >
+                <option value="public">🌍 Public</option>
+                <option value="private">🔒 Privé</option>
+              </select>
+            </label>
+          </div>
+
+          <!-- Media Upload for New Post -->
+          <div class="create-post__media">
+            <label class="upload-btn create-post-upload-btn">
+              <input
+                type="file"
+                accept="image/*,video/*"
+                multiple
+                (change)="onNewPostMediaSelect($event)"
+              />
+              <span class="upload-icon">📎</span>
+              <span class="upload-text">Ajouter media</span>
+            </label>
+
+            <div class="create-post__media-previews" *ngIf="newPostMediaPreviews().length > 0">
+              <div
+                class="media-preview-item"
+                *ngFor="let preview of newPostMediaPreviews(); let i = index"
+              >
+                <img
+                  *ngIf="preview.type === 'image'"
+                  [src]="preview.url"
+                  alt="Preview"
+                  class="media-preview-thumb"
+                />
+                <video
+                  *ngIf="preview.type === 'video'"
+                  [src]="preview.url"
+                  class="media-preview-thumb"
+                ></video>
+                <button
+                  type="button"
+                  class="media-preview-remove"
+                  (click)="removeNewPostMedia(i)"
+                  title="Supprimer"
+                >✕</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="create-post__actions">
+            <button
+              type="button"
+              class="btn-outline"
+              (click)="toggleCreatePostForm()"
+            >
+              Annuler
+            </button>
+            <button
+              type="button"
+              class="btn-primary"
+              (click)="createPost()"
+              [disabled]="!newPostContent().trim() || isPosting()"
+            >
+              <span *ngIf="!isPosting()">🚀 Publier</span>
+              <span *ngIf="isPosting()">⏳ Publication...</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Likers Modal -->
+    <div class="likers-modal-backdrop" *ngIf="activeLikersPostId()" (click)="toggleLikersModal(null)">
+      <div class="likers-modal-content glass-panel" (click)="$event.stopPropagation()">
+        <div class="likers-modal-header">
+          <h3>Aiment ça</h3>
+          <button type="button" class="btn-close" (click)="toggleLikersModal(null)">✕</button>
+        </div>
+        <div class="likers-list">
+          <div class="liker-item" *ngFor="let nickname of getLikeNicknames(activeLikersPostId()!); trackBy: trackByNickname">
+            <div class="avatar comment-avatar">{{ nickname.charAt(0).toUpperCase() || 'U' }}</div>
+            <span class="liker-name">{{ nickname }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Comments Modal -->
+    <div class="comments-modal-backdrop" *ngIf="activeCommentsPostId()" (click)="closeCommentsModal()">
+      <div class="comments-modal-content glass-panel" (click)="$event.stopPropagation()">
+        <div class="comments-modal-header">
+          <h3>💬 Commentaires</h3>
+          <button type="button" class="btn-close" (click)="closeCommentsModal()">✕</button>
+        </div>
+
+        <div class="comments-modal-body">
+          <div class="comment-thread">
+            <p class="empty-thread" *ngIf="commentTreeForPost(activeCommentsPostId()!).length === 0">
+              Aucun commentaire pour ce post.
+            </p>
+
+            <ng-container
+              *ngFor="let root of commentTreeForPost(activeCommentsPostId()!); trackBy: trackByComment"
+            >
+              <ng-container
+                *ngTemplateOutlet="commentTpl; context: { $implicit: root, depth: 0, postId: activeCommentsPostId()! }"
+              ></ng-container>
+            </ng-container>
+          </div>
+        </div>
+
+        <div class="comments-modal-footer">
+          <div class="comment-form-modal">
+            <div class="avatar comment-avatar">{{ authService.currentUser()?.username?.charAt(0)?.toUpperCase() || 'U' }}</div>
+            <textarea
+              rows="1"
+              [value]="getPostDraft(activeCommentsPostId()!)"
+              (input)="setPostDraft(activeCommentsPostId()!, $any($event.target).value)"
+              placeholder="Écrire un commentaire..."
+              class="comment-input-modal"
+            ></textarea>
+            <button
+              type="button"
+              class="send-comment-btn"
+              (click)="addComment(activeCommentsPostId()!)"
+              [disabled]="getPostDraft(activeCommentsPostId()!).trim().length === 0"
+            >
+              ➤
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Feed Section -->
+  <section class="feed">
+    <div class="feed-error glass-panel" *ngIf="loadError()">
+      ⚠️ {{ loadError() }}
+    </div>
+
+    <div class="feed-loading glass-panel" *ngIf="!loadError() && !feedLoaded()">
+      🔄 Chargement de la communauté...
+    </div>
+
+    <div class="posts-container" *ngIf="feedLoaded()">
+      <ng-container *ngIf="posts().length === 0">
+        <div class="empty-state glass-panel">
+          <div class="empty-state__content">
+            <div class="empty-icon">📭</div>
+            <h3>Aucun post pour le moment</h3>
+            <p>Soyez le premier à partager quelque chose!</p>
+            <button 
+              type="button"
+              class="btn-primary"
+              (click)="toggleCreatePostForm()"
+              *ngIf="authService.isAuthenticated()"
+            >
+              🚀 Créer un post
+            </button>
+          </div>
+        </div>
+      </ng-container>
+
+      <ng-container *ngFor="let post of posts(); trackBy: trackByPost">
+        <ng-container *ngIf="post.postId != null">
+          <article class="post-card glass-panel">
+            <header class="post-header">
+              <div class="post-author">
+                <div class="avatar">{{ displayName(post.author).charAt(0).toUpperCase() || 'U' }}</div>
+                <div class="author-info">
+                  <span class="author-name">{{ displayName(post.author) }}</span>
+                  <span class="post-time">{{ formatDate(post.createdAt) }}</span>
+                </div>
+                <div class="post-actions" *ngIf="canEditPost(post) || canDeletePost(post)">
+                  <button 
+                    type="button"
+                    class="btn-icon"
+                    (click)="startEditPost(post)"
+                    *ngIf="canEditPost(post)"
+                    title="Edit post"
+                  >
+                    ✏️
+                  </button>
+                  <button 
+                    type="button"
+                    class="btn-icon btn-icon--danger"
+                    (click)="deletePost(post.postId!)"
+                    *ngIf="canDeletePost(post)"
+                    title="Delete post"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              </div>
+            </header>
+
+            <div class="post-content">
+              <p>{{ post.content }}</p>
+              <div class="post-location" *ngIf="post.location">
+                📍 {{ post.location }}
+              </div>
+              <div class="post-visibility" *ngIf="post.visibility">
+                🔒 {{ post.visibility }}
+              </div>
+
+              <div class="post-stats">
+                <div
+                  class="stat-item stat-item--clickable"
+                  (click)="toggleLike(post.postId!)"
+                  [class.stat-item--liked]="isPostLiked(post.postId!)"
+                >
+                  <span class="stat-icon">{{ isPostLiked(post.postId!) ? '❤️' : '🤍' }}</span>
+                  <span
+                    class="stat-count"
+                    (click)="$event.stopPropagation(); toggleLikersModal(post.postId!)"
+                  >{{ getLikeNicknames(post.postId!).length }} likes</span>
+                </div>
+                <div
+                  class="stat-item stat-item--clickable"
+                  (click)="openCommentsModal(post.postId!)"
+                >
+                  <span class="stat-icon">💬</span>
+                  <span>{{ getCommentCount(post.postId!) }} commentaires</span>
+                </div>
+              </div>
+
+              <!-- Facebook-style first comment preview -->
+              <div class="first-comment-preview" *ngIf="getFirstComment(post.postId!) as firstComment">
+                <div class="preview-comment">
+                  <div class="avatar comment-avatar">{{ displayName(firstComment.author).charAt(0).toUpperCase() || 'U' }}</div>
+                  <div class="preview-comment-bubble">
+                    <span class="preview-comment-author">{{ displayName(firstComment.author) }}</span>
+                    <span class="preview-comment-text">{{ firstComment.content }}</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  class="view-all-comments-btn"
+                  (click)="openCommentsModal(post.postId!)"
+                  *ngIf="getCommentCount(post.postId!) > 1"
+                >
+                  Voir les {{ getCommentCount(post.postId!) }} commentaires
+                </button>
+              </div>
+
+              <div
+                class="media-grid"
+                *ngIf="getMediaForPost(post.postId!).length > 0"
+              >
+                <ng-container
+                  *ngFor="
+                    let m of getMediaForPost(post.postId!);
+                    trackBy: trackByPostMedia
+                  "
+                >
+                  <ng-container *ngIf="m.fileUrl">
+                    <div class="media-item">
+                      <video
+                        class="media-video"
+                        controls
+                        *ngIf="m.mediaType === 'VIDEO'"
+                        [src]="m.fileUrl"
+                      ></video>
+
+                      <img
+                        class="media-image"
+                        *ngIf="m.mediaType !== 'VIDEO'"
+                        [src]="m.fileUrl"
+                        [alt]="'Media du post ' + post.postId"
+                      />
+                    </div>
+                  </ng-container>
+                </ng-container>
+              </div>
+
+              <div class="media-upload" *ngIf="canEditPost(post)">
+                <label class="upload-btn">
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    multiple
+                    (change)="onAddMediaFiles(post.postId!, $event)"
+                    [disabled]="uploadingPostId() === post.postId"
+                  />
+                  <span class="upload-icon">📎</span>
+                  <span class="upload-text">
+                    {{
+                      uploadingPostId() === post.postId
+                        ? 'Ajout...'
+                        : 'Ajouter media'
+                    }}
+                  </span>
+                </label>
+              </div>
+
+              <!-- Inline quick comment input (Facebook-style) -->
+              <div class="inline-comment-input">
+                <div class="avatar comment-avatar">{{ authService.currentUser()?.username?.charAt(0)?.toUpperCase() || 'U' }}</div>
+                <input
+                  type="text"
+                  class="quick-comment-input"
+                  [value]="getPostDraft(post.postId!)"
+                  (input)="setPostDraft(post.postId!, $any($event.target).value)"
+                  (keydown.enter)="addComment(post.postId!)"
+                  placeholder="Écrire un commentaire..."
+                />
+              </div>
+            </div>
+          </article>
+        </ng-container>
+        </ng-container>
+      </div>
+
+      <!-- Comment Template -->
+      <ng-template #commentTpl let-comment let-depth="depth" let-postId="postId">
+      <div class="comment-item" [style.marginLeft.px]="depth * 18">
+        <div class="comment-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="avatar comment-avatar">{{ displayName(comment.author).charAt(0).toUpperCase() || 'U' }}</div>
+            <span class="comment-author">{{ displayName(comment.author) }}</span>
+          </div>
+          <span class="comment-date">{{ formatDate(comment.createdAt) }}</span>
+        </div>
+        
+        <p class="comment-content">{{ comment.content }}</p>
+
+        <div class="comment-actions">
+          <button
+            type="button"
+            class="reply-btn"
+            (click)="openReply(comment.commentId!)"
+            [disabled]="activeReplyCommentId() === comment.commentId"
+          >
+            Répondre
+          </button>
+        </div>
+
+        <div
+          class="reply-form glass-panel"
+          *ngIf="activeReplyCommentId() === comment.commentId!"
+        >
+          <textarea
+            rows="2"
+            [value]="getReplyDraft(comment.commentId!)"
+            (input)="setReplyDraft(comment.commentId!, $any($event.target).value)"
+            placeholder="Votre réponse..."
+          ></textarea>
+          <div class="reply-actions">
+            <button
+              type="button"
+              class="btn-primary btn-primary--small"
+              (click)="addComment(postId, comment.commentId!)"
+              [disabled]="getReplyDraft(comment.commentId!).trim().length === 0"
+            >
+              Répondre
+            </button>
+            <button
+              type="button"
+              class="btn-outline btn-outline--small"
+              (click)="closeReply()"
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+
+        <ng-container *ngIf="comment.children?.length">
+          <ng-container
+            *ngFor="
+              let child of comment.children;
+              trackBy: trackByComment
+            "
+          >
+            <ng-container
+              *ngTemplateOutlet="
+                commentTpl;
+                context: {
+                  $implicit: child,
+                  depth: depth + 1,
+                  postId: postId
+                }
+              "
+            ></ng-container>
+          </ng-container>
+        </ng-container>
+      </div>
+    </ng-template>
+  </section>
+</section>

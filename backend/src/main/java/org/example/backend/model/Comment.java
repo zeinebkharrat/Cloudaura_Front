@@ -12,7 +12,8 @@ public class Comment {
     private User author;
     @ManyToOne @JoinColumn(name="parent_id")
     private Comment parent;
-    @Lob @Column(columnDefinition="TEXT")
+    // Using plain TEXT instead of @Lob to avoid MySQL/Hibernate LOB binding issues
+    @Column(columnDefinition="TEXT")
     private String content;
     private Date createdAt;
     private Date updatedAt;

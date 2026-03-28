@@ -50,11 +50,18 @@ public class SecurityConfig {
                         "/api/auth/resend-verification",
                         "/api/auth/forgot-password",
                         "/api/auth/reset-password",
-                        "/api/auth/social/providers"
+                        "/api/auth/social/providers",
+                        "/auth/**"
                     ).permitAll()
                         .requestMatchers("/api/public/**").permitAll()
+                    .requestMatchers("/public/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/cities/**").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/cities/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/post/**", "/comment/**", "/like/**", "/media/**").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/post/**", "/comment/**", "/like/**").authenticated()
+                    .requestMatchers(HttpMethod.PUT, "/post/**", "/comment/**").authenticated()
+                    .requestMatchers(HttpMethod.DELETE, "/post/**", "/comment/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                         .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
@@ -71,6 +78,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/products/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_ARTISAN")
                         .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_ARTISAN")
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers("/ws/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2

@@ -2,6 +2,8 @@ import { Routes } from '@angular/router';
 import { HomeComponent } from './home.component';
 import { VirtualTourPageComponent } from './virtual-tour-page.component';
 import { FeaturePageComponent } from './feature-page.component';
+import { CommunityComponent } from './Community/community.component';
+import { MyPostsComponent } from './Community/my-posts.component';
 import { SignInComponent } from './sign-in.component';
 import { SignUpComponent } from './sign-up.component';
 import { ForgotPasswordComponent } from './forgot-password.component';
@@ -24,7 +26,7 @@ import { ProductsAdminComponent } from './admin/entities/products/products-admin
 import { OrdersAdminComponent } from './admin/entities/orders/orders-admin.component';
 import { CartPageComponent } from './shop/cart-page.component';
 import { MyOrdersComponent } from './shop/my-orders.component';
-
+import { ChatComponent } from './chat/chat.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -336,8 +338,13 @@ export const routes: Routes = [
     },
   },
   {
+    path: 'chat',
+    component: ChatComponent,
+    canActivate: [authGuard],
+  },
+  {
     path: 'communaute',
-    component: FeaturePageComponent,
+    component: CommunityComponent,
     data: {
       kicker: 'Voyageurs',
       accent: 'violet',
@@ -371,6 +378,11 @@ export const routes: Routes = [
         },
       ],
     },
+  },
+  {
+    path: 'communaute/my-posts',
+    component: MyPostsComponent,
+    canActivate: [authGuard],
   },
   { path: '**', redirectTo: '' },
 ];
