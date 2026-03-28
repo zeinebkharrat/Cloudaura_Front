@@ -27,13 +27,17 @@
 
     @if (open()) {
       <div class="sb-foot">
-        <div class="sb-user">
-          <div class="sb-av">{{ user()?.username?.charAt(0)?.toUpperCase() }}</div>
+        <button type="button" class="sb-user" (click)="openProfile()" id="admin-profile-btn">
+          @if (user()?.profileImageUrl) {
+            <img class="sb-av-img" [src]="user()!.profileImageUrl!" alt="Photo profil admin" />
+          } @else {
+            <div class="sb-av">{{ user()?.username?.charAt(0)?.toUpperCase() }}</div>
+          }
           <div class="sb-uinfo">
             <div class="sb-uname">{{ user()?.username }}</div>
-            <div class="sb-urole">{{ user()?.role }}</div>
+            <div class="sb-urole">{{ user()?.roles?.join(', ') }}</div>
           </div>
-        </div>
+        </button>
         <button class="logout-btn" (click)="logout()" id="admin-logout-btn">
           🚪 Déconnexion
         </button>

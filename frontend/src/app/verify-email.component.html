@@ -1,0 +1,24 @@
+<section class="auth-page">
+  <div class="auth-bg-orb auth-bg-orb-left"></div>
+  <div class="auth-bg-orb auth-bg-orb-right"></div>
+
+  <article class="auth-card animate-in">
+    <p class="auth-kicker">YallaTN Security</p>
+    <h1>Verification email</h1>
+
+    @if (isLoading()) {
+      <p class="auth-subtitle">Verification en cours...</p>
+    } @else {
+      @if (successMessage()) {
+        <div class="auth-success">{{ successMessage() }}</div>
+      }
+      @if (errorMessage()) {
+        <div class="auth-error">{{ errorMessage() }}</div>
+      }
+    }
+
+    <p class="auth-switch">
+      Continuer vers <a routerLink="/signin">Se connecter</a>
+    </p>
+  </article>
+</section>

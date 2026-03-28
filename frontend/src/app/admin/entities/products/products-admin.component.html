@@ -1,0 +1,245 @@
+<div class="admin-page">
+  <header class="page-head">
+    <div>
+      <h1>Gestion des produits</h1>
+    </div>
+    <button type="button" class="btn" (click)="openCreateModal()">Ajouter un produit</button>
+  </header>
+
+  @if (error) {
+    <div class="alert">{{ error }}</div>
+  }
+
+  <section class="card surface">
+    <div class="toolbar search-shell">
+      <div class="search-input-wrap">
+        <span class="search-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="m20 20-3.5-3.5"></path>
+          </svg>
+        </span>
+        <input
+          type="text"
+          [(ngModel)]="q"
+          (ngModelChange)="onSearchInputChange()"
+          placeholder="Rechercher un produit ou un vendeur…"
+        />
+      </div>
+      <select [(ngModel)]="sort" (change)="sortChanged()">
+        <option value="productId,desc">Plus récent</option>
+        <option value="name,asc">Nom A → Z</option>
+        <option value="name,desc">Nom Z → A</option>
+        <option value="price,asc">Prix croissant</option>
+        <option value="price,desc">Prix décroissant</option>
+      </select>
+    </div>
+
+    <div class="table-wrap">
+      @if (loading) {
+        <p class="empty">Chargement…</p>
+      } @else {
+        <table>
+          <thead>
+            <tr>
+              <th>Produit</th>
+              <th>Image</th>
+              <th>Prix</th>
+              <th>Stock</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (item of pagedProducts; track item.productId) {
+              <tr>
+                <td>
+                  <div class="title">{{ item.name }}</div>
+                  <div class="sub">
+                    @if (item.user?.username) {
+                      {{ '@' + item.user.username }}
+                    } @else {
+                      —
+                    }
+                  </div>
+                </td>
+                <td>
+                  @if (item.imageUrl) {
+                    <img class="thumb" [src]="resolveImageUrl(item.imageUrl)" alt="" />
+                  } @else {
+                    <span class="sub">—</span>
+                  }
+                </td>
+                <td>{{ formatPrice(item.price) }}</td>
+                <td>{{ item.stock ?? '—' }}</td>
+                <td class="actions">
+                  <button
+                    type="button"
+                    class="btn icon-btn icon-view"
+                    (click)="openDetails(item)"
+                    title="Voir détails"
+                    aria-label="Voir détails"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn icon-btn icon-edit"
+                    (click)="editProduct(item)"
+                    title="Modifier"
+                    aria-label="Modifier"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn icon-btn icon-delete"
+                    (click)="remove(item)"
+                    title="Supprimer"
+                    aria-label="Supprimer"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M3 6h18" />
+                      <path d="M8 6V4h8v2" />
+                      <path d="M19 6l-1 14H6L5 6" />
+                      <path d="M10 11v6M14 11v6" />
+                    </svg>
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        @if (!loading && pagedProducts.length === 0) {
+          <p class="empty">Aucun produit trouvé.</p>
+        }
+      }
+    </div>
+
+    <div class="pager">
+      <span>Total: {{ totalElements }}</span>
+      <div>
+        <button type="button" class="btn ghost" [disabled]="page === 0" (click)="changeProductPage(false)">
+          Précédent
+        </button>
+        <span>Page {{ page + 1 }} / {{ totalPages }}</span>
+        <button
+          type="button"
+          class="btn ghost"
+          [disabled]="page + 1 >= totalPages"
+          (click)="changeProductPage(true)"
+        >
+          Suivant
+        </button>
+      </div>
+    </div>
+  </section>
+
+  @if (showProductModal) {
+    <div class="modal-backdrop" (click)="onModalBackdropClick($event)"></div>
+    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="product-modal-title">
+      <header class="modal-head">
+        <h2 id="product-modal-title">{{ editingProductId ? 'Modifier le produit' : 'Ajouter un produit' }}</h2>
+        <button type="button" class="btn ghost" (click)="closeProductModal()" aria-label="Fermer">✕</button>
+      </header>
+
+      @if (modalError) {
+        <div class="alert modal-alert">{{ modalError }}</div>
+      }
+      @if (uploading) {
+        <p class="empty">Envoi de l’image en cours…</p>
+      }
+
+      <div class="form-grid">
+        <label>
+          Nom *
+          <input type="text" [(ngModel)]="productForm.name" name="pname" />
+        </label>
+        <label>
+          Prix
+          <input type="number" step="any" [(ngModel)]="productForm.price" name="pprice" />
+        </label>
+        <label>
+          Stock
+          <input type="number" step="1" [(ngModel)]="productForm.stock" name="pstock" />
+        </label>
+      </div>
+
+      <div class="media-zone">
+        <div class="media-title">
+          <h3>Image produit</h3>
+          <span>Fichier depuis votre PC (optionnel si l’image existe déjà)</span>
+        </div>
+        <div class="upload-box modern">
+          <input id="productImageInput" class="file-native" type="file" accept="image/*" (change)="onFileSelected($event)" />
+          <label class="file-trigger" for="productImageInput">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <path d="M7 10l5-5 5 5" />
+              <path d="M12 5v12" />
+            </svg>
+            Choisir une image
+          </label>
+          @if (selectedFile) {
+            <span class="file-count">{{ selectedFile.name }}</span>
+            <button type="button" class="btn ghost" (click)="clearFileSelection()">Retirer le fichier</button>
+          }
+        </div>
+
+        @if (modalPreviewSrc()) {
+          <div class="modal-image-preview">
+            <img [src]="modalPreviewSrc()" alt="Aperçu produit" />
+          </div>
+        }
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn" [disabled]="uploading" (click)="save()">
+          {{ editingProductId ? 'Mettre à jour' : 'Créer le produit' }}
+        </button>
+        <button type="button" class="btn ghost" [disabled]="uploading" (click)="closeProductModal()">Annuler</button>
+      </div>
+    </section>
+  }
+
+  @if (showDetailsModal && detailsProduct) {
+    <div class="modal-backdrop" (click)="onDetailsBackdropClick($event)"></div>
+    <section class="modal-card details-card" role="dialog" aria-modal="true">
+      <header class="modal-head">
+        <h2>{{ detailsProduct.name }}</h2>
+        <button type="button" class="btn ghost" (click)="closeDetailsModal()" aria-label="Fermer">✕</button>
+      </header>
+
+      <div class="details-grid">
+        <article class="details-media-main">
+          @if (detailsProduct.imageUrl) {
+            <img [src]="resolveImageUrl(detailsProduct.imageUrl)" [alt]="detailsProduct.name" />
+          } @else {
+            <div class="details-empty-media">Aucune image</div>
+          }
+        </article>
+        <article class="details-info-card">
+          <div class="details-meta-grid">
+            <div>
+              <strong>Vendeur :</strong>
+              @if (detailsProduct.user?.username) {
+                {{ '@' + detailsProduct.user.username }}
+              } @else {
+                —
+              }
+            </div>
+            <div><strong>Prix :</strong> {{ formatPrice(detailsProduct.price) }}</div>
+            <div><strong>Stock :</strong> {{ detailsProduct.stock ?? '—' }}</div>
+            <div><strong>Réf. :</strong> #{{ detailsProduct.productId }}</div>
+          </div>
+        </article>
+      </div>
+    </section>
+  }
+</div>

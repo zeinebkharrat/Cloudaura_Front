@@ -1,0 +1,340 @@
+import { Component, HostListener, OnDestroy, OnInit, computed, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ExploreService } from './explore.service';
+import { Activity, PublicCityDetailsResponse } from './explore.models';
+
+const HOME_MAP_RETURN_CONTEXT_KEY = 'homeMapReturnContext';
+
+@Component({
+  selector: 'app-city-explore',
+  standalone: true,
+  imports: [CommonModule, RouterLink],
+  templateUrl: './city-explore.component.html',
+  styleUrl: './city-explore.component.css',
+})
+export class CityExploreComponent implements OnInit, OnDestroy {
+  loading = signal(true);
+  error = signal('');
+  details = signal<PublicCityDetailsResponse | null>(null);
+  activityImageById = signal<Record<number, string>>({});
+  currentImageIndex = signal(0);
+  activitiesPerPage = signal(2);
+  activityPageIndex = signal(0);
+
+  media = computed(() => this.details()?.media ?? []);
+  currentMedia = computed(() => {
+    const gallery = this.media();
+    if (!gallery.length) {
+      return null;
+    }
+    return gallery[this.currentImageIndex() % gallery.length];
+  });
+
+  heroImage = computed(() => this.currentMedia()?.url ?? 'assets/sidi_bou.png');
+  hasMultipleImages = computed(() => this.media().length > 1);
+  currentCaption = computed(() => {
+    const cityName = this.details()?.city.name ?? 'this destination';
+    const media = this.currentMedia();
+    if (!media) {
+      return `Discover ${cityName} and its iconic spots.`;
+    }
+
+    if (media.mediaType === 'PANORAMA') {
+      return `Immersive panoramic view of ${cityName}.`;
+    }
+    if (media.mediaType === 'VIDEO') {
+      return `A vivid moment in ${cityName}, blending culture and local atmosphere.`;
+    }
+    return `Postcard-perfect scene from ${cityName}.`;
+  });
+  activityPages = computed(() => {
+    const activities = this.details()?.activities ?? [];
+    const perPage = Math.max(1, this.activitiesPerPage());
+    const pages: Activity[][] = [];
+
+    for (let index = 0; index < activities.length; index += perPage) {
+      pages.push(activities.slice(index, index + perPage));
+    }
+
+    return pages;
+  });
+  hasActivityCarouselControls = computed(() => this.activityPages().length > 1);
+
+  private sliderTimer: ReturnType<typeof setInterval> | null = null;
+  private activitySliderTimer: ReturnType<typeof setInterval> | null = null;
+  private returnRegionId: string | null = null;
+
+  constructor(
+    private readonly route: ActivatedRoute,
+    private readonly exploreService: ExploreService,
+    private readonly router: Router
+  ) {}
+
+  ngOnInit(): void {
+    this.returnRegionId = this.route.snapshot.queryParamMap.get('region');
+    this.activitiesPerPage.set(this.getActivitiesPerPage());
+
+    const cityId = Number(this.route.snapshot.paramMap.get('cityId'));
+    if (!cityId) {
+      this.error.set('Invalid city');
+      this.loading.set(false);
+      return;
+    }
+
+    this.exploreService.getCityDetails(cityId).subscribe({
+      next: (details) => {
+        this.details.set(details);
+        this.activityImageById.set({});
+        this.activityPageIndex.set(0);
+        this.loadActivityImages(details.activities);
+        this.currentImageIndex.set(0);
+        this.startAutoSlide();
+        this.startActivitiesAutoSlide();
+        this.loading.set(false);
+      },
+      error: (err) => {
+        this.error.set(err?.error?.message ?? 'Unable to load this city');
+        this.loading.set(false);
+      },
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.stopAutoSlide();
+    this.stopActivitiesAutoSlide();
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.updateActivitiesPerPage();
+  }
+
+  onHeroClick(event: MouseEvent): void {
+    if (!this.hasMultipleImages()) {
+      return;
+    }
+
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) {
+      return;
+    }
+
+    const bounds = target.getBoundingClientRect();
+    const clickX = event.clientX - bounds.left;
+    const isRight = clickX > bounds.width / 2;
+
+    if (isRight) {
+      this.nextImage();
+      return;
+    }
+
+    this.previousImage();
+  }
+
+  nextImage(): void {
+    const total = this.media().length;
+    if (!total) {
+      return;
+    }
+    this.currentImageIndex.set((this.currentImageIndex() + 1) % total);
+    this.restartAutoSlide();
+  }
+
+  previousImage(): void {
+    const total = this.media().length;
+    if (!total) {
+      return;
+    }
+    this.currentImageIndex.set((this.currentImageIndex() - 1 + total) % total);
+    this.restartAutoSlide();
+  }
+
+  private startAutoSlide(): void {
+    this.stopAutoSlide();
+    if (!this.hasMultipleImages()) {
+      return;
+    }
+
+    this.sliderTimer = setInterval(() => {
+      const total = this.media().length;
+      if (total <= 1) {
+        return;
+      }
+      this.currentImageIndex.set((this.currentImageIndex() + 1) % total);
+    }, 4200);
+  }
+
+  private stopAutoSlide(): void {
+    if (this.sliderTimer) {
+      clearInterval(this.sliderTimer);
+      this.sliderTimer = null;
+    }
+  }
+
+  private restartAutoSlide(): void {
+    this.startAutoSlide();
+  }
+
+  nextActivityPage(): void {
+    const pages = this.activityPages();
+    if (pages.length <= 1) {
+      return;
+    }
+
+    this.activityPageIndex.set((this.activityPageIndex() + 1) % pages.length);
+    this.restartActivitiesAutoSlide();
+  }
+
+  previousActivityPage(): void {
+    const pages = this.activityPages();
+    if (pages.length <= 1) {
+      return;
+    }
+
+    this.activityPageIndex.set((this.activityPageIndex() - 1 + pages.length) % pages.length);
+    this.restartActivitiesAutoSlide();
+  }
+
+  goToActivityPage(index: number): void {
+    const pages = this.activityPages();
+    if (index < 0 || index >= pages.length) {
+      return;
+    }
+
+    this.activityPageIndex.set(index);
+    this.restartActivitiesAutoSlide();
+  }
+
+  goBack(): void {
+    const routeCityId = Number(this.route.snapshot.paramMap.get('cityId'));
+    const city = this.details()?.city;
+    const cityName = city?.name ?? null;
+    const cityId = city?.cityId ?? (Number.isNaN(routeCityId) ? null : routeCityId);
+    const cityLat = city?.latitude ?? null;
+    const cityLng = city?.longitude ?? null;
+    const returnRegion = this.returnRegionId ?? cityName ?? undefined;
+
+    if (typeof window !== 'undefined') {
+      window.sessionStorage.setItem(
+        HOME_MAP_RETURN_CONTEXT_KEY,
+        JSON.stringify({
+          zoomOut: 1,
+          returnRegion,
+          returnCity: cityName ?? undefined,
+          returnCityId: cityId ?? undefined,
+          returnLat: cityLat ?? undefined,
+          returnLng: cityLng ?? undefined,
+        })
+      );
+    }
+
+    this.router.navigate(['/'], {
+      fragment: 'map-section',
+      queryParams: {
+        zoomOut: 1,
+        returnRegion,
+        returnCity: cityName ?? undefined,
+        returnCityId: cityId ?? undefined,
+        returnLat: cityLat ?? undefined,
+        returnLng: cityLng ?? undefined,
+      },
+    });
+  }
+
+  goToMapZoomOut(): void {
+    this.goBack();
+  }
+
+  activityCardImage(activity: Activity): string {
+    return (
+      this.activityImageById()[activity.activityId] ||
+      activity.imageUrl ||
+      'assets/sidi_bou.png'
+    );
+  }
+
+  scrollToSection(sectionId: 'restaurants' | 'activities'): void {
+    const target = document.getElementById(sectionId);
+    if (!target) {
+      return;
+    }
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  private loadActivityImages(activities: Activity[]): void {
+    for (const activity of activities) {
+      this.exploreService.getActivityMedia(activity.activityId).subscribe({
+        next: (media) => {
+          const mediaImage = media.find((item) => item.mediaType === 'IMAGE')?.url ?? media[0]?.url;
+          if (!mediaImage) {
+            return;
+          }
+
+          this.activityImageById.update((current) => ({
+            ...current,
+            [activity.activityId]: mediaImage,
+          }));
+        },
+        error: () => {
+        },
+      });
+    }
+  }
+
+  private updateActivitiesPerPage(): void {
+    const nextPerPage = this.getActivitiesPerPage();
+    if (this.activitiesPerPage() === nextPerPage) {
+      return;
+    }
+
+    this.activitiesPerPage.set(nextPerPage);
+    const maxPageIndex = Math.max(0, this.activityPages().length - 1);
+    if (this.activityPageIndex() > maxPageIndex) {
+      this.activityPageIndex.set(maxPageIndex);
+    }
+    this.restartActivitiesAutoSlide();
+  }
+
+  private getActivitiesPerPage(): number {
+    if (typeof window === 'undefined') {
+      return 3;
+    }
+
+    if (window.innerWidth < 760) {
+      return 1;
+    }
+
+    if (window.innerWidth < 1180) {
+      return 2;
+    }
+
+    return 3;
+  }
+
+  private startActivitiesAutoSlide(): void {
+    this.stopActivitiesAutoSlide();
+    if (!this.hasActivityCarouselControls()) {
+      return;
+    }
+
+    this.activitySliderTimer = setInterval(() => {
+      const pages = this.activityPages();
+      if (pages.length <= 1) {
+        return;
+      }
+      this.activityPageIndex.set((this.activityPageIndex() + 1) % pages.length);
+    }, 5200);
+  }
+
+  private stopActivitiesAutoSlide(): void {
+    if (this.activitySliderTimer) {
+      clearInterval(this.activitySliderTimer);
+      this.activitySliderTimer = null;
+    }
+  }
+
+  private restartActivitiesAutoSlide(): void {
+    this.startActivitiesAutoSlide();
+  }
+}

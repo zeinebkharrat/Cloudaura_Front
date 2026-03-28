@@ -1,0 +1,75 @@
+<section class="auth-page">
+  <div class="auth-bg-orb auth-bg-orb-left"></div>
+  <div class="auth-bg-orb auth-bg-orb-right"></div>
+
+  <article class="auth-card animate-in">
+    <p class="auth-kicker">Tunisia Travel Access</p>
+    <h1>Connexion à YallaTN+</h1>
+    <p class="auth-subtitle">Retrouvez vos itinéraires, vos favoris et vos réservations en un instant.</p>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <label>
+        Email ou nom d’utilisateur
+        <input
+          type="text"
+          formControlName="identifier"
+          placeholder="ex: sara.bizerte ou sara@email.com"
+          autocomplete="username"
+          [class.input-invalid]="controlInvalid('identifier')"
+        />
+      </label>
+      @if (controlInvalid('identifier')) {
+        <p class="field-error">Ce champ est obligatoire.</p>
+      }
+
+      <label>
+        Mot de passe
+        <input
+          type="password"
+          formControlName="password"
+          placeholder="Votre mot de passe"
+          autocomplete="current-password"
+          [class.input-invalid]="controlInvalid('password')"
+        />
+      </label>
+      @if (controlInvalid('password')) {
+        <p class="field-error">{{ passwordErrorMessage() }}</p>
+      }
+
+      @if (formError()) {
+        <div class="auth-error">{{ formError() }}</div>
+      }
+      @if (formSuccess()) {
+        <div class="auth-success">{{ formSuccess() }}</div>
+      }
+
+      <div class="auth-links-row">
+        <a routerLink="/forgot-password">Mot de passe oublié ?</a>
+        <button type="button" class="inline-link-btn" (click)="resendVerificationEmail()" [disabled]="isResendingVerification()">
+          {{ isResendingVerification() ? 'Envoi...' : 'Renvoyer email de verification' }}
+        </button>
+      </div>
+
+      <button type="submit" class="auth-submit" [disabled]="isLoading()">
+        {{ isLoading() ? 'Connexion...' : 'Se connecter' }}
+      </button>
+    </form>
+
+    <div class="social-zone">
+      <p>Social login (phase 2)</p>
+      <div class="social-buttons">
+        <button type="button" (click)="loginWithGoogle()">Continuer avec Google</button>
+        <button type="button" (click)="loginWithGithub()">Continuer avec GitHub</button>
+        <button type="button" (click)="loginWithFacebook()">Continuer avec Facebook</button>
+        <button type="button" (click)="loginWithInstagram()">Continuer avec Instagram</button>
+      </div>
+      @if (!socialProviders().google || !socialProviders().github || !socialProviders().facebook || !socialProviders().instagram) {
+        <p class="social-hint">Configurez les variables OAuth2 backend (Google, GitHub, Facebook, Instagram) pour activer tous les providers.</p>
+      }
+    </div>
+
+    <p class="auth-switch">
+      Nouveau voyageur ? <a routerLink="/signup">Créer un compte</a>
+    </p>
+  </article>
+</section>

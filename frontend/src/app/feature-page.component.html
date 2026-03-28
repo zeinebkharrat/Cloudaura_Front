@@ -11,35 +11,193 @@
     <div class="feature-page__divider" aria-hidden="true"></div>
   </header>
 
+  <!-- Catalogue produits & Espace Artisan -->
+  <section *ngIf="catalog === 'products'" class="product-catalog glass-panel" aria-labelledby="catalog-heading">
+
+    <div class="product-catalog__head">
+      <h2 id="catalog-heading" class="product-catalog__title">
+        {{ isArtisan() ? 'Mes produits' : 'Catalogue produits' }}
+      </h2>
+      <p class="product-catalog__subtitle">
+        {{ isArtisan() ? 'Gérez vos créations et stocks en temps réel.' : 'Sélection issue de la plateforme — fait main
+        et souvenirs.' }}
+      </p>
+
+      @if (isArtisan()) {
+      <div class="artisan-actions">
+        <button type="button" class="btn-artisan-add-simple" (click)="openProductForm()">
+          <span class="btn-icon">+</span>
+          <span class="btn-text">Nouveau produit</span>
+        </button>
+      </div>
+      }
+    </div>
+
+    <p *ngIf="cartToast()" class="product-catalog__toast">{{ cartToast() }}</p>
+
+    <!-- Vue ARTISAN (Cards) -->
+    @if (isArtisan()) {
+    <div *ngIf="artisanProductsLoading()" class="product-catalog__state">Chargement de vos produits…</div>
+    <div *ngIf="artisanProductsError()" class="product-catalog__state product-catalog__state--error">{{
+      artisanProductsError() }}</div>
+
+    <div *ngIf="!artisanProductsLoading() && artisanProducts().length === 0" class="product-catalog__empty">
+      Vous n'avez pas encore de produits. Cliquez sur "+" pour commencer.
+    </div>
+
+    <ul *ngIf="!artisanProductsLoading() && artisanProducts().length" class="product-catalog__grid artisan-grid">
+      <li *ngFor="let p of artisanProducts(); let i = index" class="product-card artisan-card">
+        <div class="product-card__media">
+          <img *ngIf="showCatalogImage(p)" [src]="catalogImageUrl(p.imageUrl!)" [alt]="p.name"
+            (error)="onCatalogImageError(p.productId)" />
+          <div *ngIf="!showCatalogImage(p)" class="product-card__placeholder">✦</div>
+        </div>
+        <div class="product-card__body">
+          <h3 class="product-card__name">{{ p.name }}</h3>
+          <div class="product-card__meta">
+            <span class="product-card__price">{{ formatPrice(p.price) }}</span>
+            <span class="product-card__stock" [class.low-stock]="(p.stock ?? 0) < 5">
+              Stock: {{ p.stock ?? 0 }}
+            </span>
+          </div>
+          <div class="product-card__actions artisan-card-actions">
+            <button class="btn-edit-card" (click)="editProduct(p)" title="Modifier le produit">
+              ✏️ Modifier
+            </button>
+            <button class="btn-delete-card" (click)="deleteProduct(p.productId)" title="Supprimer le produit">
+              🗑️ Supprimer
+            </button>
+          </div>
+        </div>
+      </li>
+    </ul>
+    }
+
+    <!-- Vue CLIENT (Catalogue) -->
+    @if (!isArtisan()) {
+    <div *ngIf="catalogLoading" class="product-catalog__state">Chargement du catalogue…</div>
+    <div *ngIf="catalogError" class="product-catalog__state product-catalog__state--error">{{ catalogError }}</div>
+
+    <div *ngIf="!catalogLoading && !catalogError && catalogProducts.length === 0" class="product-catalog__empty">
+      Aucun produit pour le moment.
+    </div>
+
+    <ul *ngIf="!catalogLoading && catalogProducts.length" class="product-catalog__grid">
+      <li *ngFor="let p of catalogProducts; let i = index" class="product-card" [style.animation-delay.ms]="i * 50">
+        <div class="product-card__media">
+          <img *ngIf="showCatalogImage(p)" [src]="catalogImageUrl(p.imageUrl!)" [alt]="p.name"
+            (error)="onCatalogImageError(p.productId)" />
+          <div *ngIf="!showCatalogImage(p)" class="product-card__placeholder">✦</div>
+        </div>
+        <div class="product-card__body">
+          <h3 class="product-card__name">{{ p.name }}</h3>
+          <p *ngIf="p.user?.username" class="product-card__vendor">Par {{ p.user?.username }}</p>
+          <div class="product-card__meta">
+            <span class="product-card__price">{{ formatPrice(p.price) }}</span>
+            <span *ngIf="p.stock != null" class="product-card__stock">Stock: {{ p.stock }}</span>
+          </div>
+          <div class="product-card__actions">
+            <button type="button" class="product-card__btn product-card__btn--primary" *ngIf="auth.isAuthenticated()"
+              (click)="addToCart(p)"
+              [disabled]="addingProductId() === p.productId || (p.stock != null && p.stock <= 0)">
+              {{ addingProductId() === p.productId ? 'Ajout…' : 'Ajouter au panier' }}
+            </button>
+            <a *ngIf="!auth.isAuthenticated()" routerLink="/signin" [queryParams]="{ returnUrl: router.url }"
+              class="product-card__btn product-card__btn--ghost">
+              Connexion pour commander
+            </a>
+          </div>
+        </div>
+      </li>
+    </ul>
+    }
+  </section>
+
+  <!-- Autres Blocs du Feature Page -->
   <div class="feature-page__grid" *ngIf="blocks.length">
-    <article
-      class="feature-block glass-panel"
-      *ngFor="let block of blocks; let i = index"
-      [style.animation-delay.ms]="i * 70"
-    >
+    <article class="feature-block glass-panel" *ngFor="let block of blocks; let i = index"
+      [style.animation-delay.ms]="i * 70">
       <div class="feature-block__head">
-        <span class="feature-block__icon" *ngIf="block.icon" aria-hidden="true">{{ block.icon }}</span>
+        <span class="feature-block__icon" *ngIf="block.icon">{{ block.icon }}</span>
         <h2 class="feature-block__title">{{ block.title }}</h2>
       </div>
       <ul class="feature-block__list">
         <li *ngFor="let item of block.items">
-          <span class="feature-block__bullet" aria-hidden="true"></span>
+          <span class="feature-block__bullet"></span>
           {{ item }}
         </li>
       </ul>
     </article>
   </div>
 
-  <section class="feature-page__legacy glass-panel" *ngIf="!blocks.length && highlights.length">
-    <h2 class="feature-page__legacy-title">Axes fonctionnels</h2>
-    <ul class="feature-page__legacy-list">
-      <li *ngFor="let item of highlights">{{ item }}</li>
-    </ul>
-  </section>
+  <!-- Modal d'ajout de produit (Placée à la fin pour le z-index stable) -->
+  <div class="modal-root" *ngIf="showProductForm()">
+    <div class="modal-overlay" (click)="closeProductForm()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        <header class="modal-head">
+          <h2 class="modal-title">{{ editingProductId() ? 'Modifier le produit' : 'Ajouter un produit' }}</h2>
+          <button type="button" class="modal-close" (click)="closeProductForm()">✕</button>
+        </header>
 
-  <p class="feature-page__empty" *ngIf="!blocks.length && !highlights.length">
-    Détail du module à définir.
-  </p>
+        <form (submit)="submitProduct()" class="modal-form">
+          <div class="modal-form-body">
+            <!-- Nom du produit en haut, plein largeur -->
+            <div class="form-group">
+              <label>Nom du produit *</label>
+              <input type="text" [(ngModel)]="newProduct().name" name="name" required
+                placeholder="Ex: Tapis Kairouan tissé main" />
+            </div>
 
+            <!-- Prix et Stock côte à côte -->
+            <div class="form-row">
+              <div class="form-group">
+                <label>Prix (TND)</label>
+                <input type="number" [(ngModel)]="newProduct().price" name="price" step="0.01" placeholder="0.00" />
+              </div>
+              <div class="form-group">
+                <label>Stock</label>
+                <input type="number" [(ngModel)]="newProduct().stock" name="stock" placeholder="0" />
+              </div>
+            </div>
+          </div>
+
+
+          <div class="media-zone">
+            <div class="media-title">
+              <h3>Image produit</h3>
+              <span>Fichier depuis votre PC</span>
+            </div>
+
+            <div class="upload-box modern">
+              <input id="artisanProductImage" class="file-native" type="file" accept="image/*"
+                (change)="onFileSelected($event)" />
+              <label class="file-trigger" for="artisanProductImage">
+                <span class="upload-icon">📤</span>
+                Choisir une image
+              </label>
+              @if (selectedFile()) {
+              <span class="file-count">{{ selectedFile()?.name }}</span>
+              <button type="button" class="file-clear" (click)="clearFileSelection()">×</button>
+              }
+            </div>
+
+            @if (previewUrl()) {
+            <div class="modal-image-preview">
+              <img [src]="previewUrl()" alt="Aperçu produit" />
+            </div>
+            }
+          </div>
+
+          <div class="modal-actions-footer">
+            <button type="button" class="btn-cancel" (click)="closeProductForm()">Annuler</button>
+            <button type="submit" class="btn-submit"
+              [disabled]="submittingProduct() || isUploadingImage() || !newProduct().name?.trim()">
+              {{ submittingProduct() || isUploadingImage() ? 'Traitement...' : 'Enregistrer le produit' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 
 </main>

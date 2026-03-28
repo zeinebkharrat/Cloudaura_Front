@@ -1,0 +1,21 @@
+package org.example.backend.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import java.time.LocalDate;
+
+@Data @Builder @NoArgsConstructor @AllArgsConstructor
+public class AccommodationReservationResponse {
+    private int reservationId;
+    private String status;
+    private LocalDate checkIn;
+    private LocalDate checkOut;
+    private int nights;
+    private double totalPrice;
+    private double discountApplied;
+    private String accommodationName;
+    private String roomType;
+    private String cityName;
+}
