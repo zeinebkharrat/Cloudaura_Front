@@ -162,12 +162,43 @@ export class AdminGamesComponent implements OnInit {
 
   save() {
     if (this.activeTab() === 'QUIZ') {
+      const qz = this.newQuiz();
+      const title = String(qz.title ?? '').trim();
+      if (!title) {
+        alert('Indiquez un titre pour le quiz.');
+        return;
+      }
+      const questions = qz.questions ?? [];
+      if (questions.length === 0) {
+        alert('Ajoutez au moins une question.');
+        return;
+      }
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i];
+        if (!String(q.questionText ?? '').trim()) {
+          alert(`Question ${i + 1} : saisissez l’intitulé de la question.`);
+          return;
+        }
+        const opts = q._tempOptions ?? ['', '', '', ''];
+        for (let j = 0; j < 4; j++) {
+          if (!String(opts[j] ?? '').trim()) {
+            alert(`Question ${i + 1} : remplissez les 4 options de réponse.`);
+            return;
+          }
+        }
+        const ci = q.correctOptionIndex ?? 0;
+        if (ci < 0 || ci > 3) {
+          alert(`Question ${i + 1} : choisissez la bonne réponse (une des 4 options).`);
+          return;
+        }
+      }
       const qzToSave = JSON.parse(JSON.stringify(this.newQuiz()));
       if (qzToSave.questions) {
         qzToSave.questions.forEach((q: QuizQuestion) => {
           if (q._tempOptions) q.optionsJson = JSON.stringify(q._tempOptions);
         });
       }
+      qzToSave.title = title;
       if (this.isEditMode() && qzToSave.quizId) {
         this.api.updateQuiz(qzToSave.quizId, qzToSave).subscribe(() => { this.refreshAll(); this.closeCreate(); });
       } else {
@@ -175,7 +206,51 @@ export class AdminGamesComponent implements OnInit {
       }
     } else if (this.activeTab() === 'CROSSWORD') {
       const c = this.newCrossword();
-      c.gridJson = JSON.stringify({ rows: this.gridRows(), cols: this.gridCols(), words: this.crosswordWords() });
+      const ct = String(c.title ?? '').trim();
+      if (!ct) {
+        alert('Indiquez un titre pour les mots croisés.');
+        return;
+      }
+      let rows = Math.floor(Number(this.gridRows()));
+      let cols = Math.floor(Number(this.gridCols()));
+      if (!Number.isFinite(rows) || rows < 3 || rows > 40) {
+        alert('Nombre de lignes : entre 3 et 40.');
+        return;
+      }
+      if (!Number.isFinite(cols) || cols < 3 || cols > 40) {
+        alert('Nombre de colonnes : entre 3 et 40.');
+        return;
+      }
+      const words = this.crosswordWords();
+      for (let i = 0; i < words.length; i++) {
+        const w = words[i];
+        const word = String(w.word ?? '').trim().toUpperCase();
+        if (!word) {
+          alert(`Mot #${i + 1} : le mot ne peut pas être vide (supprimez la ligne ou remplissez-le).`);
+          return;
+        }
+        const len = word.length;
+        const x = Math.floor(Number(w.x));
+        const y = Math.floor(Number(w.y));
+        if (!Number.isFinite(x) || !Number.isFinite(y)) {
+          alert(`Mot « ${word} » : position ligne/colonne invalide.`);
+          return;
+        }
+        // x = ligne, y = colonne (comme l’aperçu : H avance les colonnes, V les lignes)
+        if (w.dir === 'H') {
+          if (x < 0 || x >= rows || y < 0 || y + len > cols) {
+            alert(`Mot « ${word} » : ne rentre pas dans la grille (${rows}×${cols}).`);
+            return;
+          }
+        } else {
+          if (y < 0 || y >= cols || x < 0 || x + len > rows) {
+            alert(`Mot « ${word} » : ne rentre pas dans la grille (${rows}×${cols}).`);
+            return;
+          }
+        }
+      }
+      c.title = ct;
+      c.gridJson = JSON.stringify({ rows, cols, words: this.crosswordWords() });
       if (this.isEditMode() && c.crosswordId) {
         this.api.updateCrossword(c.crosswordId, c).subscribe(() => { this.refreshAll(); this.closeCreate(); });
       } else {
@@ -183,9 +258,19 @@ export class AdminGamesComponent implements OnInit {
       }
     } else if (this.activeTab() === 'ROADMAP') {
       const r = this.newRoadmap();
+      const label = String(r.nodeLabel ?? '').trim();
+      if (!label) {
+        alert('Indiquez un libellé pour l’étape du parcours.');
+        return;
+      }
+      const stepOrder = Math.floor(Number(r.stepOrder));
+      if (!Number.isFinite(stepOrder) || stepOrder < 1) {
+        alert('L’ordre de l’étape doit être un nombre entier ≥ 1.');
+        return;
+      }
       const payload: Partial<RoadmapNode> = {
-        stepOrder: Number(r.stepOrder || 1),
-        nodeLabel: String(r.nodeLabel || '').trim(),
+        stepOrder,
+        nodeLabel: label,
         quizId: r.quizId,
         crosswordId: r.crosswordId,
         puzzleId: r.puzzleId,
@@ -216,11 +301,21 @@ export class AdminGamesComponent implements OnInit {
         alert('Donnez un titre à la carte Ludo.');
         return;
       }
+      let eff = Number(ludo.effectSteps ?? 0);
+      if (!Number.isFinite(eff)) {
+        alert('L’effet (cases) doit être un nombre valide.');
+        return;
+      }
+      eff = Math.trunc(eff);
+      if (eff < -99 || eff > 99) {
+        alert('L’effet (cases) doit être compris entre -99 et 99.');
+        return;
+      }
       this.api
         .createLudoCard({
           title: String(ludo.title ?? '').trim(),
           description: String(ludo.description ?? '').trim(),
-          effectSteps: Number(ludo.effectSteps ?? 0),
+          effectSteps: eff,
           category: String(ludo.category ?? 'GENERAL'),
           published: Boolean(ludo.published ?? true),
         })

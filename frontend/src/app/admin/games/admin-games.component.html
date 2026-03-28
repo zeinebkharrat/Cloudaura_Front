@@ -185,7 +185,7 @@
         
         <div class="md-body">
           @if (activeTab() === 'QUIZ') {
-            <div class="form-group"><label>Titre</label><input type="text" class="g-input" [value]="newQuiz().title" (input)="newQuiz().title = $any($event.target).value" /></div>
+            <div class="form-group"><label>Titre</label><input type="text" class="g-input" maxlength="200" required [value]="newQuiz().title" (input)="newQuiz().title = $any($event.target).value" /></div>
             <div class="form-group"><label>Description</label><textarea class="g-input" rows="2" [value]="newQuiz().description" (input)="newQuiz().description = $any($event.target).value"></textarea></div>
             <div class="form-group-toggle"><label class="tg-label">Publier immédiatement</label><label class="switch"><input type="checkbox" [checked]="newQuiz().published" (change)="newQuiz().published = !newQuiz().published"><span class="slider"></span></label></div>
             
@@ -220,15 +220,15 @@
           }
           
           @if (activeTab() === 'CROSSWORD') {
-            <div class="form-group"><label>Titre</label><input type="text" class="g-input" [value]="newCrossword().title" (input)="newCrossword().title = $any($event.target).value" /></div>
+            <div class="form-group"><label>Titre</label><input type="text" class="g-input" maxlength="200" required [value]="newCrossword().title" (input)="newCrossword().title = $any($event.target).value" /></div>
             <div class="form-group"><label>Description</label><textarea class="g-input" rows="2" [value]="newCrossword().description" (input)="newCrossword().description = $any($event.target).value"></textarea></div>
             <div class="form-group-toggle"><label class="tg-label">Publier</label><label class="switch"><input type="checkbox" [checked]="newCrossword().published" (change)="newCrossword().published = !newCrossword().published"><span class="slider"></span></label></div>
             
             <!-- Words list builder section -->
             <div class="questions-section">
               <div class="form-grid-2" style="margin-bottom:12px;">
-                 <div class="form-group"><label>Lignes</label><input type="number" class="g-input sm" [value]="gridRows()" (input)="gridRows.set(+$any($event.target).value)" /></div>
-                 <div class="form-group"><label>Colonnes</label><input type="number" class="g-input sm" [value]="gridCols()" (input)="gridCols.set(+$any($event.target).value)" /></div>
+                 <div class="form-group"><label>Lignes</label><input type="number" class="g-input sm" min="3" max="40" [value]="gridRows()" (input)="gridRows.set(+$any($event.target).value)" /></div>
+                 <div class="form-group"><label>Colonnes</label><input type="number" class="g-input sm" min="3" max="40" [value]="gridCols()" (input)="gridCols.set(+$any($event.target).value)" /></div>
               </div>
 
               <label class="tg-label" style="font-size:0.8rem; margin-bottom:4px; display:block;">Aperçu de la Grille</label>
@@ -273,8 +273,8 @@
           }
 
           @if (activeTab() === 'ROADMAP') {
-            <div class="form-group"><label>Label du Noeud</label><input type="text" class="g-input" [value]="newRoadmap().nodeLabel" (input)="newRoadmap().nodeLabel = $any($event.target).value" /></div>
-            <div class="form-group"><label>Position (Ordre)</label><input type="number" class="g-input" [value]="newRoadmap().stepOrder" (input)="newRoadmap().stepOrder = +$any($event.target).value" /></div>
+            <div class="form-group"><label>Label du Noeud</label><input type="text" class="g-input" maxlength="200" required [value]="newRoadmap().nodeLabel" (input)="newRoadmap().nodeLabel = $any($event.target).value" /></div>
+            <div class="form-group"><label>Position (Ordre)</label><input type="number" class="g-input" min="1" step="1" [value]="newRoadmap().stepOrder" (input)="newRoadmap().stepOrder = +$any($event.target).value" /></div>
             <div class="form-group">
               <label>Quiz Lié (Optionnel)</label>
               <select class="g-input" (change)="newRoadmap().quizId = +$any($event.target).value || undefined">
@@ -310,6 +310,8 @@
               <input
                 type="text"
                 class="g-input"
+                maxlength="200"
+                required
                 [value]="newPuzzle().title"
                 (input)="newPuzzle().title = $any($event.target).value"
               />
@@ -339,7 +341,7 @@
           @if (activeTab() === 'LUDO') {
             <div class="form-group">
               <label>Titre de la carte</label>
-              <input type="text" class="g-input" [value]="newLudo().title" (input)="newLudo().title = $any($event.target).value" />
+              <input type="text" class="g-input" maxlength="120" required [value]="newLudo().title" (input)="newLudo().title = $any($event.target).value" />
             </div>
             <div class="form-group">
               <label>Description</label>
@@ -348,7 +350,7 @@
             <div class="form-grid-2">
               <div class="form-group">
                 <label>Effet (cases)</label>
-                <input type="number" class="g-input" [value]="newLudo().effectSteps ?? 0" (input)="newLudo().effectSteps = +$any($event.target).value" />
+                <input type="number" class="g-input" min="-99" max="99" step="1" [value]="newLudo().effectSteps ?? 0" (input)="newLudo().effectSteps = +$any($event.target).value" />
               </div>
               <div class="form-group">
                 <label>Catégorie</label>
