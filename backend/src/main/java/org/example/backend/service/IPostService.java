@@ -9,6 +9,7 @@ public interface IPostService {
     Post addPost(Post post);
     Post updatePost(Post post);
     Post retrievePost(Integer postId);
+    Post repost(Integer originalPostId, Integer authorId);
     void removePost(Integer postId);
     List<Post> findPostsByAuthor(Integer authorId);
 }

@@ -16,6 +16,7 @@ export class AdminLayoutComponent {
 
   nav = [
     { label: 'Tableau de bord', icon: '📊', route: '/admin/dashboard' },
+    { label: 'Ludification',    icon: '🎮', route: '/admin/games' },
     { label: 'Villes',         icon: '🏙️', route: '/admin/cities' },
     { label: 'Restaurants',    icon: '🍽️', route: '/admin/restaurants' },
     { label: 'Activités',      icon: '📍', route: '/admin/activities' },

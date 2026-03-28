@@ -1,0 +1,70 @@
+<div class="quiz-play-bg">
+  <div class="qp-container animate-up">
+    @if (isLoading()) {
+      <div class="qp-loading">
+        <p>Chargement du quiz...</p>
+      </div>
+    } @else if (quiz() && loadError()) {
+      <div class="qp-loading">
+        <p>{{ loadError() }}</p>
+        <button class="btn-primary" (click)="backToHub()">Retour au Hub Ludique</button>
+      </div>
+    } @else if (quiz()) {
+      <header class="qp-header">
+        <button class="btn-back" (click)="backToHub()">⟵ Quitter</button>
+        <div class="qp-progress">
+          Question {{ currentQuestion() + 1 }} / {{ questions().length }}
+        </div>
+      </header>
+
+      @if (!isFinished() && questions().length > 0) {
+        <div class="qp-body">
+          <h2 class="q-text">{{ questions()[currentQuestion()].text }}</h2>
+          <div class="q-options">
+            @for (opt of questions()[currentQuestion()].options; track opt; let i = $index) {
+              <button 
+                class="opt-btn" 
+                [class.selected]="selectedOption() === i"
+                [class.correct]="selectedOption() !== null && i === questions()[currentQuestion()].correct"
+                [class.wrong]="selectedOption() === i && i !== questions()[currentQuestion()].correct"
+                [disabled]="selectedOption() !== null"
+                (click)="selectOption(i)">
+                <span class="opt-letter">{{ ['A', 'B', 'C', 'D'][i] }}</span>
+                <span class="opt-text">{{ opt }}</span>
+                @if (selectedOption() !== null) {
+                  <span class="opt-icon" *ngIf="i === questions()[currentQuestion()].correct">✅</span>
+                  <span class="opt-icon" *ngIf="selectedOption() === i && i !== questions()[currentQuestion()].correct">❌</span>
+                }
+              </button>
+            }
+          </div>
+        </div>
+      } @else if (!isFinished() && questions().length === 0) {
+        <div class="qp-loading">
+          <p>{{ loadError() || 'Ce quiz ne contient pas encore de questions valides.' }}</p>
+          <button class="btn-primary" (click)="backToHub()">Retour au Hub Ludique</button>
+        </div>
+      } @else {
+        <div class="qp-result">
+          <div class="qr-score-circle">
+            <span class="sr-num">{{ score() }}</span>
+            <span class="sr-tot">/ {{ questions().length }}</span>
+          </div>
+          <h2 class="qr-title">
+            @if (score() === questions().length) { Parfait ! 🏆 }
+            @else if (score() > 0) { Bien joué ! 👍 }
+            @else { Aïe... 😅 }
+          </h2>
+          <p class="qr-desc">Vous avez terminé le quiz <strong>{{ quiz()?.title }}</strong>.</p>
+          <button class="btn-primary" (click)="backToHub()">Retour au Hub Ludique</button>
+        </div>
+      }
+
+    } @else {
+      <div class="qp-loading">
+        <p>{{ loadError() || 'Quiz introuvable.' }}</p>
+        <button class="btn-primary" (click)="backToHub()">Retour au Hub Ludique</button>
+      </div>
+    }
+  </div>
+</div>

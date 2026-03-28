@@ -12,7 +12,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/post")
@@ -31,6 +34,22 @@ public class PostController {
         // Force the author to be the authenticated user
         User currentUser = getCurrentUser();
         post.setAuthor(currentUser);
+
+        if (post.getLocation() == null || post.getLocation().trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "City is required");
+        }
+
+        Date now = new Date();
+        post.setCreatedAt(now);
+        post.setUpdatedAt(now);
+        post.setHashtags(buildHashtagString(post.getHashtags(), post.getLocation()));
+        if (post.getLikesCount() == null) {
+            post.setLikesCount(0);
+        }
+        if (post.getCommentsCount() == null) {
+            post.setCommentsCount(0);
+        }
+
         return postService.addPost(post);
     }
 
@@ -47,11 +66,31 @@ public class PostController {
         if (!existingPost.getAuthor().getUserId().equals(currentUser.getUserId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only edit your own posts");
         }
+
+        if (post.getLocation() == null || post.getLocation().trim().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "City is required");
+        }
         
-        // Preserve author and timestamps
+        // Preserve author + immutable create date, refresh update date, and keep server counters authoritative.
         post.setPostId(id);
         post.setAuthor(currentUser);
+        post.setCreatedAt(existingPost.getCreatedAt());
+        post.setUpdatedAt(new Date());
+        post.setHashtags(buildHashtagString(post.getHashtags(), post.getLocation()));
+        post.setLikesCount(existingPost.getLikesCount());
+        post.setCommentsCount(existingPost.getCommentsCount());
+        post.setRepostOf(existingPost.getRepostOf());
         return postService.updatePost(post);
+    }
+
+    @PostMapping("/repost/{id}")
+    public ResponseEntity<?> repost(@PathVariable Integer id) {
+        User currentUser = getCurrentUser();
+        Post repost = postService.repost(id, currentUser.getUserId());
+        if (repost == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Original post not found"));
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(repost);
     }
 
     @DeleteMapping("/deletePost/{id}")
@@ -81,6 +120,30 @@ public class PostController {
     @GetMapping("/getPost/{id}")
     public Post getPost(@PathVariable Integer id) {
         return postService.retrievePost(id);
+    }
+
+    private String buildHashtagString(String existingHashtags, String cityName) {
+        String normalizedCity = cityName == null
+                ? ""
+                : cityName.trim()
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[\\s_\\-]+", "")
+                .replaceAll("[^\\p{L}\\p{Nd}]", "");
+
+        if (normalizedCity.isBlank()) {
+            normalizedCity = "city";
+        }
+
+        String cityTag = "#" + normalizedCity;
+
+        String base = existingHashtags == null ? "" : existingHashtags.trim();
+        if (base.isEmpty()) {
+            return cityTag;
+        }
+        if (base.contains(cityTag)) {
+            return base;
+        }
+        return base + " " + cityTag;
     }
     
     private User getCurrentUser() {

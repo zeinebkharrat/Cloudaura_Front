@@ -4,6 +4,7 @@ import { VirtualTourPageComponent } from './virtual-tour-page.component';
 import { FeaturePageComponent } from './feature-page.component';
 import { CommunityComponent } from './Community/community.component';
 import { MyPostsComponent } from './Community/my-posts.component';
+import { UserProfileComponent } from './Community/user-profile.component';
 import { SignInComponent } from './sign-in.component';
 import { SignUpComponent } from './sign-up.component';
 import { ForgotPasswordComponent } from './forgot-password.component';
@@ -27,6 +28,12 @@ import { OrdersAdminComponent } from './admin/entities/orders/orders-admin.compo
 import { CartPageComponent } from './shop/cart-page.component';
 import { MyOrdersComponent } from './shop/my-orders.component';
 import { ChatComponent } from './chat/chat.component';
+import { AdminGamesComponent } from './admin/games/admin-games.component';
+import { UserGamesComponent } from './games/user-games.component';
+import { QuizPlayerComponent } from './games/quiz-player.component';
+import { CrosswordPlayerComponent } from './games/crossword-player.component';
+import { PuzzlePlayerComponent } from './games/puzzle-player.component';
+import { LudoPlayerComponent } from './games/ludo-player.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -39,12 +46,17 @@ export const routes: Routes = [
   { path: 'city/:cityId', component: CityExploreComponent },
   { path: 'restaurants/:restaurantId', component: RestaurantDetailComponent },
   { path: 'activities/:activityId', component: ActivityDetailComponent },
-  { path: 'login', component: SignInComponent },
   { path: 'panier', component: CartPageComponent, canActivate: [authGuard] },
   { path: 'mes-commandes', component: MyOrdersComponent, canActivate: [authGuard] },
   { path: 'mes-ordres', component: MyOrdersComponent, canActivate: [authGuard] },
 
   { path: 'virtual-tour', component: VirtualTourPageComponent },
+  { path: 'jeux', redirectTo: 'games', pathMatch: 'full' },
+  { path: 'games', component: UserGamesComponent },
+  { path: 'games/quiz/:id', component: QuizPlayerComponent },
+  { path: 'games/crossword/:id', component: CrosswordPlayerComponent },
+  { path: 'games/puzzle/:id', component: PuzzlePlayerComponent },
+  { path: 'games/ludo', component: LudoPlayerComponent },
   {
     path: 'admin',
     canActivate: [authGuard, roleGuard],
@@ -53,20 +65,17 @@ export const routes: Routes = [
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       { path: 'dashboard', component: AdminDashboardComponent },
+      { path: 'games', component: AdminGamesComponent },
       { path: 'audit-logs', component: AuditLogsComponent },
       { path: 'users', component: AdminUsersComponent },
       { path: 'cities', component: AdminCitiesComponent },
       { path: 'restaurants', component: AdminRestaurantsComponent },
       { path: 'activities', component: AdminActivitiesComponent },
-      //{ path: 'panier', component: CartPageComponent },
       { path: 'orders', component: OrdersAdminComponent },
       { path: 'products', component: ProductsAdminComponent },
-
-
     ],
   },
   { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },
-  { path: 'virtual-tour', component: VirtualTourPageComponent },
   {
     path: 'destinations',
     component: FeaturePageComponent,
@@ -383,6 +392,10 @@ export const routes: Routes = [
     path: 'communaute/my-posts',
     component: MyPostsComponent,
     canActivate: [authGuard],
+  },
+  {
+    path: 'communaute/user/:userId',
+    component: UserProfileComponent,
   },
   { path: '**', redirectTo: '' },
 ];

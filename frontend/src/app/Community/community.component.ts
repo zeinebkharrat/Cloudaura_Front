@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, HostListener, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { forkJoin, firstValueFrom, of } from 'rxjs';
@@ -16,6 +16,9 @@ import { CommentService } from './comment.service';
 import { LikeService, LikesByPostResponse } from './like.service';
 import { PostMediaService } from './post-media.service';
 import { PostService } from './post.service';
+import { CityOption, CityService } from './city.service';
+import { FollowService } from './follow.service';
+import { SavedPostService } from './saved-post.service';
 import { AuthService } from '../auth.service';
 import { OwnershipUtil } from './ownership.util';
 
@@ -31,6 +34,9 @@ export class CommunityComponent {
   private readonly commentService = inject(CommentService);
   private readonly likeService = inject(LikeService);
   private readonly postMediaService = inject(PostMediaService);
+  private readonly cityService = inject(CityService);
+  private readonly followService = inject(FollowService);
+  private readonly savedPostService = inject(SavedPostService);
   public readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
@@ -41,9 +47,23 @@ export class CommunityComponent {
   readonly medias = signal<PostMedia[]>([]);
   readonly likeStatuses = signal<Map<number, boolean>>(new Map());
   readonly likeUserNicknames = signal<Map<number, string[]>>(new Map());
+  readonly followingByAuthor = signal<Map<number, boolean>>(new Map());
+  readonly savedByPost = signal<Map<number, boolean>>(new Map());
+  readonly cities = signal<CityOption[]>([]);
+  readonly loadingCities = signal<boolean>(false);
+  readonly savedPosts = signal<Post[]>([]);
+  readonly showSavedOnly = signal<boolean>(false);
 
   readonly loadError = signal<string | null>(null);
   readonly feedLoaded = signal(false);
+  readonly cityDiscovery = signal<Array<{ label: string; icon: string }>>([
+    { label: 'Kairouan', icon: '🕌' },
+    { label: 'Djerba', icon: '🏖️' },
+    { label: 'Sidi Bou', icon: '🌅' },
+    { label: 'Douz', icon: '🐪' },
+    { label: 'El Jem', icon: '🏛️' },
+    { label: 'Nabeul', icon: '🏺' },
+  ]);
 
   // Create post form
   readonly newPostContent = signal<string>('');
@@ -60,6 +80,9 @@ export class CommunityComponent {
   readonly editPostLocation = signal<string>('');
   readonly editPostVisibility = signal<string>('public');
   readonly isSavingEdit = signal<boolean>(false);
+
+  // Post action menu
+  readonly activePostMenuId = signal<number | null>(null);
 
   // Like toggle
   readonly togglingLikePostId = signal<number | null>(null);
@@ -82,7 +105,21 @@ export class CommunityComponent {
   }
 
   ngOnInit(): void {
+    this.loadCities();
     this.loadFeed();
+  }
+
+  private loadCities(): void {
+    this.loadingCities.set(true);
+    this.cityService.getCities().pipe(
+      catchError((err) => {
+        console.error('Failed to load cities:', err);
+        return of([]);
+      })
+    ).subscribe((cities) => {
+      this.cities.set(cities ?? []);
+      this.loadingCities.set(false);
+    });
   }
 
   private loadFeed(): void {
@@ -128,6 +165,7 @@ export class CommunityComponent {
         
         // Load like statuses and nicknames for each post
         this.loadLikeStatusesAndNicknames();
+        this.loadFollowAndSaveStatuses();
       },
       error: (err) => {
         console.error('Error loading feed:', err);
@@ -135,6 +173,49 @@ export class CommunityComponent {
         this.feedLoaded.set(true);
       },
     });
+  }
+
+  private loadFollowAndSaveStatuses(): void {
+    if (!this.authService.isAuthenticated()) {
+      return;
+    }
+
+    const postList = this.posts();
+    const authorIds = Array.from(
+      new Set(
+        postList
+          .map((post) => post.author?.userId)
+          .filter((id): id is number => id != null)
+      )
+    );
+
+    const postIds = postList
+      .map((post) => post.postId)
+      .filter((id): id is number => id != null);
+
+    if (authorIds.length > 0) {
+      forkJoin(
+        authorIds.map((id) =>
+          this.followService.isFollowing(id).pipe(catchError(() => of({ following: false })))
+        )
+      ).subscribe((responses) => {
+        const map = new Map<number, boolean>();
+        authorIds.forEach((authorId, index) => map.set(authorId, responses[index].following));
+        this.followingByAuthor.set(map);
+      });
+    }
+
+    if (postIds.length > 0) {
+      forkJoin(
+        postIds.map((id) =>
+          this.savedPostService.isSaved(id).pipe(catchError(() => of({ saved: false })))
+        )
+      ).subscribe((responses) => {
+        const map = new Map<number, boolean>();
+        postIds.forEach((postId, index) => map.set(postId, responses[index].saved));
+        this.savedByPost.set(map);
+      });
+    }
   }
 
   private loadLikeStatusesAndNicknames(): void {
@@ -189,7 +270,7 @@ export class CommunityComponent {
     }
 
     const content = this.newPostContent().trim();
-    if (!content) {
+    if (!content || !this.newPostLocation().trim()) {
       return;
     }
 
@@ -198,6 +279,7 @@ export class CommunityComponent {
     try {
       const newPost: Omit<Post, 'postId' | 'author' | 'createdAt' | 'updatedAt'> = {
         content,
+        hashtags: '',
         location: this.newPostLocation() || null,
         visibility: this.newPostVisibility() || 'public',
         likesCount: 0,
@@ -228,6 +310,7 @@ export class CommunityComponent {
       this.newPostVisibility.set('public');
       this.clearNewPostMedia();
       this.showCreatePostForm.set(false);
+      this.closePostMenu();
       
       // Reload feed to show new post
       this.loadFeed();
@@ -283,7 +366,7 @@ export class CommunityComponent {
   // Like functionality
   async toggleLike(postId: number): Promise<void> {
     if (!this.authService.isAuthenticated()) {
-      this.router.navigate(['/auth/signin']);
+      this.router.navigate(['/signin']);
       return;
     }
 
@@ -315,10 +398,26 @@ export class CommunityComponent {
   // Navigation
   goToMyPosts(): void {
     if (!this.authService.isAuthenticated()) {
-      this.router.navigate(['/auth/signin']);
+      this.router.navigate(['/signin']);
+      return;
+    }
+    const userId = this.authService.currentUser()?.id;
+    if (userId) {
+      this.router.navigate(['/communaute/user', userId]);
       return;
     }
     this.router.navigate(['/communaute/my-posts']);
+  }
+
+  backToCommunity(): void {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  goToUserProfile(userId?: number): void {
+    if (!userId) {
+      return;
+    }
+    this.router.navigate(['/communaute/user', userId]);
   }
 
   // Ownership helpers
@@ -377,7 +476,7 @@ export class CommunityComponent {
   // Media upload
   async uploadMedia(event: Event, postId: number): Promise<void> {
     if (!this.authService.isAuthenticated()) {
-      this.router.navigate(['/auth/signin']);
+      this.router.navigate(['/signin']);
       return;
     }
 
@@ -419,6 +518,7 @@ export class CommunityComponent {
 
     try {
       await firstValueFrom(this.postService.deletePost(postId));
+      this.closePostMenu();
       this.loadFeed();
     } catch (error) {
       console.error('Error deleting post:', error);
@@ -451,6 +551,7 @@ export class CommunityComponent {
     this.editPostContent.set(post.content ?? '');
     this.editPostLocation.set(post.location ?? '');
     this.editPostVisibility.set(post.visibility ?? 'public');
+    this.closePostMenu();
   }
 
   cancelEditPost(): void {
@@ -472,7 +573,7 @@ export class CommunityComponent {
     }
 
     const content = this.editPostContent().trim();
-    if (!content || this.isSavingEdit()) {
+    if (!content || !this.editPostLocation().trim() || this.isSavingEdit()) {
       return;
     }
 
@@ -482,6 +583,7 @@ export class CommunityComponent {
       await firstValueFrom(
         this.postService.updatePost(postId, {
           content,
+          hashtags: post.hashtags ?? '',
           location: this.editPostLocation().trim() || null,
           visibility: this.editPostVisibility() || 'public',
           likesCount: post.likesCount ?? 0,
@@ -490,6 +592,7 @@ export class CommunityComponent {
       );
 
       this.cancelEditPost();
+      this.closePostMenu();
       this.loadFeed();
     } catch (error) {
       console.error('Error updating post:', error);
@@ -505,6 +608,26 @@ export class CommunityComponent {
 
   closeReply(): void {
     this.activeReplyCommentId.set(null);
+  }
+
+  togglePostMenu(postId: number): void {
+    this.activePostMenuId.set(this.activePostMenuId() === postId ? null : postId);
+  }
+
+  closePostMenu(): void {
+    this.activePostMenuId.set(null);
+  }
+
+  @HostListener('document:click')
+  handleDocumentClick(): void {
+    this.closePostMenu();
+  }
+
+  cityDisplay(city: CityOption): string {
+    if (!city.region) {
+      return city.name;
+    }
+    return `${city.name} (${city.region})`;
   }
 
   // Modals & Section Toggles
@@ -557,6 +680,10 @@ export class CommunityComponent {
     return nickname;
   }
 
+  trackByCity(index: number, city: CityOption): number {
+    return city.cityId;
+  }
+
   // Legacy methods for HTML template compatibility
   currentUserId(): number {
     return this.authService.currentUser()?.id || 0;
@@ -596,7 +723,7 @@ export class CommunityComponent {
   // Add comment with optional parent for replies
   async addComment(postId: number, parentCommentId?: number): Promise<void> {
     if (!this.authService.isAuthenticated()) {
-      this.router.navigate(['/auth/signin']);
+      this.router.navigate(['/signin']);
       return;
     }
 
@@ -627,6 +754,109 @@ export class CommunityComponent {
     } catch (error) {
       console.error('Error adding comment:', error);
     }
+  }
+
+  async toggleFollow(authorId?: number): Promise<void> {
+    const currentUserId = this.authService.currentUser()?.id;
+    if (!authorId || !this.authService.isAuthenticated() || currentUserId === authorId) {
+      return;
+    }
+
+    try {
+      const response = await firstValueFrom(this.followService.toggleFollow(authorId));
+      const next = new Map(this.followingByAuthor());
+      next.set(authorId, response.following);
+      this.followingByAuthor.set(next);
+    } catch (error) {
+      console.error('Error toggling follow:', error);
+    }
+  }
+
+  isFollowing(authorId?: number): boolean {
+    if (!authorId) {
+      return false;
+    }
+    return this.followingByAuthor().get(authorId) || false;
+  }
+
+  async toggleSavePost(postId: number): Promise<void> {
+    if (!this.authService.isAuthenticated()) {
+      this.router.navigate(['/signin']);
+      return;
+    }
+
+    try {
+      const response = await firstValueFrom(this.savedPostService.toggleSave(postId));
+      const next = new Map(this.savedByPost());
+      next.set(postId, response.saved);
+      this.savedByPost.set(next);
+      if (this.showSavedOnly()) {
+        await this.loadSavedPosts();
+      }
+    } catch (error) {
+      console.error('Error saving post:', error);
+    }
+  }
+
+  isPostSaved(postId: number): boolean {
+    return this.savedByPost().get(postId) || false;
+  }
+
+  async repost(postId: number): Promise<void> {
+    if (!this.authService.isAuthenticated()) {
+      this.router.navigate(['/signin']);
+      return;
+    }
+    try {
+      await firstValueFrom(this.postService.repost(postId));
+      this.loadFeed();
+    } catch (error) {
+      console.error('Error reposting:', error);
+    }
+  }
+
+  async toggleSavedMode(): Promise<void> {
+    const next = !this.showSavedOnly();
+    this.showSavedOnly.set(next);
+    if (next) {
+      await this.loadSavedPosts();
+    }
+  }
+
+  private async loadSavedPosts(): Promise<void> {
+    if (!this.authService.isAuthenticated()) {
+      this.savedPosts.set([]);
+      return;
+    }
+    try {
+      const posts = await firstValueFrom(this.savedPostService.mySavedPosts());
+      this.savedPosts.set(posts || []);
+    } catch (error) {
+      console.error('Error loading saved posts:', error);
+      this.savedPosts.set([]);
+    }
+  }
+
+  visiblePosts(): Post[] {
+    return this.showSavedOnly() ? this.savedPosts() : this.posts();
+  }
+
+  isRepost(post: Post): boolean {
+    return !!post.repostOf;
+  }
+
+  getHashtagsFromText(source?: string | null): string[] {
+    return (source || '')
+      .split(/[\s,]+/)
+      .map((s) => s.trim())
+      .filter((s) => s.startsWith('#') && s.length > 1);
+  }
+
+  getHashtags(post: Post): string[] {
+    return (post.hashtags || '')
+      .split(/[\s,]+/)
+      .map((s) => s.trim())
+      .filter((s) => s.startsWith('#') && s.length > 1);
   }
 
   // Helper methods used in HTML template

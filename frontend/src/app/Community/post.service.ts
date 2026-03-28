@@ -33,5 +33,9 @@ export class PostService {
   deletePost(postId: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/post/deletePost/${postId}`);
   }
+
+  repost(postId: number): Observable<Post> {
+    return this.http.post<Post>(`${this.baseUrl}/post/repost/${postId}`, {});
+  }
 }
 

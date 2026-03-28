@@ -1,0 +1,317 @@
+.roadmap-page {
+  padding: 120px 40px 40px 40px;
+  max-width: 1300px;
+  margin: 0 auto;
+  font-family: 'Inter', sans-serif;
+  color: #fff;
+  min-height: 100vh;
+  /* Dark grey background matching the image */
+  background: #25282c; 
+}
+
+.hub-hero {
+  text-align: center;
+  margin-bottom: 60px;
+  padding: 60px 20px;
+  background: radial-gradient(circle at 50% 100%, rgba(14, 165, 233, 0.15), transparent 60%), #181d24;
+  border-radius: 30px;
+  border: 1px solid rgba(255,255,255,0.05);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+}
+
+.hub-hero h1 {
+  font-family: 'Outfit', sans-serif;
+  font-size: 3rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #fff, #0ea5e9);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 16px;
+}
+.hub-hero p { font-size: 1.1rem; color: #94a3b8; max-width: 600px; margin: 0 auto; }
+
+.roadmap-notice {
+  margin: 16px auto 0;
+  max-width: 620px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(14, 165, 233, 0.12);
+  color: #dbeafe;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.roadmap-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.roadmap-section {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 800px;
+  margin: 40px 0;
+}
+.roadmap-section .line {
+  flex: 1;
+  border-bottom: 2px solid #374151; /* grey line */
+}
+.roadmap-section h2 {
+  margin: 0 20px;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+
+.roadmap-nodes-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.node-row {
+  display: flex;
+  align-items: center;
+  position: relative;
+  z-index: 2;
+  cursor: pointer;
+}
+
+.shift-left {
+  transform: translateX(-40px); /* 40px left of center */
+}
+.shift-right {
+  transform: translateX(40px); /* 40px right of center */
+}
+
+/* 3D Hexagon Styles */
+.hex-3d-wrapper {
+  position: relative;
+  z-index: 2;
+}
+.hex-3d {
+  position: relative;
+  width: 80px;
+  height: 90px;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.node-row:hover .hex-3d {
+  transform: translateY(-4px);
+}
+.node-row.locked { cursor: not-allowed; }
+.node-row.locked:hover .hex-3d { transform: none; }
+
+.hex-shape {
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  position: absolute;
+  left: 0; right: 0;
+}
+
+.hex-shadow {
+  top: 14px; bottom: -8px;
+  background-color: #1f2937; /* Default locked shadow */
+  transition: background-color 0.3s;
+}
+
+.hex-base {
+  top: 8px; bottom: 0;
+  background-color: #374151; /* Default locked base */
+  transition: background-color 0.3s;
+}
+
+.hex-top {
+  top: 0; bottom: 6px;
+  background-color: #6b7280; /* Default locked top */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+}
+
+.hex-icon {
+  width: 32px;
+  height: 32px;
+  color: white;
+  opacity: 0.9;
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
+}
+.filter-locked { color: #d1d5db; opacity: 0.5; }
+
+/* Colors for specific states */
+.node-row.current .hex-shadow { background-color: #0c4a6e; }
+.node-row.current .hex-base { background-color: #0284c7; }
+.node-row.current .hex-top { background-color: #0ea5e9; } /* Sky Blue */
+
+.node-row.completed .hex-shadow { background-color: #1f2937; } /* Match locked shadow */
+.node-row.completed .hex-base { background-color: #4b5563; } /* Slightly dark gray */
+.node-row.completed .hex-top { background-color: #9ca3af; }  /* Gray, like completed in image */
+
+.node-row.locked .hex-shadow { background-color: #111827; }
+.node-row.locked .hex-base { background-color: #1f2937; }
+.node-row.locked .hex-top { background-color: #3f4756; } /* Darker gray */
+
+/* Connecting lines */
+.node-connector {
+  width: 100px; /* span 80px horizontally between centers plus margins */
+  height: 60px; /* vertical distance between nodes */
+  z-index: 1;
+  margin: -5px 0; /* overlap with nodes slightly */
+  transition: all 0.3s;
+}
+
+/* "CONTINUE" bubble */
+.continue-bubble {
+  position: absolute;
+  top: -45px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #0ea5e9;
+  color: white;
+  padding: 6px 14px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+  white-space: nowrap;
+  animation: bounce 2s infinite;
+  border: 1.5px solid white;
+  z-index: 10;
+}
+.continue-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid white;
+}
+
+/* Labels */
+.node-label-right, .node-label-left {
+  position: absolute;
+  top: 50%;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  white-space: nowrap;
+  font-size: 1rem;
+  letter-spacing: 0.5px;
+  background: rgba(30,30,30,0.8);
+  padding: 6px 14px;
+  border-radius: 8px;
+  pointer-events: none;
+  border: 1px solid rgba(255,255,255,0.05);
+
+  /* Initially visible in current, hover for others */
+  opacity: 0;
+  transform: translateY(-50%) scale(0.95);
+  transition: opacity 0.3s, transform 0.3s;
+}
+
+.node-row:hover .node-label-right,
+.node-row:hover .node-label-left,
+.node-row.current .node-label-right,
+.node-row.current .node-label-left {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+
+/* Specific positioning for left/right labels */
+.node-label-right { left: 100%; margin-left: 20px; }
+.node-label-left { right: 100%; margin-right: 20px; }
+
+/* Inactive/Completed specific touches */
+.node-row.completed:hover .hex-top { background-color: #d1d5db; /* Lighter gray on hover for completed */ }
+.node-row.locked .node-label-left,
+.node-row.locked .node-label-right { opacity: 0; /* Never show label if locked unless hover? let's allow it on hover */ }
+
+/* Animations */
+@keyframes animate-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+.animate-in { animation: animate-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+@keyframes animate-up { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+.animate-up { animation: animate-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; animation-delay: 0.1s;}
+
+@keyframes bounce {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(-5px); }
+}
+
+.puzzle-section {
+  margin-top: 28px;
+}
+
+.puzzle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.puzzle-card {
+  text-align: left;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  overflow: hidden;
+  background: #181d24;
+  cursor: pointer;
+  padding: 0;
+}
+
+.puzzle-card img {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  display: block;
+}
+
+.puzzle-card__meta {
+  padding: 12px;
+}
+
+.puzzle-card__meta h3 {
+  margin: 0 0 6px 0;
+  font-size: 1rem;
+  color: #fff;
+}
+
+.puzzle-card__meta span {
+  color: #7dd3fc;
+  font-size: 0.9rem;
+}
+
+.puzzle-empty {
+  color: #94a3b8;
+  margin: 0;
+}
+
+.ludo-cover {
+  width: 100%;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  background: linear-gradient(135deg, #ef4444, #22c55e, #0ea5e9, #facc15);
+}
+
+.ludo-card-info {
+  background: #111827;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: default;
+}
+
+.ludo-card-info p {
+  margin: 6px 0;
+  color: #cbd5e1;
+  font-size: 0.9rem;
+}

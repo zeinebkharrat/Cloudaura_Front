@@ -12,8 +12,13 @@ public class Post {
     // (your API accepts null content but fails for non-null content).
     @Column(columnDefinition="TEXT")
     private String content;
+    @Column(columnDefinition="TEXT")
+    private String hashtags;
     private String location;
     private String visibility;
+    @ManyToOne
+    @JoinColumn(name = "repost_of_post_id")
+    private Post repostOf;
     private Integer likesCount;
     private Integer commentsCount;
     private Date createdAt;
