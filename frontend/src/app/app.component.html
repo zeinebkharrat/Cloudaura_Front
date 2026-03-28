@@ -5,6 +5,13 @@
       <h1>YallaTN<span class="logo-plus" aria-hidden="true">+</span></h1>
     </a>
     <div class="logo-dot"></div>
+    
+    @if (selectedCityName()) {
+      <div class="city-pill animate-in">
+        <span class="pulse"></span>
+        {{ selectedCityName() }}
+      </div>
+    }
   </div>
   <ul class="nav-links">
     <li>

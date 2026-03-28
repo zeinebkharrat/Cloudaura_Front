@@ -1,0 +1,40 @@
+{
+  "transport": [
+    {
+      "id": 201,
+      "type": "BUS",
+      "operator": "SNTRI",
+      "departure": "Tunis",
+      "arrival": "Sousse",
+      "departureTime": "08:00",
+      "arrivalTime": "10:30",
+      "pricePerPerson": 12.5,
+      "capacity": 50,
+      "remainingSeats": 12
+    },
+    {
+      "id": 202,
+      "type": "PLANE",
+      "operator": "Tunisair Express",
+      "departure": "Tunis",
+      "arrival": "Djerba",
+      "departureTime": "14:00",
+      "arrivalTime": "15:00",
+      "pricePerPerson": 145.0,
+      "capacity": 72,
+      "remainingSeats": 5
+    },
+    {
+      "id": 203,
+      "type": "LOUAGE",
+      "operator": "Direct Louage",
+      "departure": "Sousse",
+      "arrival": "Hammamet",
+      "departureTime": "ANY",
+      "arrivalTime": "+1h",
+      "pricePerPerson": 8.0,
+      "capacity": 8,
+      "remainingSeats": 3
+    }
+  ]
+}

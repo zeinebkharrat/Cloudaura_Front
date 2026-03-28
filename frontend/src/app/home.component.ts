@@ -4,12 +4,14 @@ import {
   ViewChild,
   ElementRef,
   Inject,
+  inject,
   PLATFORM_ID,
   signal,
   ChangeDetectorRef,
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
+import { TripContextStore } from './core/stores/trip-context.store';
 import * as echarts from 'echarts';
 import { tunisiaGeoJson } from './tunisia-map';
 import { GOVERNORATE_LABEL_EN, GOVERNORATE_LABEL_FR } from './tunisia-governorate-labels';
@@ -62,6 +64,24 @@ export class HomeComponent implements AfterViewInit {
   private mapGeoData?: any;
   private regionIdToLabelMap?: Map<string, string>;
 
+  store = inject(TripContextStore);
+  router = inject(Router);
+
+  GOV_TO_CITY: Record<string, number> = {
+    'tunis': 1,
+    'sousse': 4,
+    'hammamet': 10,
+    'djerba': 9,
+    'mahdia': 6,
+    'sfax': 8,
+    'kairouan': 7,
+    'tozeur': 14,
+    'bizerte': 12,
+    'nabeul': 11,
+    'monastir': 5,
+    'douz': 15,
+  };
+
   constructor(
     @Inject(PLATFORM_ID) private platformId: Object,
     private cdr: ChangeDetectorRef
@@ -77,6 +97,16 @@ export class HomeComponent implements AfterViewInit {
     if (this.mapViewMode() === mode) return;
     this.mapViewMode.set(mode);
     this.applyMapTheme();
+  }
+
+  onMapClick(governorateName: string) {
+    const cityId = this.GOV_TO_CITY[governorateName.toLowerCase().trim()];
+    if (cityId) {
+      this.store.setSelectedCity(cityId);
+      this.router.navigate(['/hebergement']);
+    } else {
+      console.warn('City mapping not found for governorate:', governorateName);
+    }
   }
 
   initMap() {
@@ -95,6 +125,7 @@ export class HomeComponent implements AfterViewInit {
         name: label,
         description: `Experience the unique culture, stunning landscapes, and rich history of ${label}. Plan your personalized journey to this magnificent Tunisian destination.`,
       });
+      this.onMapClick(label);
       this.cdr.detectChanges();
     });
 

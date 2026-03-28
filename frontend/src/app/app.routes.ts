@@ -11,6 +11,23 @@ export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'login', component: LoginComponent },
   { path: 'virtual-tour', component: VirtualTourPageComponent },
+  
+  // YallaTN+ Travel Suite (Lazy-Loaded)
+  {
+    path: 'hebergement',
+    loadChildren: () => import('./features/hebergement/hebergement.routes')
+      .then(m => m.HEBERGEMENT_ROUTES)
+  },
+  {
+    path: 'transport',
+    loadChildren: () => import('./features/transport/transport.routes')
+      .then(m => m.TRANSPORT_ROUTES)
+  },
+  {
+    path: 'confirmation',
+    loadComponent: () => import('./shared/components/booking-confirmation/booking-confirmation.component')
+      .then(m => m.BookingConfirmationComponent)
+  },
   {
     path: 'admin',
     component: AdminLayoutComponent,
