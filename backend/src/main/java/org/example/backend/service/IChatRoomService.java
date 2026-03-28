@@ -1,5 +1,6 @@
 package org.example.backend.service;
 
+import org.example.backend.dto.ConversationResponse;
 import org.example.backend.model.ChatRoom;
 
 import java.util.List;
@@ -13,4 +14,10 @@ public interface IChatRoomService {
 
     // Custom methods
     ChatRoom createRoomIfNotExists(String name);
+
+    // DM messaging methods
+    ChatRoom getOrCreateChatRoom(Integer currentUserId, Integer targetUserId);
+    List<ConversationResponse> getConversations(Integer userId);
+    void markMessagesAsSeen(Integer chatRoomId, Integer userId);
+    boolean isUserInChatRoom(Integer chatRoomId, Integer userId);
 }

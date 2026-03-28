@@ -29,6 +29,11 @@
     <li>
       <a routerLink="/communaute" routerLinkActive="active">Communauté</a>
     </li>
+    @if (isAuthenticated()) {
+    <li>
+      <a routerLink="/chat" routerLinkActive="active">💬 Chat</a>
+    </li>
+    }
     <li>
       <a routerLink="/virtual-tour" routerLinkActive="active">360° Tour</a>
     </li>

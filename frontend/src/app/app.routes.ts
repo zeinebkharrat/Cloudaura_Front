@@ -12,6 +12,7 @@ import { AdminUsersComponent } from './admin-users.component';
 import { AdminLayoutComponent } from './admin/layout/admin-layout.component';
 import { AdminDashboardComponent } from './admin/dashboard/admin-dashboard.component';
 import { ProfileComponent } from './profile.component';
+import { ChatComponent } from './chat/chat.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -297,6 +298,11 @@ export const routes: Routes = [
         },
       ],
     },
+  },
+  {
+    path: 'chat',
+    component: ChatComponent,
+    canActivate: [authGuard],
   },
   {
     path: 'communaute',
