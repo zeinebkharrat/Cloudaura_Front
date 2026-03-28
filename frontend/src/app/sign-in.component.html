@@ -60,9 +60,11 @@
       <div class="social-buttons">
         <button type="button" (click)="loginWithGoogle()">Continuer avec Google</button>
         <button type="button" (click)="loginWithGithub()">Continuer avec GitHub</button>
+        <button type="button" (click)="loginWithFacebook()">Continuer avec Facebook</button>
+        <button type="button" (click)="loginWithInstagram()">Continuer avec Instagram</button>
       </div>
-      @if (!socialProviders().google || !socialProviders().github) {
-        <p class="social-hint">Configurez les variables OAuth2 backend pour activer tous les providers.</p>
+      @if (!socialProviders().google || !socialProviders().github || !socialProviders().facebook || !socialProviders().instagram) {
+        <p class="social-hint">Configurez les variables OAuth2 backend (Google, GitHub, Facebook, Instagram) pour activer tous les providers.</p>
       }
     </div>
 

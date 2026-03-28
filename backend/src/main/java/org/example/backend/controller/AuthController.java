@@ -39,6 +39,18 @@ public class AuthController {
     @Value("${app.oauth2.github-client-secret}")
     private String githubClientSecret;
 
+    @Value("${app.oauth2.facebook-client-id}")
+    private String facebookClientId;
+
+    @Value("${app.oauth2.facebook-client-secret}")
+    private String facebookClientSecret;
+
+    @Value("${app.oauth2.instagram-client-id}")
+    private String instagramClientId;
+
+    @Value("${app.oauth2.instagram-client-secret}")
+    private String instagramClientSecret;
+
     public AuthController(AuthService authService) {
         this.authService = authService;
     }
@@ -63,7 +75,9 @@ public class AuthController {
     public SocialProvidersResponse socialProviders() {
         boolean googleConfigured = isConfigured(googleClientId, googleClientSecret);
         boolean githubConfigured = isConfigured(githubClientId, githubClientSecret);
-        return new SocialProvidersResponse(googleConfigured, githubConfigured);
+        boolean facebookConfigured = isConfigured(facebookClientId, facebookClientSecret);
+        boolean instagramConfigured = isConfigured(instagramClientId, instagramClientSecret);
+        return new SocialProvidersResponse(googleConfigured, githubConfigured, facebookConfigured, instagramConfigured);
     }
 
     private boolean isConfigured(String clientId, String clientSecret) {

@@ -23,7 +23,7 @@ export class SignInComponent implements OnInit {
   readonly isResendingVerification = signal(false);
   readonly formError = signal<string | null>(null);
   readonly formSuccess = signal<string | null>(null);
-  readonly socialProviders = signal({ google: false, github: false });
+  readonly socialProviders = signal({ google: false, github: false, facebook: false, instagram: false });
 
   readonly form = this.fb.nonNullable.group({
     identifier: ['', [Validators.required]],
@@ -46,7 +46,7 @@ export class SignInComponent implements OnInit {
   ngOnInit() {
     this.authService.getSocialProviders().subscribe({
       next: (providers) => this.socialProviders.set(providers),
-      error: () => this.socialProviders.set({ google: false, github: false }),
+      error: () => this.socialProviders.set({ google: false, github: false, facebook: false, instagram: false }),
     });
 
     const token = this.route.snapshot.queryParamMap.get('token');
@@ -54,7 +54,7 @@ export class SignInComponent implements OnInit {
     const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/';
 
     if (socialError) {
-      this.formError.set('Connexion sociale impossible. Réessayez avec Google ou GitHub.');
+      this.formError.set('Connexion sociale impossible. Reessayez avec un provider disponible.');
       return;
     }
 
@@ -143,5 +143,21 @@ export class SignInComponent implements OnInit {
       return;
     }
     this.authService.startSocialLogin('github');
+  }
+
+  loginWithFacebook() {
+    if (!this.socialProviders().facebook) {
+      this.formError.set('Facebook login non configure cote serveur. Ajoutez FACEBOOK_CLIENT_ID et FACEBOOK_CLIENT_SECRET.');
+      return;
+    }
+    this.authService.startSocialLogin('facebook');
+  }
+
+  loginWithInstagram() {
+    if (!this.socialProviders().instagram) {
+      this.formError.set('Instagram login non configure cote serveur. Ajoutez INSTAGRAM_CLIENT_ID et INSTAGRAM_CLIENT_SECRET.');
+      return;
+    }
+    this.authService.startSocialLogin('instagram');
   }
 }

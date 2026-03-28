@@ -55,7 +55,7 @@ export class AuthService {
     return this.fetchMe().pipe(map((user) => user));
   }
 
-  startSocialLogin(provider: 'google' | 'github') {
+  startSocialLogin(provider: 'google' | 'github' | 'facebook' | 'instagram') {
     window.location.href = `${OAUTH_SERVER_URL}/oauth2/authorization/${provider}`;
   }
 

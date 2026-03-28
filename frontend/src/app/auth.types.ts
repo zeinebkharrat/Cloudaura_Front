@@ -75,6 +75,8 @@ export interface AdminUserUpdatePayload {
 export interface SocialProviders {
   google: boolean;
   github: boolean;
+  facebook: boolean;
+  instagram: boolean;
 }
 
 export interface ProfileUpdatePayload {

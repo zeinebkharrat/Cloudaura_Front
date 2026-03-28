@@ -181,17 +181,13 @@ public class AuthService {
 
     @Transactional
     public AuthResponse processSocialLogin(OAuth2User oauth2User, String provider) {
-        String email = oauth2User.getAttribute("email");
-        if (email == null || email.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email is required from social provider");
-        }
-
-        String normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
+        String normalizedEmail = resolveSocialEmail(oauth2User, provider);
         String firstName = extractFirstName(oauth2User);
         String lastName = extractLastName(oauth2User);
+        String usernameSeed = extractUsernameSeed(oauth2User, provider, normalizedEmail);
 
         User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
-                .orElseGet(() -> createSocialUser(normalizedEmail, firstName, lastName, provider));
+                .orElseGet(() -> createSocialUser(normalizedEmail, firstName, lastName, provider, usernameSeed));
 
         ensureNotBanned(user);
 
@@ -345,7 +341,7 @@ public class AuthService {
         return new AuthMessageResponse("Mot de passe reinitialise avec succes.");
     }
 
-    private User createSocialUser(String email, String firstName, String lastName, String provider) {
+    private User createSocialUser(String email, String firstName, String lastName, String provider, String usernameSeed) {
         Role userRole = roleRepository.findByName(DEFAULT_ROLE)
                 .orElseGet(() -> {
                     Role role = new Role();
@@ -354,7 +350,7 @@ public class AuthService {
                 });
 
         User user = new User();
-        user.setUsername(generateUniqueUsername(email));
+        user.setUsername(generateUniqueUsername(usernameSeed));
         user.setEmail(email);
         user.setFirstName(firstName);
         user.setLastName(lastName);
@@ -372,8 +368,9 @@ public class AuthService {
         return userRepository.save(user);
     }
 
-    private String generateUniqueUsername(String email) {
-        String localPart = email.split("@")[0].replaceAll("[^a-zA-Z0-9._-]", "");
+    private String generateUniqueUsername(String seed) {
+        String cleanedSeed = seed == null ? "" : seed.trim();
+        String localPart = cleanedSeed.split("@")[0].replaceAll("[^a-zA-Z0-9._-]", "");
         String base = localPart.isBlank() ? "user" : localPart;
         String candidate = base;
         int suffix = 1;
@@ -382,6 +379,76 @@ public class AuthService {
             suffix++;
         }
         return candidate;
+    }
+
+    private String resolveSocialEmail(OAuth2User oauth2User, String provider) {
+        String email = oauth2User.getAttribute("email");
+        if (email != null && !email.isBlank()) {
+            return email.trim().toLowerCase(Locale.ROOT);
+        }
+
+        String providerUserId = extractProviderUserId(oauth2User);
+        if (providerUserId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unable to resolve social account identity");
+        }
+
+        String providerKey = sanitizeIdentifierPart(provider);
+        String userKey = sanitizeIdentifierPart(providerUserId);
+        return "social-" + providerKey + "-" + userKey + "@oauth.local";
+    }
+
+    private String extractProviderUserId(OAuth2User oauth2User) {
+        String id = oauth2User.getAttribute("sub");
+        if (id != null && !id.isBlank()) {
+            return id;
+        }
+
+        id = oauth2User.getAttribute("id");
+        if (id != null && !id.isBlank()) {
+            return id;
+        }
+
+        id = oauth2User.getAttribute("user_id");
+        if (id != null && !id.isBlank()) {
+            return id;
+        }
+
+        return "";
+    }
+
+    private String extractUsernameSeed(OAuth2User oauth2User, String provider, String email) {
+        String login = oauth2User.getAttribute("login");
+        if (login != null && !login.isBlank()) {
+            return login;
+        }
+
+        String preferredUsername = oauth2User.getAttribute("preferred_username");
+        if (preferredUsername != null && !preferredUsername.isBlank()) {
+            return preferredUsername;
+        }
+
+        String username = oauth2User.getAttribute("username");
+        if (username != null && !username.isBlank()) {
+            return username;
+        }
+
+        if (email != null && !email.isBlank()) {
+            return email;
+        }
+
+        return sanitizeIdentifierPart(provider) + "-user";
+    }
+
+    private String sanitizeIdentifierPart(String value) {
+        String normalized = value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+        String sanitized = normalized.replaceAll("[^a-z0-9._-]", "-").replaceAll("-+", "-");
+        if (sanitized.startsWith("-")) {
+            sanitized = sanitized.substring(1);
+        }
+        if (sanitized.endsWith("-")) {
+            sanitized = sanitized.substring(0, sanitized.length() - 1);
+        }
+        return sanitized.isBlank() ? "social" : sanitized;
     }
 
     private String extractFirstName(OAuth2User oauth2User) {
