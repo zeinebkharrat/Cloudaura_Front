@@ -2,21 +2,29 @@ import { Component, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { LudificationService, PuzzleImage, RoadmapNode, LudoCard } from '../core/ludification.service';
+import { AuthService } from '../core/auth.service';
 
 @Component({
   selector: 'app-user-games',
   standalone: true,
   imports: [CommonModule, RouterModule],
   templateUrl: './user-games.component.html',
-  styleUrl: './user-games.component.css'
+  styleUrl: './user-games.component.css',
 })
 export class UserGamesComponent implements OnInit {
   roadmapNodes = signal<RoadmapNode[]>([]);
+  /** Étapes terminées (IDs) — aligné sur la table user_roadmap_completions */
+  completedNodeIds = signal<number[]>([]);
+  /** Parcours chargé depuis l’API (sinon mode secours sans persistance serveur) */
+  roadmapFromApi = signal(false);
   puzzles = signal<PuzzleImage[]>([]);
   ludoCards = signal<LudoCard[]>([]);
-  currentNodeIndex = signal<number>(0);
 
-  constructor(private api: LudificationService, private router: Router) {}
+  constructor(
+    private api: LudificationService,
+    private router: Router,
+    private auth: AuthService,
+  ) {}
 
   ngOnInit() {
     this.api.getPuzzles().subscribe((list) => {
@@ -27,15 +35,14 @@ export class UserGamesComponent implements OnInit {
     });
 
     this.api.getRoadmap().subscribe({
-      next: (nodes: any) => {
-        // Gérer le cas où l'API renvoie un objet avec "content" au lieu d'un tableau direct
+      next: (nodes: unknown) => {
         let activeNodes: RoadmapNode[] = [];
         if (Array.isArray(nodes)) {
           activeNodes = nodes;
-        } else if (nodes && Array.isArray(nodes.content)) {
-          activeNodes = nodes.content;
+        } else if (nodes && typeof nodes === 'object' && Array.isArray((nodes as { content?: RoadmapNode[] }).content)) {
+          activeNodes = (nodes as { content: RoadmapNode[] }).content;
         }
-        
+
         if (activeNodes && activeNodes.length > 0) {
           const normalized = activeNodes.map((node) => ({
             ...node,
@@ -46,8 +53,8 @@ export class UserGamesComponent implements OnInit {
           this.roadmapNodes.set(
             [...normalized].sort((a, b) => (a.stepOrder ?? 0) - (b.stepOrder ?? 0)),
           );
-          // Débloquer tous les niveaux configurés par l'admin pour la démo
-          this.currentNodeIndex.set(normalized.length - 1 > 0 ? normalized.length - 1 : 0);
+          this.roadmapFromApi.set(true);
+          this.refreshRoadmapProgress();
         } else {
           this.loadFallbackFromQuizzes();
         }
@@ -55,72 +62,114 @@ export class UserGamesComponent implements OnInit {
       error: (err) => {
         console.warn('Roadmap endpoint failed or empty, falling back to quizzes direct list', err);
         this.loadFallbackFromQuizzes();
-      }
+      },
+    });
+  }
+
+  /** Recharge la progression depuis le backend (à rappeler au retour sur la page). */
+  refreshRoadmapProgress() {
+    const u = this.auth.currentUser();
+    if (!u || !this.roadmapFromApi()) {
+      this.completedNodeIds.set([]);
+      return;
+    }
+    this.api.getRoadmapProgress(u.username).subscribe({
+      next: (r) => this.completedNodeIds.set(r.completedNodeIds ?? []),
+      error: () => this.completedNodeIds.set([]),
     });
   }
 
   loadFallbackFromQuizzes() {
+    this.roadmapFromApi.set(false);
+    this.completedNodeIds.set([]);
     this.api.getQuizzes().subscribe({
       next: (quizzes) => {
         let fallbacks: RoadmapNode[] = quizzes.map((q, i) => ({
           nodeId: q.quizId,
           stepOrder: i,
-          nodeLabel: q.title || `Niveau ${i+1}`,
-          quizId: q.quizId
+          nodeLabel: q.title || `Niveau ${i + 1}`,
+          quizId: q.quizId,
         }));
-        
+
         if (fallbacks.length === 0) {
-           fallbacks = Array.from({length: 6}, (_, i) => ({
-             nodeId: i + 100,
-             stepOrder: i,
-             nodeLabel: `Épreuve secrète ${i+1}`
-           }));
+          fallbacks = Array.from({ length: 6 }, (_, i) => ({
+            nodeId: i + 100,
+            stepOrder: i,
+            nodeLabel: `Épreuve secrète ${i + 1}`,
+          }));
         }
         this.roadmapNodes.set(fallbacks);
-        
-        // Tous les niveaux récupérés depuis la BD sont débloqués par défaut (le max index) pour que l'utilisateur puisse tous les jouer !
-        this.currentNodeIndex.set(fallbacks.length > 0 ? fallbacks.length - 1 : 1);
       },
       error: () => {
-         const fallbacks = Array.from({length: 6}, (_, i) => ({
-           nodeId: i + 100,
-           stepOrder: i,
-           nodeLabel: `Épreuve réseau ${i+1}`
-         }));
-         this.roadmapNodes.set(fallbacks);
-         this.currentNodeIndex.set(1);
-      }
+        const fallbacks = Array.from({ length: 6 }, (_, i) => ({
+          nodeId: i + 100,
+          stepOrder: i,
+          nodeLabel: `Épreuve réseau ${i + 1}`,
+        }));
+        this.roadmapNodes.set(fallbacks);
+      },
     });
   }
 
+  /** Étape débloquée : la 1re toujours ; les suivantes si l’étape précédente (dans l’ordre trié) est terminée. */
+  isUnlocked(index: number): boolean {
+    if (index === 0) return true;
+    if (!this.roadmapFromApi()) {
+      return false;
+    }
+    const nodes = this.roadmapNodes();
+    const prev = nodes[index - 1];
+    const prevId = prev?.nodeId;
+    if (prevId == null) return false;
+    return this.completedNodeIds().includes(prevId);
+  }
+
+  isNodeCompleted(index: number): boolean {
+    const id = this.roadmapNodes()[index]?.nodeId;
+    return id != null && this.completedNodeIds().includes(id);
+  }
+
+  /** Première étape accessible mais pas encore terminée (badge « CONTINUE »). */
+  currentHighlightIndex(): number {
+    const n = this.roadmapNodes();
+    for (let i = 0; i < n.length; i++) {
+      if (this.isUnlocked(i) && !this.isNodeCompleted(i)) {
+        return i;
+      }
+    }
+    return Math.max(0, n.length - 1);
+  }
+
   playNode(node: RoadmapNode, index: number) {
-    if (index > this.currentNodeIndex()) {
-      alert("Ce niveau est verrouillé ! Terminez les niveaux précédents d'abord.");
+    if (!this.isUnlocked(index)) {
+      alert("Cette étape est verrouillée. Terminez d'abord l'étape précédente du parcours.");
       return;
     }
-    
-    // Si l'utilisateur clique sur le niveau courant ou un niveau débloqué
+
     const quizId = node.quizId ?? node.quiz?.quizId;
     const crosswordId = node.crosswordId ?? node.crossword?.crosswordId;
     const puzzleId = node.puzzleId;
+    const nodeId = node.nodeId;
+
+    const roadmapQuery =
+      this.roadmapFromApi() && nodeId != null ? { roadmapNode: String(nodeId) } : undefined;
 
     if (quizId) {
-      this.router.navigate(['/games/quiz', quizId]);
+      this.router.navigate(['/games/quiz', quizId], { queryParams: roadmapQuery });
       return;
     }
 
     if (crosswordId) {
-      this.router.navigate(['/games/crossword', crosswordId]);
+      this.router.navigate(['/games/crossword', crosswordId], { queryParams: roadmapQuery });
       return;
     }
 
     if (puzzleId) {
-      this.router.navigate(['/games/puzzle', puzzleId]);
+      this.router.navigate(['/games/puzzle', puzzleId], { queryParams: roadmapQuery });
       return;
     }
 
-    // Si aucun jeu réel n'est lié au node, on ne redirige pas vers un faux ID.
-    alert("Aucun quiz lié à cette étape pour le moment.");
+    alert('Aucun jeu lié à cette étape pour le moment.');
   }
 
   playPuzzle(puzzleId: number): void {

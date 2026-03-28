@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { LudificationService, PuzzleImage } from '../core/ludification.service';
+import { AuthService } from '../core/auth.service';
 
 @Component({
   selector: 'app-puzzle-player',
@@ -19,13 +20,25 @@ export class PuzzlePlayerComponent implements OnInit {
   readonly puzzle = signal<PuzzleImage | null>(null);
   readonly board = signal<number[]>([]);
 
+  private roadmapNodeId: number | null = null;
+  private roadmapRecorded = false;
+
   constructor(
     private readonly route: ActivatedRoute,
     private readonly router: Router,
     private readonly api: LudificationService,
+    private readonly auth: AuthService,
   ) {}
 
   ngOnInit(): void {
+    const rn = this.route.snapshot.queryParamMap.get('roadmapNode');
+    if (rn) {
+      const n = Number(rn);
+      if (Number.isFinite(n) && n > 0) {
+        this.roadmapNodeId = n;
+      }
+    }
+
     const id = Number(this.route.snapshot.paramMap.get('id'));
     if (!id) {
       this.loadError.set('Puzzle introuvable.');
@@ -38,11 +51,48 @@ export class PuzzlePlayerComponent implements OnInit {
         this.puzzle.set(p);
         this.resetBoard();
         this.isLoading.set(false);
+        this.verifyRoadmapAccess();
       },
       error: () => {
         this.loadError.set('Puzzle introuvable.');
         this.isLoading.set(false);
       },
+    });
+  }
+
+  private verifyRoadmapAccess(): void {
+    const nodeId = this.roadmapNodeId;
+    if (!nodeId) {
+      return;
+    }
+    const user = this.auth.currentUser();
+    if (!user) {
+      return;
+    }
+    this.api.canPlayRoadmapNode(nodeId, user.username).subscribe({
+      next: (res) => {
+        if (!res.allowed) {
+          this.loadError.set(res.error ?? 'Cette étape du parcours n’est pas accessible.');
+        }
+      },
+      error: () => {},
+    });
+  }
+
+  private recordRoadmapProgress(): void {
+    const nodeId = this.roadmapNodeId;
+    if (!nodeId || this.roadmapRecorded) {
+      return;
+    }
+    const user = this.auth.currentUser();
+    if (!user) {
+      return;
+    }
+    this.api.completeRoadmapNode(user.username, nodeId, 1, 1).subscribe({
+      next: () => {
+        this.roadmapRecorded = true;
+      },
+      error: () => {},
     });
   }
 
@@ -75,6 +125,7 @@ export class PuzzlePlayerComponent implements OnInit {
     this.moves.update((m) => m + 1);
     if (this.isSolved(cells)) {
       this.won.set(true);
+      this.recordRoadmapProgress();
     }
   }
 

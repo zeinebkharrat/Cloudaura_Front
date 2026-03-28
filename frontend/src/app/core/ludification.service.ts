@@ -131,6 +131,39 @@ export class LudificationService {
     return this.http.delete<void>(`${this.base}/roadmap/${id}`);
   }
 
+  /** IDs des étapes roadmap terminées (table user_roadmap_completions côté backend). */
+  getRoadmapProgress(username: string): Observable<{ completedNodeIds: number[]; username?: string }> {
+    return this.http.get<{ completedNodeIds: number[]; username?: string }>(
+      `${this.base}/roadmap/progress`,
+      { params: { username } },
+    );
+  }
+
+  canPlayRoadmapNode(
+    nodeId: number,
+    username: string,
+  ): Observable<{ allowed: boolean; error?: string }> {
+    return this.http.get<{ allowed: boolean; error?: string }>(
+      `${this.base}/roadmap/nodes/${nodeId}/can-play`,
+      { params: { username } },
+    );
+  }
+
+  completeRoadmapNode(
+    username: string,
+    nodeId: number,
+    score?: number,
+    maxScore?: number,
+  ): Observable<{ saved?: boolean; alreadyCompleted?: boolean; nodeId?: number; error?: string }> {
+    const body: Record<string, string | number | undefined> = { username };
+    if (score !== undefined) body['score'] = score;
+    if (maxScore !== undefined) body['maxScore'] = maxScore;
+    return this.http.post<{ saved?: boolean; alreadyCompleted?: boolean; nodeId?: number; error?: string }>(
+      `${this.base}/roadmap/nodes/${nodeId}/complete`,
+      body,
+    );
+  }
+
   // --- Puzzle image (front local storage) ---
   getPuzzles(): Observable<PuzzleImage[]> {
     return this.http.get<PuzzleImage[]>(`${this.base}/puzzles`);

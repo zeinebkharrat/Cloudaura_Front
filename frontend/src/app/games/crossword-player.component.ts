@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal, ElementRef, QueryList, ViewChildren } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Crossword, LudificationService } from '../core/ludification.service';
+import { AuthService } from '../core/auth.service';
 
 type CrosswordWord = {
   word?: string;
@@ -56,13 +57,25 @@ export class CrosswordPlayerComponent implements OnInit {
 
   @ViewChildren('cellInput') cellInputs!: QueryList<ElementRef<HTMLInputElement>>;
 
+  private roadmapNodeId: number | null = null;
+  private roadmapRecorded = false;
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private api: LudificationService
+    private api: LudificationService,
+    private auth: AuthService,
   ) {}
 
   ngOnInit(): void {
+    const rn = this.route.snapshot.queryParamMap.get('roadmapNode');
+    if (rn) {
+      const n = Number(rn);
+      if (Number.isFinite(n) && n > 0) {
+        this.roadmapNodeId = n;
+      }
+    }
+
     const id = Number(this.route.snapshot.paramMap.get('id'));
     if (!id) {
       this.loadError.set('Identifiant mots croisés invalide.');
@@ -79,11 +92,48 @@ export class CrosswordPlayerComponent implements OnInit {
           this.buildCrosswordBoard(parsed);
         }
         this.isLoading.set(false);
+        this.verifyRoadmapAccess();
       },
       error: () => {
         this.loadError.set('Mots croisés introuvables.');
         this.isLoading.set(false);
       },
+    });
+  }
+
+  private verifyRoadmapAccess(): void {
+    const nodeId = this.roadmapNodeId;
+    if (!nodeId) {
+      return;
+    }
+    const user = this.auth.currentUser();
+    if (!user) {
+      return;
+    }
+    this.api.canPlayRoadmapNode(nodeId, user.username).subscribe({
+      next: (res) => {
+        if (!res.allowed) {
+          this.loadError.set(res.error ?? 'Cette étape du parcours n’est pas accessible.');
+        }
+      },
+      error: () => {},
+    });
+  }
+
+  private recordRoadmapProgress(score: number, maxScore: number): void {
+    const nodeId = this.roadmapNodeId;
+    if (!nodeId || this.roadmapRecorded) {
+      return;
+    }
+    const user = this.auth.currentUser();
+    if (!user) {
+      return;
+    }
+    this.api.completeRoadmapNode(user.username, nodeId, score, maxScore).subscribe({
+      next: () => {
+        this.roadmapRecorded = true;
+      },
+      error: () => {},
     });
   }
 
@@ -199,6 +249,7 @@ export class CrosswordPlayerComponent implements OnInit {
 
     if (correct === total) {
       this.validationMessage.set({ text: 'Toutes les réponses sont correctes ! Félicitations 🎉', success: true });
+      this.recordRoadmapProgress(correct, total);
     } else if (isComplete) {
       this.validationMessage.set({ text: `Certaines lettres sont incorrectes (${correct}/${total}).`, success: false });
     } else {

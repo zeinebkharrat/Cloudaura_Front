@@ -2,6 +2,7 @@ import { Component, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { LudificationService, Quiz, QuizQuestion } from '../core/ludification.service';
+import { AuthService } from '../core/auth.service';
 
 @Component({
   selector: 'app-quiz-player',
@@ -21,9 +22,26 @@ export class QuizPlayerComponent implements OnInit {
 
   selectedOption = signal<number | null>(null);
 
-  constructor(private route: ActivatedRoute, private api: LudificationService, private router: Router) {}
+  /** Étape roadmap (query ?roadmapNode=) pour enregistrer la progression en base */
+  private roadmapNodeId: number | null = null;
+  private roadmapRecorded = false;
+
+  constructor(
+    private route: ActivatedRoute,
+    private api: LudificationService,
+    private router: Router,
+    private auth: AuthService,
+  ) {}
 
   ngOnInit() {
+    const rn = this.route.snapshot.queryParamMap.get('roadmapNode');
+    if (rn) {
+      const n = Number(rn);
+      if (Number.isFinite(n) && n > 0) {
+        this.roadmapNodeId = n;
+      }
+    }
+
     const id = this.route.snapshot.paramMap.get('id');
     if (id) {
       const numericId = Number(id);
@@ -37,6 +55,7 @@ export class QuizPlayerComponent implements OnInit {
             this.loadError.set(null);
           }
           this.isLoading.set(false);
+          this.verifyRoadmapAccess();
         },
         error: () => {
           this.quiz.set(null);
@@ -51,6 +70,45 @@ export class QuizPlayerComponent implements OnInit {
       this.loadError.set('Identifiant de quiz invalide.');
       this.isLoading.set(false);
     }
+  }
+
+  /** Si l’URL lie le quiz au parcours, vérifie côté API que l’étape précédente est terminée. */
+  private verifyRoadmapAccess() {
+    const nodeId = this.roadmapNodeId;
+    if (!nodeId) {
+      return;
+    }
+    const user = this.auth.currentUser();
+    if (!user) {
+      return;
+    }
+    this.api.canPlayRoadmapNode(nodeId, user.username).subscribe({
+      next: (res) => {
+        if (!res.allowed) {
+          this.loadError.set(res.error ?? 'Cette étape du parcours n’est pas accessible.');
+        }
+      },
+      error: () => {},
+    });
+  }
+
+  private recordRoadmapProgress() {
+    const nodeId = this.roadmapNodeId;
+    if (!nodeId || this.roadmapRecorded) {
+      return;
+    }
+    const user = this.auth.currentUser();
+    if (!user) {
+      return;
+    }
+    const max = this.questions().length;
+    const sc = this.score();
+    this.api.completeRoadmapNode(user.username, nodeId, sc, max).subscribe({
+      next: () => {
+        this.roadmapRecorded = true;
+      },
+      error: () => {},
+    });
   }
 
   selectOption(idx: number) {
@@ -68,6 +126,7 @@ export class QuizPlayerComponent implements OnInit {
         this.selectedOption.set(null);
       } else {
         this.isFinished.set(true);
+        this.recordRoadmapProgress();
       }
     }, 1200);
   }

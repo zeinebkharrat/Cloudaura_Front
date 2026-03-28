@@ -10,12 +10,14 @@ import org.example.backend.model.PuzzleImage;
 import org.example.backend.model.Quiz;
 import org.example.backend.model.QuizQuestion;
 import org.example.backend.model.RoadmapNode;
+import org.example.backend.model.UserRoadmapCompletion;
 import org.example.backend.repository.CrosswordRepository;
 import org.example.backend.repository.LudoCardRepository;
 import org.example.backend.repository.PuzzleImageRepository;
 import org.example.backend.repository.QuizQuestionRepository;
 import org.example.backend.repository.QuizRepository;
 import org.example.backend.repository.RoadmapNodeRepository;
+import org.example.backend.repository.UserRoadmapCompletionRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +33,8 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @RestController
@@ -45,6 +49,7 @@ public class LudificationController {
     private final RoadmapNodeRepository roadRepo;
     private final PuzzleImageRepository puzzleRepo;
     private final LudoCardRepository ludoCardRepo;
+    private final UserRoadmapCompletionRepository roadmapCompletionRepo;
 
     public LudificationController(
             QuizRepository quizRepo,
@@ -52,13 +57,15 @@ public class LudificationController {
             CrosswordRepository crossRepo,
             RoadmapNodeRepository roadRepo,
             PuzzleImageRepository puzzleRepo,
-            LudoCardRepository ludoCardRepo) {
+            LudoCardRepository ludoCardRepo,
+            UserRoadmapCompletionRepository roadmapCompletionRepo) {
         this.quizRepo = quizRepo;
         this.quizQuestionRepo = quizQuestionRepo;
         this.crossRepo = crossRepo;
         this.roadRepo = roadRepo;
         this.puzzleRepo = puzzleRepo;
         this.ludoCardRepo = ludoCardRepo;
+        this.roadmapCompletionRepo = roadmapCompletionRepo;
     }
 
     // --- QUIZ ---
@@ -234,6 +241,105 @@ public class LudificationController {
             return ResponseEntity.ok().build();
         }
         return ResponseEntity.notFound().build();
+    }
+
+    /** Progression enregistrée dans {@code user_roadmap_completions} (par nom d'utilisateur de session). */
+    @GetMapping("/roadmap/progress")
+    public ResponseEntity<Map<String, Object>> getRoadmapProgress(@RequestParam String username) {
+        if (username == null || username.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "username requis"));
+        }
+        String u = username.trim();
+        List<Integer> ids =
+                roadmapCompletionRepo.findByUsernameOrderByCompletedAtAsc(u).stream()
+                        .map(c -> c.getRoadmapNode().getNodeId())
+                        .toList();
+        return ResponseEntity.ok(Map.of("completedNodeIds", ids, "username", u));
+    }
+
+    /**
+     * Indique si l'utilisateur peut lancer cette étape : la 1re est libre, les suivantes
+     * exigent l'étape précédente (ordre {@code stepOrder}) terminée.
+     */
+    @GetMapping("/roadmap/nodes/{nodeId}/can-play")
+    public ResponseEntity<Map<String, Object>> canPlayRoadmapNode(
+            @PathVariable Integer nodeId, @RequestParam String username) {
+        if (username == null || username.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("allowed", false, "error", "username requis"));
+        }
+        String u = username.trim();
+        if (!roadRepo.existsById(nodeId)) {
+            return ResponseEntity.ok(Map.of("allowed", false, "error", "Étape inconnue"));
+        }
+        Optional<String> block = validatePreviousStageCompleted(u, nodeId);
+        if (block.isPresent()) {
+            return ResponseEntity.ok(Map.of("allowed", false, "error", block.get()));
+        }
+        return ResponseEntity.ok(Map.of("allowed", true));
+    }
+
+    @PostMapping("/roadmap/nodes/{nodeId}/complete")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> completeRoadmapNode(
+            @PathVariable Integer nodeId, @RequestBody(required = false) Map<String, Object> body) {
+        String username = "";
+        if (body != null && body.get("username") != null) {
+            username = String.valueOf(body.get("username")).trim();
+        }
+        if (username.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "username requis"));
+        }
+        RoadmapNode node = roadRepo.findById(nodeId).orElse(null);
+        if (node == null) {
+            return ResponseEntity.notFound().build();
+        }
+        Optional<String> block = validatePreviousStageCompleted(username, nodeId);
+        if (block.isPresent()) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("error", block.get()));
+        }
+        if (roadmapCompletionRepo.existsByUsernameAndRoadmapNode_NodeId(username, nodeId)) {
+            return ResponseEntity.ok(Map.of("alreadyCompleted", true, "nodeId", nodeId));
+        }
+        UserRoadmapCompletion row = new UserRoadmapCompletion();
+        row.setUsername(username);
+        row.setRoadmapNode(node);
+        row.setCompletedAt(new Date());
+        if (body != null) {
+            Object sc = body.get("score");
+            Object mx = body.get("maxScore");
+            if (sc instanceof Number n) {
+                row.setScore(n.intValue());
+            }
+            if (mx instanceof Number n) {
+                row.setMaxScore(n.intValue());
+            }
+        }
+        roadmapCompletionRepo.save(row);
+        return ResponseEntity.ok(Map.of("saved", true, "nodeId", nodeId));
+    }
+
+    /** Vide si l'étape peut être jouée / enregistrée ; sinon message d'erreur. */
+    private Optional<String> validatePreviousStageCompleted(String username, Integer nodeId) {
+        List<RoadmapNode> order = roadRepo.findAllByOrderByStepOrderAsc();
+        int idx = -1;
+        for (int i = 0; i < order.size(); i++) {
+            if (nodeId.equals(order.get(i).getNodeId())) {
+                idx = i;
+                break;
+            }
+        }
+        if (idx < 0) {
+            return Optional.of("Étape inconnue dans le parcours.");
+        }
+        if (idx == 0) {
+            return Optional.empty();
+        }
+        RoadmapNode previous = order.get(idx - 1);
+        Integer prevId = previous.getNodeId();
+        if (!roadmapCompletionRepo.existsByUsernameAndRoadmapNode_NodeId(username, prevId)) {
+            return Optional.of("Terminez d'abord l'étape précédente du parcours.");
+        }
+        return Optional.empty();
     }
 
     // --- PUZZLE IMAGE ---

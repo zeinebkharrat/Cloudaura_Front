@@ -4,6 +4,11 @@
       <div class="qp-loading">
         <p>Chargement du quiz...</p>
       </div>
+    } @else if (quiz() && loadError()) {
+      <div class="qp-loading">
+        <p>{{ loadError() }}</p>
+        <button class="btn-primary" (click)="backToHub()">Retour au Hub Ludique</button>
+      </div>
     } @else if (quiz()) {
       <header class="qp-header">
         <button class="btn-back" (click)="backToHub()">⟵ Quitter</button>
