@@ -58,6 +58,9 @@ public class LikeService implements ILikeService {
 
         insert.execute(params);
         Integer id = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Integer.class);
+        if (postId != null) {
+            refreshPostLikesCount(postId);
+        }
         return likeRepo.findById(id).orElse(null);
     }
 
@@ -73,7 +76,11 @@ public class LikeService implements ILikeService {
 
     @Override
     public void removeLike(Integer likeId) {
+        LikeEntity existing = likeRepo.findById(likeId).orElse(null);
         likeRepo.deleteById(likeId);
+        if (existing != null && existing.getPost() != null && existing.getPost().getPostId() != null) {
+            refreshPostLikesCount(existing.getPost().getPostId());
+        }
     }
     
     // New JWT-authenticated methods
@@ -92,6 +99,7 @@ public class LikeService implements ILikeService {
         if (existingLike.isPresent()) {
             // Unlike the post
             likeRepo.delete(existingLike.get());
+            refreshPostLikesCount(postId);
             return null; // Return null to indicate unliked
         } else {
             // Like the post
@@ -100,7 +108,9 @@ public class LikeService implements ILikeService {
             newLike.setPost(post);
             newLike.setCreatedAt(new Date());
             
-            return likeRepo.save(newLike);
+            LikeEntity saved = likeRepo.save(newLike);
+            refreshPostLikesCount(postId);
+            return saved;
         }
     }
     
@@ -132,6 +142,23 @@ public class LikeService implements ILikeService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
         
         Optional<LikeEntity> existingLike = likeRepo.findByUserAndPost(user, post);
-        existingLike.ifPresent(likeRepo::delete);
+        existingLike.ifPresent(like -> {
+            likeRepo.delete(like);
+            refreshPostLikesCount(postId);
+        });
+    }
+
+    private void refreshPostLikesCount(Integer postId) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM likes WHERE post_id = ?",
+                Integer.class,
+                postId
+        );
+
+        jdbcTemplate.update(
+                "UPDATE posts SET likes_count = ? WHERE post_id = ?",
+                count != null ? count : 0,
+                postId
+        );
     }
 }

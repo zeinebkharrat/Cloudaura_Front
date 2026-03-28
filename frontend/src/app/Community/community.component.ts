@@ -54,6 +54,13 @@ export class CommunityComponent {
   readonly newPostMediaFiles = signal<File[]>([]);
   readonly newPostMediaPreviews = signal<{ file: File; url: string; type: string }[]>([]);
 
+  // Edit post form
+  readonly editingPostId = signal<number | null>(null);
+  readonly editPostContent = signal<string>('');
+  readonly editPostLocation = signal<string>('');
+  readonly editPostVisibility = signal<string>('public');
+  readonly isSavingEdit = signal<boolean>(false);
+
   // Like toggle
   readonly togglingLikePostId = signal<number | null>(null);
 
@@ -289,6 +296,11 @@ export class CommunityComponent {
       const currentStatuses = this.likeStatuses();
       currentStatuses.set(postId, response.liked);
       this.likeStatuses.set(new Map(currentStatuses));
+
+      const updatedPosts = this.posts().map((post) =>
+        post.postId === postId ? { ...post, likesCount: response.count } : post
+      );
+      this.posts.set(updatedPosts);
       
       // Reload like nicknames for this post
       this.loadLikeStatusesAndNicknames();
@@ -431,9 +443,59 @@ export class CommunityComponent {
 
   // Edit post functionality
   startEditPost(post: Post): void {
-    // Implementation for editing posts
-    console.log('Edit post:', post.postId);
-    // TODO: Implement edit post modal/form
+    if (!post.postId) {
+      return;
+    }
+
+    this.editingPostId.set(post.postId);
+    this.editPostContent.set(post.content ?? '');
+    this.editPostLocation.set(post.location ?? '');
+    this.editPostVisibility.set(post.visibility ?? 'public');
+  }
+
+  cancelEditPost(): void {
+    this.editingPostId.set(null);
+    this.editPostContent.set('');
+    this.editPostLocation.set('');
+    this.editPostVisibility.set('public');
+    this.isSavingEdit.set(false);
+  }
+
+  isEditingPost(postId: number): boolean {
+    return this.editingPostId() === postId;
+  }
+
+  async saveEditedPost(post: Post): Promise<void> {
+    const postId = post.postId;
+    if (!postId) {
+      return;
+    }
+
+    const content = this.editPostContent().trim();
+    if (!content || this.isSavingEdit()) {
+      return;
+    }
+
+    this.isSavingEdit.set(true);
+
+    try {
+      await firstValueFrom(
+        this.postService.updatePost(postId, {
+          content,
+          location: this.editPostLocation().trim() || null,
+          visibility: this.editPostVisibility() || 'public',
+          likesCount: post.likesCount ?? 0,
+          commentsCount: post.commentsCount ?? 0,
+        })
+      );
+
+      this.cancelEditPost();
+      this.loadFeed();
+    } catch (error) {
+      console.error('Error updating post:', error);
+      alert('Failed to update post');
+      this.isSavingEdit.set(false);
+    }
   }
 
   // Reply functionality
@@ -589,10 +651,18 @@ export class CommunityComponent {
   }
 
   getLikeCount(postId: number): number {
+    const post = this.posts().find((p) => p.postId === postId);
+    if (typeof post?.likesCount === 'number') {
+      return post.likesCount;
+    }
     return this.likes().filter((l) => l.post?.postId === postId).length;
   }
 
   getCommentCount(postId: number): number {
+    const post = this.posts().find((p) => p.postId === postId);
+    if (typeof post?.commentsCount === 'number') {
+      return post.commentsCount;
+    }
     return this.comments().filter((c) => c.post?.postId === postId).length;
   }
 

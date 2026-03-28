@@ -64,6 +64,9 @@ public class CommentService implements ICommentService {
         try {
             insert.execute(params);
             Integer id = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Integer.class);
+            if (postId != null) {
+                refreshPostCommentsCount(postId);
+            }
             return commentRepo.findById(id).orElse(null);
         } catch (Exception e) {
             if (comment.getContent() == null) throw e;
@@ -72,6 +75,9 @@ public class CommentService implements ICommentService {
 
             insert.execute(byteParams);
             Integer id = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Integer.class);
+            if (postId != null) {
+                refreshPostCommentsCount(postId);
+            }
             return commentRepo.findById(id).orElse(null);
         }
     }
@@ -88,7 +94,11 @@ public class CommentService implements ICommentService {
 
     @Override
     public void removeComment(Integer commentId) {
+        Comment existing = commentRepo.findById(commentId).orElse(null);
         commentRepo.deleteById(commentId);
+        if (existing != null && existing.getPost() != null && existing.getPost().getPostId() != null) {
+            refreshPostCommentsCount(existing.getPost().getPostId());
+        }
     }
     
     // New JWT-authenticated method
@@ -97,5 +107,19 @@ public class CommentService implements ICommentService {
         Post post = postRepo.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
         return commentRepo.findByPost(post);
+    }
+
+    private void refreshPostCommentsCount(Integer postId) {
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM comments WHERE post_id = ?",
+                Integer.class,
+                postId
+        );
+
+        jdbcTemplate.update(
+                "UPDATE posts SET comments_count = ? WHERE post_id = ?",
+                count != null ? count : 0,
+                postId
+        );
     }
 }

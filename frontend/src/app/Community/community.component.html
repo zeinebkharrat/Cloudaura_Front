@@ -1,8 +1,8 @@
 <section class="community-page">
-  <div class="community-header glass-panel">
+  <div class="community-header glass-panel tunisian-sunset-header">
     <div class="community-header__left">
-      <h2>Communauté</h2>
-      <p>Un mini fil social : posts, likes, commentaires et media.</p>
+      <h2>Carnet de Voyage Tunisie</h2>
+      <p>Partagez vos spots, conseils, photos et retours d'experience entre voyageurs.</p>
     </div>
 
     <div class="community-header__right">
@@ -12,8 +12,8 @@
         (click)="goToMyPosts()"
         *ngIf="authService.isAuthenticated()"
       >
-        <span class="icon">📝</span>
-        My Posts
+        <span class="icon">🧭</span>
+        Mes publications
       </button>
     </div>
   </div>
@@ -249,31 +249,90 @@
                     class="btn-icon"
                     (click)="startEditPost(post)"
                     *ngIf="canEditPost(post)"
-                    title="Edit post"
+                    title="Modifier le post"
                   >
-                    ✏️
+                    <span aria-hidden="true">✎</span>
                   </button>
                   <button 
                     type="button"
                     class="btn-icon btn-icon--danger"
                     (click)="deletePost(post.postId!)"
                     *ngIf="canDeletePost(post)"
-                    title="Delete post"
+                    title="Supprimer le post"
                   >
-                    🗑️
+                    <span aria-hidden="true">🗑</span>
                   </button>
                 </div>
               </div>
             </header>
 
             <div class="post-content">
-              <p>{{ post.content }}</p>
-              <div class="post-location" *ngIf="post.location">
-                📍 {{ post.location }}
-              </div>
-              <div class="post-visibility" *ngIf="post.visibility">
-                🔒 {{ post.visibility }}
-              </div>
+              <ng-container *ngIf="!isEditingPost(post.postId!); else editPostForm">
+                <p>{{ post.content }}</p>
+                <div class="post-meta-row" *ngIf="post.location || post.visibility">
+                  <div class="post-location" *ngIf="post.location">
+                    📍 {{ post.location }}
+                  </div>
+                  <div class="post-visibility" *ngIf="post.visibility">
+                    {{ post.visibility === 'private' ? '🔒 Prive' : '🌍 Public' }}
+                  </div>
+                </div>
+              </ng-container>
+
+              <ng-template #editPostForm>
+                <div class="edit-post-form glass-panel">
+                  <label class="field-label">
+                    <span>Modifier le contenu</span>
+                    <textarea
+                      rows="3"
+                      class="form-textarea"
+                      [value]="editPostContent()"
+                      (input)="editPostContent.set($any($event.target).value)"
+                      placeholder="Mettez a jour votre post..."
+                    ></textarea>
+                  </label>
+
+                  <div class="form-row">
+                    <label class="field-label">
+                      <span>Lieu</span>
+                      <input
+                        type="text"
+                        class="form-input"
+                        [value]="editPostLocation()"
+                        (input)="editPostLocation.set($any($event.target).value)"
+                        placeholder="Ex: Hammamet"
+                      />
+                    </label>
+
+                    <label class="field-label">
+                      <span>Visibilite</span>
+                      <select
+                        class="form-select"
+                        [value]="editPostVisibility()"
+                        (change)="editPostVisibility.set($any($event.target).value)"
+                      >
+                        <option value="public">Public</option>
+                        <option value="private">Prive</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <div class="edit-post-actions">
+                    <button type="button" class="btn-outline" (click)="cancelEditPost()">
+                      Annuler
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-primary"
+                      [disabled]="!editPostContent().trim() || isSavingEdit()"
+                      (click)="saveEditedPost(post)"
+                    >
+                      <span *ngIf="!isSavingEdit()">Enregistrer</span>
+                      <span *ngIf="isSavingEdit()">Enregistrement...</span>
+                    </button>
+                  </div>
+                </div>
+              </ng-template>
 
               <div class="post-stats">
                 <div
@@ -285,7 +344,7 @@
                   <span
                     class="stat-count"
                     (click)="$event.stopPropagation(); toggleLikersModal(post.postId!)"
-                  >{{ getLikeNicknames(post.postId!).length }} likes</span>
+                  >{{ getLikeCount(post.postId!) }} j'aime</span>
                 </div>
                 <div
                   class="stat-item stat-item--clickable"

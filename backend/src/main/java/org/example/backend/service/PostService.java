@@ -86,8 +86,13 @@ public class PostService implements IPostService {
     }
 
     @Override
+    @Transactional
     public void removePost(Integer postId) {
-        postRepo.deleteById(postId);
+        // Execute explicit SQL deletes to guarantee FK-safe ordering.
+        jdbcTemplate.update("DELETE FROM likes WHERE post_id = ?", postId);
+        jdbcTemplate.update("DELETE FROM comments WHERE post_id = ?", postId);
+        jdbcTemplate.update("DELETE FROM post_media WHERE post_id = ?", postId);
+        jdbcTemplate.update("DELETE FROM posts WHERE post_id = ?", postId);
     }
     
     @Override

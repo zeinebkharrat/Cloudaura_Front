@@ -1,6 +1,23 @@
 .community-page {
   padding: 96px 6% 48px;
   min-height: 100vh;
+  background:
+    radial-gradient(1100px 480px at -10% -15%, rgba(255, 122, 24, 0.18), transparent 60%),
+    radial-gradient(800px 420px at 110% 10%, rgba(0, 119, 182, 0.2), transparent 62%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0));
+}
+
+.tunisian-sunset-header {
+  position: relative;
+  overflow: hidden;
+}
+
+.tunisian-sunset-header::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(120deg, rgba(255, 122, 24, 0.08), rgba(0, 119, 182, 0.08));
 }
 
 .community-header {
@@ -14,7 +31,7 @@
 
 .community-header__left h2 {
   margin: 0 0 6px;
-  font-size: 1.65rem;
+  font-size: 1.78rem;
   color: var(--text-color);
   font-weight: 700;
   background: var(--title-gradient);
@@ -299,6 +316,7 @@
   border-radius: 16px;
   overflow: hidden;
   transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.16);
 }
 
 .post-card:hover {
@@ -312,6 +330,7 @@
   align-items: flex-start;
   padding: 20px 20px 16px;
   border-bottom: 1px solid var(--glass-border);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent);
 }
 
 .post-author {
@@ -357,19 +376,21 @@
 }
 
 .btn-icon {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05));
+  border: 1px solid rgba(255, 255, 255, 0.24);
   border-radius: 8px;
   color: var(--text-color);
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 15px;
+  font-weight: 700;
   transition: all 0.2s ease;
 }
 
 .btn-icon:hover {
   background: var(--btn-outline-hover-bg);
+  transform: translateY(-1px);
 }
 
 .btn-icon--danger:hover {
@@ -384,18 +405,46 @@
   font-size: 1rem;
 }
 
+.edit-post-form {
+  padding: 14px;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  margin-bottom: 8px;
+}
+
+.edit-post-actions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .post-location {
-  padding: 8px 20px;
-  background: var(--glass-bg);
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 12px;
+  background: rgba(255, 122, 24, 0.14);
   color: var(--text-muted);
   font-size: 0.9rem;
-  border-radius: 8px;
-  margin: 0 20px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 122, 24, 0.25);
 }
 .post-visibility {
+  display: inline-flex;
+  align-items: center;
   color: var(--text-muted);
   font-size: 0.9rem;
-  margin: 0 20px 16px;
+  border-radius: 999px;
+  padding: 7px 12px;
+  background: rgba(0, 119, 182, 0.14);
+  border: 1px solid rgba(0, 119, 182, 0.25);
+}
+
+.post-meta-row {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 16px;
+  flex-wrap: wrap;
 }
 
 /* Post Stats Bar */
@@ -405,6 +454,7 @@
   padding: 12px 20px;
   border-top: 1px solid var(--glass-border);
   margin-top: 12px;
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .stat-item {
@@ -425,7 +475,7 @@
 }
 
 .stat-item--clickable:hover {
-  background: var(--btn-outline-hover-bg);
+  background: rgba(255, 255, 255, 0.08);
   color: var(--text-color);
 }
 

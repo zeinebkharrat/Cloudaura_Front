@@ -6,6 +6,7 @@ import { LikeEntity } from './community.types';
 export interface ToggleLikeResponse {
   liked: boolean;
   like: LikeEntity | null;
+  count: number;
   message: string;
 }
 

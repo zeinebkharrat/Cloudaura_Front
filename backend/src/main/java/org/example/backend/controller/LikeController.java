@@ -38,6 +38,7 @@ public class LikeController {
             Map<String, Object> response = new HashMap<>();
             response.put("liked", isLiked);
             response.put("like", like);
+            response.put("count", likeService.getLikesByPost(postId).size());
             response.put("message", isLiked ? "Post liked" : "Post unliked");
             
             return ResponseEntity.ok(response);
