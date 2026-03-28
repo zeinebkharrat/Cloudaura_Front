@@ -7,11 +7,16 @@ import { Observable } from 'rxjs';
 })
 export class PaymentService {
   private http = inject(HttpClient);
-  private apiUrl = 'http://localhost:8081/api/payment'; // L'URL de ton Spring Boot
+  private apiUrl = 'http://localhost:9091/api/payment'; // L'URL de ton Spring Boot
 
-  createCheckoutSession(eventName: string, amount: number): Observable<{ id: string }> {
-    // Stripe attend des centimes, donc on multiplie par 100
-    const body = { eventName, amount: amount * 100 };
-    return this.http.post<{ id: string }>(`${this.apiUrl}/create-session`, body);
-  }
+createSession(data: { price: number, productName: string, eventId: number }) {
+  // On multiplie par 100 pour Stripe (centimes)
+  const amountInCents = Math.round(data.price * 100);
+
+  return this.http.post<{url: string}>(`${this.apiUrl}/create-session`, {
+    amount: amountInCents,
+    productName: data.productName, // Ce nom doit être identique au champ dans ton DTO Java
+    eventId: data.eventId
+  });
+}
 }
