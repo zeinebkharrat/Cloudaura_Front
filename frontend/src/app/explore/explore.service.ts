@@ -3,10 +3,13 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import {
   Activity,
+  ActivityAvailabilityDay,
+  ActivityReservationListItem,
   ActivityMedia,
   ActivityReservationResponse,
   CityResolveResponse,
   CreateActivityReservationRequest,
+  PageResponse,
   PublicCityDetailsResponse,
   Restaurant,
 } from './explore.models';
@@ -38,7 +41,25 @@ export class ExploreService {
     return this.http.get<ActivityMedia[]>(`${this.base}/activities/${activityId}/media`);
   }
 
+  getActivityAvailability(
+    activityId: number,
+    from: string,
+    days: number,
+    participants: number
+  ): Observable<ActivityAvailabilityDay[]> {
+    const params = new HttpParams()
+      .set('from', from)
+      .set('days', days)
+      .set('participants', participants);
+    return this.http.get<ActivityAvailabilityDay[]>(`${this.base}/activities/${activityId}/availability`, { params });
+  }
+
   reserveActivity(activityId: number, payload: CreateActivityReservationRequest): Observable<ActivityReservationResponse> {
     return this.http.post<ActivityReservationResponse>(`${this.base}/activities/${activityId}/reservations`, payload);
+  }
+
+  myActivityReservations(page: number, size: number, sort: string): Observable<PageResponse<ActivityReservationListItem>> {
+    const params = new HttpParams().set('page', page).set('size', size).set('sort', sort);
+    return this.http.get<PageResponse<ActivityReservationListItem>>(`${this.base}/my/activity-reservations`, { params });
   }
 }

@@ -65,6 +65,8 @@ export interface Activity {
   address: string | null;
   latitude: number | null;
   longitude: number | null;
+  maxParticipantsPerDay: number | null;
+  maxParticipantsStartDate: string | null;
 }
 
 export interface ActivityRequest {
@@ -76,6 +78,8 @@ export interface ActivityRequest {
   address: string | null;
   latitude: number | null;
   longitude: number | null;
+  maxParticipantsPerDay: number | null;
+  maxParticipantsStartDate: string | null;
 }
 
 export interface CityMedia {
@@ -104,4 +108,21 @@ export interface ActivityMediaRequest {
   activityId: number;
   url: string;
   mediaType: MediaType;
+}
+
+export type ReservationStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED';
+
+export interface ActivityReservationListItem {
+  reservationId: number;
+  activityId: number;
+  activityName: string;
+  cityId: number;
+  cityName: string;
+  reservationDate: string;
+  numberOfPeople: number;
+  totalPrice: number;
+  status: ReservationStatus;
+  userId: number | null;
+  username: string | null;
+  userEmail: string | null;
 }

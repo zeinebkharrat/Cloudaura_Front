@@ -1,5 +1,16 @@
 export type MediaType = 'IMAGE' | 'VIDEO' | 'PANORAMA';
 
+export interface PageResponse<T> {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  first: boolean;
+  last: boolean;
+  sort: string;
+}
+
 export interface City {
   cityId: number;
   name: string;
@@ -43,6 +54,8 @@ export interface Activity {
   latitude: number | null;
   longitude: number | null;
   imageUrl: string | null;
+  maxParticipantsPerDay: number | null;
+  maxParticipantsStartDate: string | null;
 }
 
 export interface ActivityMedia {
@@ -66,7 +79,6 @@ export interface PublicCityDetailsResponse {
 }
 
 export interface CreateActivityReservationRequest {
-  userId?: number | null;
   reservationDate: string;
   numberOfPeople: number;
 }
@@ -79,4 +91,27 @@ export interface ActivityReservationResponse {
   numberOfPeople: number;
   totalPrice: number;
   status: 'PENDING' | 'CONFIRMED' | 'CANCELLED';
+}
+
+export interface ActivityAvailabilityDay {
+  date: string;
+  maxParticipantsPerDay: number | null;
+  reservedParticipants: number;
+  remainingParticipants: number | null;
+  available: boolean;
+}
+
+export interface ActivityReservationListItem {
+  reservationId: number;
+  activityId: number;
+  activityName: string;
+  cityId: number;
+  cityName: string;
+  reservationDate: string;
+  numberOfPeople: number;
+  totalPrice: number;
+  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED';
+  userId: number | null;
+  username: string | null;
+  userEmail: string | null;
 }

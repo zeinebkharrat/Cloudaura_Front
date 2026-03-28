@@ -92,22 +92,67 @@
       </header>
 
       <form (ngSubmit)="submitReservation()" #reservationForm="ngForm" class="form">
-        <label>
-          Number of participants
-          <input type="number" name="numberOfPeople" required min="1" [(ngModel)]="form.numberOfPeople" />
-        </label>
+        <div class="booking-grid">
+          <label>
+            Nombre de participants
+            <input type="number" name="numberOfPeople" required min="1" [(ngModel)]="form.numberOfPeople" (ngModelChange)="onParticipantsChanged()" />
+          </label>
 
-        <label>
-          Reservation date
-          <input type="date" name="reservationDate" required [(ngModel)]="form.reservationDate" />
-        </label>
+          <label class="toggle-row">
+            <input type="checkbox" name="showOnlyAvailable" [(ngModel)]="showOnlyAvailable" (ngModelChange)="buildCalendar()" />
+            Afficher seulement les dates disponibles
+          </label>
+        </div>
 
-        <label>
-          User ID (optional)
-          <input type="number" name="userId" min="1" [(ngModel)]="form.userId" />
-        </label>
+        <div class="calendar-wrap">
+          <header class="calendar-head">
+            <button type="button" class="calendar-nav" (click)="previousMonth()">‹</button>
+            <strong>{{ monthLabel() }}</strong>
+            <button type="button" class="calendar-nav" (click)="nextMonth()">›</button>
+          </header>
 
-        <button class="primary-btn" [disabled]="reservationForm.invalid || submitting" type="submit">
+          <div class="calendar-weekdays">
+            <span *ngFor="let weekday of weekdays">{{ weekday }}</span>
+          </div>
+
+          <div class="calendar-grid" [class.loading]="loadingAvailability">
+            <ng-container *ngFor="let cell of calendarDays">
+              <button
+                type="button"
+                class="calendar-cell"
+                *ngIf="!showOnlyAvailable || !cell.inCurrentMonth || cell.available"
+                [class.outside]="!cell.inCurrentMonth"
+                [class.unavailable]="cell.inCurrentMonth && !cell.available"
+                [class.available]="cell.inCurrentMonth && cell.available"
+                [class.selected]="isSelectedDate(cell.dateIso)"
+                [disabled]="!cell.selectable"
+                (click)="selectDate(cell)">
+                <span class="day">{{ cell.dayNumber }}</span>
+                <small *ngIf="cell.inCurrentMonth">
+                  <ng-container *ngIf="cell.remainingParticipants == null; else limitedPlaces">∞</ng-container>
+                  <ng-template #limitedPlaces>{{ cell.remainingParticipants }} pl.</ng-template>
+                </small>
+              </button>
+            </ng-container>
+          </div>
+        </div>
+
+        <div class="booking-summary">
+          <div>
+            <span>Date sélectionnée</span>
+            <strong>{{ form.reservationDate }}</strong>
+          </div>
+          <div>
+            <span>Places restantes</span>
+            <strong>{{ selectedRemainingPlaces() }}</strong>
+          </div>
+          <div>
+            <span>Prix total</span>
+            <strong>{{ totalPrice() | number: '1.2-2' }} TND</strong>
+          </div>
+        </div>
+
+        <button class="primary-btn" [disabled]="reservationForm.invalid || submitting || loadingAvailability" type="submit">
           {{ submitting ? 'Sending...' : 'Confirm booking' }}
         </button>
       </form>

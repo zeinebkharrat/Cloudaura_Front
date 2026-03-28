@@ -17,6 +17,7 @@ import { AuditLogsComponent } from './audit-logs.component';
 import { AdminCitiesComponent } from './admin/cities/admin-cities.component';
 import { AdminRestaurantsComponent } from './admin/restaurants/admin-restaurants.component';
 import { AdminActivitiesComponent } from './admin/activities/admin-activities.component';
+import { AdminActivityReservationsComponent } from './admin/activity-reservations/admin-activity-reservations.component';
 import { CityExploreComponent } from './explore/city-explore.component';
 import { RestaurantDetailComponent } from './explore/restaurant-detail.component';
 import { ActivityDetailComponent } from './explore/activity-detail.component';
@@ -45,6 +46,7 @@ export const routes: Routes = [
       { path: 'cities', component: AdminCitiesComponent },
       { path: 'restaurants', component: AdminRestaurantsComponent },
       { path: 'activities', component: AdminActivitiesComponent },
+      { path: 'activity-reservations', component: AdminActivityReservationsComponent },
     ],
   },
   { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },

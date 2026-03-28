@@ -8,11 +8,15 @@ import org.example.backend.model.ActivityMedia;
 import org.example.backend.model.Activity;
 import org.example.backend.repository.ActivityMediaRepository;
 import org.example.backend.repository.ActivityRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.time.LocalDate;
 
 @Service
 @RequiredArgsConstructor
@@ -78,6 +82,22 @@ public class ActivityService {
         activity.setAddress(request.getAddress());
         activity.setLatitude(request.getLatitude());
         activity.setLongitude(request.getLongitude());
+
+        Integer maxParticipants = request.getMaxParticipantsPerDay();
+        if (maxParticipants != null && maxParticipants < 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le nombre maximal de participants doit être >= 1");
+        }
+
+        if (maxParticipants == null) {
+            activity.setMaxParticipantsPerDay(null);
+            activity.setMaxParticipantsStartDate(LocalDate.now());
+            return;
+        }
+
+        activity.setMaxParticipantsPerDay(maxParticipants);
+        activity.setMaxParticipantsStartDate(
+            request.getMaxParticipantsStartDate() != null ? request.getMaxParticipantsStartDate() : LocalDate.now()
+        );
     }
 
     private ActivityResponse toResponse(Activity activity) {
@@ -98,7 +118,9 @@ public class ActivityService {
             activity.getAddress(),
             activity.getLatitude(),
             activity.getLongitude(),
-            imageUrl
+            imageUrl,
+            activity.getMaxParticipantsPerDay(),
+            activity.getMaxParticipantsStartDate()
         );
     }
 }

@@ -44,6 +44,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/api/public/activities/*/reservations").authenticated()
+                    .requestMatchers("/api/public/my/**").authenticated()
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/cities/**").permitAll()
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()

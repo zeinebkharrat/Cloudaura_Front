@@ -1,10 +1,13 @@
 package org.example.backend.controller;
 
 import jakarta.validation.Valid;
+import org.example.backend.dto.ActivityReservationListItemResponse;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.dto.ActivityResponse;
 import org.example.backend.dto.ActivityMediaResponse;
+import org.example.backend.dto.PageResponse;
 import org.example.backend.dto.RestaurantResponse;
+import org.example.backend.dto.publicapi.ActivityAvailabilityDayResponse;
 import org.example.backend.dto.publicapi.ActivityReservationResponse;
 import org.example.backend.dto.publicapi.CityResolveResponse;
 import org.example.backend.dto.publicapi.CreateActivityReservationRequest;
@@ -13,8 +16,15 @@ import org.example.backend.service.ActivityReservationService;
 import org.example.backend.service.ActivityService;
 import org.example.backend.service.PublicExploreService;
 import org.example.backend.service.RestaurantService;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
+import java.time.DateTimeException;
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -52,11 +62,46 @@ public class PublicExploreController {
         return publicExploreService.getActivityMedia(activityId);
     }
 
+    @GetMapping("/activities/{activityId}/availability")
+    public List<ActivityAvailabilityDayResponse> getActivityAvailability(
+        @PathVariable Integer activityId,
+        @RequestParam(required = false) String from,
+        @RequestParam(defaultValue = "45") int days,
+        @RequestParam(defaultValue = "1") int participants
+    ) {
+        LocalDate fromDate;
+        try {
+            fromDate = (from == null || from.isBlank()) ? LocalDate.now() : LocalDate.parse(from);
+        } catch (DateTimeException ex) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Paramètre from invalide (yyyy-MM-dd)");
+        }
+        return activityReservationService.availability(activityId, fromDate, days, participants);
+    }
+
     @PostMapping("/activities/{activityId}/reservations")
     public ActivityReservationResponse createActivityReservation(
         @PathVariable Integer activityId,
         @Valid @RequestBody CreateActivityReservationRequest request
     ) {
         return activityReservationService.create(activityId, request);
+    }
+
+    @GetMapping("/my/activity-reservations")
+    public PageResponse<ActivityReservationListItemResponse> myActivityReservations(
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size,
+        @RequestParam(defaultValue = "reservationDate,desc") String sort
+    ) {
+        Pageable pageable = buildPageable(page, size, sort);
+        return PageResponse.from(activityReservationService.listCurrentUserReservations(pageable));
+    }
+
+    private Pageable buildPageable(int page, int size, String sort) {
+        String[] sortParts = sort.split(",");
+        String sortBy = sortParts[0].trim();
+        Sort.Direction direction = (sortParts.length > 1 && "desc".equalsIgnoreCase(sortParts[1]))
+            ? Sort.Direction.DESC
+            : Sort.Direction.ASC;
+        return PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100), Sort.by(direction, sortBy));
     }
 }

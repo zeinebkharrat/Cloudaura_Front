@@ -116,6 +116,19 @@
             <small class="field-error">{{ fieldErrors.price }}</small>
           }
         </label>
+        <label>
+          Max participants / jour (optionnel)
+          <input type="number" min="1" [(ngModel)]="form.maxParticipantsPerDay" (ngModelChange)="clearFieldError('maxParticipantsPerDay')" [class.input-invalid]="fieldErrors.maxParticipantsPerDay" placeholder="Illimité si vide" />
+          @if (fieldErrors.maxParticipantsPerDay) {
+            <small class="field-error">{{ fieldErrors.maxParticipantsPerDay }}</small>
+          }
+        </label>
+        @if (editingId) {
+          <label>
+            Date début validité du max
+            <input type="date" [(ngModel)]="form.maxParticipantsStartDate" />
+          </label>
+        }
         <label class="span-2">
           Description
           <textarea rows="3" [(ngModel)]="form.description" placeholder="Description touristique de l’activité"></textarea>
@@ -241,6 +254,8 @@
             <div><strong>Adresse:</strong> {{ detailsActivity.address || '—' }}</div>
             <div><strong>Latitude:</strong> {{ detailsActivity.latitude ?? '—' }}</div>
             <div><strong>Longitude:</strong> {{ detailsActivity.longitude ?? '—' }}</div>
+            <div><strong>Max/jour:</strong> {{ detailsActivity.maxParticipantsPerDay ?? 'Illimité' }}</div>
+            <div><strong>Début validité:</strong> {{ detailsActivity.maxParticipantsStartDate || '—' }}</div>
             <div><strong>Médias:</strong> {{ detailsMediaItems.length }}</div>
           </div>
         </article>

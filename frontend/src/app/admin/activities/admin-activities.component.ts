@@ -30,7 +30,7 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
   showModal = false;
   showDetailsModal = false;
   geocodeMessage = '';
-  fieldErrors: Partial<Record<'cityId' | 'name' | 'price' | 'latitude' | 'longitude', string>> = {};
+  fieldErrors: Partial<Record<'cityId' | 'name' | 'price' | 'latitude' | 'longitude' | 'maxParticipantsPerDay', string>> = {};
 
   mediaItems: ActivityMedia[] = [];
   detailsActivity: Activity | null = null;
@@ -55,6 +55,8 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
     address: string;
     latitude: number | null;
     longitude: number | null;
+    maxParticipantsPerDay: number | null;
+    maxParticipantsStartDate: string | null;
   } = {
     cityId: null,
     name: '',
@@ -64,6 +66,8 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
     address: '',
     latitude: null,
     longitude: null,
+    maxParticipantsPerDay: null,
+    maxParticipantsStartDate: null,
   };
 
   private map?: L.Map;
@@ -155,6 +159,8 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
       address: item.address ?? '',
       latitude: item.latitude,
       longitude: item.longitude,
+      maxParticipantsPerDay: item.maxParticipantsPerDay,
+      maxParticipantsStartDate: item.maxParticipantsStartDate,
     };
     this.activityForMedia = item;
     this.mediaPage = 0;
@@ -221,6 +227,8 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
       address: '',
       latitude: null,
       longitude: null,
+      maxParticipantsPerDay: null,
+      maxParticipantsStartDate: null,
     };
     this.activityForMedia = null;
     this.mediaItems = [];
@@ -245,6 +253,8 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
       address: this.nullIfBlank(this.form.address),
       latitude: this.form.latitude,
       longitude: this.form.longitude,
+      maxParticipantsPerDay: this.form.maxParticipantsPerDay,
+      maxParticipantsStartDate: this.editingId ? this.form.maxParticipantsStartDate : null,
     };
 
     const request$ = this.editingId == null
@@ -432,7 +442,7 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
     });
   }
 
-  clearFieldError(field: 'cityId' | 'name' | 'price' | 'latitude' | 'longitude'): void {
+  clearFieldError(field: 'cityId' | 'name' | 'price' | 'latitude' | 'longitude' | 'maxParticipantsPerDay'): void {
     delete this.fieldErrors[field];
     this.modalError = '';
   }
@@ -455,6 +465,10 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
 
     if (this.form.price != null && this.form.price < 0) {
       this.fieldErrors.price = 'Le prix doit être supérieur ou égal à 0.';
+    }
+
+    if (this.form.maxParticipantsPerDay != null && this.form.maxParticipantsPerDay < 1) {
+      this.fieldErrors.maxParticipantsPerDay = 'Le maximum de participants doit être supérieur ou égal à 1.';
     }
 
     const latitude = this.form.latitude;
