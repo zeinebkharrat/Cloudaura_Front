@@ -1,11 +1,15 @@
 package org.example.backend.service;
 
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import org.example.backend.dto.shop.AddToCartRequest;
 import org.example.backend.dto.shop.UpdateCartItemRequest;
+import org.example.backend.dto.shop.CheckoutBuyerDto;
 import org.example.backend.dto.shop.CheckoutOrderDto;
+import org.example.backend.dto.shop.MyOrderSummaryDto;
 import org.example.backend.dto.shop.OrderLineDto;
 import org.example.backend.dto.shop.ShopCartDto;
 import org.example.backend.dto.shop.ShopCartLineDto;
@@ -179,6 +183,7 @@ public class ShopService {
         order.setUser(user);
         order.setTotalAmount(total);
         order.setStatus(OrderStatus.PENDING);
+        order.setCreatedAt(new Date());
         order = orderEntityRepository.save(order);
 
         List<OrderLineDto> outLines = new ArrayList<>();
@@ -213,14 +218,111 @@ public class ShopService {
         dto.setStatus(order.getStatus());
         dto.setTotalAmount(order.getTotalAmount());
         dto.setLines(outLines);
+        dto.setOrderedAt(formatOrderInstant(order.getCreatedAt()));
+        dto.setBuyer(toBuyerDto(user));
         return dto;
+    }
+
+    @Transactional(readOnly = true)
+    public List<MyOrderSummaryDto> listMyOrders(String username) {
+        User u = findUser(username);
+        List<OrderEntity> orders = orderEntityRepository.findByUser_UserIdOrderByOrderIdDesc(u.getUserId());
+        List<MyOrderSummaryDto> out = new ArrayList<>();
+        for (OrderEntity o : orders) {
+            MyOrderSummaryDto s = new MyOrderSummaryDto();
+            s.setOrderId(o.getOrderId());
+            s.setStatus(o.getStatus());
+            s.setTotalAmount(o.getTotalAmount());
+            s.setOrderedAt(formatOrderInstant(o.getCreatedAt()));
+            s.setItemCount((int) orderItemRepository.countByOrder_OrderId(o.getOrderId()));
+            out.add(s);
+        }
+        return out;
+    }
+
+    @Transactional(readOnly = true)
+    public List<MyOrderSummaryDto> listArtisanOrders(String username) {
+        // We find all order items for this artisan's products
+        List<OrderItem> items = orderItemRepository.findByArtisanUsername(username);
+        // Group by order to return unique orders
+        List<Integer> seenIds = new ArrayList<>();
+        List<MyOrderSummaryDto> out = new ArrayList<>();
+        for (OrderItem oi : items) {
+            OrderEntity o = oi.getOrder();
+            if (!seenIds.contains(o.getOrderId())) {
+                seenIds.add(o.getOrderId());
+                MyOrderSummaryDto s = new MyOrderSummaryDto();
+                s.setOrderId(o.getOrderId());
+                s.setStatus(o.getStatus());
+                s.setTotalAmount(o.getTotalAmount()); // Note: this is the total order amount, not just this artisan's part
+                s.setOrderedAt(formatOrderInstant(o.getCreatedAt()));
+                s.setItemCount((int) orderItemRepository.countByOrder_OrderId(o.getOrderId()));
+                out.add(s);
+            }
+        }
+        return out;
+    }
+
+    @Transactional(readOnly = true)
+    public CheckoutOrderDto getMyOrderDetail(String username, Integer orderId) {
+        User u = findUser(username);
+        OrderEntity order = orderEntityRepository.findById(orderId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Commande introuvable"));
+            
+        // Check if buyer
+        boolean isBuyer = order.getUser() != null && order.getUser().getUserId().equals(u.getUserId());
+        
+        // Check if artisan of any product in this order
+        List<OrderItem> items = orderItemRepository.findByOrderIdWithProduct(orderId);
+        boolean isArtisanOfOrder = items.stream()
+            .anyMatch(oi -> oi.getProduct() != null && oi.getProduct().getUser() != null && 
+                            oi.getProduct().getUser().getUserId().equals(u.getUserId()));
+
+        if (!isBuyer && !isArtisanOfOrder) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Accès refuse");
+        }
+        
+        User buyer = order.getUser();
+        List<OrderLineDto> lines = new ArrayList<>();
+        for (OrderItem oi : items) {
+            Product p = oi.getProduct();
+            int qty = oi.getQuantity() != null ? oi.getQuantity() : 0;
+            double price = p.getPrice() != null ? p.getPrice() : 0;
+            lines.add(new OrderLineDto(
+                oi.getOrderItemId(),
+                p.getProductId(),
+                p.getName(),
+                qty,
+                price,
+                price * qty
+            ));
+        }
+        CheckoutOrderDto dto = new CheckoutOrderDto();
+        dto.setOrderId(order.getOrderId());
+        dto.setStatus(order.getStatus());
+        dto.setTotalAmount(order.getTotalAmount());
+        dto.setLines(lines);
+        dto.setOrderedAt(formatOrderInstant(order.getCreatedAt()));
+        dto.setBuyer(toBuyerDto(buyer));
+        return dto;
+    }
+
+    private static String formatOrderInstant(Date createdAt) {
+        if (createdAt == null) {
+            return null;
+        }
+        return DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(
+            createdAt.toInstant().atZone(ZoneId.systemDefault())
+        );
     }
 
     private User findUser(String username) {
         if (username == null || username.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Utilisateur requis");
         }
-        return userRepository.findByUsernameIgnoreCase(username.trim())
+        String identifier = username.trim();
+        return userRepository.findByUsernameIgnoreCase(identifier)
+            .or(() -> userRepository.findByEmailIgnoreCase(identifier))
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur inconnu"));
     }
 
@@ -267,5 +369,15 @@ public class ShopService {
         dto.setItems(new ArrayList<>());
         dto.setTotal(0);
         return dto;
+    }
+
+    private CheckoutBuyerDto toBuyerDto(User user) {
+        CheckoutBuyerDto b = new CheckoutBuyerDto();
+        b.setUsername(user.getUsername());
+        b.setEmail(user.getEmail());
+        b.setFirstName(user.getFirstName());
+        b.setLastName(user.getLastName());
+        b.setPhone(user.getPhone());
+        return b;
     }
 }

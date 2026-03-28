@@ -1,8 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
-import { ShopService, ShopCart, ShopCartLine, CheckoutOrder } from '../core/shop.service';
-import { AuthService } from '../core/auth.service';
+import { RouterLink } from '@angular/router';
+import { ShopService, ShopCart, ShopCartLine, CheckoutOrder, CheckoutBuyer } from '../core/shop.service';
 
 @Component({
   selector: 'app-cart-page',
@@ -13,8 +12,6 @@ import { AuthService } from '../core/auth.service';
 })
 export class CartPageComponent implements OnInit {
   private readonly shop = inject(ShopService);
-  private readonly auth = inject(AuthService);
-  private readonly router = inject(Router);
 
   readonly cart = signal<ShopCart | null>(null);
   readonly loading = signal(true);
@@ -25,10 +22,6 @@ export class CartPageComponent implements OnInit {
   readonly qtyUpdatingId = signal<number | null>(null);
 
   ngOnInit(): void {
-    if (!this.auth.isLoggedIn()) {
-      this.router.navigate(['/login']);
-      return;
-    }
     this.load();
   }
 
@@ -88,6 +81,10 @@ export class CartPageComponent implements OnInit {
     });
   }
 
+  clearReceipt(): void {
+    this.orderDone.set(null);
+  }
+
   checkout(): void {
     this.checkoutLoading.set(true);
     this.error.set(null);
@@ -117,5 +114,34 @@ export class CartPageComponent implements OnInit {
     return new Intl.NumberFormat('fr-TN', { style: 'currency', currency: 'TND', minimumFractionDigits: 2 }).format(
       Number(p)
     );
+  }
+
+  orderStatusLabel(status: string | null | undefined): string {
+    const s = (status ?? '').toUpperCase();
+    if (s === 'PENDING') return 'En attente de traitement';
+    if (s === 'CONFIRMED' || s === 'CONFIRMÉE') return 'Confirmée';
+    if (s === 'SHIPPED') return 'Expédiée';
+    if (s === 'DELIVERED') return 'Livrée';
+    if (s === 'CANCELLED') return 'Annulée';
+    return status ?? '—';
+  }
+
+  formatOrderedAt(iso: string | null | undefined): string {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return new Intl.DateTimeFormat('fr-FR', {
+      dateStyle: 'long',
+      timeStyle: 'short',
+    }).format(d);
+  }
+
+  buyerDisplayName(b: CheckoutBuyer | null | undefined): string {
+    if (!b) return '—';
+    const fn = (b.firstName ?? '').trim();
+    const ln = (b.lastName ?? '').trim();
+    const full = `${fn} ${ln}`.trim();
+    if (full) return full;
+    return b.username ?? '—';
   }
 }

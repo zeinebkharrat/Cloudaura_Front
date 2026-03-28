@@ -1,9 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { concatMap, from, map, Observable, of, switchMap, toArray } from 'rxjs';
 import Swal from 'sweetalert2';
-import { City, CityMedia, CityRequest, MediaType } from '../admin-api.models';
+import { City, CityMedia, CityRequest } from '../admin-api.models';
 import { CityAdminService } from '../services/city-admin.service';
 
 @Component({
@@ -13,7 +13,7 @@ import { CityAdminService } from '../services/city-admin.service';
   templateUrl: './admin-cities.component.html',
   styleUrl: './admin-cities.component.css',
 })
-export class AdminCitiesComponent implements OnInit {
+export class AdminCitiesComponent implements OnInit, OnDestroy {
   cities: City[] = [];
   q = '';
   sort = 'cityId,desc';
@@ -25,6 +25,9 @@ export class AdminCitiesComponent implements OnInit {
   loading = false;
   error = '';
   showCityModal = false;
+  showDetailsModal = false;
+  modalError = '';
+  fieldErrors: Partial<Record<'name' | 'region' | 'description' | 'latitude' | 'longitude', string>> = {};
 
   editingCityId: number | null = null;
   cityForm: CityRequest = {
@@ -37,19 +40,33 @@ export class AdminCitiesComponent implements OnInit {
 
   mediaCity: City | null = null;
   mediaItems: CityMedia[] = [];
+  detailsCity: City | null = null;
+  detailsMediaItems: CityMedia[] = [];
+  detailsLoadingMedia = false;
   mediaQ = '';
   mediaSort = 'mediaId,desc';
   mediaPage = 0;
-  mediaSize = 6;
+  mediaSize = 200;
   mediaTotalPages = 0;
-  mediaType: MediaType = 'IMAGE';
   uploadFiles: File[] = [];
   mediaPreviewUrls: string[] = [];
+  private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private mediaSearchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(private readonly cityService: CityAdminService) {}
 
   ngOnInit(): void {
     this.loadCities();
+  }
+
+  ngOnDestroy(): void {
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+    }
+    if (this.mediaSearchDebounceTimer) {
+      clearTimeout(this.mediaSearchDebounceTimer);
+    }
+    this.clearSelectedFiles();
   }
 
   loadCities(): void {
@@ -72,6 +89,14 @@ export class AdminCitiesComponent implements OnInit {
   searchCities(): void {
     this.page = 0;
     this.loadCities();
+  }
+
+  onSearchInputChange(): void {
+    this.page = 0;
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+    }
+    this.searchDebounceTimer = setTimeout(() => this.loadCities(), 300);
   }
 
   changeCityPage(next: boolean): void {
@@ -101,6 +126,7 @@ export class AdminCitiesComponent implements OnInit {
     this.mediaCity = city;
     this.mediaPage = 0;
     this.mediaQ = '';
+    this.clearValidationErrors();
     this.loadMedia();
     this.showCityModal = true;
   }
@@ -119,13 +145,14 @@ export class AdminCitiesComponent implements OnInit {
     this.mediaPage = 0;
     this.mediaTotalPages = 0;
     this.mediaQ = '';
+    this.clearValidationErrors();
     this.clearSelectedFiles();
   }
 
   openCreateModal(): void {
     this.error = '';
+    this.modalError = '';
     this.resetCityForm();
-    this.mediaType = 'IMAGE';
     this.showCityModal = true;
   }
 
@@ -134,7 +161,35 @@ export class AdminCitiesComponent implements OnInit {
     this.resetCityForm();
   }
 
+  openDetails(city: City): void {
+    this.detailsCity = city;
+    this.detailsMediaItems = [];
+    this.detailsLoadingMedia = true;
+    this.showDetailsModal = true;
+
+    this.cityService.listCityMedia(city.cityId, '', 0, 24, 'mediaId,desc').subscribe({
+      next: (res) => {
+        this.detailsMediaItems = res.content;
+        this.detailsLoadingMedia = false;
+      },
+      error: () => {
+        this.detailsLoadingMedia = false;
+      },
+    });
+  }
+
+  closeDetailsModal(): void {
+    this.showDetailsModal = false;
+    this.detailsCity = null;
+    this.detailsMediaItems = [];
+    this.detailsLoadingMedia = false;
+  }
+
   saveCity(): void {
+    if (!this.validateCityForm()) {
+      return;
+    }
+
     const isEdit = this.editingCityId != null;
     const payload: CityRequest = {
       name: this.cityForm.name.trim(),
@@ -143,11 +198,6 @@ export class AdminCitiesComponent implements OnInit {
       latitude: this.cityForm.latitude,
       longitude: this.cityForm.longitude,
     };
-
-    if (!payload.name) {
-      this.error = 'Le nom de la ville est obligatoire';
-      return;
-    }
 
     const request$ = !isEdit
       ? this.cityService.createCity(payload).pipe(
@@ -171,7 +221,7 @@ export class AdminCitiesComponent implements OnInit {
         });
       },
       error: (err) => {
-        this.error = err?.error?.message ?? 'Erreur lors de l’enregistrement';
+        this.modalError = err?.error?.message ?? 'Erreur lors de l’enregistrement';
       },
     });
   }
@@ -197,6 +247,9 @@ export class AdminCitiesComponent implements OnInit {
       next: async () => {
         if (this.mediaCity?.cityId === city.cityId && this.showCityModal) {
           this.closeCityModal();
+        }
+        if (this.detailsCity?.cityId === city.cityId && this.showDetailsModal) {
+          this.closeDetailsModal();
         }
         this.loadCities();
         await Swal.fire({
@@ -234,6 +287,14 @@ export class AdminCitiesComponent implements OnInit {
     this.loadMedia();
   }
 
+  onMediaSearchInputChange(): void {
+    this.mediaPage = 0;
+    if (this.mediaSearchDebounceTimer) {
+      clearTimeout(this.mediaSearchDebounceTimer);
+    }
+    this.mediaSearchDebounceTimer = setTimeout(() => this.loadMedia(), 300);
+  }
+
   changeMediaPage(next: boolean): void {
     if (next && this.mediaPage + 1 < this.mediaTotalPages) {
       this.mediaPage++;
@@ -251,16 +312,31 @@ export class AdminCitiesComponent implements OnInit {
     const files = Array.from(input.files ?? []);
     const accepted = files.filter((file) => file.type.startsWith('image/'));
     if (accepted.length !== files.length) {
-      this.error = 'Seules les images sont autorisées';
+      this.modalError = 'Seules les images sont autorisées';
     }
 
     this.uploadFiles = accepted;
     this.mediaPreviewUrls = accepted.map((file) => URL.createObjectURL(file));
   }
 
+  removeSelectedFile(index: number): void {
+    if (index < 0 || index >= this.uploadFiles.length) {
+      return;
+    }
+    const [removedPreview] = this.mediaPreviewUrls.splice(index, 1);
+    if (removedPreview) {
+      URL.revokeObjectURL(removedPreview);
+    }
+    this.uploadFiles.splice(index, 1);
+  }
+
+  clearUploadSelection(): void {
+    this.clearSelectedFiles();
+  }
+
   uploadMedia(): void {
     if (!this.mediaCity || this.uploadFiles.length === 0) {
-      this.error = 'Sélectionne d’abord une ville et un fichier';
+      this.modalError = 'Sélectionne d’abord une ville et un fichier';
       return;
     }
 
@@ -270,7 +346,7 @@ export class AdminCitiesComponent implements OnInit {
         this.loadMedia();
       },
       error: (err) => {
-        this.error = err?.error?.message ?? 'Upload image impossible';
+        this.modalError = err?.error?.message ?? 'Upload image impossible';
       },
     });
   }
@@ -285,6 +361,9 @@ export class AdminCitiesComponent implements OnInit {
       confirmButtonColor: '#e63946',
       background: '#181d24',
       color: '#e2e8f0',
+      customClass: {
+        container: 'swal-on-top',
+      },
     });
 
     if (!confirmation.isConfirmed) {
@@ -307,13 +386,71 @@ export class AdminCitiesComponent implements OnInit {
     return trimmed ? trimmed : null;
   }
 
+  clearFieldError(field: 'name' | 'region' | 'description' | 'latitude' | 'longitude'): void {
+    delete this.fieldErrors[field];
+    this.modalError = '';
+  }
+
+  private clearValidationErrors(): void {
+    this.fieldErrors = {};
+    this.modalError = '';
+  }
+
+  private validateCityForm(): boolean {
+    this.clearValidationErrors();
+
+    const name = this.cityForm.name.trim();
+    if (!name) {
+      this.fieldErrors.name = 'Le nom de la ville est obligatoire.';
+    }
+
+    const region = this.nullIfBlank(this.cityForm.region);
+    if (!region) {
+      this.fieldErrors.region = 'La région est obligatoire.';
+    }
+
+    const description = this.nullIfBlank(this.cityForm.description);
+    if (!description) {
+      this.fieldErrors.description = 'La description est obligatoire.';
+    }
+
+    const latitude = this.cityForm.latitude;
+    const longitude = this.cityForm.longitude;
+    const hasLatitude = latitude !== null && latitude !== undefined;
+    const hasLongitude = longitude !== null && longitude !== undefined;
+
+    if (hasLatitude && (latitude as number) < -90 || hasLatitude && (latitude as number) > 90) {
+      this.fieldErrors.latitude = 'La latitude doit être entre -90 et 90.';
+    }
+
+    if (hasLongitude && (longitude as number) < -180 || hasLongitude && (longitude as number) > 180) {
+      this.fieldErrors.longitude = 'La longitude doit être entre -180 et 180.';
+    }
+
+    if (hasLatitude !== hasLongitude) {
+      if (!hasLatitude) {
+        this.fieldErrors.latitude = 'La latitude est requise si la longitude est renseignée.';
+      }
+      if (!hasLongitude) {
+        this.fieldErrors.longitude = 'La longitude est requise si la latitude est renseignée.';
+      }
+    }
+
+    if (Object.keys(this.fieldErrors).length > 0) {
+      this.modalError = 'Veuillez corriger les champs en erreur.';
+      return false;
+    }
+
+    return true;
+  }
+
   private uploadSelectedMedia(cityId: number): Observable<unknown> {
     if (this.uploadFiles.length === 0) {
       return of(null);
     }
 
     return from(this.uploadFiles).pipe(
-      concatMap((file) => this.cityService.uploadCityMedia(cityId, this.mediaType, file)),
+      concatMap((file) => this.cityService.uploadCityMedia(cityId, 'IMAGE', file)),
       toArray()
     );
   }

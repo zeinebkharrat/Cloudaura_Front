@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.UUID;
+import org.example.backend.dto.ProductCatalogItem;
 import org.example.backend.model.Product;
 import org.example.backend.service.ProductService;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,7 +23,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -61,24 +62,35 @@ public class ProductController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Product>> findAll() {
-        return ResponseEntity.ok(productService.findAll());
+    public ResponseEntity<List<ProductCatalogItem>> findAll() {
+        return ResponseEntity.ok(productService.findAllForCatalog());
+    }
+
+    @GetMapping("/my-products")
+    public ResponseEntity<List<ProductCatalogItem>> findMyProducts(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(productService.findAllForArtisan(authentication.getName()));
     }
 
     @GetMapping("/{id:\\d+}")
-    public ResponseEntity<Product> findById(@PathVariable Integer id) {
+    public ResponseEntity<ProductCatalogItem> findById(@PathVariable Integer id) {
         try {
-            return ResponseEntity.ok(productService.findById(id));
+            return ResponseEntity.ok(productService.findByIdForCatalog(id));
         } catch (NoSuchElementException ex) {
             return ResponseEntity.notFound().build();
         }
     }
 
     @PostMapping
-    public ResponseEntity<Product> create(@RequestBody Product entity,
-                                          @RequestHeader(name = "X-Username", required = false) String username) {
+    public ResponseEntity<Product> create(Authentication authentication, @RequestBody Product entity) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String username = authentication.getName();
         if (username == null || username.isBlank()) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         try {
             Product created = productService.save(entity, username);
@@ -86,7 +98,6 @@ public class ProductController {
                 .created(URI.create("/api/products/" + created.getProductId()))
                 .body(created);
         } catch (NoSuchElementException ex) {
-            // Souvent : utilisateur inconnu en base (login statique sans ligne users)
             return ResponseEntity.badRequest().build();
         }
     }

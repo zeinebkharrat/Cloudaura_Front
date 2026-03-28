@@ -12,6 +12,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/admin/restaurants")
@@ -44,6 +45,14 @@ public class RestaurantController {
     @PutMapping("/{id}")
     public RestaurantResponse update(@PathVariable Integer id, @Valid @RequestBody RestaurantRequest request) {
         return restaurantService.update(id, request);
+    }
+
+    @PostMapping(value = "/{id}/upload-image", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<RestaurantResponse> uploadImage(
+        @PathVariable Integer id,
+        @RequestParam("file") MultipartFile file
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(restaurantService.uploadImage(id, file));
     }
 
     @DeleteMapping("/{id}")

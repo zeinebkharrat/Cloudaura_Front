@@ -8,4 +8,7 @@ public record CityResponse(
     Double latitude,
     Double longitude
 ) {
+    public Integer id() {
+        return cityId;
+    }
 }

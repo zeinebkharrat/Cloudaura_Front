@@ -11,4 +11,6 @@ public interface OrderEntityRepository extends JpaRepository<OrderEntity, Intege
 
     @Query("SELECT DISTINCT o FROM OrderEntity o LEFT JOIN FETCH o.user")
     List<OrderEntity> findAllWithUser();
+
+    List<OrderEntity> findByUser_UserIdOrderByOrderIdDesc(Integer userId);
 }

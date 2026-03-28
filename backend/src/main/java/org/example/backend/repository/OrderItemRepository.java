@@ -9,6 +9,10 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface OrderItemRepository extends JpaRepository<OrderItem, Integer> {
+    long countByOrder_OrderId(Integer orderId);
+
+    void deleteByOrder_OrderId(Integer orderId);
+
     @Query("SELECT oi FROM OrderItem oi JOIN FETCH oi.product WHERE oi.order.orderId = :orderId")
     List<OrderItem> findByOrderIdWithProduct(@Param("orderId") Integer orderId);
 
@@ -19,4 +23,13 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Integer> {
             + "LEFT JOIN FETCH ord.user"
     )
     List<OrderItem> findAllWithDetails();
+
+    @Query(
+        "SELECT oi FROM OrderItem oi "
+            + "JOIN FETCH oi.product p "
+            + "JOIN FETCH oi.order o "
+            + "WHERE LOWER(p.user.username) = LOWER(:username) "
+            + "ORDER BY o.orderId DESC"
+    )
+    List<OrderItem> findByArtisanUsername(@Param("username") String username);
 }

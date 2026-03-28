@@ -35,6 +35,11 @@ export interface Restaurant {
   name: string;
   cuisineType: string | null;
   rating: number | null;
+  description: string | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  imageUrl: string | null;
 }
 
 export interface RestaurantRequest {
@@ -42,6 +47,11 @@ export interface RestaurantRequest {
   name: string;
   cuisineType: string | null;
   rating: number | null;
+  description: string | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  imageUrl: string | null;
 }
 
 export interface Activity {
@@ -51,6 +61,10 @@ export interface Activity {
   name: string;
   type: string | null;
   price: number | null;
+  description: string | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface ActivityRequest {
@@ -58,6 +72,10 @@ export interface ActivityRequest {
   name: string;
   type: string | null;
   price: number | null;
+  description: string | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface CityMedia {
@@ -70,6 +88,20 @@ export interface CityMedia {
 
 export interface CityMediaRequest {
   cityId: number;
+  url: string;
+  mediaType: MediaType;
+}
+
+export interface ActivityMedia {
+  mediaId: number;
+  activityId: number;
+  activityName: string;
+  url: string;
+  mediaType: MediaType;
+}
+
+export interface ActivityMediaRequest {
+  activityId: number;
   url: string;
   mediaType: MediaType;
 }

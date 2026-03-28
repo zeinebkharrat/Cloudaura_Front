@@ -6,12 +6,14 @@ import org.example.backend.dto.CityResponse;
 import org.example.backend.exception.ResourceNotFoundException;
 import org.example.backend.model.City;
 import org.example.backend.repository.ActivityRepository;
+import org.example.backend.repository.ActivityMediaRepository;
 import org.example.backend.repository.CityMediaRepository;
 import org.example.backend.repository.CityRepository;
 import org.example.backend.repository.RestaurantRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import jakarta.persistence.criteria.Expression;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +23,7 @@ public class CityService {
 
     private final CityRepository cityRepository;
     private final CityMediaRepository cityMediaRepository;
+    private final ActivityMediaRepository activityMediaRepository;
     private final RestaurantRepository restaurantRepository;
     private final ActivityRepository activityRepository;
 
@@ -30,10 +33,15 @@ public class CityService {
                 return cb.conjunction();
             }
             String like = "%" + q.trim().toLowerCase() + "%";
+
+            Expression<String> safeName = cb.lower(cb.coalesce(root.get("name"), ""));
+            Expression<String> safeRegion = cb.lower(cb.coalesce(root.get("region"), ""));
+            Expression<String> safeDescription = cb.lower(cb.coalesce(root.get("description").as(String.class), ""));
+
             return cb.or(
-                cb.like(cb.lower(root.get("name")), like),
-                cb.like(cb.lower(root.get("region")), like),
-                cb.like(cb.lower(root.get("description")), like)
+                cb.like(safeName, like),
+                cb.like(safeRegion, like),
+                cb.like(safeDescription, like)
             );
         };
 
@@ -62,6 +70,7 @@ public class CityService {
     public void delete(Integer id) {
         City city = findCity(id);
         cityMediaRepository.deleteByCityCityId(city.getCityId());
+        activityMediaRepository.deleteByActivityCityCityId(city.getCityId());
         restaurantRepository.deleteByCityCityId(city.getCityId());
         activityRepository.deleteByCityCityId(city.getCityId());
         cityRepository.delete(city);

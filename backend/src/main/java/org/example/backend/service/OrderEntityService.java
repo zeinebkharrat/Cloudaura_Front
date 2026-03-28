@@ -1,19 +1,24 @@
 package org.example.backend.service;
 
-import jakarta.persistence.Id;
-import java.lang.reflect.Field;
 import java.util.List;
 import java.util.NoSuchElementException;
 import org.example.backend.model.OrderEntity;
 import org.example.backend.repository.OrderEntityRepository;
+import org.example.backend.repository.OrderItemRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class OrderEntityService {
     private final OrderEntityRepository orderEntityRepository;
+    private final OrderItemRepository orderItemRepository;
 
-    public OrderEntityService(OrderEntityRepository orderEntityRepository) {
+    public OrderEntityService(
+        OrderEntityRepository orderEntityRepository,
+        OrderItemRepository orderItemRepository
+    ) {
         this.orderEntityRepository = orderEntityRepository;
+        this.orderItemRepository = orderItemRepository;
     }
 
     public List<OrderEntity> findAll() {
@@ -29,37 +34,35 @@ public class OrderEntityService {
         return orderEntityRepository.save(entity);
     }
 
-    public OrderEntity update(Integer id, OrderEntity entityDetails) {
-        if (!orderEntityRepository.existsById(id)) {
-            throw new NoSuchElementException("OrderEntity not found with id: " + id);
+    /**
+     * Fusionne les champs non nuls de {@code incoming} dans l’entité persistée
+     * (permet au backoffice d’envoyer seulement {@code status} sans écraser client / total).
+     */
+    @Transactional
+    public OrderEntity update(Integer id, OrderEntity incoming) {
+        OrderEntity existing = orderEntityRepository.findById(id)
+            .orElseThrow(() -> new NoSuchElementException("OrderEntity not found with id: " + id));
+        if (incoming.getStatus() != null) {
+            existing.setStatus(incoming.getStatus());
         }
-        setIdField(entityDetails, id);
-        return orderEntityRepository.save(entityDetails);
+        if (incoming.getTotalAmount() != null) {
+            existing.setTotalAmount(incoming.getTotalAmount());
+        }
+        if (incoming.getUser() != null) {
+            existing.setUser(incoming.getUser());
+        }
+        if (incoming.getCreatedAt() != null) {
+            existing.setCreatedAt(incoming.getCreatedAt());
+        }
+        return orderEntityRepository.save(existing);
     }
 
+    @Transactional
     public void deleteById(Integer id) {
         if (!orderEntityRepository.existsById(id)) {
             throw new NoSuchElementException("OrderEntity not found with id: " + id);
         }
+        orderItemRepository.deleteByOrder_OrderId(id);
         orderEntityRepository.deleteById(id);
-    }
-
-    private static void setIdField(Object entity, Integer id) {
-        Class<?> c = entity.getClass();
-        while (c != null) {
-            for (Field f : c.getDeclaredFields()) {
-                if (f.getAnnotation(Id.class) != null) {
-                    f.setAccessible(true);
-                    try {
-                        f.set(entity, id);
-                    } catch (IllegalAccessException e) {
-                        throw new IllegalStateException("Cannot set @Id field", e);
-                    }
-                    return;
-                }
-            }
-            c = c.getSuperclass();
-        }
-        throw new IllegalStateException("No @Id field on " + entity.getClass().getName());
     }
 }

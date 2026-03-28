@@ -6,6 +6,11 @@ public record ActivityResponse(
     String cityName,
     String name,
     String type,
-    Double price
+    Double price,
+    String description,
+    String address,
+    Double latitude,
+    Double longitude,
+    String imageUrl
 ) {
 }

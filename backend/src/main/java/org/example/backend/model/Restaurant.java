@@ -10,4 +10,10 @@ public class Restaurant {
     private String name;
     private String cuisineType;
     private Double rating;
+    @Lob @Column(columnDefinition="TEXT")
+    private String description;
+    private String address;
+    private Double latitude;
+    private Double longitude;
+    private String imageUrl;
 }

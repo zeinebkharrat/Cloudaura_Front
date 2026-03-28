@@ -8,6 +8,9 @@ public class CheckoutOrderDto {
     private Integer orderId;
     private OrderStatus status;
     private Double totalAmount;
+    /** ISO-8601 (ex. pour affichage récapitulatif). */
+    private String orderedAt;
+    private CheckoutBuyerDto buyer;
     private List<OrderLineDto> lines = new ArrayList<>();
 
     public Integer getOrderId() {
@@ -32,6 +35,22 @@ public class CheckoutOrderDto {
 
     public void setTotalAmount(Double totalAmount) {
         this.totalAmount = totalAmount;
+    }
+
+    public String getOrderedAt() {
+        return orderedAt;
+    }
+
+    public void setOrderedAt(String orderedAt) {
+        this.orderedAt = orderedAt;
+    }
+
+    public CheckoutBuyerDto getBuyer() {
+        return buyer;
+    }
+
+    public void setBuyer(CheckoutBuyerDto buyer) {
+        this.buyer = buyer;
     }
 
     public List<OrderLineDto> getLines() {

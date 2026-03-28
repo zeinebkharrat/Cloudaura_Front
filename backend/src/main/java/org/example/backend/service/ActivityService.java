@@ -4,7 +4,9 @@ import lombok.RequiredArgsConstructor;
 import org.example.backend.dto.ActivityRequest;
 import org.example.backend.dto.ActivityResponse;
 import org.example.backend.exception.ResourceNotFoundException;
+import org.example.backend.model.ActivityMedia;
 import org.example.backend.model.Activity;
+import org.example.backend.repository.ActivityMediaRepository;
 import org.example.backend.repository.ActivityRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -17,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ActivityService {
 
     private final ActivityRepository activityRepository;
+    private final ActivityMediaRepository activityMediaRepository;
     private final CityService cityService;
 
     public Page<ActivityResponse> list(String q, Pageable pageable) {
@@ -28,6 +31,7 @@ public class ActivityService {
             return cb.or(
                 cb.like(cb.lower(root.get("name")), like),
                 cb.like(cb.lower(root.get("type")), like),
+                cb.like(cb.lower(cb.coalesce(root.get("address"), "")), like),
                 cb.like(cb.lower(root.get("city").get("name")), like)
             );
         };
@@ -55,10 +59,12 @@ public class ActivityService {
 
     @Transactional
     public void delete(Integer id) {
-        activityRepository.delete(findActivity(id));
+        Activity activity = findActivity(id);
+        activityMediaRepository.deleteByActivityActivityId(activity.getActivityId());
+        activityRepository.delete(activity);
     }
 
-    private Activity findActivity(Integer id) {
+    public Activity findActivity(Integer id) {
         return activityRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Activité introuvable: " + id));
     }
@@ -68,16 +74,31 @@ public class ActivityService {
         activity.setName(request.getName());
         activity.setType(request.getType());
         activity.setPrice(request.getPrice());
+        activity.setDescription(request.getDescription());
+        activity.setAddress(request.getAddress());
+        activity.setLatitude(request.getLatitude());
+        activity.setLongitude(request.getLongitude());
     }
 
     private ActivityResponse toResponse(Activity activity) {
+        String imageUrl = activityMediaRepository.findByActivityActivityIdOrderByMediaIdDesc(activity.getActivityId())
+            .stream()
+            .findFirst()
+            .map(ActivityMedia::getUrl)
+            .orElse(null);
+
         return new ActivityResponse(
             activity.getActivityId(),
             activity.getCity().getCityId(),
             activity.getCity().getName(),
             activity.getName(),
             activity.getType(),
-            activity.getPrice()
+            activity.getPrice(),
+            activity.getDescription(),
+            activity.getAddress(),
+            activity.getLatitude(),
+            activity.getLongitude(),
+            imageUrl
         );
     }
 }

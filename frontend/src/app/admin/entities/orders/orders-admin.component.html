@@ -1,84 +1,250 @@
-<section class="entity-page orders-admin">
-  <header class="head">
-    <h1>Commandes produits</h1>
+<div class="admin-page orders-admin">
+  <header class="page-head">
+    <div>
+      <h1>Commandes produits</h1>
+    </div>
     <button type="button" class="btn ghost" (click)="loadAll()">Actualiser</button>
   </header>
-  <p class="hint">
-    Données issues des tables existantes via <code>GET /api/orders</code> et
-    <code>GET /api/order-items</code> (OrderEntityController, OrderItemController).
-  </p>
 
-  @if (error()) {
-    <p class="error">{{ error() }}</p>
+  @if (error) {
+    <div class="alert">{{ error }}</div>
   }
 
-  @if (loading()) {
-    <p class="muted">Chargement…</p>
-  } @else {
-    <article class="panel">
-      <h2>Commandes</h2>
-      <div class="table-wrap">
+  <section class="card surface">
+    <div class="toolbar search-shell">
+      <div class="search-input-wrap">
+        <span class="search-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="m20 20-3.5-3.5"></path>
+          </svg>
+        </span>
+        <input
+          type="text"
+          [(ngModel)]="q"
+          (ngModelChange)="onSearchInputChange()"
+          placeholder="Rechercher par n° commande ou client…"
+        />
+      </div>
+      <select [(ngModel)]="sort" (change)="sortChanged()">
+        <option value="orderId,desc">Plus récentes</option>
+        <option value="orderId,asc">Plus anciennes</option>
+        <option value="username,asc">Client A → Z</option>
+        <option value="username,desc">Client Z → A</option>
+        <option value="totalAmount,desc">Total décroissant</option>
+        <option value="totalAmount,asc">Total croissant</option>
+        <option value="status,asc">Statut A → Z</option>
+      </select>
+    </div>
+
+    <div class="table-wrap">
+      @if (loading) {
+        <p class="empty">Chargement…</p>
+      } @else {
         <table>
           <thead>
             <tr>
-              <th>#</th>
+              <th>Commande</th>
               <th>Client</th>
               <th>Total</th>
               <th>Statut</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            @for (o of orders(); track o.orderId) {
+            @for (o of pagedOrders; track o.orderId) {
               <tr>
-                <td>{{ o.orderId }}</td>
-                <td>{{ o.user?.username ?? '—' }}</td>
+                <td>
+                  <div class="title">#{{ o.orderId }}</div>
+                  <div class="sub">{{ lineCountForOrder(o.orderId) }} ligne(s)</div>
+                </td>
+                <td>
+                  <div class="title">{{ o.user?.username ?? '—' }}</div>
+                </td>
                 <td>{{ formatPrice(o.totalAmount) }}</td>
-                <td><span class="pill">{{ o.status }}</span></td>
-              </tr>
-            } @empty {
-              <tr>
-                <td colspan="4">Aucune commande.</td>
+                <td>
+                  <span class="status-pill">{{ orderStatusLabel(o.status) }}</span>
+                </td>
+                <td class="actions">
+                  <button
+                    type="button"
+                    class="btn icon-btn icon-view"
+                    (click)="openDetails(o)"
+                    title="Voir le détail et les lignes"
+                    aria-label="Voir le détail et les lignes"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn icon-btn icon-edit"
+                    (click)="openStatusModal(o, $event)"
+                    title="Modifier le statut"
+                    aria-label="Modifier le statut"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    class="btn icon-btn icon-delete"
+                    (click)="deleteOrder(o, $event)"
+                    title="Supprimer la commande"
+                    aria-label="Supprimer la commande"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M3 6h18" />
+                      <path d="M8 6V4h8v2" />
+                      <path d="M19 6l-1 14H6L5 6" />
+                      <path d="M10 11v6M14 11v6" />
+                    </svg>
+                  </button>
+                </td>
               </tr>
             }
           </tbody>
         </table>
-      </div>
-    </article>
 
-    <article class="panel">
-      <h2>Lignes de commande (produits)</h2>
-      <div class="table-wrap">
-        <table>
+        @if (!loading && pagedOrders.length === 0) {
+          <p class="empty">Aucune commande trouvée.</p>
+        }
+      }
+    </div>
+
+    <div class="pager">
+      <span>Total: {{ totalElements }}</span>
+      <div>
+        <button type="button" class="btn ghost" [disabled]="page === 0" (click)="changePage(false)">
+          Précédent
+        </button>
+        <span>Page {{ page + 1 }} / {{ totalPages }}</span>
+        <button
+          type="button"
+          class="btn ghost"
+          [disabled]="page + 1 >= totalPages"
+          (click)="changePage(true)"
+        >
+          Suivant
+        </button>
+      </div>
+    </div>
+  </section>
+</div>
+
+@if (showDetailsModal && detailsOrder) {
+  <div class="modal-backdrop" (click)="onDetailsBackdropClick($event)"></div>
+  <section class="modal-card details-modal" role="dialog" aria-modal="true" aria-labelledby="order-detail-title">
+    <header class="modal-head">
+      <h2 id="order-detail-title">Commande #{{ detailsOrder.orderId }}</h2>
+      <button type="button" class="btn ghost" (click)="closeDetailsModal()" aria-label="Fermer">✕</button>
+    </header>
+
+    <div class="detail-summary">
+      <div class="detail-chip">
+        <span class="label">Client</span>
+        <strong>{{ detailsOrder.user?.username ?? '—' }}</strong>
+      </div>
+      <div class="detail-chip">
+        <span class="label">Total</span>
+        <strong>{{ formatPrice(detailsOrder.totalAmount) }}</strong>
+      </div>
+      <div class="detail-chip">
+        <span class="label">Statut</span>
+        <span class="status-pill">{{ orderStatusLabel(detailsOrder.status) }}</span>
+      </div>
+    </div>
+
+    <div class="status-edit-block">
+      <label class="status-edit-label" for="detail-order-status">Modifier le statut</label>
+      <div class="status-edit-row">
+        <select
+          id="detail-order-status"
+          class="status-select"
+          [(ngModel)]="detailsStatusDraft"
+          name="detailStatusDraft"
+        >
+          @for (opt of statusOptions; track opt.value) {
+            <option [value]="opt.value">{{ opt.label }}</option>
+          }
+        </select>
+        <button type="button" class="btn" [disabled]="statusSaving" (click)="saveDetailStatus()">
+          Enregistrer
+        </button>
+      </div>
+      @if (statusActionError && showDetailsModal) {
+        <p class="status-action-err">{{ statusActionError }}</p>
+      }
+    </div>
+
+    <h3 class="lines-title">Lignes de commande</h3>
+    @if (modalLines.length === 0) {
+      <p class="empty">Aucune ligne pour cette commande.</p>
+    } @else {
+      <div class="lines-table-wrap">
+        <table class="lines-table">
           <thead>
             <tr>
-              <th>Ligne #</th>
-              <th>Commande #</th>
-              <th>Client</th>
               <th>Produit</th>
-              <th>Prix unit.</th>
-              <th>Qté</th>
-              <th>Sous-total</th>
+              <th class="num">Prix unit.</th>
+              <th class="num">Qté</th>
+              <th class="num">Sous-total</th>
             </tr>
           </thead>
           <tbody>
-            @for (it of orderItems(); track it.orderItemId) {
+            @for (it of modalLines; track it.orderItemId) {
               <tr>
-                <td>{{ it.orderItemId }}</td>
-                <td>{{ it.order?.orderId ?? '—' }}</td>
-                <td>{{ it.order?.user?.username ?? '—' }}</td>
-                <td>{{ it.product?.name ?? '—' }}</td>
-                <td>{{ formatPrice(it.product?.price ?? null) }}</td>
-                <td>{{ it.quantity ?? '—' }}</td>
-                <td>{{ lineTotal(it) }}</td>
-              </tr>
-            } @empty {
-              <tr>
-                <td colspan="7">Aucune ligne.</td>
+                <td>
+                  <div class="title">{{ it.product?.name ?? '—' }}</div>
+                  <div class="sub">Ligne #{{ it.orderItemId }}</div>
+                </td>
+                <td class="num">{{ formatPrice(it.product?.price ?? null) }}</td>
+                <td class="num">{{ it.quantity ?? '—' }}</td>
+                <td class="num"><strong>{{ lineTotal(it) }}</strong></td>
               </tr>
             }
           </tbody>
         </table>
       </div>
-    </article>
-  }
-</section>
+    }
+  </section>
+}
+
+@if (showStatusModal && statusModalOrder) {
+  <div class="modal-backdrop" (click)="onStatusBackdropClick($event)"></div>
+  <section class="modal-card status-edit-modal" role="dialog" aria-modal="true" aria-labelledby="status-modal-title">
+    <header class="modal-head">
+      <h2 id="status-modal-title">Statut — commande #{{ statusModalOrder.orderId }}</h2>
+      <button type="button" class="btn ghost" (click)="closeStatusModal()" aria-label="Fermer">✕</button>
+    </header>
+
+    @if (statusActionError) {
+      <div class="alert modal-alert">{{ statusActionError }}</div>
+    }
+
+    <label class="status-edit-label" for="quick-order-status">Nouveau statut</label>
+    <select
+      id="quick-order-status"
+      class="status-select full-width"
+      [(ngModel)]="statusDraft"
+      name="statusDraft"
+    >
+      @for (opt of statusOptions; track opt.value) {
+        <option [value]="opt.value">{{ opt.label }}</option>
+      }
+    </select>
+
+    <div class="modal-actions-row">
+      <button type="button" class="btn" [disabled]="statusSaving" (click)="saveStatusFromModal()">
+        Enregistrer
+      </button>
+      <button type="button" class="btn ghost" [disabled]="statusSaving" (click)="closeStatusModal()">
+        Annuler
+      </button>
+    </div>
+  </section>
+}

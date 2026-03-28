@@ -2,31 +2,57 @@ import { Routes } from '@angular/router';
 import { HomeComponent } from './home.component';
 import { VirtualTourPageComponent } from './virtual-tour-page.component';
 import { FeaturePageComponent } from './feature-page.component';
-import { LoginComponent } from './login/login.component';
+import { SignInComponent } from './sign-in.component';
+import { SignUpComponent } from './sign-up.component';
+import { ForgotPasswordComponent } from './forgot-password.component';
+import { ResetPasswordComponent } from './reset-password.component';
+import { VerifyEmailComponent } from './verify-email.component';
+import { authGuard } from './auth.guard';
+import { roleGuard } from './role.guard';
+import { AdminUsersComponent } from './admin-users.component';
 import { AdminLayoutComponent } from './admin/layout/admin-layout.component';
 import { AdminDashboardComponent } from './admin/dashboard/admin-dashboard.component';
+import { ProfileComponent } from './profile.component';
+import { AuditLogsComponent } from './audit-logs.component';
 import { AdminCitiesComponent } from './admin/cities/admin-cities.component';
 import { AdminRestaurantsComponent } from './admin/restaurants/admin-restaurants.component';
 import { AdminActivitiesComponent } from './admin/activities/admin-activities.component';
-import { AuthGuard } from './core/auth.guard';
+import { CityExploreComponent } from './explore/city-explore.component';
+import { RestaurantDetailComponent } from './explore/restaurant-detail.component';
+import { ActivityDetailComponent } from './explore/activity-detail.component';
 import { ProductsAdminComponent } from './admin/entities/products/products-admin.component';
 import { OrdersAdminComponent } from './admin/entities/orders/orders-admin.component';
 import { CartPageComponent } from './shop/cart-page.component';
+import { MyOrdersComponent } from './shop/my-orders.component';
 
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
-  { path: 'login', component: LoginComponent },
-  { path: 'panier', component: CartPageComponent },
+  { path: 'login', component: SignInComponent },
+  { path: 'signin', component: SignInComponent },
+  { path: 'signup', component: SignUpComponent },
+  { path: 'forgot-password', component: ForgotPasswordComponent },
+  { path: 'reset-password', component: ResetPasswordComponent },
+  { path: 'verify-email', component: VerifyEmailComponent },
+  { path: 'city/:cityId', component: CityExploreComponent },
+  { path: 'restaurants/:restaurantId', component: RestaurantDetailComponent },
+  { path: 'activities/:activityId', component: ActivityDetailComponent },
+  { path: 'login', component: SignInComponent },
+  { path: 'panier', component: CartPageComponent, canActivate: [authGuard] },
+  { path: 'mes-commandes', component: MyOrdersComponent, canActivate: [authGuard] },
+  { path: 'mes-ordres', component: MyOrdersComponent, canActivate: [authGuard] },
 
   { path: 'virtual-tour', component: VirtualTourPageComponent },
   {
     path: 'admin',
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['ROLE_ADMIN'] },
     component: AdminLayoutComponent,
-    canActivate: [AuthGuard],
-    data: { requiresAdmin: true },
     children: [
-      { path: '', component: AdminDashboardComponent },
+      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+      { path: 'dashboard', component: AdminDashboardComponent },
+      { path: 'audit-logs', component: AuditLogsComponent },
+      { path: 'users', component: AdminUsersComponent },
       { path: 'cities', component: AdminCitiesComponent },
       { path: 'restaurants', component: AdminRestaurantsComponent },
       { path: 'activities', component: AdminActivitiesComponent },
@@ -37,6 +63,8 @@ export const routes: Routes = [
 
     ],
   },
+  { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },
+  { path: 'virtual-tour', component: VirtualTourPageComponent },
   {
     path: 'destinations',
     component: FeaturePageComponent,
@@ -246,6 +274,8 @@ export const routes: Routes = [
       kicker: 'Patrimoine vivant',
       accent: 'sand',
       title: 'Artisanat & souvenirs',
+      /** Affiche le catalogue produits (GET /api/products) sous le bandeau hero. */
+      catalog: 'products',
       description:
         'Mettre en avant les artisans et leurs créations : vitrine numérique, parcours d’achat et impact positif sur l’économie locale.',
       blocks: [
@@ -342,4 +372,5 @@ export const routes: Routes = [
       ],
     },
   },
+  { path: '**', redirectTo: '' },
 ];

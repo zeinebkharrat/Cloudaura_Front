@@ -1,7 +1,7 @@
 import { Component, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
-import { AuthService } from '../../core/auth.service';
+import { AuthService } from '../../auth.service';
 
 @Component({
   selector: 'app-admin-layout',
@@ -15,7 +15,7 @@ export class AdminLayoutComponent {
   user = computed(() => this.auth.currentUser());
 
   nav = [
-    { label: 'Tableau de bord', icon: '📊', route: '/admin' },
+    { label: 'Tableau de bord', icon: '📊', route: '/admin/dashboard' },
     { label: 'Villes',         icon: '🏙️', route: '/admin/cities' },
     { label: 'Restaurants',    icon: '🍽️', route: '/admin/restaurants' },
     { label: 'Activités',      icon: '📍', route: '/admin/activities' },
@@ -23,6 +23,7 @@ export class AdminLayoutComponent {
     { label: 'Transports',      icon: '🚌', route: '/admin/transports' },
     { label: 'Événements',      icon: '📅', route: '/admin/events' },
     { label: 'Artisanat',       icon: '🏺', route: '/admin/crafts' },
+    { label: 'Logs d\'audit',   icon: '📋', route: '/admin/audit-logs' },
     { label: 'Utilisateurs',    icon: '👥', route: '/admin/users' },
     { label: 'Paramètres',      icon: '⚙️',  route: '/admin/settings' },
     { label: 'Produits',        icon: '🏺', route: '/admin/products' },
@@ -31,5 +32,13 @@ export class AdminLayoutComponent {
 
   constructor(public auth: AuthService, private router: Router) {}
   toggle() { this.open.set(!this.open()); }
-  logout() { this.auth.logout(); }
+
+  openProfile() {
+    this.router.navigateByUrl('/profile');
+  }
+
+  logout() {
+    this.auth.logout();
+    this.router.navigateByUrl('/signin');
+  }
 }

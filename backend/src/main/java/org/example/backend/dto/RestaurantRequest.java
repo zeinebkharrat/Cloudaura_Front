@@ -12,4 +12,9 @@ public class RestaurantRequest {
     private String name;
     private String cuisineType;
     private Double rating;
+    private String description;
+    private String address;
+    private Double latitude;
+    private Double longitude;
+    private String imageUrl;
 }

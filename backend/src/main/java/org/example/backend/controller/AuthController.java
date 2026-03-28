@@ -1,44 +1,111 @@
 package org.example.backend.controller;
 
+import jakarta.validation.Valid;
+import org.example.backend.dto.AuthMessageResponse;
+import org.example.backend.dto.AuthResponse;
+import org.example.backend.dto.ForgotPasswordRequest;
+import org.example.backend.dto.LoginRequest;
+import org.example.backend.dto.ResendVerificationRequest;
+import org.example.backend.dto.ResetPasswordRequest;
+import org.example.backend.dto.SignupRequest;
+import org.example.backend.dto.SocialProvidersResponse;
+import org.example.backend.dto.UserSummaryResponse;
+import org.example.backend.service.AuthService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
 
-    private static final String ADMIN_USER = "admin";
-    private static final String ADMIN_PASS = "admin123";
-    private static final String USER_USER  = "user";
-    private static final String USER_PASS  = "user123";
+    private final AuthService authService;
 
-    @PostMapping("/login")
-    public ResponseEntity<Map<String, Object>> login(@RequestBody Map<String, String> body) {
-        String username = body.getOrDefault("username", "");
-        String password = body.getOrDefault("password", "");
+    @Value("${app.oauth2.google-client-id}")
+    private String googleClientId;
 
-        if (ADMIN_USER.equals(username) && ADMIN_PASS.equals(password)) {
-            return ResponseEntity.ok(Map.of(
-                "success", true, "role", "ADMIN",
-                "username", username, "message", "Bienvenue, administrateur !"
-            ));
-        }
-        if (USER_USER.equals(username) && USER_PASS.equals(password)) {
-            return ResponseEntity.ok(Map.of(
-                "success", true, "role", "USER",
-                "username", username, "message", "Bienvenue !"
-            ));
-        }
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
-            "success", false, "message", "Identifiants invalides"
-        ));
+    @Value("${app.oauth2.google-client-secret}")
+    private String googleClientSecret;
+
+    @Value("${app.oauth2.github-client-id}")
+    private String githubClientId;
+
+    @Value("${app.oauth2.github-client-secret}")
+    private String githubClientSecret;
+
+    @Value("${app.oauth2.facebook-client-id}")
+    private String facebookClientId;
+
+    @Value("${app.oauth2.facebook-client-secret}")
+    private String facebookClientSecret;
+
+    @Value("${app.oauth2.instagram-client-id}")
+    private String instagramClientId;
+
+    @Value("${app.oauth2.instagram-client-secret}")
+    private String instagramClientSecret;
+
+    public AuthController(AuthService authService) {
+        this.authService = authService;
     }
 
-    @PostMapping("/logout")
-    public ResponseEntity<Map<String, Boolean>> logout() {
-        return ResponseEntity.ok(Map.of("success", true));
+    @PostMapping("/signup")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AuthMessageResponse signup(@Valid @RequestBody SignupRequest request) {
+        return authService.signup(request);
+    }
+
+    @PostMapping("/signin")
+    public AuthResponse signin(@Valid @RequestBody LoginRequest request) {
+        return authService.signin(request);
+    }
+
+    @GetMapping("/me")
+    public UserSummaryResponse me() {
+        return authService.me();
+    }
+
+    @GetMapping("/social/providers")
+    public SocialProvidersResponse socialProviders() {
+        boolean googleConfigured = isConfigured(googleClientId, googleClientSecret);
+        boolean githubConfigured = isConfigured(githubClientId, githubClientSecret);
+        boolean facebookConfigured = isConfigured(facebookClientId, facebookClientSecret);
+        boolean instagramConfigured = isConfigured(instagramClientId, instagramClientSecret);
+        return new SocialProvidersResponse(googleConfigured, githubConfigured, facebookConfigured, instagramConfigured);
+    }
+
+    private boolean isConfigured(String clientId, String clientSecret) {
+        return clientId != null
+            && clientSecret != null
+            && !clientId.isBlank()
+            && !clientSecret.isBlank()
+            && !clientId.startsWith("disabled-")
+            && !clientSecret.startsWith("disabled-");
+    }
+
+    @GetMapping("/verify-email")
+    public AuthMessageResponse verifyEmail(@RequestParam("token") String token) {
+        return authService.verifyEmail(token);
+    }
+
+    @PostMapping("/resend-verification")
+    public AuthMessageResponse resendVerification(@Valid @RequestBody ResendVerificationRequest request) {
+        return authService.resendVerification(request);
+    }
+
+    @PostMapping("/forgot-password")
+    public AuthMessageResponse forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        return authService.forgotPassword(request);
+    }
+
+    @PostMapping("/reset-password")
+    public AuthMessageResponse resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        return authService.resetPassword(request);
     }
 }
