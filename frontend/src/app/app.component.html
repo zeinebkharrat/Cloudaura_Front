@@ -31,7 +31,7 @@
     </li>
     @if (isAuthenticated()) {
     <li>
-      <a routerLink="/chat" routerLinkActive="active">💬 Chat</a>
+      <a routerLink="/chat" routerLinkActive="active">Chat</a>
     </li>
     }
     <li>
@@ -82,4 +82,8 @@
     </div>
   </div>
 </footer>
+}
+
+@if (isAuthenticated()) {
+  <app-chat-bubble></app-chat-bubble>
 }

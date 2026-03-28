@@ -1,13 +1,15 @@
-import { Component, inject, signal, OnInit, Renderer2 } from '@angular/core';
+import { Component, inject, signal, OnInit, Renderer2, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from './auth.service';
+import { ChatService } from './chat/chat.service';
+import { ChatBubbleComponent } from './chat/chat-bubble/chat-bubble.component';
 
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, ChatBubbleComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
 })
@@ -16,11 +18,23 @@ export class AppComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly renderer = inject(Renderer2);
   private readonly authService = inject(AuthService);
+  private readonly chatService = inject(ChatService);
 
   isDarkMode = signal(true);
   isAuthenticated = this.authService.isAuthenticated;
   currentUser = this.authService.currentUser;
   isAdmin = () => this.authService.hasRole('ROLE_ADMIN');
+
+  constructor() {
+    effect(() => {
+      if (this.isAuthenticated()) {
+        this.chatService.connect();
+        this.chatService.loadConversations();
+      } else {
+        this.chatService.disconnect();
+      }
+    });
+  }
 
   ngOnInit() {
     const savedTheme = localStorage.getItem('theme');
