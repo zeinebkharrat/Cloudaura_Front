@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { HomeComponent } from './home.component';
+import { DestinationMapComponent } from './destination-map.component';
 import { VirtualTourPageComponent } from './virtual-tour-page.component';
 import { FeaturePageComponent } from './feature-page.component';
 import { SignInComponent } from './sign-in.component';
@@ -24,6 +25,7 @@ import { ActivityDetailComponent } from './explore/activity-detail.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
+  { path: 'destination-map', component: DestinationMapComponent },
   { path: 'login', component: SignInComponent },
   { path: 'signin', component: SignInComponent },
   { path: 'signup', component: SignUpComponent },

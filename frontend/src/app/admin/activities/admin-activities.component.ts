@@ -36,6 +36,7 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
   detailsActivity: Activity | null = null;
   detailsMediaItems: ActivityMedia[] = [];
   detailsLoadingMedia = false;
+  detailsMediaIndex = 0;
   mediaQ = '';
   mediaSort = 'mediaId,desc';
   mediaPage = 0;
@@ -74,6 +75,7 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
   private mapMarker?: L.CircleMarker;
   private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   private mediaSearchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private detailsSliderTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private readonly activityService: ActivityAdminService,
@@ -93,6 +95,7 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
     if (this.mediaSearchDebounceTimer) {
       clearTimeout(this.mediaSearchDebounceTimer);
     }
+    this.stopDetailsAutoSlide();
     this.clearSelectedFiles();
     if (this.map) {
       this.map.remove();
@@ -196,24 +199,55 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
     this.detailsActivity = item;
     this.detailsMediaItems = [];
     this.detailsLoadingMedia = true;
+    this.detailsMediaIndex = 0;
     this.showDetailsModal = true;
+    this.stopDetailsAutoSlide();
 
     this.activityService.listMedia(item.activityId, '', 0, 24, 'mediaId,desc').subscribe({
       next: (res) => {
         this.detailsMediaItems = res.content;
+        this.detailsMediaIndex = 0;
+        this.startDetailsAutoSlide();
         this.detailsLoadingMedia = false;
       },
       error: () => {
+        this.stopDetailsAutoSlide();
         this.detailsLoadingMedia = false;
       },
     });
   }
 
   closeDetailsModal(): void {
+    this.stopDetailsAutoSlide();
     this.showDetailsModal = false;
     this.detailsActivity = null;
     this.detailsMediaItems = [];
     this.detailsLoadingMedia = false;
+    this.detailsMediaIndex = 0;
+  }
+
+  nextDetailsMedia(): void {
+    if (this.detailsMediaItems.length <= 1) {
+      return;
+    }
+    this.detailsMediaIndex = (this.detailsMediaIndex + 1) % this.detailsMediaItems.length;
+    this.restartDetailsAutoSlide();
+  }
+
+  previousDetailsMedia(): void {
+    if (this.detailsMediaItems.length <= 1) {
+      return;
+    }
+    this.detailsMediaIndex = (this.detailsMediaIndex - 1 + this.detailsMediaItems.length) % this.detailsMediaItems.length;
+    this.restartDetailsAutoSlide();
+  }
+
+  selectDetailsMedia(index: number): void {
+    if (index < 0 || index >= this.detailsMediaItems.length) {
+      return;
+    }
+    this.detailsMediaIndex = index;
+    this.restartDetailsAutoSlide();
   }
 
   resetForm(): void {
@@ -614,5 +648,30 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
         this.error = err?.error?.message ?? 'Suppression impossible';
       },
     });
+  }
+
+  private startDetailsAutoSlide(): void {
+    this.stopDetailsAutoSlide();
+    if (this.detailsMediaItems.length <= 1) {
+      return;
+    }
+
+    this.detailsSliderTimer = setInterval(() => {
+      if (this.detailsMediaItems.length <= 1) {
+        return;
+      }
+      this.detailsMediaIndex = (this.detailsMediaIndex + 1) % this.detailsMediaItems.length;
+    }, 3400);
+  }
+
+  private restartDetailsAutoSlide(): void {
+    this.startDetailsAutoSlide();
+  }
+
+  private stopDetailsAutoSlide(): void {
+    if (this.detailsSliderTimer) {
+      clearInterval(this.detailsSliderTimer);
+      this.detailsSliderTimer = null;
+    }
   }
 }

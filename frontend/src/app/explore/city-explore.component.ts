@@ -229,7 +229,7 @@ export class CityExploreComponent implements OnInit, OnDestroy {
       );
     }
 
-    this.router.navigate(['/'], {
+    this.router.navigate(['/destination-map'], {
       fragment: 'map-section',
       queryParams: {
         zoomOut: 1,

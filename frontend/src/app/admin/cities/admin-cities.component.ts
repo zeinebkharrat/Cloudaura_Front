@@ -3,8 +3,10 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { concatMap, from, map, Observable, of, switchMap, toArray } from 'rxjs';
 import Swal from 'sweetalert2';
-import { City, CityMedia, CityRequest } from '../admin-api.models';
+import { Activity, City, CityMedia, CityRequest, Restaurant } from '../admin-api.models';
+import { ActivityAdminService } from '../services/activity-admin.service';
 import { CityAdminService } from '../services/city-admin.service';
+import { RestaurantAdminService } from '../services/restaurant-admin.service';
 
 @Component({
   selector: 'app-admin-cities',
@@ -43,6 +45,11 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
   detailsCity: City | null = null;
   detailsMediaItems: CityMedia[] = [];
   detailsLoadingMedia = false;
+  detailsMediaIndex = 0;
+  detailsRestaurants: Restaurant[] = [];
+  detailsActivities: Activity[] = [];
+  detailsActivityImageById: Record<number, string> = {};
+  detailsLoadingRelated = false;
   mediaQ = '';
   mediaSort = 'mediaId,desc';
   mediaPage = 0;
@@ -52,8 +59,13 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
   mediaPreviewUrls: string[] = [];
   private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   private mediaSearchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private detailsSliderTimer: ReturnType<typeof setInterval> | null = null;
 
-  constructor(private readonly cityService: CityAdminService) {}
+  constructor(
+    private readonly cityService: CityAdminService,
+    private readonly restaurantService: RestaurantAdminService,
+    private readonly activityService: ActivityAdminService
+  ) {}
 
   ngOnInit(): void {
     this.loadCities();
@@ -66,6 +78,7 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
     if (this.mediaSearchDebounceTimer) {
       clearTimeout(this.mediaSearchDebounceTimer);
     }
+    this.stopDetailsAutoSlide();
     this.clearSelectedFiles();
   }
 
@@ -165,24 +178,93 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
     this.detailsCity = city;
     this.detailsMediaItems = [];
     this.detailsLoadingMedia = true;
+    this.detailsMediaIndex = 0;
+    this.detailsRestaurants = [];
+    this.detailsActivities = [];
+    this.detailsActivityImageById = {};
+    this.detailsLoadingRelated = true;
     this.showDetailsModal = true;
+    this.stopDetailsAutoSlide();
 
     this.cityService.listCityMedia(city.cityId, '', 0, 24, 'mediaId,desc').subscribe({
       next: (res) => {
         this.detailsMediaItems = res.content;
+        this.detailsMediaIndex = 0;
+        this.startDetailsAutoSlide();
         this.detailsLoadingMedia = false;
       },
       error: () => {
+        this.stopDetailsAutoSlide();
         this.detailsLoadingMedia = false;
+      },
+    });
+
+    this.restaurantService.list('', 0, 200, 'restaurantId,desc').subscribe({
+      next: (res) => {
+        this.detailsRestaurants = res.content.filter((restaurant) => restaurant.cityId === city.cityId);
+        this.detailsLoadingRelated = false;
+      },
+      error: () => {
+        this.detailsRestaurants = [];
+        this.detailsLoadingRelated = false;
+      },
+    });
+
+    this.activityService.list('', 0, 200, 'activityId,desc').subscribe({
+      next: (res) => {
+        this.detailsActivities = res.content.filter((activity) => activity.cityId === city.cityId);
+        this.loadDetailsActivityImages();
+      },
+      error: () => {
+        this.detailsActivities = [];
+        this.detailsActivityImageById = {};
       },
     });
   }
 
   closeDetailsModal(): void {
+    this.stopDetailsAutoSlide();
     this.showDetailsModal = false;
     this.detailsCity = null;
     this.detailsMediaItems = [];
     this.detailsLoadingMedia = false;
+    this.detailsMediaIndex = 0;
+    this.detailsRestaurants = [];
+    this.detailsActivities = [];
+    this.detailsActivityImageById = {};
+    this.detailsLoadingRelated = false;
+  }
+
+  nextDetailsMedia(): void {
+    if (this.detailsMediaItems.length <= 1) {
+      return;
+    }
+    this.detailsMediaIndex = (this.detailsMediaIndex + 1) % this.detailsMediaItems.length;
+    this.restartDetailsAutoSlide();
+  }
+
+  previousDetailsMedia(): void {
+    if (this.detailsMediaItems.length <= 1) {
+      return;
+    }
+    this.detailsMediaIndex = (this.detailsMediaIndex - 1 + this.detailsMediaItems.length) % this.detailsMediaItems.length;
+    this.restartDetailsAutoSlide();
+  }
+
+  selectDetailsMedia(index: number): void {
+    if (index < 0 || index >= this.detailsMediaItems.length) {
+      return;
+    }
+    this.detailsMediaIndex = index;
+    this.restartDetailsAutoSlide();
+  }
+
+  detailsActivityImage(activityId: number): string {
+    return this.detailsActivityImageById[activityId] ?? 'assets/sidi_bou.png';
+  }
+
+  detailsCityFallbackImage(): string {
+    return this.detailsMediaItems.length > 0 ? this.detailsMediaItems[0].url : 'assets/sidi_bou.png';
   }
 
   saveCity(): void {
@@ -461,5 +543,50 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
     }
     this.mediaPreviewUrls = [];
     this.uploadFiles = [];
+  }
+
+  private loadDetailsActivityImages(): void {
+    this.detailsActivityImageById = {};
+    for (const activity of this.detailsActivities) {
+      this.activityService.listMedia(activity.activityId, '', 0, 1, 'mediaId,desc').subscribe({
+        next: (res) => {
+          const imageUrl = res.content[0]?.url;
+          if (!imageUrl) {
+            return;
+          }
+          this.detailsActivityImageById = {
+            ...this.detailsActivityImageById,
+            [activity.activityId]: imageUrl,
+          };
+        },
+        error: () => {
+        },
+      });
+    }
+  }
+
+  private startDetailsAutoSlide(): void {
+    this.stopDetailsAutoSlide();
+    if (this.detailsMediaItems.length <= 1) {
+      return;
+    }
+
+    this.detailsSliderTimer = setInterval(() => {
+      if (this.detailsMediaItems.length <= 1) {
+        return;
+      }
+      this.detailsMediaIndex = (this.detailsMediaIndex + 1) % this.detailsMediaItems.length;
+    }, 3400);
+  }
+
+  private restartDetailsAutoSlide(): void {
+    this.startDetailsAutoSlide();
+  }
+
+  private stopDetailsAutoSlide(): void {
+    if (this.detailsSliderTimer) {
+      clearInterval(this.detailsSliderTimer);
+      this.detailsSliderTimer = null;
+    }
   }
 }

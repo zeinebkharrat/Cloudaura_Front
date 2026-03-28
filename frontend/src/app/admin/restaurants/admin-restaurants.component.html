@@ -35,7 +35,7 @@
             <th>Type cuisine</th>
             <th>Description</th>
             <th>Note</th>
-            <th>Actions</th>
+            <th class="actions-head">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -51,9 +51,9 @@
               </td>
               <td>{{ restaurant.cityName }}</td>
               <td>{{ restaurant.cuisineType || '—' }}</td>
-              <td>{{ restaurant.description || '—' }}</td>
+              <td><div class="desc-cell">{{ (restaurant.description || '—') | slice:0:100 }}{{ restaurant.description && restaurant.description.length > 100 ? '…' : '' }}</div></td>
               <td>{{ restaurant.rating || '—' }}</td>
-              <td class="actions">
+              <td class="actions table-actions">
                 <button class="btn icon-btn icon-view" (click)="openDetails(restaurant)" title="Voir détails" aria-label="Voir détails">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
                 </button>
@@ -203,13 +203,19 @@
       <div class="details-grid">
         <article class="details-media-main">
           @if (detailsRestaurant.imageUrl) {
-            <img [src]="detailsRestaurant.imageUrl" [alt]="detailsRestaurant.name" />
+            <div class="details-media-stage">
+              <img [src]="detailsRestaurant.imageUrl" [alt]="detailsRestaurant.name" />
+            </div>
           } @else {
             <div class="details-empty-media">Aucune image disponible</div>
           }
         </article>
 
         <article class="details-info-card">
+          <div class="details-badges">
+            <span class="detail-chip">{{ detailsRestaurant.cityName || 'Ville' }}</span>
+            <span class="detail-chip">{{ detailsRestaurant.cuisineType || 'Cuisine locale' }}</span>
+          </div>
           <h3>{{ detailsRestaurant.name }}</h3>
           <p>{{ detailsRestaurant.description || 'Aucune description disponible.' }}</p>
           <div class="details-meta-grid">
