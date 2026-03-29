@@ -5,6 +5,7 @@ import { FeaturePageComponent } from './feature-page.component';
 import { CommunityComponent } from './Community/community.component';
 import { MyPostsComponent } from './Community/my-posts.component';
 import { UserProfileComponent } from './Community/user-profile.component';
+import { FollowListComponent } from './Community/follow-list.component';
 import { SignInComponent } from './sign-in.component';
 import { SignUpComponent } from './sign-up.component';
 import { ForgotPasswordComponent } from './forgot-password.component';
@@ -396,6 +397,10 @@ export const routes: Routes = [
   {
     path: 'communaute/user/:userId',
     component: UserProfileComponent,
+  },
+  {
+    path: 'communaute/user/:userId/follows',
+    component: FollowListComponent,
   },
   { path: '**', redirectTo: '' },
 ];

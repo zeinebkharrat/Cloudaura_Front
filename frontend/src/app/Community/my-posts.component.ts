@@ -17,6 +17,7 @@ import { PostMediaService } from './post-media.service';
 import { PostService } from './post.service';
 import { AuthService } from '../auth.service';
 import { OwnershipUtil } from './ownership.util';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-my-posts',
@@ -186,17 +187,45 @@ export class MyPostsComponent {
       
       this.cancelEdit();
       this.loadMyPosts();
+      await Swal.fire({
+        icon: 'success',
+        title: 'Post modifie',
+        timer: 1200,
+        showConfirmButton: false,
+        ...this.swalTheme(),
+      });
     } catch (error) {
       console.error('Error updating post:', error);
-      alert('Failed to update post');
+      await Swal.fire({
+        icon: 'error',
+        title: 'Modification impossible',
+        text: 'Le post n\'a pas pu etre modifie.',
+        ...this.swalTheme(),
+      });
     } finally {
       this.isEditing.set(false);
     }
   }
 
   // Delete functionality
-  startDeletePost(postId: number): void {
+  async startDeletePost(postId: number): Promise<void> {
+    const confirmation = await Swal.fire({
+      title: 'Supprimer ce post ?',
+      text: 'Cette action est irreversible.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Oui, supprimer',
+      cancelButtonText: 'Annuler',
+      confirmButtonColor: '#e63946',
+      ...this.swalTheme(),
+    });
+
+    if (!confirmation.isConfirmed) {
+      return;
+    }
+
     this.deletingPostId.set(postId);
+    await this.confirmDelete();
   }
 
   cancelDelete(): void {
@@ -211,9 +240,21 @@ export class MyPostsComponent {
       await firstValueFrom(this.postService.deletePost(postId));
       this.cancelDelete();
       this.loadMyPosts();
+      await Swal.fire({
+        icon: 'success',
+        title: 'Post supprime',
+        timer: 1200,
+        showConfirmButton: false,
+        ...this.swalTheme(),
+      });
     } catch (error) {
       console.error('Error deleting post:', error);
-      alert('Failed to delete post');
+      await Swal.fire({
+        icon: 'error',
+        title: 'Suppression impossible',
+        text: 'Le post n\'a pas pu etre supprime.',
+        ...this.swalTheme(),
+      });
     }
   }
 
@@ -337,7 +378,20 @@ export class MyPostsComponent {
       this.loadMyPosts();
     } catch (error) {
       console.error('Error uploading media:', error);
-      alert('Failed to upload media');
+      await Swal.fire({
+        icon: 'error',
+        title: 'Upload impossible',
+        text: 'Le media n\'a pas pu etre ajoute.',
+        ...this.swalTheme(),
+      });
     }
+  }
+
+  private swalTheme(): { background: string; color: string } {
+    const darkMode = document.documentElement.getAttribute('data-theme') === 'dark';
+    return {
+      background: darkMode ? '#181d24' : '#ffffff',
+      color: darkMode ? '#e2e8f0' : '#1d2433',
+    };
   }
 }

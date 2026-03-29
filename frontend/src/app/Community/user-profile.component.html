@@ -18,10 +18,15 @@
           <strong>{{ userPosts().length + userReposts().length }}</strong>
           <span>Posts</span>
         </div>
-        <div>
+        <button type="button" class="metric-btn" (click)="openFollowList('followers')">
           <strong>{{ followersCount() }}</strong>
           <span>Followers</span>
-        </div>
+        </button>
+        <button type="button" class="metric-btn" (click)="openFollowList('following')">
+          <strong>{{ followingCount() }}</strong>
+          <span>Following</span>
+        </button>
+        
         <div>
           <strong>{{ userReposts().length }}</strong>
           <span>Reposts</span>

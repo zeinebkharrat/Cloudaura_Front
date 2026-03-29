@@ -69,4 +69,12 @@ public class FollowRelationService {
     public List<FollowRelation> followingOf(Integer userId) {
         return followRepo.findByFollowerUserId(userId);
     }
+
+    public long followersCount(Integer userId) {
+        return followRepo.countByFollowedUserId(userId);
+    }
+
+    public long followingCount(Integer userId) {
+        return followRepo.countByFollowerUserId(userId);
+    }
 }

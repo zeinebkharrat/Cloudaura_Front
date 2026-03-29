@@ -1,0 +1,46 @@
+<section class="follow-list-page">
+  <div class="follow-shell">
+    <header class="follow-head">
+      <button type="button" class="back-btn" (click)="backToProfile()">← Retour profil</button>
+      <h2>Réseau</h2>
+    </header>
+
+    <div class="follow-tabs">
+      <button type="button" [class.active]="activeTab() === 'followers'" (click)="openTab('followers')">
+        Followers ({{ followers().length }})
+      </button>
+      <button type="button" [class.active]="activeTab() === 'following'" (click)="openTab('following')">
+        Following ({{ following().length }})
+      </button>
+    </div>
+
+    <div class="state-box" *ngIf="loading()">Chargement...</div>
+    <div class="state-box state-box--error" *ngIf="!loading() && error()">{{ error() }}</div>
+
+    <div class="users-list" *ngIf="!loading() && !error()">
+      <button
+        type="button"
+        class="user-item"
+        *ngFor="let user of visibleUsers()"
+        (click)="goToUserProfile(user.userId)"
+      >
+        <img
+          *ngIf="user.profileImageUrl"
+          [src]="user.profileImageUrl"
+          [alt]="displayName(user)"
+          class="user-avatar"
+        />
+        <div *ngIf="!user.profileImageUrl" class="user-avatar user-avatar--fallback">{{ userInitial(user) }}</div>
+
+        <div class="user-meta">
+          <strong>{{ displayName(user) }}</strong>
+          <span>&#64;{{ user.username || 'user' }}</span>
+        </div>
+      </button>
+
+      <div class="state-box" *ngIf="visibleUsers().length === 0">
+        Aucun utilisateur dans cette liste.
+      </div>
+    </div>
+  </div>
+</section>

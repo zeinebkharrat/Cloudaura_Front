@@ -10,7 +10,11 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/follow")
@@ -37,7 +41,59 @@ public class FollowRelationController {
 
     @GetMapping("/followers/{userId}")
     public ResponseEntity<Map<String, Object>> followers(@PathVariable Integer userId) {
-        return ResponseEntity.ok(Map.of("count", followRelationService.followersOf(userId).size()));
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("count", followRelationService.followersCount(userId));
+        return ResponseEntity.ok(payload);
+    }
+
+    @GetMapping("/following/{userId}")
+    public ResponseEntity<Map<String, Object>> following(@PathVariable Integer userId) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("count", followRelationService.followingCount(userId));
+        return ResponseEntity.ok(payload);
+    }
+
+    @GetMapping("/followers-list/{userId}")
+    public ResponseEntity<Map<String, Object>> followersList(@PathVariable Integer userId) {
+        List<Map<String, Object>> users = followRelationService.followersOf(userId)
+                .stream()
+                .map(relation -> toUserSummary(relation.getFollower()))
+                .filter(summary -> summary.get("userId") != null)
+                .toList();
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("users", users == null ? new ArrayList<>() : users);
+        return ResponseEntity.ok(payload);
+    }
+
+    @GetMapping("/following-list/{userId}")
+    public ResponseEntity<Map<String, Object>> followingList(@PathVariable Integer userId) {
+        List<Map<String, Object>> users = followRelationService.followingOf(userId)
+                .stream()
+                .map(relation -> toUserSummary(relation.getFollowed()))
+                .filter(summary -> summary.get("userId") != null)
+                .collect(Collectors.toList());
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("users", users == null ? new ArrayList<>() : users);
+        return ResponseEntity.ok(payload);
+    }
+
+    private Map<String, Object> toUserSummary(User user) {
+        Map<String, Object> summary = new LinkedHashMap<>();
+        if (user == null) {
+            summary.put("userId", null);
+            summary.put("username", "");
+            summary.put("firstName", "");
+            summary.put("lastName", "");
+            summary.put("profileImageUrl", "");
+            return summary;
+        }
+
+        summary.put("userId", user.getUserId());
+        summary.put("username", user.getUsername() == null ? "" : user.getUsername());
+        summary.put("firstName", user.getFirstName() == null ? "" : user.getFirstName());
+        summary.put("lastName", user.getLastName() == null ? "" : user.getLastName());
+        summary.put("profileImageUrl", user.getProfileImageUrl() == null ? "" : user.getProfileImageUrl());
+        return summary;
     }
 
     private User getCurrentUser() {

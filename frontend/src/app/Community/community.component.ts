@@ -21,6 +21,7 @@ import { FollowService } from './follow.service';
 import { SavedPostService } from './saved-post.service';
 import { AuthService } from '../auth.service';
 import { OwnershipUtil } from './ownership.util';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-community',
@@ -99,6 +100,8 @@ export class CommunityComponent {
   readonly activeLikersPostId = signal<number | null>(null);
   readonly activeCommentsPostId = signal<number | null>(null);
   readonly expandedCommentsPostIds = signal<Set<number>>(new Set());
+  readonly activeMediaPostId = signal<number | null>(null);
+  readonly activeMediaIndex = signal<number>(0);
 
   constructor() {
     // No more manual userId selection - use JWT authentication
@@ -270,7 +273,18 @@ export class CommunityComponent {
     }
 
     const content = this.newPostContent().trim();
-    if (!content || !this.newPostLocation().trim()) {
+    const location = this.newPostLocation().trim();
+    if (!content) {
+      return;
+    }
+
+    if (!location) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Lieu requis',
+        text: 'Veuillez choisir un lieu avant de publier.',
+        ...this.swalTheme(),
+      });
       return;
     }
 
@@ -279,14 +293,15 @@ export class CommunityComponent {
     try {
       const newPost: Omit<Post, 'postId' | 'author' | 'createdAt' | 'updatedAt'> = {
         content,
-        hashtags: '',
-        location: this.newPostLocation() || null,
+        hashtags: this.extractHashtags(content).join(' '),
+        location: location || null,
         visibility: this.newPostVisibility() || 'public',
         likesCount: 0,
         commentsCount: 0,
       };
 
       const createdPost = await firstValueFrom(this.postService.addPost(newPost));
+      const uploadedMedias: PostMedia[] = [];
       
       // Upload media files if any
       const mediaFiles = this.newPostMediaFiles();
@@ -295,13 +310,27 @@ export class CommunityComponent {
           const file = mediaFiles[i];
           const mediaType = file.type.startsWith('video/') ? 'VIDEO' : 'IMAGE';
           try {
-            await firstValueFrom(
+            const uploadedMedia = await firstValueFrom(
               this.postMediaService.uploadMedia(file, createdPost.postId, mediaType as MediaType, i)
             );
+            uploadedMedias.push(uploadedMedia);
           } catch (mediaErr) {
             console.error('Error uploading media file:', mediaErr);
           }
         }
+      }
+
+      if (createdPost?.postId) {
+        const normalizedPost: Post = {
+          ...createdPost,
+          likesCount: createdPost.likesCount ?? 0,
+          commentsCount: createdPost.commentsCount ?? 0,
+        };
+        this.posts.set([normalizedPost, ...this.posts()]);
+      }
+
+      if (uploadedMedias.length > 0) {
+        this.medias.set([...this.medias(), ...uploadedMedias]);
       }
       
       // Reset form
@@ -312,8 +341,6 @@ export class CommunityComponent {
       this.showCreatePostForm.set(false);
       this.closePostMenu();
       
-      // Reload feed to show new post
-      this.loadFeed();
     } catch (error) {
       console.error('Error creating post:', error);
       this.loadError.set('Failed to create post');
@@ -380,10 +407,7 @@ export class CommunityComponent {
       currentStatuses.set(postId, response.liked);
       this.likeStatuses.set(new Map(currentStatuses));
 
-      const updatedPosts = this.posts().map((post) =>
-        post.postId === postId ? { ...post, likesCount: response.count } : post
-      );
-      this.posts.set(updatedPosts);
+      this.updatePostCounts(postId, { likesCount: response.count });
       
       // Reload like nicknames for this post
       this.loadLikeStatusesAndNicknames();
@@ -488,7 +512,12 @@ export class CommunityComponent {
     // Check if user is post owner
     const post = this.posts().find(p => p.postId === postId);
     if (!post || !OwnershipUtil.canEditPost(post, this.authService)) {
-      alert('Only the post owner can upload media');
+      await Swal.fire({
+        icon: 'error',
+        title: 'Action refusée',
+        text: 'Seul le proprietaire du post peut ajouter un media.',
+        ...this.swalTheme(),
+      });
       return;
     }
 
@@ -496,15 +525,24 @@ export class CommunityComponent {
 
     try {
       const mediaType = file.type.startsWith('video/') ? 'VIDEO' : 'IMAGE';
-      await firstValueFrom(
+      const uploadedMedia = await firstValueFrom(
         this.postMediaService.uploadMedia(file, postId, mediaType as MediaType)
       );
-      
-      // Reload feed to show new media
-      this.loadFeed();
+
+      const next = [...this.medias(), uploadedMedia].sort(
+        (a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0)
+      );
+      this.medias.set(next);
+
+      (event.target as HTMLInputElement).value = '';
     } catch (error) {
       console.error('Error uploading media:', error);
-      alert('Failed to upload media');
+      await Swal.fire({
+        icon: 'error',
+        title: 'Upload impossible',
+        text: 'Le media n\'a pas pu etre ajoute.',
+        ...this.swalTheme(),
+      });
     } finally {
       this.uploadingPostId.set(null);
     }
@@ -512,7 +550,18 @@ export class CommunityComponent {
 
   // Delete post
   async deletePost(postId: number): Promise<void> {
-    if (!confirm('Are you sure you want to delete this post?')) {
+    const confirmation = await Swal.fire({
+      title: 'Supprimer ce post ?',
+      text: 'Cette action est irreversible.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Oui, supprimer',
+      cancelButtonText: 'Annuler',
+      confirmButtonColor: '#e63946',
+      ...this.swalTheme(),
+    });
+
+    if (!confirmation.isConfirmed) {
       return;
     }
 
@@ -520,24 +569,59 @@ export class CommunityComponent {
       await firstValueFrom(this.postService.deletePost(postId));
       this.closePostMenu();
       this.loadFeed();
+      await Swal.fire({
+        icon: 'success',
+        title: 'Post supprime',
+        timer: 1200,
+        showConfirmButton: false,
+        ...this.swalTheme(),
+      });
     } catch (error) {
       console.error('Error deleting post:', error);
-      alert('Failed to delete post');
+      await Swal.fire({
+        icon: 'error',
+        title: 'Suppression impossible',
+        text: 'Le post n\'a pas pu etre supprime.',
+        ...this.swalTheme(),
+      });
     }
   }
 
   // Delete comment
   async deleteComment(commentId: number): Promise<void> {
-    if (!confirm('Are you sure you want to delete this comment?')) {
+    const confirmation = await Swal.fire({
+      title: 'Supprimer ce commentaire ?',
+      text: 'Cette action est irreversible.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Oui, supprimer',
+      cancelButtonText: 'Annuler',
+      confirmButtonColor: '#e63946',
+      ...this.swalTheme(),
+    });
+
+    if (!confirmation.isConfirmed) {
       return;
     }
 
     try {
       await firstValueFrom(this.commentService.deleteComment(commentId));
       this.loadFeed();
+      await Swal.fire({
+        icon: 'success',
+        title: 'Commentaire supprime',
+        timer: 1200,
+        showConfirmButton: false,
+        ...this.swalTheme(),
+      });
     } catch (error) {
       console.error('Error deleting comment:', error);
-      alert('Failed to delete comment');
+      await Swal.fire({
+        icon: 'error',
+        title: 'Suppression impossible',
+        text: 'Le commentaire n\'a pas pu etre supprime.',
+        ...this.swalTheme(),
+      });
     }
   }
 
@@ -583,7 +667,7 @@ export class CommunityComponent {
       await firstValueFrom(
         this.postService.updatePost(postId, {
           content,
-          hashtags: post.hashtags ?? '',
+          hashtags: this.extractHashtags(content).join(' '),
           location: this.editPostLocation().trim() || null,
           visibility: this.editPostVisibility() || 'public',
           likesCount: post.likesCount ?? 0,
@@ -594,9 +678,21 @@ export class CommunityComponent {
       this.cancelEditPost();
       this.closePostMenu();
       this.loadFeed();
+      await Swal.fire({
+        icon: 'success',
+        title: 'Post modifie',
+        timer: 1200,
+        showConfirmButton: false,
+        ...this.swalTheme(),
+      });
     } catch (error) {
       console.error('Error updating post:', error);
-      alert('Failed to update post');
+      await Swal.fire({
+        icon: 'error',
+        title: 'Modification impossible',
+        text: 'Le post n\'a pas pu etre mis a jour.',
+        ...this.swalTheme(),
+      });
       this.isSavingEdit.set(false);
     }
   }
@@ -621,6 +717,27 @@ export class CommunityComponent {
   @HostListener('document:click')
   handleDocumentClick(): void {
     this.closePostMenu();
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  handleKeydown(event: KeyboardEvent): void {
+    if (this.activeMediaPostId() == null) {
+      return;
+    }
+
+    if (event.key === 'Escape') {
+      this.closeMediaLightbox();
+      return;
+    }
+
+    if (event.key === 'ArrowLeft') {
+      this.prevMedia();
+      return;
+    }
+
+    if (event.key === 'ArrowRight') {
+      this.nextMedia();
+    }
   }
 
   cityDisplay(city: CityOption): string {
@@ -741,7 +858,12 @@ export class CommunityComponent {
         parent: isReply ? { commentId: parentCommentId } : null,
       };
 
-      await firstValueFrom(this.commentService.addComment(newComment));
+      const createdComment = await firstValueFrom(this.commentService.addComment(newComment));
+
+      this.comments.set([...this.comments(), createdComment]);
+      this.updatePostCounts(postId, {
+        commentsCount: this.getCommentCount(postId) + 1,
+      });
       
       // Clear draft and reload feed
       if (isReply) {
@@ -750,7 +872,6 @@ export class CommunityComponent {
       } else {
         this.setCommentDraft(postId, '');
       }
-      this.loadFeed();
     } catch (error) {
       console.error('Error adding comment:', error);
     }
@@ -846,17 +967,22 @@ export class CommunityComponent {
   }
 
   getHashtagsFromText(source?: string | null): string[] {
-    return (source || '')
-      .split(/[\s,]+/)
-      .map((s) => s.trim())
-      .filter((s) => s.startsWith('#') && s.length > 1);
+    return this.extractHashtags(source);
   }
 
   getHashtags(post: Post): string[] {
-    return (post.hashtags || '')
-      .split(/[\s,]+/)
-      .map((s) => s.trim())
-      .filter((s) => s.startsWith('#') && s.length > 1);
+    const explicit = this.extractHashtags(post.hashtags);
+    const fromContent = this.extractHashtags(post.content);
+    return Array.from(new Set([...explicit, ...fromContent]));
+  }
+
+  private extractHashtags(source?: string | null): string[] {
+    if (!source) {
+      return [];
+    }
+
+    const tags = source.match(/#[\p{L}\p{N}_]+/gu) || [];
+    return Array.from(new Set(tags.map((tag) => tag.trim())));
   }
 
   // Helper methods used in HTML template
@@ -881,7 +1007,7 @@ export class CommunityComponent {
   }
 
   getLikeCount(postId: number): number {
-    const post = this.posts().find((p) => p.postId === postId);
+    const post = this.findPostById(postId);
     if (typeof post?.likesCount === 'number') {
       return post.likesCount;
     }
@@ -889,11 +1015,31 @@ export class CommunityComponent {
   }
 
   getCommentCount(postId: number): number {
-    const post = this.posts().find((p) => p.postId === postId);
+    const post = this.findPostById(postId);
     if (typeof post?.commentsCount === 'number') {
       return post.commentsCount;
     }
     return this.comments().filter((c) => c.post?.postId === postId).length;
+  }
+
+  private findPostById(postId: number): Post | undefined {
+    return this.posts().find((p) => p.postId === postId)
+      ?? this.savedPosts().find((p) => p.postId === postId)
+      ?? this.visiblePosts().find((p) => p.postId === postId);
+  }
+
+  private updatePostCounts(postId: number, values: Partial<Pick<Post, 'likesCount' | 'commentsCount'>>): void {
+    this.posts.set(
+      this.posts().map((post) =>
+        post.postId === postId ? { ...post, ...values } : post
+      )
+    );
+
+    this.savedPosts.set(
+      this.savedPosts().map((post) =>
+        post.postId === postId ? { ...post, ...values } : post
+      )
+    );
   }
 
   isPostLiked(postId: number): boolean {
@@ -905,6 +1051,95 @@ export class CommunityComponent {
       .filter((m) => m.post?.postId === postId)
       .slice()
       .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+  }
+
+  getImageMediaForPost(postId: number): PostMedia[] {
+    return this.getMediaForPost(postId).filter(
+      (m) => m.mediaType !== 'VIDEO' && !!m.fileUrl
+    );
+  }
+
+  getVideoMediaForPost(postId: number): PostMedia[] {
+    return this.getMediaForPost(postId).filter(
+      (m) => m.mediaType === 'VIDEO' && !!m.fileUrl
+    );
+  }
+
+  getDisplayImagesForPost(postId: number): PostMedia[] {
+    const images = this.getImageMediaForPost(postId);
+    if (images.length <= 2) {
+      return images;
+    }
+    return images.slice(0, 2);
+  }
+
+  getRemainingImagesCount(postId: number): number {
+    const images = this.getImageMediaForPost(postId);
+    return Math.max(images.length - 2, 0);
+  }
+
+  isCollapsedImageTile(postId: number, index: number): boolean {
+    return index === 1 && this.getRemainingImagesCount(postId) > 0;
+  }
+
+  openMediaLightbox(postId: number, startIndex: number): void {
+    const images = this.getImageMediaForPost(postId);
+    if (images.length === 0) {
+      return;
+    }
+
+    const safeIndex = Math.max(0, Math.min(startIndex, images.length - 1));
+    this.activeMediaPostId.set(postId);
+    this.activeMediaIndex.set(safeIndex);
+  }
+
+  closeMediaLightbox(): void {
+    this.activeMediaPostId.set(null);
+    this.activeMediaIndex.set(0);
+  }
+
+  activeMediaList(): PostMedia[] {
+    const postId = this.activeMediaPostId();
+    if (postId == null) {
+      return [];
+    }
+    return this.getImageMediaForPost(postId);
+  }
+
+  currentLightboxMedia(): PostMedia | null {
+    const list = this.activeMediaList();
+    if (list.length === 0) {
+      return null;
+    }
+    return list[this.activeMediaIndex()] ?? list[0] ?? null;
+  }
+
+  prevMedia(): void {
+    const list = this.activeMediaList();
+    if (list.length <= 1) {
+      return;
+    }
+    const current = this.activeMediaIndex();
+    const nextIndex = (current - 1 + list.length) % list.length;
+    this.activeMediaIndex.set(nextIndex);
+  }
+
+  nextMedia(): void {
+    const list = this.activeMediaList();
+    if (list.length <= 1) {
+      return;
+    }
+    const current = this.activeMediaIndex();
+    const nextIndex = (current + 1) % list.length;
+    this.activeMediaIndex.set(nextIndex);
+  }
+
+  private swalTheme(): { background: string; color: string } {
+    const darkMode = document.documentElement.getAttribute('data-theme') === 'dark';
+    return {
+      background: darkMode ? '#181d24' : '#ffffff',
+      color: darkMode ? '#e2e8f0' : '#1d2433',
+    };
   }
 
   commentTreeForPost(postId: number): CommentWithChildren[] {

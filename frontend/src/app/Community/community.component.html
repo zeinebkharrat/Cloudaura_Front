@@ -41,7 +41,7 @@
           type="button"
           class="publish-btn"
           (click)="createPost()"
-          [disabled]="!newPostContent().trim() || !newPostLocation().trim() || isPosting()"
+          [disabled]="!newPostContent().trim() || isPosting()"
         >
           <span *ngIf="!isPosting()">Publier</span>
           <span *ngIf="isPosting()">...</span>
@@ -80,6 +80,44 @@
             <div class="avatar comment-avatar">{{ nickname.charAt(0).toUpperCase() || 'U' }}</div>
             <span class="liker-name">{{ nickname }}</span>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Media Lightbox -->
+    <div class="media-lightbox-backdrop" *ngIf="activeMediaPostId() !== null" (click)="closeMediaLightbox()">
+      <div class="media-lightbox-content" (click)="$event.stopPropagation()">
+        <button type="button" class="btn-close media-lightbox-close" (click)="closeMediaLightbox()">✕</button>
+
+        <button
+          type="button"
+          class="media-lightbox-nav media-lightbox-nav--prev"
+          *ngIf="activeMediaList().length > 1"
+          (click)="prevMedia()"
+          aria-label="Image precedente"
+        >
+          ‹
+        </button>
+
+        <img
+          class="media-lightbox-image"
+          *ngIf="currentLightboxMedia()?.fileUrl"
+          [src]="currentLightboxMedia()!.fileUrl!"
+          alt="Media du post"
+        />
+
+        <button
+          type="button"
+          class="media-lightbox-nav media-lightbox-nav--next"
+          *ngIf="activeMediaList().length > 1"
+          (click)="nextMedia()"
+          aria-label="Image suivante"
+        >
+          ›
+        </button>
+
+        <div class="media-lightbox-counter" *ngIf="activeMediaList().length > 0">
+          {{ activeMediaIndex() + 1 }} / {{ activeMediaList().length }}
         </div>
       </div>
     </div>
@@ -124,6 +162,7 @@
                 <div class="author-info">
                   <button type="button" class="author-name author-link" (click)="goToUserProfile(post.author?.userId)">{{ displayName(post.author) }}</button>
                   <span class="post-time">{{ formatDate(post.createdAt) }}</span>
+                  <span class="post-location-inline" *ngIf="post.location">📍 {{ post.location }}</span>
                 </div>
                 <button
                   type="button"
@@ -194,18 +233,56 @@
                   </article>
                 </section>
 
-                <p>{{ post.content }}</p>
-                <div class="post-meta-row" *ngIf="post.location || post.visibility">
-                  <div class="post-location" *ngIf="post.location">
-                    📍 {{ post.location }}
-                  </div>
-                  <div class="post-visibility" *ngIf="post.visibility">
-                    {{ post.visibility === 'private' ? '🔒 Prive' : '🌍 Public' }}
-                  </div>
+                <div
+                  class="media-grid post-media-grid"
+                  *ngIf="getImageMediaForPost(post.postId!).length > 0"
+                >
+                  <ng-container
+                    *ngFor="
+                      let m of getDisplayImagesForPost(post.postId!);
+                      let i = index;
+                      trackBy: trackByPostMedia
+                    "
+                  >
+                    <ng-container *ngIf="m.fileUrl">
+                      <div
+                        class="media-item post-media-item"
+                        [class.post-media-item--collapsed]="isCollapsedImageTile(post.postId!, i)"
+                        (click)="openMediaLightbox(post.postId!, i)"
+                      >
+                        <img
+                          class="media-image"
+                          [src]="m.fileUrl"
+                          [alt]="'Media du post ' + post.postId"
+                        />
+                        <div class="post-media-item__overlay" *ngIf="isCollapsedImageTile(post.postId!, i)">
+                          +{{ getRemainingImagesCount(post.postId!) }}
+                        </div>
+                      </div>
+                    </ng-container>
+                  </ng-container>
+                </div>
+
+                <div class="media-grid post-video-grid" *ngIf="getVideoMediaForPost(post.postId!).length > 0">
+                  <ng-container *ngFor="let m of getVideoMediaForPost(post.postId!); trackBy: trackByPostMedia">
+                    <ng-container *ngIf="m.fileUrl">
+                      <div class="media-item">
+                        <video class="media-video" controls [src]="m.fileUrl"></video>
+                      </div>
+                    </ng-container>
+                  </ng-container>
                 </div>
 
                 <div class="hashtags-row" *ngIf="getHashtags(post).length > 0">
                   <span class="hashtag-chip" *ngFor="let tag of getHashtags(post)">{{ tag }}</span>
+                </div>
+
+                <p class="post-caption">{{ post.content }}</p>
+
+                <div class="post-meta-row" *ngIf="post.visibility">
+                  <div class="post-visibility" *ngIf="post.visibility">
+                    {{ post.visibility === 'private' ? '🔒 Prive' : '🌍 Public' }}
+                  </div>
                 </div>
               </ng-container>
 
@@ -280,19 +357,26 @@
                       (click)="$event.stopPropagation(); toggleLikersModal(post.postId!)"
                     >{{ getLikeCount(post.postId!) }} j'aime</span>
                   </div>
-                  <div class="stat-item">
+                  <button type="button" class="stat-item stat-item--clickable stat-comment-trigger" (click)="toggleComments(post.postId!)">
                     <span class="stat-icon">💬</span>
                     <span>{{ getCommentCount(post.postId!) }} commentaires</span>
-                  </div>
+                  </button>
                 </div>
 
                 <div class="post-stats-right" *ngIf="authService.isAuthenticated()">
                   <button
                     type="button"
-                    class="stat-action-btn"
+                    class="stat-action-btn stat-action-btn--repost"
                     (click)="repost(post.postId!)"
+                    title="Repost"
                   >
-                    🔁 Repost
+                    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M8 7h8.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                      <path d="M14.5 4l3.5 3-3.5 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M16 17H7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                      <path d="M9.5 14l-3.5 3 3.5 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <span>Repost</span>
                   </button>
                   <button
                     type="button"
@@ -308,57 +392,7 @@
                 </div>
               </div>
 
-              <div
-                class="media-grid"
-                *ngIf="getMediaForPost(post.postId!).length > 0"
-              >
-                <ng-container
-                  *ngFor="
-                    let m of getMediaForPost(post.postId!);
-                    trackBy: trackByPostMedia
-                  "
-                >
-                  <ng-container *ngIf="m.fileUrl">
-                    <div class="media-item">
-                      <video
-                        class="media-video"
-                        controls
-                        *ngIf="m.mediaType === 'VIDEO'"
-                        [src]="m.fileUrl"
-                      ></video>
-
-                      <img
-                        class="media-image"
-                        *ngIf="m.mediaType !== 'VIDEO'"
-                        [src]="m.fileUrl"
-                        [alt]="'Media du post ' + post.postId"
-                      />
-                    </div>
-                  </ng-container>
-                </ng-container>
-              </div>
-
-              <div class="media-upload" *ngIf="canEditPost(post)">
-                <label class="upload-btn">
-                  <input
-                    type="file"
-                    accept="image/*,video/*"
-                    multiple
-                    (change)="onAddMediaFiles(post.postId!, $event)"
-                    [disabled]="uploadingPostId() === post.postId"
-                  />
-                  <span class="upload-icon">📎</span>
-                  <span class="upload-text">
-                    {{
-                      uploadingPostId() === post.postId
-                        ? 'Ajout...'
-                        : 'Ajouter media'
-                    }}
-                  </span>
-                </label>
-              </div>
-
-              <div class="inline-comments-block">
+              <div class="inline-comments-block" *ngIf="isCommentsExpanded(post.postId!)">
                 <p class="empty-thread" *ngIf="commentTreeForPost(post.postId!).length === 0">
                   Aucun commentaire pour ce post.
                 </p>
@@ -371,7 +405,7 @@
               </div>
 
               <!-- Inline quick comment input (Facebook-style) -->
-              <div class="inline-comment-input">
+              <div class="inline-comment-input" *ngIf="isCommentsExpanded(post.postId!)">
                 <div class="avatar comment-avatar">{{ authService.currentUser()?.username?.charAt(0)?.toUpperCase() || 'U' }}</div>
                 <input
                   type="text"

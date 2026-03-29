@@ -9,6 +9,14 @@ export interface ToggleFollowResponse {
   followingCount: number;
 }
 
+export interface FollowUserSummary {
+  userId: number;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  profileImageUrl?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class FollowService {
   private readonly http = inject(HttpClient);
@@ -24,5 +32,17 @@ export class FollowService {
 
   followersCount(userId: number): Observable<{ count: number }> {
     return this.http.get<{ count: number }>(`${this.base}/follow/followers/${userId}`);
+  }
+
+  followingCount(userId: number): Observable<{ count: number }> {
+    return this.http.get<{ count: number }>(`${this.base}/follow/following/${userId}`);
+  }
+
+  followersList(userId: number): Observable<{ users: FollowUserSummary[] }> {
+    return this.http.get<{ users: FollowUserSummary[] }>(`${this.base}/follow/followers-list/${userId}`);
+  }
+
+  followingList(userId: number): Observable<{ users: FollowUserSummary[] }> {
+    return this.http.get<{ users: FollowUserSummary[] }>(`${this.base}/follow/following-list/${userId}`);
   }
 }

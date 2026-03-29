@@ -36,6 +36,7 @@ export class UserProfileComponent {
   readonly medias = signal<PostMedia[]>([]);
 
   readonly followersCount = signal<number>(0);
+  readonly followingCount = signal<number>(0);
   readonly following = signal<boolean>(false);
 
   readonly activeTab = signal<'posts' | 'reposts' | 'saved'>('posts');
@@ -82,6 +83,13 @@ export class UserProfileComponent {
         this.followersCount.set(0);
       }
 
+      try {
+        const followingCount = await firstValueFrom(this.followService.followingCount(targetUserId));
+        this.followingCount.set(followingCount.count || 0);
+      } catch {
+        this.followingCount.set(0);
+      }
+
       if (this.authService.isAuthenticated()) {
         try {
           const isFollowing = await firstValueFrom(this.followService.isFollowing(targetUserId));
@@ -125,6 +133,9 @@ export class UserProfileComponent {
       const response = await firstValueFrom(this.followService.toggleFollow(targetUserId));
       this.following.set(response.following);
       this.followersCount.set(response.followersCount ?? this.followersCount());
+      if (this.isOwnProfile()) {
+        this.followingCount.set(response.followingCount ?? this.followingCount());
+      }
     } catch (err) {
       console.error('Failed to toggle follow', err);
     }
@@ -185,6 +196,16 @@ export class UserProfileComponent {
 
   backToCommunity(): void {
     this.router.navigate(['/communaute']);
+  }
+
+  openFollowList(tab: 'followers' | 'following'): void {
+    const targetUserId = this.userId();
+    if (!targetUserId) {
+      return;
+    }
+    this.router.navigate(['/communaute/user', targetUserId, 'follows'], {
+      queryParams: { tab },
+    });
   }
 
   goToAuthorProfile(post: Post): void {
