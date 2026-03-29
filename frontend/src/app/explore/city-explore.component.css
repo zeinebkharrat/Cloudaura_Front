@@ -371,6 +371,22 @@
   color: var(--text-muted);
 }
 
+.rating-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stars {
+  display: inline-flex;
+  gap: 2px;
+  color: #d4d4d8;
+}
+
+.stars .filled {
+  color: #f59e0b;
+}
+
 .related-nav {
   position: absolute;
   top: 50%;

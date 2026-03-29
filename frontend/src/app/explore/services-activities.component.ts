@@ -30,8 +30,10 @@ export class ServicesActivitiesComponent implements OnInit, OnDestroy {
   readonly size = 9;
   totalPages = signal(0);
   totalElements = signal(0);
+  activityRatingById = signal<Record<number, number>>({});
 
   private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private priceDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   pageNumbers = computed(() => Array.from({ length: this.totalPages() }, (_, index) => index));
 
@@ -45,6 +47,9 @@ export class ServicesActivitiesComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     if (this.searchDebounceTimer) {
       clearTimeout(this.searchDebounceTimer);
+    }
+    if (this.priceDebounceTimer) {
+      clearTimeout(this.priceDebounceTimer);
     }
   }
 
@@ -74,11 +79,13 @@ export class ServicesActivitiesComponent implements OnInit, OnDestroy {
   onMinPriceSliderChange(value: number): void {
     const normalized = Math.max(this.sliderMin, Math.min(value, this.maxPrice()));
     this.minPrice.set(normalized);
+    this.schedulePriceFiltering();
   }
 
   onMaxPriceSliderChange(value: number): void {
     const normalized = Math.min(this.sliderMax, Math.max(value, this.minPrice()));
     this.maxPrice.set(normalized);
+    this.schedulePriceFiltering();
   }
 
   onMinPriceInputChange(value: number): void {
@@ -86,6 +93,7 @@ export class ServicesActivitiesComponent implements OnInit, OnDestroy {
       ? Math.max(this.sliderMin, Math.min(value, this.maxPrice()))
       : this.sliderMin;
     this.minPrice.set(normalized);
+    this.schedulePriceFiltering();
   }
 
   onMaxPriceInputChange(value: number): void {
@@ -93,11 +101,7 @@ export class ServicesActivitiesComponent implements OnInit, OnDestroy {
       ? Math.min(this.sliderMax, Math.max(value, this.minPrice()))
       : this.sliderMax;
     this.maxPrice.set(normalized);
-  }
-
-  applyPriceFilters(): void {
-    this.page.set(0);
-    this.loadActivities();
+    this.schedulePriceFiltering();
   }
 
   onDateChange(value: string): void {
@@ -147,6 +151,15 @@ export class ServicesActivitiesComponent implements OnInit, OnDestroy {
     this.loadActivities();
   }
 
+  activityStarStates(activityId: number): Array<'full' | 'empty'> {
+    const safeRating = this.activityRatingById()[activityId] ?? 0;
+    return Array.from({ length: 5 }, (_, index) => (safeRating >= index + 1 ? 'full' : 'empty'));
+  }
+
+  hasActivityReviews(activityId: number): boolean {
+    return (this.activityRatingById()[activityId] ?? 0) > 0;
+  }
+
   private loadCities(): void {
     this.exploreService.listPublicCities().subscribe({
       next: (cities) => {
@@ -161,6 +174,16 @@ export class ServicesActivitiesComponent implements OnInit, OnDestroy {
   private selectedCityNumericId(): number | null {
     const value = this.selectedCityId();
     return value === 'all' ? null : value;
+  }
+
+  private schedulePriceFiltering(): void {
+    if (this.priceDebounceTimer) {
+      clearTimeout(this.priceDebounceTimer);
+    }
+    this.priceDebounceTimer = setTimeout(() => {
+      this.page.set(0);
+      this.loadActivities();
+    }, 250);
   }
 
   private loadActivities(): void {
@@ -180,6 +203,7 @@ export class ServicesActivitiesComponent implements OnInit, OnDestroy {
     }).subscribe({
       next: (res) => {
         this.activities.set(res.content);
+        this.loadActivityRatings(res.content);
         this.totalPages.set(res.totalPages);
         this.totalElements.set(res.totalElements);
         this.loading.set(false);
@@ -189,5 +213,25 @@ export class ServicesActivitiesComponent implements OnInit, OnDestroy {
         this.error.set(err?.error?.message ?? 'Unable to load activities');
       },
     });
+  }
+
+  private loadActivityRatings(activities: Activity[]): void {
+    this.activityRatingById.set({});
+    for (const activity of activities) {
+      this.exploreService.getActivityReviewSummary(activity.activityId).subscribe({
+        next: (summary) => {
+          this.activityRatingById.update((current) => ({
+            ...current,
+            [activity.activityId]: summary?.averageStars ?? 0,
+          }));
+        },
+        error: () => {
+          this.activityRatingById.update((current) => ({
+            ...current,
+            [activity.activityId]: 0,
+          }));
+        },
+      });
+    }
   }
 }

@@ -19,11 +19,13 @@ export class ServicesRestaurantsComponent implements OnInit, OnDestroy {
   cities = signal<City[]>([]);
   q = signal('');
   selectedCityId = signal<number | 'all'>('all');
+  cuisineType = signal('');
   sort = signal('restaurantId,desc');
   page = signal(0);
   readonly size = 9;
   totalPages = signal(0);
   totalElements = signal(0);
+  restaurantRatingById = signal<Record<number, number>>({});
 
   private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -65,6 +67,12 @@ export class ServicesRestaurantsComponent implements OnInit, OnDestroy {
     this.loadRestaurants();
   }
 
+  onCuisineTypeChange(value: string): void {
+    this.cuisineType.set(value);
+    this.page.set(0);
+    this.loadRestaurants();
+  }
+
   previousPage(): void {
     if (this.page() <= 0) {
       return;
@@ -87,6 +95,15 @@ export class ServicesRestaurantsComponent implements OnInit, OnDestroy {
     }
     this.page.set(index);
     this.loadRestaurants();
+  }
+
+  restaurantStarStates(restaurantId: number): Array<'full' | 'empty'> {
+    const safeRating = this.restaurantRatingById()[restaurantId] ?? 0;
+    return Array.from({ length: 5 }, (_, index) => (safeRating >= index + 1 ? 'full' : 'empty'));
+  }
+
+  hasRestaurantReviews(restaurantId: number): boolean {
+    return (this.restaurantRatingById()[restaurantId] ?? 0) > 0;
   }
 
   private loadCities(): void {
@@ -112,12 +129,14 @@ export class ServicesRestaurantsComponent implements OnInit, OnDestroy {
     this.exploreService.listRestaurants({
       q: this.q(),
       cityId: this.selectedCityNumericId(),
+      cuisineType: this.cuisineType(),
       page: this.page(),
       size: this.size,
       sort: this.sort(),
     }).subscribe({
       next: (res) => {
         this.restaurants.set(res.content);
+        this.loadRestaurantRatings(res.content);
         this.totalPages.set(res.totalPages);
         this.totalElements.set(res.totalElements);
         this.loading.set(false);
@@ -127,5 +146,25 @@ export class ServicesRestaurantsComponent implements OnInit, OnDestroy {
         this.error.set(err?.error?.message ?? 'Unable to load restaurants');
       },
     });
+  }
+
+  private loadRestaurantRatings(restaurants: Restaurant[]): void {
+    this.restaurantRatingById.set({});
+    for (const restaurant of restaurants) {
+      this.exploreService.getRestaurantReviewSummary(restaurant.restaurantId).subscribe({
+        next: (summary) => {
+          this.restaurantRatingById.update((current) => ({
+            ...current,
+            [restaurant.restaurantId]: summary?.averageStars ?? 0,
+          }));
+        },
+        error: () => {
+          this.restaurantRatingById.update((current) => ({
+            ...current,
+            [restaurant.restaurantId]: 0,
+          }));
+        },
+      });
+    }
   }
 }

@@ -18,6 +18,9 @@ export class CityExploreComponent implements OnInit, OnDestroy {
   error = signal('');
   details = signal<PublicCityDetailsResponse | null>(null);
   activityImageById = signal<Record<number, string>>({});
+  restaurantRatingById = signal<Record<number, number>>({});
+  activityRatingById = signal<Record<number, number>>({});
+  activityReviewCountById = signal<Record<number, number>>({});
   currentImageIndex = signal(0);
   activitiesPerPage = signal(2);
   restaurantPageIndex = signal(0);
@@ -100,9 +103,14 @@ export class CityExploreComponent implements OnInit, OnDestroy {
       next: (details) => {
         this.details.set(details);
         this.activityImageById.set({});
+        this.restaurantRatingById.set({});
+        this.activityRatingById.set({});
+        this.activityReviewCountById.set({});
         this.restaurantPageIndex.set(0);
         this.activityPageIndex.set(0);
+        this.loadRestaurantRatings(details.restaurants);
         this.loadActivityImages(details.activities);
+        this.loadActivityRatings(details.activities);
         this.currentImageIndex.set(0);
         this.startAutoSlide();
         this.startRestaurantsAutoSlide();
@@ -301,6 +309,23 @@ export class CityExploreComponent implements OnInit, OnDestroy {
     );
   }
 
+  starStates(value: number | null): Array<'full' | 'empty'> {
+    const safe = value ?? 0;
+    return Array.from({ length: 5 }, (_, index) => (safe >= index + 1 ? 'full' : 'empty'));
+  }
+
+  activityRating(activityId: number): number {
+    return this.activityRatingById()[activityId] ?? 0;
+  }
+
+  restaurantRating(restaurantId: number): number {
+    return this.restaurantRatingById()[restaurantId] ?? 0;
+  }
+
+  activityReviewCount(activityId: number): number {
+    return this.activityReviewCountById()[activityId] ?? 0;
+  }
+
   scrollToSection(sectionId: 'restaurants' | 'activities'): void {
     const target = document.getElementById(sectionId);
     if (!target) {
@@ -324,6 +349,54 @@ export class CityExploreComponent implements OnInit, OnDestroy {
           }));
         },
         error: () => {
+        },
+      });
+    }
+  }
+
+  private loadRestaurantRatings(restaurants: Restaurant[]): void {
+    for (const restaurant of restaurants) {
+      this.exploreService.getRestaurantReviewSummary(restaurant.restaurantId).subscribe({
+        next: (summary) => {
+          this.restaurantRatingById.update((current) => ({
+            ...current,
+            [restaurant.restaurantId]: summary?.averageStars ?? 0,
+          }));
+        },
+        error: () => {
+          this.restaurantRatingById.update((current) => ({
+            ...current,
+            [restaurant.restaurantId]: 0,
+          }));
+        },
+      });
+    }
+  }
+
+  private loadActivityRatings(activities: Activity[]): void {
+    for (const activity of activities) {
+      this.exploreService.getActivityReviewSummary(activity.activityId).subscribe({
+        next: (summary) => {
+          this.activityRatingById.update((current) => ({
+            ...current,
+            [activity.activityId]: summary?.averageStars ?? 0,
+          }));
+
+          this.activityReviewCountById.update((current) => ({
+            ...current,
+            [activity.activityId]: summary?.totalReviews ?? 0,
+          }));
+        },
+        error: () => {
+          this.activityRatingById.update((current) => ({
+            ...current,
+            [activity.activityId]: 0,
+          }));
+
+          this.activityReviewCountById.update((current) => ({
+            ...current,
+            [activity.activityId]: 0,
+          }));
         },
       });
     }

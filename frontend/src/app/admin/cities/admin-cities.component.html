@@ -6,6 +6,21 @@
     <button class="btn" (click)="openCreateModal()">Ajouter une ville</button>
   </header>
 
+  <section class="stats-grid">
+    <article class="stat-card">
+      <span>Total villes</span>
+      <strong>{{ totalElements }}</strong>
+    </article>
+    <article class="stat-card">
+      <span>Villes affichées</span>
+      <strong>{{ cities.length }}</strong>
+    </article>
+    <article class="stat-card">
+      <span>Résultats par page</span>
+      <strong>{{ size }}</strong>
+    </article>
+  </section>
+
   @if (error) {
     <div class="alert">{{ error }}</div>
   }

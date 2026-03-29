@@ -54,7 +54,13 @@
                           <p>{{ restaurant.description || ('Cuisine: ' + (restaurant.cuisineType || 'Local')) }}</p>
                           <div class="related-meta">
                             <span>{{ restaurant.cuisineType || 'Local cuisine' }}</span>
-                            <span>{{ restaurant.rating ?? '—' }}/5</span>
+                            <span class="rating-badge">
+                              <span class="stars">
+                                @for (state of starStates(restaurantRating(restaurant.restaurantId)); track $index) {
+                                  <span [class.filled]="state === 'full'">★</span>
+                                }
+                              </span>
+                            </span>
                           </div>
                           <a class="btn" [routerLink]="['/restaurants', restaurant.restaurantId]">Details</a>
                         </div>
@@ -106,7 +112,13 @@
                           <p>{{ activity.description || ('Type: ' + (activity.type || 'Tourist activity')) }}</p>
                           <div class="related-meta">
                             <span>{{ activity.type || 'Tourist activity' }}</span>
-                            <span>{{ activity.price ?? '—' }} DT</span>
+                            <span class="rating-badge">
+                              <span class="stars">
+                                @for (state of starStates(activityRating(activity.activityId)); track $index) {
+                                  <span [class.filled]="state === 'full'">★</span>
+                                }
+                              </span>
+                            </span>
                           </div>
                           <a class="btn" [routerLink]="['/activities', activity.activityId]">Details</a>
                         </div>

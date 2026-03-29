@@ -11,10 +11,6 @@
     <div class="toolbar">
       <input type="text" placeholder="Recherche activité, username, email..." [(ngModel)]="q" (ngModelChange)="onFiltersChanged()" />
 
-      <input type="number" min="1" placeholder="ID activité" [(ngModel)]="activityId" (ngModelChange)="onFiltersChanged()" />
-
-      <input type="number" min="1" placeholder="ID utilisateur" [(ngModel)]="userId" (ngModelChange)="onFiltersChanged()" />
-
       <select [(ngModel)]="status" (change)="onFiltersChanged()">
         <option value="">Tous statuts</option>
         <option value="PENDING">PENDING</option>
@@ -38,7 +34,6 @@
       <table>
         <thead>
           <tr>
-            <th>ID</th>
             <th>Activité</th>
             <th>Ville</th>
             <th>Utilisateur</th>
@@ -51,8 +46,7 @@
         <tbody>
           @for (reservation of reservations; track reservation.reservationId) {
             <tr>
-              <td>#{{ reservation.reservationId }}</td>
-              <td>{{ reservation.activityName }} ({{ reservation.activityId }})</td>
+              <td>{{ reservation.activityName }}</td>
               <td>{{ reservation.cityName }}</td>
               <td>
                 <div>{{ reservation.username || '—' }}</div>
@@ -65,7 +59,7 @@
             </tr>
           } @empty {
             <tr>
-              <td colspan="8" class="empty">Aucune réservation trouvée.</td>
+              <td colspan="7" class="empty">Aucune réservation trouvée.</td>
             </tr>
           }
         </tbody>

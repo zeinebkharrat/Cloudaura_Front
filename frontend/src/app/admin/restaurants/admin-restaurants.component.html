@@ -6,6 +6,21 @@
     <button class="btn" (click)="openCreateModal()">Ajouter un restaurant</button>
   </header>
 
+  <section class="stats-grid">
+    <article class="stat-card">
+      <span>Total restaurants</span>
+      <strong>{{ totalElements }}</strong>
+    </article>
+    <article class="stat-card">
+      <span>Restaurants affichés</span>
+      <strong>{{ restaurants.length }}</strong>
+    </article>
+    <article class="stat-card">
+      <span>Résultats par page</span>
+      <strong>{{ size }}</strong>
+    </article>
+  </section>
+
   @if (error) {
     <div class="alert">{{ error }}</div>
   }
@@ -18,6 +33,7 @@
         </span>
         <input type="text" [(ngModel)]="q" (ngModelChange)="onSearchInputChange()" placeholder="Rechercher un restaurant..." />
       </div>
+      <input type="text" [(ngModel)]="cuisineFilter" (ngModelChange)="onSearchInputChange()" placeholder="Filtrer par type de cuisine..." />
       <select [(ngModel)]="sort" (change)="onSearchInputChange()">
         <option value="restaurantId,desc">Plus récents</option>
         <option value="name,asc">Nom A → Z</option>
@@ -52,7 +68,13 @@
               <td>{{ restaurant.cityName }}</td>
               <td>{{ restaurant.cuisineType || '—' }}</td>
               <td><div class="desc-cell">{{ (restaurant.description || '—') | slice:0:100 }}{{ restaurant.description && restaurant.description.length > 100 ? '…' : '' }}</div></td>
-              <td>{{ restaurant.rating || '—' }}</td>
+              <td>
+                @if (getRestaurantReviewAverage(restaurant.restaurantId) != null) {
+                  {{ getRestaurantReviewAverage(restaurant.restaurantId) | number:'1.2-2' }}
+                } @else {
+                  —
+                }
+              </td>
               <td class="actions table-actions">
                 <button class="btn icon-btn icon-view" (click)="openDetails(restaurant)" title="Voir détails" aria-label="Voir détails">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -218,6 +240,19 @@
           </div>
           <h3>{{ detailsRestaurant.name }}</h3>
           <p>{{ detailsRestaurant.description || 'Aucune description disponible.' }}</p>
+          <div class="rating-line">
+            <div class="stars" aria-label="restaurant rating stars">
+              @for (state of starStates(getRestaurantReviewAverage(detailsRestaurant.restaurantId)); track $index) {
+                <span [class.filled]="state === 'full'">★</span>
+              }
+            </div>
+            @if (getRestaurantReviewAverage(detailsRestaurant.restaurantId) != null) {
+              <strong>{{ getRestaurantReviewAverage(detailsRestaurant.restaurantId) | number:'1.2-2' }}/5</strong>
+              <small>({{ getRestaurantReviewCount(detailsRestaurant.restaurantId) }} reviews)</small>
+            } @else {
+              <strong>No reviews</strong>
+            }
+          </div>
           <div class="details-meta-grid">
             <div><strong>Ville:</strong> {{ detailsRestaurant.cityName }}</div>
             <div><strong>Type cuisine:</strong> {{ detailsRestaurant.cuisineType || '—' }}</div>

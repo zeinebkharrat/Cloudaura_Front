@@ -25,6 +25,31 @@
   color: var(--text-muted);
 }
 
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.stat-card {
+  background: var(--surface-1);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  padding: 14px;
+  display: grid;
+  gap: 6px;
+}
+
+.stat-card span {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.stat-card strong {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.4rem;
+}
+
 .card {
   background: var(--surface-1);
   border: 1px solid var(--border-soft);
@@ -509,6 +534,27 @@ label {
 .details-info-card p {
   margin: 0 0 12px;
   color: var(--text-muted);
+}
+
+.rating-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.rating-line small {
+  color: var(--text-muted);
+}
+
+.stars {
+  display: inline-flex;
+  gap: 3px;
+  color: #d4d4d8;
+}
+
+.stars .filled {
+  color: #f59e0b;
 }
 
 .details-meta-grid {

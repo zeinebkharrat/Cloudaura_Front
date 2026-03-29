@@ -22,10 +22,14 @@ public class RestaurantService {
     private final ImgBbService imgBbService;
 
     public Page<RestaurantResponse> list(String q, Pageable pageable) {
-        return list(q, null, pageable);
+        return list(q, null, null, pageable);
     }
 
     public Page<RestaurantResponse> list(String q, Integer cityId, Pageable pageable) {
+        return list(q, cityId, null, pageable);
+    }
+
+    public Page<RestaurantResponse> list(String q, Integer cityId, String cuisineType, Pageable pageable) {
         Specification<Restaurant> spec = (root, query, cb) -> {
             var predicate = cb.conjunction();
 
@@ -40,6 +44,11 @@ public class RestaurantService {
 
             if (cityId != null) {
                 predicate = cb.and(predicate, cb.equal(root.get("city").get("cityId"), cityId));
+            }
+
+            if (cuisineType != null && !cuisineType.isBlank()) {
+                String cuisineLike = "%" + cuisineType.trim().toLowerCase() + "%";
+                predicate = cb.and(predicate, cb.like(cb.lower(cb.coalesce(root.get("cuisineType"), "")), cuisineLike));
             }
 
             return predicate;
@@ -84,7 +93,7 @@ public class RestaurantService {
         return toResponse(restaurantRepository.save(restaurant));
     }
 
-    private Restaurant findRestaurant(Integer id) {
+    public Restaurant findRestaurant(Integer id) {
         return restaurantRepository.findById(id)
             .orElseThrow(() -> new ResourceNotFoundException("Restaurant introuvable: " + id));
     }

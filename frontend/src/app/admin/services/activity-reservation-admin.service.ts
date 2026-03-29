@@ -11,8 +11,6 @@ export class ActivityReservationAdminService {
 
   list(params: {
     q?: string;
-    activityId?: number | null;
-    userId?: number | null;
     status?: ReservationStatus | '';
     reservationDate?: string | null;
     page: number;
@@ -26,12 +24,6 @@ export class ActivityReservationAdminService {
 
     if (params.q?.trim()) {
       httpParams = httpParams.set('q', params.q.trim());
-    }
-    if (params.activityId != null) {
-      httpParams = httpParams.set('activityId', params.activityId);
-    }
-    if (params.userId != null) {
-      httpParams = httpParams.set('userId', params.userId);
     }
     if (params.status) {
       httpParams = httpParams.set('status', params.status);

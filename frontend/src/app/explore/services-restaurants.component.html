@@ -18,6 +18,11 @@
             }
           </select>
         </label>
+
+        <label class="filter-field">
+          <span>Cuisine type</span>
+          <input type="text" [ngModel]="cuisineType()" (ngModelChange)="onCuisineTypeChange($event)" placeholder="e.g. Tunisian, Italian" />
+        </label>
       </aside>
 
       <div class="services-content">
@@ -51,7 +56,16 @@
                   </div>
                   <div class="meta-row">
                     <span>{{ restaurant.cuisineType || 'Local cuisine' }}</span>
-                    <span>{{ restaurant.rating ?? '—' }}/5</span>
+                    <span class="rating-badge">
+                      <span class="stars">
+                        @for (state of restaurantStarStates(restaurant.restaurantId); track $index) {
+                          <span [class.filled]="state === 'full'">★</span>
+                        }
+                      </span>
+                      @if (!hasRestaurantReviews(restaurant.restaurantId)) {
+                        <small>No reviews</small>
+                      }
+                    </span>
                   </div>
                   <a class="btn" [routerLink]="['/restaurants', restaurant.restaurantId]">View details</a>
                 </div>

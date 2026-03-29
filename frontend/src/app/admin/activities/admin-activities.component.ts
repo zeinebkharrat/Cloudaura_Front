@@ -37,6 +37,8 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
   detailsMediaItems: ActivityMedia[] = [];
   detailsLoadingMedia = false;
   detailsMediaIndex = 0;
+  detailsRating = 0;
+  detailsReviewCount = 0;
   mediaQ = '';
   mediaSort = 'mediaId,desc';
   mediaPage = 0;
@@ -151,6 +153,27 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
     }
   }
 
+  averageDisplayedPrice(): string {
+    const prices = this.activities
+      .map((activity) => activity.price)
+      .filter((price): price is number => price != null);
+    if (!prices.length) {
+      return '—';
+    }
+    const average = prices.reduce((sum, price) => sum + price, 0) / prices.length;
+    return `${average.toFixed(1)} DT`;
+  }
+
+  maxDisplayedPrice(): string {
+    const prices = this.activities
+      .map((activity) => activity.price)
+      .filter((price): price is number => price != null);
+    if (!prices.length) {
+      return '—';
+    }
+    return `${Math.max(...prices).toFixed(1)} DT`;
+  }
+
   edit(item: Activity): void {
     this.editingId = item.activityId;
     this.form = {
@@ -200,8 +223,23 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
     this.detailsMediaItems = [];
     this.detailsLoadingMedia = true;
     this.detailsMediaIndex = 0;
+    this.detailsRating = 0;
+    this.detailsReviewCount = 0;
     this.showDetailsModal = true;
     this.stopDetailsAutoSlide();
+
+    this.http
+      .get<{ averageStars: number; totalReviews: number }>(`/api/public/activities/${item.activityId}/reviews/summary`)
+      .subscribe({
+        next: (summary) => {
+          this.detailsRating = summary?.averageStars ?? 0;
+          this.detailsReviewCount = summary?.totalReviews ?? 0;
+        },
+        error: () => {
+          this.detailsRating = 0;
+          this.detailsReviewCount = 0;
+        },
+      });
 
     this.activityService.listMedia(item.activityId, '', 0, 24, 'mediaId,desc').subscribe({
       next: (res) => {
@@ -224,6 +262,13 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
     this.detailsMediaItems = [];
     this.detailsLoadingMedia = false;
     this.detailsMediaIndex = 0;
+    this.detailsRating = 0;
+    this.detailsReviewCount = 0;
+  }
+
+  starStates(value: number | null): Array<'full' | 'empty'> {
+    const safe = value ?? 0;
+    return Array.from({ length: 5 }, (_, index) => (safe >= index + 1 ? 'full' : 'empty'));
   }
 
   nextDetailsMedia(): void {

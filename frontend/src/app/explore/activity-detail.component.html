@@ -39,6 +39,16 @@
         <h1>{{ activity.name }}</h1>
         <p class="description">{{ activity.description || 'Enjoy an immersive local activity.' }}</p>
 
+        <div class="rating-row">
+          <div class="stars" aria-label="activity rating">
+            @for (state of starStates(ratingValue()); track $index) {
+              <span [class.filled]="state === 'full'">★</span>
+            }
+          </div>
+          <strong>{{ ratingValue() | number:'1.1-1' }}/5</strong>
+          <small>({{ reviewSummary.totalReviews }} reviews)</small>
+        </div>
+
         <div class="chips-row">
           <span class="chip">{{ activity.type || 'Tourist activity' }}</span>
           <span class="chip">{{ activity.cityName }}</span>
@@ -58,7 +68,7 @@
 
         <a class="city-link" [routerLink]="['/city', activity.cityId]">Back to city</a>
         <p class="success" *ngIf="created">
-          Booking #{{ created.reservationId }} created, status: {{ created.status }}.
+          Booking created, status: {{ created.status }}.
         </p>
       </div>
     </article>
@@ -82,6 +92,51 @@
       >
         Directions from my location
       </button>
+    </article>
+
+    <article class="map-card animate-in delay-1 review-card">
+      <div class="card-head">
+        <h2>User reviews</h2>
+        <p>Read users' comments for this activity.</p>
+      </div>
+
+      <div class="reviews-list">
+        @if (reviews.length === 0) {
+          <p class="empty">No comments yet.</p>
+        } @else {
+          @for (review of reviews; track review.reviewId) {
+            <article class="review-item">
+              <div class="review-top">
+                <strong>{{ review.username }}</strong>
+                <div class="stars compact" aria-label="review stars">
+                  @for (state of starStates(review.stars); track $index) {
+                    <span [class.filled]="state === 'full'">★</span>
+                  }
+                </div>
+              </div>
+              <p>{{ review.commentText }}</p>
+            </article>
+          }
+        }
+      </div>
+
+      <form class="review-form" (ngSubmit)="submitReview()">
+        <label>
+          Your rating
+          <div class="stars selectable">
+            @for (star of [1,2,3,4,5]; track star) {
+              <button type="button" class="star-btn" [class.filled]="reviewForm.stars >= star" (click)="setReviewStars(star)">★</button>
+            }
+          </div>
+        </label>
+        <label>
+          Your comment
+          <textarea rows="4" [(ngModel)]="reviewForm.commentText" name="activityReviewComment" placeholder="Share your experience..."></textarea>
+        </label>
+        <button class="primary-btn" type="submit" [disabled]="reviewSubmitting || !reviewForm.commentText.trim()">
+          {{ reviewSubmitting ? 'Sending...' : 'Post comment' }}
+        </button>
+      </form>
     </article>
 
     <div class="booking-modal-backdrop" *ngIf="showBookingModal" (click)="closeBookingModal()"></div>

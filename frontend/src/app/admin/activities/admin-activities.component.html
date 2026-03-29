@@ -6,6 +6,21 @@
     <button class="btn" (click)="openCreateModal()">Ajouter une activité</button>
   </header>
 
+  <section class="stats-grid">
+    <article class="stat-card">
+      <span>Total activités</span>
+      <strong>{{ totalElements }}</strong>
+    </article>
+    <article class="stat-card">
+      <span>Prix moyen (page)</span>
+      <strong>{{ averageDisplayedPrice() }}</strong>
+    </article>
+    <article class="stat-card">
+      <span>Prix max (page)</span>
+      <strong>{{ maxDisplayedPrice() }}</strong>
+    </article>
+  </section>
+
   @if (error) {
     <div class="alert">{{ error }}</div>
   }
@@ -256,6 +271,15 @@
         <article class="details-info-card">
           <h3>{{ detailsActivity.name }}</h3>
           <p>{{ detailsActivity.description || 'Aucune description disponible.' }}</p>
+          <div class="rating-line">
+            <div class="stars" aria-label="activity rating stars">
+              @for (state of starStates(detailsRating); track $index) {
+                <span [class.filled]="state === 'full'">★</span>
+              }
+            </div>
+            <strong>{{ detailsRating | number:'1.1-1' }}/5</strong>
+            <small>({{ detailsReviewCount }} reviews)</small>
+          </div>
           <div class="details-meta-grid">
             <div><strong>Ville:</strong> {{ detailsActivity.cityName }}</div>
             <div><strong>Type:</strong> {{ detailsActivity.type || '—' }}</div>

@@ -58,6 +58,30 @@ export interface Activity {
   maxParticipantsStartDate: string | null;
 }
 
+export interface ReviewSummary {
+  averageStars: number;
+  totalReviews: number;
+}
+
+export interface PublicReview {
+  reviewId: number;
+  userId: number;
+  username: string;
+  stars: number;
+  commentText: string;
+  createdAt: string;
+}
+
+export interface PublicReviewPageResponse {
+  summary: ReviewSummary;
+  reviews: PageResponse<PublicReview>;
+}
+
+export interface CreatePublicReviewRequest {
+  stars: number;
+  commentText: string;
+}
+
 export interface ActivityMedia {
   mediaId: number;
   activityId: number;

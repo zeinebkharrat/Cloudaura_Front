@@ -9,9 +9,13 @@ import {
   ActivityReservationResponse,
   City,
   CityResolveResponse,
+  CreatePublicReviewRequest,
   CreateActivityReservationRequest,
   PageResponse,
+  PublicReviewPageResponse,
+  PublicReview,
   PublicCityDetailsResponse,
+  ReviewSummary,
   Restaurant,
 } from './explore.models';
 
@@ -41,6 +45,7 @@ export class ExploreService {
   listRestaurants(filters: {
     q?: string;
     cityId?: number | null;
+    cuisineType?: string | null;
     page: number;
     size: number;
     sort: string;
@@ -58,11 +63,31 @@ export class ExploreService {
       params = params.set('cityId', filters.cityId);
     }
 
+    if (filters.cuisineType?.trim()) {
+      params = params.set('cuisineType', filters.cuisineType.trim());
+    }
+
     return this.http.get<PageResponse<Restaurant>>(`${this.base}/restaurants`, { params });
   }
 
   getActivityDetails(activityId: number): Observable<Activity> {
     return this.http.get<Activity>(`${this.base}/activities/${activityId}`);
+  }
+
+  listRestaurantReviews(restaurantId: number, page: number, size: number): Observable<PublicReviewPageResponse> {
+    const params = new HttpParams()
+      .set('page', page)
+      .set('size', size)
+      .set('sort', 'createdAt,desc');
+    return this.http.get<PublicReviewPageResponse>(`${this.base}/restaurants/${restaurantId}/reviews`, { params });
+  }
+
+  createOrUpdateRestaurantReview(restaurantId: number, payload: CreatePublicReviewRequest): Observable<PublicReview> {
+    return this.http.post<PublicReview>(`${this.base}/restaurants/${restaurantId}/reviews`, payload);
+  }
+
+  getRestaurantReviewSummary(restaurantId: number): Observable<ReviewSummary> {
+    return this.http.get<ReviewSummary>(`${this.base}/restaurants/${restaurantId}/reviews/summary`);
   }
 
   listActivities(filters: {
@@ -110,6 +135,22 @@ export class ExploreService {
 
   getActivityMedia(activityId: number): Observable<ActivityMedia[]> {
     return this.http.get<ActivityMedia[]>(`${this.base}/activities/${activityId}/media`);
+  }
+
+  listActivityReviews(activityId: number, page: number, size: number): Observable<PublicReviewPageResponse> {
+    const params = new HttpParams()
+      .set('page', page)
+      .set('size', size)
+      .set('sort', 'createdAt,desc');
+    return this.http.get<PublicReviewPageResponse>(`${this.base}/activities/${activityId}/reviews`, { params });
+  }
+
+  createOrUpdateActivityReview(activityId: number, payload: CreatePublicReviewRequest): Observable<PublicReview> {
+    return this.http.post<PublicReview>(`${this.base}/activities/${activityId}/reviews`, payload);
+  }
+
+  getActivityReviewSummary(activityId: number): Observable<ReviewSummary> {
+    return this.http.get<ReviewSummary>(`${this.base}/activities/${activityId}/reviews/summary`);
   }
 
   getActivityAvailability(

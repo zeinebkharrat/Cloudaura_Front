@@ -32,8 +32,6 @@
             <input type="range" [min]="sliderMin" [max]="sliderMax" [ngModel]="minPrice()" (ngModelChange)="onMinPriceSliderChange($event)" />
             <input type="range" [min]="sliderMin" [max]="sliderMax" [ngModel]="maxPrice()" (ngModelChange)="onMaxPriceSliderChange($event)" />
           </div>
-
-          <button class="apply-filter-btn" type="button" (click)="applyPriceFilters()">Apply price</button>
         </div>
 
         <label class="filter-field">
@@ -82,6 +80,16 @@
                   <div class="meta-row">
                     <span>{{ activity.type || 'Tourist activity' }}</span>
                     <span>{{ activity.price ?? '—' }} DT</span>
+                  </div>
+                  <div class="rating-badge">
+                    <span class="stars">
+                      @for (state of activityStarStates(activity.activityId); track $index) {
+                        <span [class.filled]="state === 'full'">★</span>
+                      }
+                    </span>
+                    @if (!hasActivityReviews(activity.activityId)) {
+                      <small>No reviews</small>
+                    }
                   </div>
                   <a class="btn" [routerLink]="['/activities', activity.activityId]">View details</a>
                 </div>

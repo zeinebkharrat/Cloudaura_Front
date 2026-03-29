@@ -16,8 +16,6 @@ export class AdminActivityReservationsComponent implements OnInit {
   q = '';
   status: ReservationStatus | '' = '';
   reservationDate = '';
-  activityId: number | null = null;
-  userId: number | null = null;
   sort = 'reservationDate,desc';
   page = 0;
   size = 10;
@@ -39,8 +37,6 @@ export class AdminActivityReservationsComponent implements OnInit {
     this.reservationService
       .list({
         q: this.q,
-        activityId: this.activityId,
-        userId: this.userId,
         status: this.status,
         reservationDate: this.reservationDate || null,
         page: this.page,
@@ -70,8 +66,6 @@ export class AdminActivityReservationsComponent implements OnInit {
     this.q = '';
     this.status = '';
     this.reservationDate = '';
-    this.activityId = null;
-    this.userId = null;
     this.page = 0;
     this.loadReservations();
   }

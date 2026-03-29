@@ -9,6 +9,8 @@ import {
   ActivityReservationResponse,
   Activity,
   ActivityMedia,
+  PublicReview,
+  ReviewSummary,
   CreateActivityReservationRequest,
 } from './explore.models';
 import { ExploreService } from './explore.service';
@@ -66,6 +68,13 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   submitting = false;
   created?: ActivityReservationResponse;
   showBookingModal = false;
+  reviewSummary: ReviewSummary = { averageStars: 0, totalReviews: 0 };
+  reviews: PublicReview[] = [];
+  reviewSubmitting = false;
+  reviewForm = {
+    stars: 5,
+    commentText: '',
+  };
 
   ngAfterViewInit(): void {
     this.viewReady = true;
@@ -80,6 +89,8 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
       next: (res) => {
         this.activity = res;
         this.loadActivityMedia(res.activityId);
+        this.loadReviewSummary();
+        this.loadReviews();
         this.loadAvailability();
         this.loading = false;
         setTimeout(() => this.tryInitMap(), 80);
@@ -264,7 +275,7 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
           Swal.fire({
             icon: 'success',
             title: 'Booking sent',
-            text: `Reference #${res.reservationId}`,
+            text: 'Your reservation was sent successfully.',
             confirmButtonColor: '#e63946',
           });
         },
@@ -296,6 +307,56 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     this.location.back();
   }
 
+  ratingValue(): number {
+    return this.reviewSummary.averageStars || 0;
+  }
+
+  starStates(value: number): Array<'full' | 'empty'> {
+    return Array.from({ length: 5 }, (_, index) => (value >= index + 1 ? 'full' : 'empty'));
+  }
+
+  setReviewStars(stars: number): void {
+    this.reviewForm.stars = stars;
+  }
+
+  submitReview(): void {
+    if (!this.activity || !this.reviewForm.commentText.trim()) {
+      return;
+    }
+
+    this.reviewSubmitting = true;
+    this.exploreService.createOrUpdateActivityReview(this.activity.activityId, {
+      stars: this.reviewForm.stars,
+      commentText: this.reviewForm.commentText.trim(),
+    }).subscribe({
+      next: () => {
+        this.reviewSubmitting = false;
+        this.reviewForm = { stars: 5, commentText: '' };
+        this.loadReviewSummary();
+        this.loadReviews();
+      },
+      error: (err) => {
+        this.reviewSubmitting = false;
+        if (err?.status === 401) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Connexion requise',
+            text: 'Veuillez vous connecter pour publier un commentaire.',
+            confirmButtonColor: '#e63946',
+          });
+          return;
+        }
+
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: err?.error?.message || 'Unable to publish comment.',
+          confirmButtonColor: '#e63946',
+        });
+      },
+    });
+  }
+
   openDirectionsFromCurrentPosition(): void {
     if (this.activity?.latitude == null || this.activity?.longitude == null) {
       return;
@@ -322,6 +383,35 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
         window.open(fallback, '_blank');
       }
     );
+  }
+
+  private loadReviewSummary(): void {
+    if (!this.activity) {
+      return;
+    }
+    this.exploreService.getActivityReviewSummary(this.activity.activityId).subscribe({
+      next: (summary) => {
+        this.reviewSummary = summary;
+      },
+      error: () => {
+        this.reviewSummary = { averageStars: 0, totalReviews: 0 };
+      },
+    });
+  }
+
+  private loadReviews(): void {
+    if (!this.activity) {
+      return;
+    }
+    this.exploreService.listActivityReviews(this.activity.activityId, 0, 6).subscribe({
+      next: (payload) => {
+        this.reviewSummary = payload.summary;
+        this.reviews = payload.reviews.content;
+      },
+      error: () => {
+        this.reviews = [];
+      },
+    });
   }
 
   private startAutoSlide(): void {
