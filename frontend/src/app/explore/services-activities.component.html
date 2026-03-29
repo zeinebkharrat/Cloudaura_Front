@@ -1,0 +1,107 @@
+<section class="services-page">
+  <header class="services-hero animate-in">
+    <p class="kicker">Our Services</p>
+    <h1>Activities in Tunisia</h1>
+    <p>Discover activities with advanced filters and classic pagination.</p>
+  </header>
+
+  <section class="services-panel animate-in delay-1">
+    <div class="services-layout">
+      <aside class="filters-sidebar">
+        <h3>Filters</h3>
+
+        <label class="filter-field">
+          <span>City</span>
+          <select [ngModel]="selectedCityId()" (ngModelChange)="onCityFilterChange($event)">
+            <option value="all">All cities</option>
+            @for (city of cities(); track city.cityId) {
+              <option [ngValue]="city.cityId">{{ city.name }}</option>
+            }
+          </select>
+        </label>
+
+        <div class="filter-field">
+          <span>Price</span>
+          <div class="price-inputs">
+            <input type="number" [ngModel]="minPrice()" (ngModelChange)="onMinPriceInputChange($event)" />
+            <span>to</span>
+            <input type="number" [ngModel]="maxPrice()" (ngModelChange)="onMaxPriceInputChange($event)" />
+          </div>
+
+          <div class="price-sliders">
+            <input type="range" [min]="sliderMin" [max]="sliderMax" [ngModel]="minPrice()" (ngModelChange)="onMinPriceSliderChange($event)" />
+            <input type="range" [min]="sliderMin" [max]="sliderMax" [ngModel]="maxPrice()" (ngModelChange)="onMaxPriceSliderChange($event)" />
+          </div>
+
+          <button class="apply-filter-btn" type="button" (click)="applyPriceFilters()">Apply price</button>
+        </div>
+
+        <label class="filter-field">
+          <span>Availability date</span>
+          <input type="date" [ngModel]="selectedDate()" (ngModelChange)="onDateChange($event)" />
+        </label>
+
+        <label class="filter-field">
+          <span>Participants</span>
+          <input type="number" min="1" [ngModel]="participants()" (ngModelChange)="onParticipantsChange($event)" />
+        </label>
+
+        <button class="ghost-filter-btn" type="button" (click)="clearAvailabilityFilter()">Clear availability</button>
+      </aside>
+
+      <div class="services-content">
+        <div class="toolbar">
+          <div class="search-wrap">
+            <input type="text" [ngModel]="q()" (ngModelChange)="onSearchChange($event)" placeholder="Search activity..." />
+          </div>
+          <select [ngModel]="sort()" (ngModelChange)="onSortChange($event)">
+            <option value="activityId,desc">Newest</option>
+            <option value="name,asc">Name A → Z</option>
+            <option value="price,asc">Price low → high</option>
+            <option value="price,desc">Price high → low</option>
+          </select>
+        </div>
+
+        @if (loading()) {
+          <p class="state">Loading activities...</p>
+        } @else if (error()) {
+          <p class="state error">{{ error() }}</p>
+        } @else if (activities().length === 0) {
+          <p class="state">No activities match your filters.</p>
+        } @else {
+          <div class="cards-grid">
+            @for (activity of activities(); track activity.activityId) {
+              <article class="service-card">
+                <img [src]="activity.imageUrl || 'assets/sidi_bou.png'" [alt]="activity.name" loading="lazy" />
+                <div class="content">
+                  <h3>{{ activity.name }}</h3>
+                  <p>{{ activity.description || ('Type: ' + (activity.type || 'Tourist activity')) }}</p>
+                  <div class="city-row">
+                    <span class="city-chip">{{ activity.cityName || 'Unknown city' }}</span>
+                  </div>
+                  <div class="meta-row">
+                    <span>{{ activity.type || 'Tourist activity' }}</span>
+                    <span>{{ activity.price ?? '—' }} DT</span>
+                  </div>
+                  <a class="btn" [routerLink]="['/activities', activity.activityId]">View details</a>
+                </div>
+              </article>
+            }
+          </div>
+
+          @if (totalPages() > 1) {
+            <div class="pagination">
+              <button class="pager-btn" type="button" (click)="previousPage()" [disabled]="page() === 0">Previous</button>
+              <div class="pager-numbers">
+                @for (p of pageNumbers(); track p) {
+                  <button class="pager-num" type="button" [class.active]="p === page()" (click)="goToPage(p)">{{ p + 1 }}</button>
+                }
+              </div>
+              <button class="pager-btn" type="button" (click)="nextPage()" [disabled]="page() + 1 >= totalPages()">Next</button>
+            </div>
+          }
+        }
+      </div>
+    </div>
+  </section>
+</section>

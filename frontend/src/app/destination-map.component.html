@@ -33,6 +33,10 @@
     @if (selectedRegion()) {
       <div class="region-info-panel slide-up">
         <button class="close-btn" (click)="selectedRegion.set(null)">&times;</button>
+        <div class="region-badges">
+          <span class="region-chip">Tunisia</span>
+          <span class="region-chip">Interactive</span>
+        </div>
         <h3>{{ selectedRegion()?.name }}</h3>
         <p>{{ selectedRegion()?.description }}</p>
         <button

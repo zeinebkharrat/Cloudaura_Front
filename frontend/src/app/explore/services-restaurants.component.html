@@ -1,0 +1,77 @@
+<section class="services-page">
+  <header class="services-hero animate-in">
+    <p class="kicker">Our Services</p>
+    <h1>Restaurants in Tunisia</h1>
+    <p>Browse restaurants with city filter and classic pagination.</p>
+  </header>
+
+  <section class="services-panel animate-in delay-1">
+    <div class="services-layout">
+      <aside class="filters-sidebar">
+        <h3>Filters</h3>
+        <label class="filter-field">
+          <span>City</span>
+          <select [ngModel]="selectedCityId()" (ngModelChange)="onCityFilterChange($event)">
+            <option value="all">All cities</option>
+            @for (city of cities(); track city.cityId) {
+              <option [ngValue]="city.cityId">{{ city.name }}</option>
+            }
+          </select>
+        </label>
+      </aside>
+
+      <div class="services-content">
+        <div class="toolbar">
+          <div class="search-wrap">
+            <input type="text" [ngModel]="q()" (ngModelChange)="onSearchChange($event)" placeholder="Search restaurant..." />
+          </div>
+          <select [ngModel]="sort()" (ngModelChange)="onSortChange($event)">
+            <option value="restaurantId,desc">Newest</option>
+            <option value="name,asc">Name A → Z</option>
+            <option value="rating,desc">Best rating</option>
+          </select>
+        </div>
+
+        @if (loading()) {
+          <p class="state">Loading restaurants...</p>
+        } @else if (error()) {
+          <p class="state error">{{ error() }}</p>
+        } @else if (restaurants().length === 0) {
+          <p class="state">No restaurants found.</p>
+        } @else {
+          <div class="cards-grid">
+            @for (restaurant of restaurants(); track restaurant.restaurantId) {
+              <article class="service-card">
+                <img [src]="restaurant.imageUrl || 'assets/sidi_bou.png'" [alt]="restaurant.name" loading="lazy" />
+                <div class="content">
+                  <h3>{{ restaurant.name }}</h3>
+                  <p>{{ restaurant.description || ('Cuisine: ' + (restaurant.cuisineType || 'Local')) }}</p>
+                  <div class="city-row">
+                    <span class="city-chip">{{ restaurant.cityName || 'Unknown city' }}</span>
+                  </div>
+                  <div class="meta-row">
+                    <span>{{ restaurant.cuisineType || 'Local cuisine' }}</span>
+                    <span>{{ restaurant.rating ?? '—' }}/5</span>
+                  </div>
+                  <a class="btn" [routerLink]="['/restaurants', restaurant.restaurantId]">View details</a>
+                </div>
+              </article>
+            }
+          </div>
+
+          @if (totalPages() > 1) {
+            <div class="pagination">
+              <button class="pager-btn" type="button" (click)="previousPage()" [disabled]="page() === 0">Previous</button>
+              <div class="pager-numbers">
+                @for (p of pageNumbers(); track p) {
+                  <button class="pager-num" type="button" [class.active]="p === page()" (click)="goToPage(p)">{{ p + 1 }}</button>
+                }
+              </div>
+              <button class="pager-btn" type="button" (click)="nextPage()" [disabled]="page() + 1 >= totalPages()">Next</button>
+            </div>
+          }
+      }
+      </div>
+    </div>
+  </section>
+</section>

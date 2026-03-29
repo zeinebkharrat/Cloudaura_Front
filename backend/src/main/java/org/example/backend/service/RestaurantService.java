@@ -22,16 +22,27 @@ public class RestaurantService {
     private final ImgBbService imgBbService;
 
     public Page<RestaurantResponse> list(String q, Pageable pageable) {
+        return list(q, null, pageable);
+    }
+
+    public Page<RestaurantResponse> list(String q, Integer cityId, Pageable pageable) {
         Specification<Restaurant> spec = (root, query, cb) -> {
-            if (q == null || q.isBlank()) {
-                return cb.conjunction();
+            var predicate = cb.conjunction();
+
+            if (q != null && !q.isBlank()) {
+                String like = "%" + q.trim().toLowerCase() + "%";
+                predicate = cb.and(predicate, cb.or(
+                    cb.like(cb.lower(root.get("name")), like),
+                    cb.like(cb.lower(root.get("cuisineType")), like),
+                    cb.like(cb.lower(root.get("city").get("name")), like)
+                ));
             }
-            String like = "%" + q.trim().toLowerCase() + "%";
-            return cb.or(
-                cb.like(cb.lower(root.get("name")), like),
-                cb.like(cb.lower(root.get("cuisineType")), like),
-                cb.like(cb.lower(root.get("city").get("name")), like)
-            );
+
+            if (cityId != null) {
+                predicate = cb.and(predicate, cb.equal(root.get("city").get("cityId"), cityId));
+            }
+
+            return predicate;
         };
 
         return restaurantRepository.findAll(spec, pageable).map(this::toResponse);

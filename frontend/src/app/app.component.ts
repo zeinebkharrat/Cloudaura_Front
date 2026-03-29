@@ -22,6 +22,7 @@ export class AppComponent implements OnInit {
   currentUser = this.authService.currentUser;
   isAdmin = () => this.authService.hasRole('ROLE_ADMIN');
   isUserMenuOpen = signal(false);
+  isServicesMenuOpen = signal(false);
 
   ngOnInit() {
     const savedTheme = localStorage.getItem('theme');
@@ -61,8 +62,18 @@ export class AppComponent implements OnInit {
     this.isUserMenuOpen.set(false);
   }
 
+  toggleServicesMenu(event: MouseEvent) {
+    event.stopPropagation();
+    this.isServicesMenuOpen.set(!this.isServicesMenuOpen());
+  }
+
+  closeServicesMenu() {
+    this.isServicesMenuOpen.set(false);
+  }
+
   @HostListener('document:click')
   onDocumentClick() {
     this.isUserMenuOpen.set(false);
+    this.isServicesMenuOpen.set(false);
   }
 }

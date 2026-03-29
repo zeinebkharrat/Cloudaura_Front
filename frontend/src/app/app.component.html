@@ -20,8 +20,25 @@
     <li>
       <a routerLink="/hebergement" routerLinkActive="active">Hébergement</a>
     </li>
-    <li>
-      <a routerLink="/activites" routerLinkActive="active">Activités</a>
+    <li class="services-menu-wrap" (click)="$event.stopPropagation()">
+      <button
+        type="button"
+        class="services-menu-btn"
+        (click)="toggleServicesMenu($event)"
+        [class.active]="isServicesMenuOpen()"
+        [attr.aria-expanded]="isServicesMenuOpen()"
+      >
+        Our Services
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      @if (isServicesMenuOpen()) {
+        <div class="services-dropdown">
+          <a class="services-dd-item" routerLink="/services/restaurants" routerLinkActive="active" (click)="closeServicesMenu()">Restaurants</a>
+          <a class="services-dd-item" routerLink="/services/activities" routerLinkActive="active" (click)="closeServicesMenu()">Activities</a>
+        </div>
+      }
     </li>
     <li>
       <a routerLink="/artisanat" routerLinkActive="active">Artisanat</a>

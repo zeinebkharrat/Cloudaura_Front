@@ -22,6 +22,8 @@ import { AdminActivityReservationsComponent } from './admin/activity-reservation
 import { CityExploreComponent } from './explore/city-explore.component';
 import { RestaurantDetailComponent } from './explore/restaurant-detail.component';
 import { ActivityDetailComponent } from './explore/activity-detail.component';
+import { ServicesRestaurantsComponent } from './explore/services-restaurants.component';
+import { ServicesActivitiesComponent } from './explore/services-activities.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -33,6 +35,8 @@ export const routes: Routes = [
   { path: 'reset-password', component: ResetPasswordComponent },
   { path: 'verify-email', component: VerifyEmailComponent },
   { path: 'city/:cityId', component: CityExploreComponent },
+  { path: 'services/restaurants', component: ServicesRestaurantsComponent },
+  { path: 'services/activities', component: ServicesActivitiesComponent },
   { path: 'restaurants/:restaurantId', component: RestaurantDetailComponent },
   { path: 'activities/:activityId', component: ActivityDetailComponent },
   {

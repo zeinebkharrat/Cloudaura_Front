@@ -52,9 +52,54 @@ public class PublicExploreController {
         return restaurantService.getById(restaurantId);
     }
 
+    @GetMapping("/restaurants")
+    public PageResponse<RestaurantResponse> listRestaurants(
+        @RequestParam(required = false) String q,
+        @RequestParam(required = false) Integer cityId,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "18") int size,
+        @RequestParam(defaultValue = "restaurantId,desc") String sort
+    ) {
+        Pageable pageable = buildPageable(page, size, sort);
+        return PageResponse.from(restaurantService.list(q, cityId, pageable));
+    }
+
     @GetMapping("/activities/{activityId}")
     public ActivityResponse getActivityDetails(@PathVariable Integer activityId) {
         return activityService.getById(activityId);
+    }
+
+    @GetMapping("/activities")
+    public PageResponse<ActivityResponse> listActivities(
+        @RequestParam(required = false) String q,
+        @RequestParam(required = false) Integer cityId,
+        @RequestParam(required = false) Double minPrice,
+        @RequestParam(required = false) Double maxPrice,
+        @RequestParam(required = false) String date,
+        @RequestParam(defaultValue = "1") Integer participants,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "18") int size,
+        @RequestParam(defaultValue = "activityId,desc") String sort
+    ) {
+        LocalDate availableDate = null;
+        if (date != null && !date.isBlank()) {
+            try {
+                availableDate = LocalDate.parse(date);
+            } catch (DateTimeException ex) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Paramètre date invalide (yyyy-MM-dd)");
+            }
+        }
+
+        Pageable pageable = buildPageable(page, size, sort);
+        return PageResponse.from(activityService.list(
+            q,
+            cityId,
+            minPrice,
+            maxPrice,
+            availableDate,
+            participants,
+            pageable
+        ));
     }
 
     @GetMapping("/activities/{activityId}/media")

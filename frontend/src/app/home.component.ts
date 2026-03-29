@@ -1,6 +1,7 @@
 import {
   Component,
   AfterViewInit,
+  OnDestroy,
   ViewChild,
   ElementRef,
   Inject,
@@ -66,7 +67,7 @@ function normalizeRegionToken(value: unknown): string {
   templateUrl: './home.component.html',
   styleUrl: './home.component.css',
 })
-export class HomeComponent implements AfterViewInit {
+export class HomeComponent implements AfterViewInit, OnDestroy {
   @ViewChild('mapContainer', { static: false }) mapContainer!: ElementRef;
 
   mapViewMode = signal<'local' | 'highlights'>('local');
@@ -82,6 +83,10 @@ export class HomeComponent implements AfterViewInit {
   private tunisiaMapChart?: echarts.ECharts;
   private mapGeoData?: any;
   private regionIdToLabelMap?: Map<string, string>;
+  private themeObserver?: MutationObserver;
+  private readonly handleWindowResize = () => {
+    this.tunisiaMapChart?.resize();
+  };
 
   constructor(
     @Inject(PLATFORM_ID) private platformId: Object,
@@ -94,8 +99,16 @@ export class HomeComponent implements AfterViewInit {
   ngAfterViewInit(): void {
     if (isPlatformBrowser(this.platformId)) {
       this.initMap();
+      this.startThemeObserver();
       this.playReturnZoomOutIfRequested();
     }
+  }
+
+  ngOnDestroy(): void {
+    if (isPlatformBrowser(this.platformId)) {
+      window.removeEventListener('resize', this.handleWindowResize);
+    }
+    this.themeObserver?.disconnect();
   }
 
   setMapView(mode: 'local' | 'highlights'): void {
@@ -157,9 +170,7 @@ export class HomeComponent implements AfterViewInit {
       this.cdr.detectChanges();
     });
 
-    window.addEventListener('resize', () => {
-      this.tunisiaMapChart?.resize();
-    });
+    window.addEventListener('resize', this.handleWindowResize);
   }
 
   private displayName(p: { name?: string; data?: any }): string {
@@ -174,24 +185,31 @@ export class HomeComponent implements AfterViewInit {
     const displayName = (p: any) => this.displayName(p);
     const mode = this.mapViewMode();
     const isLocal = mode === 'local';
+    const isDark = this.isDarkTheme();
+
+    const visualScale = isDark
+      ? (isLocal
+          ? ['#1e2a3c', '#273752', '#31466a', '#40608f', '#557db4']
+          : ['#1f2937', '#27374a', '#32465d', '#425d7d', '#577ca2'])
+      : (isLocal
+          ? ['#dbeefa', '#c6e4f4', '#acd8ec', '#85c7df', '#54acc8']
+          : ['#d3e7f4', '#bfdced', '#9dcde4', '#77bbd6', '#4b9dbd']);
 
     const option = {
-      backgroundColor: 'transparent',
+      backgroundColor: isDark ? '#0f172a' : '#ffffff',
       tooltip: {
         trigger: 'item' as const,
         formatter: (p: any) => displayName(p),
-        backgroundColor: 'rgba(0,0,0,0.85)',
-        borderColor: '#e8002d',
-        textStyle: { color: '#fff' },
+        backgroundColor: isDark ? 'rgba(15,23,42,0.96)' : 'rgba(255,255,255,0.96)',
+        borderColor: isDark ? '#334155' : '#b6deee',
+        textStyle: { color: isDark ? '#e2e8f0' : '#0f172a' },
       },
       visualMap: {
         show: false,
         min: 0,
         max: 24,
         inRange: {
-          color: isLocal
-            ? ['#0b0c10', '#1a1c23', '#2a2d39', '#e8002d', '#0077b6']
-            : ['#1a1510', '#2d2418', '#5c3d2e', '#e85d04', '#ffd166'],
+          color: visualScale,
         },
       },
       series: [
@@ -204,56 +222,58 @@ export class HomeComponent implements AfterViewInit {
           selectedMode: 'single' as const,
           itemStyle: isLocal
             ? {
-                areaColor: '#12141a',
-                borderColor: '#1a1c23',
+                areaColor: isDark ? '#324b69' : '#d9ecf8',
+                borderColor: isDark ? '#6f8daf' : '#9ec3d8',
                 borderWidth: 2,
-                shadowColor: 'rgba(232, 0, 45, 0.45)',
-                shadowBlur: 22,
+                shadowColor: isDark ? 'rgba(30, 64, 175, 0.28)' : 'rgba(77, 143, 173, 0.22)',
+                shadowBlur: 18,
                 shadowOffsetX: 4,
-                shadowOffsetY: 12,
+                shadowOffsetY: 10,
               }
             : {
-                areaColor: '#1e222d',
-                borderColor: 'rgba(232, 0, 45, 0.35)',
+                areaColor: isDark ? '#2b425f' : '#cfe5f2',
+                borderColor: isDark ? 'rgba(115, 151, 190, 0.65)' : 'rgba(95, 153, 183, 0.62)',
                 borderWidth: 1.5,
-                shadowColor: 'rgba(244, 162, 97, 0.4)',
-                shadowBlur: 26,
+                shadowColor: isDark ? 'rgba(51, 105, 152, 0.3)' : 'rgba(70, 128, 156, 0.24)',
+                shadowBlur: 20,
                 shadowOffsetX: 2,
-                shadowOffsetY: 10,
+                shadowOffsetY: 8,
               },
           emphasis: {
             label: {
               show: true,
-              color: '#ffffff',
+              color: isDark ? '#f8fafc' : '#0f172a',
               fontSize: isLocal ? 16 : 17,
               fontWeight: 'bold' as const,
               formatter: (p: any) => displayName(p),
             },
             itemStyle: isLocal
               ? {
-                  areaColor: '#e8002d',
-                  borderColor: '#ff4b4b',
-                  shadowColor: 'rgba(232, 0, 45, 0.8)',
+                  areaColor: isDark ? '#4c7fb0' : '#82c3dc',
+                  borderColor: isDark ? '#93c5fd' : '#4f94b1',
+                  shadowColor: isDark ? 'rgba(96, 165, 250, 0.35)' : 'rgba(79, 148, 177, 0.35)',
                   shadowBlur: 15,
                 }
               : {
-                  areaColor: '#f4a261',
-                  borderColor: '#ffe066',
-                  shadowColor: 'rgba(255, 209, 102, 0.55)',
-                  shadowBlur: 20,
+                  areaColor: isDark ? '#4577a8' : '#6db6d1',
+                  borderColor: isDark ? '#7dd3fc' : '#3f8cab',
+                  shadowColor: isDark ? 'rgba(125, 211, 252, 0.35)' : 'rgba(63, 140, 171, 0.35)',
+                  shadowBlur: 16,
                 },
           },
           select: {
             label: {
               show: true,
-              color: '#ffffff',
+              color: isDark ? '#f8fafc' : '#0f172a',
               fontSize: 18,
               fontWeight: 'bold' as const,
               formatter: (p: any) => displayName(p),
             },
             itemStyle: {
-              areaColor: isLocal ? '#e8002d' : '#e85d04',
-              borderColor: '#ffffff',
+              areaColor: isDark
+                ? (isLocal ? '#3b82f6' : '#2563eb')
+                : (isLocal ? '#72b9d2' : '#5aa4c0'),
+              borderColor: isDark ? '#bfdbfe' : '#2f6f88',
               borderWidth: 2,
             },
           },
@@ -267,6 +287,28 @@ export class HomeComponent implements AfterViewInit {
     };
 
     this.tunisiaMapChart.setOption(option, { notMerge: true });
+  }
+
+  private startThemeObserver(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    this.themeObserver?.disconnect();
+    this.themeObserver = new MutationObserver(() => {
+      this.applyMapTheme();
+    });
+    this.themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
+  }
+
+  private isDarkTheme(): boolean {
+    if (!isPlatformBrowser(this.platformId)) {
+      return false;
+    }
+    return document.documentElement.getAttribute('data-theme') === 'dark';
   }
 
   goToSelectedCity(): void {
