@@ -1,0 +1,109 @@
+<section class="profile-page">
+  <div class="auth-bg-orb auth-bg-orb-left"></div>
+  <div class="auth-bg-orb auth-bg-orb-right"></div>
+
+  <article class="profile-card glass-panel">
+    <h1>Mon profil</h1>
+    <p class="subtitle">Mettez a jour vos informations personnelles et votre mot de passe.</p>
+
+    @if (actionError()) {
+      <div class="msg error">{{ actionError() }}</div>
+    }
+    @if (actionSuccess()) {
+      <div class="msg success">{{ actionSuccess() }}</div>
+    }
+
+    <section class="avatar-card">
+      <h2>Photo de profil</h2>
+      <div class="avatar-row">
+        @if (profileForm.controls.profileImageUrl.value) {
+          <img [src]="profileForm.controls.profileImageUrl.value" alt="Photo de profil" class="avatar-preview" />
+        } @else {
+          <div class="avatar-placeholder">Aucun visuel</div>
+        }
+
+        <div class="upload-row">
+          <label class="upload-btn" for="profile-upload">{{ uploadBusy() ? 'Upload...' : 'Uploader une photo' }}</label>
+          <input id="profile-upload" type="file" accept="image/*" (change)="uploadImage($event)" [disabled]="uploadBusy()" />
+          <span class="muted">{{ uploadBusy() ? 'Upload...' : 'Ajoutez une image claire pour votre profil.' }}</span>
+        </div>
+      </div>
+    </section>
+
+    <form [formGroup]="profileForm" (ngSubmit)="saveProfile()" class="profile-form">
+      <div class="grid-two">
+        <label>
+          Prenom
+          <input type="text" formControlName="firstName" [class.input-invalid]="controlInvalid('firstName')" />
+          @if (controlInvalid('firstName')) {
+            <small class="field-error">Le prénom est obligatoire (min. 2 caractères).</small>
+          }
+        </label>
+        <label>
+          Nom
+          <input type="text" formControlName="lastName" [class.input-invalid]="controlInvalid('lastName')" />
+          @if (controlInvalid('lastName')) {
+            <small class="field-error">Le nom est obligatoire (min. 2 caractères).</small>
+          }
+        </label>
+      </div>
+
+      <div class="grid-two">
+        <label>
+          Email
+          <input type="email" formControlName="email" [class.input-invalid]="controlInvalid('email')" />
+          @if (controlInvalid('email')) {
+            <small class="field-error">Veuillez saisir un email valide.</small>
+          }
+        </label>
+        <label>
+          Telephone
+          <input type="text" formControlName="phone" [class.input-invalid]="controlInvalid('phone')" />
+          @if (controlInvalid('phone')) {
+            <small class="field-error">{{ phoneErrorMessage() }}</small>
+          }
+        </label>
+      </div>
+
+      <div class="grid-two">
+        <label>
+          Nationalite
+          <select formControlName="nationality">
+            <option value="">Choisir une nationalite</option>
+            @for (nationality of nationalities(); track nationality) {
+              <option [value]="nationality">{{ nationality }}</option>
+            }
+          </select>
+        </label>
+        @if (showCityField()) {
+          <label>
+            Ville
+            <select formControlName="cityId" [class.input-invalid]="cityErrorVisible()">
+              <option [ngValue]="null">Selectionnez une ville</option>
+              @for (city of cities(); track city.id) {
+                <option [ngValue]="city.id">{{ city.name }} ({{ city.region }})</option>
+              }
+            </select>
+            @if (cityErrorVisible()) {
+              <small class="field-error">La ville est obligatoire pour la nationalité tunisienne.</small>
+            }
+          </label>
+        }
+      </div>
+
+      <div class="profile-actions">
+        <button class="btn-primary" type="submit" [disabled]="isSavingProfile()">
+          {{ isSavingProfile() ? 'Sauvegarde...' : 'Sauvegarder le profil' }}
+        </button>
+        <button class="btn-outline profile-password-btn" type="button" (click)="openChangePasswordPopup()" [disabled]="isChangingPassword()">
+          {{ isChangingPassword() ? 'Mise a jour...' : 'Changer mot de passe' }}
+        </button>
+      </div>
+    </form>
+
+    <section class="password-form compact-note">
+      <h2>Securite</h2>
+      <p class="muted">Le changement de mot de passe se fait via un popup securise pour eviter l'affichage permanent des champs sensibles.</p>
+    </section>
+  </article>
+</section>

@@ -1,0 +1,132 @@
+<main class="my-orders-page">
+  <a routerLink="/artisanat" class="back">← Artisanat</a>
+
+  <header class="page-head">
+    <h1>Mes commandes</h1>
+    <p class="lead">Historique de vos achats sur l’artisanat. Ouvrez une ligne pour voir le détail.</p>
+  </header>
+
+  @if (loading()) {
+    <div class="loading glass-panel">
+      <div class="loading-spinner"></div>
+      <p>Chargement de vos commandes...</p>
+    </div>
+  } @else if (error()) {
+    <div class="error glass-panel">
+      <div class="error-icon">⚠️</div>
+      <p class="error-message">{{ error() }}</p>
+      <button type="button" class="btn ghost" (click)="loadList()">Réessayer</button>
+    </div>
+  } @else if (orders() && orders()!.length === 0) {
+    <div class="empty glass-panel">
+      <div class="empty-icon">📦</div>
+      <h2 class="empty-title">Vous n’avez pas encore passé de commande</h2>
+      <p class="empty-description">Découvrez nos produits artisanaux tunisiens et passez votre première commande</p>
+      <div class="empty-actions">
+        <a routerLink="/artisanat" class="btn primary large">Voir les produits</a>
+        <a routerLink="/destinations" class="btn ghost large">Explorer les destinations</a>
+      </div>
+    </div>
+  } @else if (orders()) {
+    <div class="orders-table-wrap glass-panel">
+      <table class="orders-table">
+        <thead>
+          <tr>
+            <th>N°</th>
+            <th>Date</th>
+            <th>Statut</th>
+            <th class="num">Articles</th>
+            <th class="num">Total</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of orders()!; track row.orderId) {
+            <tr
+              class="order-row"
+              [class.order-row--open]="rowExpanded(row)"
+              (click)="toggleDetail(row)"
+            >
+              <td><strong>#{{ row.orderId }}</strong></td>
+              <td>{{ formatOrderedAt(row.orderedAt) }}</td>
+              <td><span class="status-pill">{{ orderStatusLabel(row.status) }}</span></td>
+              <td class="num">{{ row.itemCount }}</td>
+              <td class="num">{{ formatPrice(row.totalAmount) }}</td>
+              <td class="chev-cell">
+                <span class="chev" [class.chev--up]="rowExpanded(row)" aria-hidden="true">▼</span>
+              </td>
+            </tr>
+            @if (rowExpanded(row)) {
+              <tr class="detail-spacer-row">
+                <td colspan="6">
+                  @if (detailLoading()) {
+                    <p class="detail-state">Chargement du détail…</p>
+                  } @else if (detailError()) {
+                    <p class="detail-state err">{{ detailError() }}</p>
+                  } @else if (detail()) {
+                    <section class="order-detail" aria-labelledby="order-detail-heading">
+                      <h2 id="order-detail-heading" class="visually-hidden">
+                        Détail commande #{{ detail()!.orderId }}
+                      </h2>
+                      <div class="detail-grid">
+                        <div class="detail-card">
+                          <h3>Référence</h3>
+                          <p class="detail-row">
+                            <span class="label">Statut</span>
+                            <span class="status-pill">{{ orderStatusLabel(detail()!.status) }}</span>
+                          </p>
+                          <p class="detail-row detail-row--total">
+                            <span class="label">Total TTC</span>
+                            <strong>{{ formatPrice(detail()!.totalAmount) }}</strong>
+                          </p>
+                        </div>
+                        <div class="detail-card">
+                          <h3>Coordonnées</h3>
+                          @if (detail()!.buyer) {
+                            <p class="detail-row">
+                              <span class="label">Nom</span>
+                              <span>{{ buyerDisplayName(detail()!.buyer) }}</span>
+                            </p>
+                            <p class="detail-row">
+                              <span class="label">E-mail</span>
+                              <span>{{ detail()!.buyer!.email }}</span>
+                            </p>
+                          } @else {
+                            <p class="muted">—</p>
+                          }
+                        </div>
+                      </div>
+                      <div class="lines-wrap">
+                        <h3>Articles</h3>
+                        <table class="lines-table">
+                          <thead>
+                            <tr>
+                              <th>Article</th>
+                              <th class="num">Qté</th>
+                              <th class="num">Prix unit.</th>
+                              <th class="num">Sous-total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (line of detail()!.lines; track line.orderItemId) {
+                              <tr>
+                                <td>{{ line.name }}</td>
+                                <td class="num">{{ line.quantity }}</td>
+                                <td class="num">{{ formatPrice(line.unitPrice) }}</td>
+                                <td class="num"><strong>{{ formatPrice(line.lineTotal) }}</strong></td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+                    </section>
+                  }
+                </td>
+              </tr>
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</main>

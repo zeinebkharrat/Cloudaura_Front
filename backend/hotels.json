@@ -1,0 +1,1082 @@
+[
+  {
+    "name": "Movenpick Tunis",
+    "type": "HOTEL",
+    "pricePerNight": 450.99,
+    "rating": 5.0,
+    "status": "AVAILABLE",
+    "city_id": 1,
+    "city": "Tunis"
+  },
+  {
+    "name": "Four Seasons Tunis",
+    "type": "HOTEL",
+    "pricePerNight": 400.02,
+    "rating": 5.0,
+    "status": "AVAILABLE",
+    "city_id": 1,
+    "city": "Tunis"
+  },
+  {
+    "name": "Sheraton Tunis",
+    "type": "HOTEL",
+    "pricePerNight": 226.82,
+    "rating": 4.5,
+    "status": "AVAILABLE",
+    "city_id": 1,
+    "city": "Tunis"
+  },
+  {
+    "name": "Laico Tunis",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 237.26,
+    "rating": 4.5,
+    "status": "AVAILABLE",
+    "city_id": 1,
+    "city": "Tunis"
+  },
+  {
+    "name": "The Residence Tunis",
+    "type": "GUESTHOUSE",
+    "pricePerNight": 539.97,
+    "rating": 5.0,
+    "status": "AVAILABLE",
+    "city_id": 1,
+    "city": "Tunis"
+  },
+  {
+    "name": "Radisson Blu Tunis Airport",
+    "type": "HOTEL",
+    "pricePerNight": 237.67,
+    "rating": 4.5,
+    "status": "AVAILABLE",
+    "city_id": 2,
+    "city": "Ariana"
+  },
+  {
+    "name": "Golden Tulip Carthage Tunis",
+    "type": "HOTEL",
+    "pricePerNight": 162.98,
+    "rating": 4.0,
+    "status": "AVAILABLE",
+    "city_id": 2,
+    "city": "Ariana"
+  },
+  {
+    "name": "El Mouradi Palace",
+    "type": "HOTEL",
+    "pricePerNight": 181.06,
+    "rating": 4.0,
+    "status": "AVAILABLE",
+    "city_id": 2,
+    "city": "Ariana"
+  },
+  {
+    "name": "Hasdrubal Prestige Ariana",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 280.79,
+    "rating": 4.5,
+    "status": "AVAILABLE",
+    "city_id": 2,
+    "city": "Ariana"
+  },
+  {
+    "name": "Concorde Hotel Tunis",
+    "type": "GUESTHOUSE",
+    "pricePerNight": 196.3,
+    "rating": 4.0,
+    "status": "AVAILABLE",
+    "city_id": 2,
+    "city": "Ariana"
+  },
+  {
+    "name": "Holiday Inn Tunis",
+    "type": "HOTEL",
+    "pricePerNight": 74.68,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 3,
+    "city": "Ben Arous"
+  },
+  {
+    "name": "Ibis Styles Tunis",
+    "type": "HOTEL",
+    "pricePerNight": 72.65,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 3,
+    "city": "Ben Arous"
+  },
+  {
+    "name": "Ramada Tunis",
+    "type": "HOTEL",
+    "pricePerNight": 78.4,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 3,
+    "city": "Ben Arous"
+  },
+  {
+    "name": "Golden Jasmine Tunis",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 66.5,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 3,
+    "city": "Ben Arous"
+  },
+  {
+    "name": "City Centre Tunis",
+    "type": "GUESTHOUSE",
+    "pricePerNight": 87.06,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 3,
+    "city": "Ben Arous"
+  },
+  {
+    "name": "Dar Ben Gacem",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 108.7,
+    "rating": 3.5,
+    "status": "AVAILABLE",
+    "city_id": 4,
+    "city": "Manouba"
+  },
+  {
+    "name": "Villa Didon Manouba",
+    "type": "HOTEL",
+    "pricePerNight": 71.64,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 4,
+    "city": "Manouba"
+  },
+  {
+    "name": "Hotel Royal Manouba",
+    "type": "HOTEL",
+    "pricePerNight": 80.47,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 4,
+    "city": "Manouba"
+  },
+  {
+    "name": "Chateau Blanc",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 64.57,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 4,
+    "city": "Manouba"
+  },
+  {
+    "name": "El Wafa Hotel",
+    "type": "GUESTHOUSE",
+    "pricePerNight": 79.82,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 4,
+    "city": "Manouba"
+  },
+  {
+    "name": "La Badira Hammamet",
+    "type": "HOTEL",
+    "pricePerNight": 562.49,
+    "rating": 5.0,
+    "status": "AVAILABLE",
+    "city_id": 5,
+    "city": "Nabeul"
+  },
+  {
+    "name": "Iberostar Averroes",
+    "type": "HOTEL",
+    "pricePerNight": 250.82,
+    "rating": 4.5,
+    "status": "AVAILABLE",
+    "city_id": 5,
+    "city": "Nabeul"
+  },
+  {
+    "name": "Novotel Hammamet",
+    "type": "HOTEL",
+    "pricePerNight": 196.81,
+    "rating": 4.0,
+    "status": "AVAILABLE",
+    "city_id": 5,
+    "city": "Nabeul"
+  },
+  {
+    "name": "The Sindbad Hammamet",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 75.86,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 5,
+    "city": "Nabeul"
+  },
+  {
+    "name": "Bel Azur Hammamet",
+    "type": "GUESTHOUSE",
+    "pricePerNight": 83.23,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 5,
+    "city": "Nabeul"
+  },
+  {
+    "name": "Dar Zaghouan",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 113.45,
+    "rating": 3.5,
+    "status": "AVAILABLE",
+    "city_id": 6,
+    "city": "Zaghouan"
+  },
+  {
+    "name": "Hotel Nymphes",
+    "type": "HOTEL",
+    "pricePerNight": 72.08,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 6,
+    "city": "Zaghouan"
+  },
+  {
+    "name": "Villa Romaine Zaghouan",
+    "type": "HOTEL",
+    "pricePerNight": 68.08,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 6,
+    "city": "Zaghouan"
+  },
+  {
+    "name": "Le Temple Zaghouan",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 90.38,
+    "rating": 3.5,
+    "status": "AVAILABLE",
+    "city_id": 6,
+    "city": "Zaghouan"
+  },
+  {
+    "name": "Panorama Zaghouan",
+    "type": "GUESTHOUSE",
+    "pricePerNight": 66.11,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 6,
+    "city": "Zaghouan"
+  },
+  {
+    "name": "Le Petit Mousse Bizerte",
+    "type": "HOTEL",
+    "pricePerNight": 139.48,
+    "rating": 3.5,
+    "status": "AVAILABLE",
+    "city_id": 7,
+    "city": "Bizerte"
+  },
+  {
+    "name": "Corniche Hotel Bizerte",
+    "type": "HOTEL",
+    "pricePerNight": 76.03,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 7,
+    "city": "Bizerte"
+  },
+  {
+    "name": "Nour Palace Bizerte",
+    "type": "HOTEL",
+    "pricePerNight": 73.86,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 7,
+    "city": "Bizerte"
+  },
+  {
+    "name": "Hotel Jalta Bizerte",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 87.01,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 7,
+    "city": "Bizerte"
+  },
+  {
+    "name": "Dar Zarrouk Bizerte",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 120.28,
+    "rating": 3.5,
+    "status": "AVAILABLE",
+    "city_id": 7,
+    "city": "Bizerte"
+  },
+  {
+    "name": "Hotel Beja Center",
+    "type": "HOTEL",
+    "pricePerNight": 89.3,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 8,
+    "city": "Beja"
+  },
+  {
+    "name": "Dar El Ain Beja",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 107.88,
+    "rating": 3.5,
+    "status": "AVAILABLE",
+    "city_id": 8,
+    "city": "Beja"
+  },
+  {
+    "name": "Hotel Royal Beja",
+    "type": "HOTEL",
+    "pricePerNight": 66.47,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 8,
+    "city": "Beja"
+  },
+  {
+    "name": "Le Nour Beja",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 136.04,
+    "rating": 3.5,
+    "status": "AVAILABLE",
+    "city_id": 8,
+    "city": "Beja"
+  },
+  {
+    "name": "Vagues Hotel Beja",
+    "type": "GUESTHOUSE",
+    "pricePerNight": 64.82,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 8,
+    "city": "Beja"
+  },
+  {
+    "name": "Dar Ismail Tabarka",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 129.59,
+    "rating": 3.5,
+    "status": "AVAILABLE",
+    "city_id": 9,
+    "city": "Jendouba"
+  },
+  {
+    "name": "Golf Beach Tabarka",
+    "type": "HOTEL",
+    "pricePerNight": 77.86,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 9,
+    "city": "Jendouba"
+  },
+  {
+    "name": "Hotel de France Tabarka",
+    "type": "HOTEL",
+    "pricePerNight": 89.49,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 9,
+    "city": "Jendouba"
+  },
+  {
+    "name": "Mimosas Tabarka",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 88.32,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 9,
+    "city": "Jendouba"
+  },
+  {
+    "name": "Abou Nawas Tabarka",
+    "type": "GUESTHOUSE",
+    "pricePerNight": 79.81,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 9,
+    "city": "Jendouba"
+  },
+  {
+    "name": "Hotel Medina Kef",
+    "type": "HOTEL",
+    "pricePerNight": 61.11,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 10,
+    "city": "Le Kef"
+  },
+  {
+    "name": "Dar Kef",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 91.17,
+    "rating": 3.5,
+    "status": "AVAILABLE",
+    "city_id": 10,
+    "city": "Le Kef"
+  },
+  {
+    "name": "L Auberge Kef",
+    "type": "HOTEL",
+    "pricePerNight": 74.21,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 10,
+    "city": "Le Kef"
+  },
+  {
+    "name": "Hotel Venus Kef",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 84.59,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 10,
+    "city": "Le Kef"
+  },
+  {
+    "name": "Hotel de la Paix Kef",
+    "type": "GUESTHOUSE",
+    "pricePerNight": 62.43,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 10,
+    "city": "Le Kef"
+  },
+  {
+    "name": "Hotel Central Siliana",
+    "type": "HOTEL",
+    "pricePerNight": 72.76,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 11,
+    "city": "Siliana"
+  },
+  {
+    "name": "Dar Siliana",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 94.3,
+    "rating": 3.5,
+    "status": "AVAILABLE",
+    "city_id": 11,
+    "city": "Siliana"
+  },
+  {
+    "name": "Hotel du Sud Siliana",
+    "type": "HOTEL",
+    "pricePerNight": 69.29,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 11,
+    "city": "Siliana"
+  },
+  {
+    "name": "Makthar Inn",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 60.17,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 11,
+    "city": "Siliana"
+  },
+  {
+    "name": "Le Relais Siliana",
+    "type": "GUESTHOUSE",
+    "pricePerNight": 106.48,
+    "rating": 3.5,
+    "status": "AVAILABLE",
+    "city_id": 11,
+    "city": "Siliana"
+  },
+  {
+    "name": "Amina Hotel Kairouan",
+    "type": "HOTEL",
+    "pricePerNight": 75.7,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 12,
+    "city": "Kairouan"
+  },
+  {
+    "name": "Continental Kairouan",
+    "type": "HOTEL",
+    "pricePerNight": 66.02,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 12,
+    "city": "Kairouan"
+  },
+  {
+    "name": "Dar El Medina Kairouan",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 129.36,
+    "rating": 3.5,
+    "status": "AVAILABLE",
+    "city_id": 12,
+    "city": "Kairouan"
+  },
+  {
+    "name": "Hotel Splendid Kairouan",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 61.66,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 12,
+    "city": "Kairouan"
+  },
+  {
+    "name": "La Kasbah Kairouan",
+    "type": "GUESTHOUSE",
+    "pricePerNight": 66.34,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 12,
+    "city": "Kairouan"
+  },
+  {
+    "name": "El Ghorfa Kasserine",
+    "type": "HOTEL",
+    "pricePerNight": 67.73,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 13,
+    "city": "Kasserine"
+  },
+  {
+    "name": "Hotel Cillium Kasserine",
+    "type": "HOTEL",
+    "pricePerNight": 72.12,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 13,
+    "city": "Kasserine"
+  },
+  {
+    "name": "Hotel Pinus Kasserine",
+    "type": "HOTEL",
+    "pricePerNight": 82.91,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 13,
+    "city": "Kasserine"
+  },
+  {
+    "name": "Dar Chambi Kasserine",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 107.69,
+    "rating": 3.5,
+    "status": "AVAILABLE",
+    "city_id": 13,
+    "city": "Kasserine"
+  },
+  {
+    "name": "Hotel Atlas Kasserine",
+    "type": "GUESTHOUSE",
+    "pricePerNight": 80.85,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 13,
+    "city": "Kasserine"
+  },
+  {
+    "name": "Hotel Sidi Bouzid",
+    "type": "HOTEL",
+    "pricePerNight": 87.67,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 14,
+    "city": "Sidi Bouzid"
+  },
+  {
+    "name": "Dar El Wafa",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 96.55,
+    "rating": 3.5,
+    "status": "AVAILABLE",
+    "city_id": 14,
+    "city": "Sidi Bouzid"
+  },
+  {
+    "name": "Hotel le Renouveau",
+    "type": "HOTEL",
+    "pricePerNight": 85.92,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 14,
+    "city": "Sidi Bouzid"
+  },
+  {
+    "name": "Oasis Hotel Sidi Bouzid",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 77.99,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 14,
+    "city": "Sidi Bouzid"
+  },
+  {
+    "name": "Hotel El Fadl",
+    "type": "GUESTHOUSE",
+    "pricePerNight": 82.42,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 14,
+    "city": "Sidi Bouzid"
+  },
+  {
+    "name": "Movenpick Sousse",
+    "type": "HOTEL",
+    "pricePerNight": 502.01,
+    "rating": 5.0,
+    "status": "AVAILABLE",
+    "city_id": 15,
+    "city": "Sousse"
+  },
+  {
+    "name": "El Mouradi Sousse",
+    "type": "HOTEL",
+    "pricePerNight": 164.5,
+    "rating": 4.0,
+    "status": "AVAILABLE",
+    "city_id": 15,
+    "city": "Sousse"
+  },
+  {
+    "name": "Marhaba Palace Sousse",
+    "type": "HOTEL",
+    "pricePerNight": 145.79,
+    "rating": 4.0,
+    "status": "AVAILABLE",
+    "city_id": 15,
+    "city": "Sousse"
+  },
+  {
+    "name": "Hasdrubal Prestige Sousse",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 221.55,
+    "rating": 4.5,
+    "status": "AVAILABLE",
+    "city_id": 15,
+    "city": "Sousse"
+  },
+  {
+    "name": "Iberostar Sousse Beach",
+    "type": "GUESTHOUSE",
+    "pricePerNight": 226.12,
+    "rating": 4.5,
+    "status": "AVAILABLE",
+    "city_id": 15,
+    "city": "Sousse"
+  },
+  {
+    "name": "Iberostar Monastir",
+    "type": "HOTEL",
+    "pricePerNight": 226.65,
+    "rating": 4.5,
+    "status": "AVAILABLE",
+    "city_id": 16,
+    "city": "Monastir"
+  },
+  {
+    "name": "Club Palm Azur Monastir",
+    "type": "HOTEL",
+    "pricePerNight": 97.28,
+    "rating": 3.5,
+    "status": "AVAILABLE",
+    "city_id": 16,
+    "city": "Monastir"
+  },
+  {
+    "name": "Regency Hotel Monastir",
+    "type": "HOTEL",
+    "pricePerNight": 66.23,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 16,
+    "city": "Monastir"
+  },
+  {
+    "name": "Residence Monastir",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 76.83,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 16,
+    "city": "Monastir"
+  },
+  {
+    "name": "Riu Palace Monastir",
+    "type": "GUESTHOUSE",
+    "pricePerNight": 315.59,
+    "rating": 4.5,
+    "status": "AVAILABLE",
+    "city_id": 16,
+    "city": "Monastir"
+  },
+  {
+    "name": "Club Eldorador Mahdia",
+    "type": "HOTEL",
+    "pricePerNight": 129.9,
+    "rating": 3.5,
+    "status": "AVAILABLE",
+    "city_id": 17,
+    "city": "Mahdia"
+  },
+  {
+    "name": "Abou Nawas Mahdia",
+    "type": "HOTEL",
+    "pricePerNight": 85.38,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 17,
+    "city": "Mahdia"
+  },
+  {
+    "name": "Yadis Mahdia Golf",
+    "type": "HOTEL",
+    "pricePerNight": 147.03,
+    "rating": 4.0,
+    "status": "AVAILABLE",
+    "city_id": 17,
+    "city": "Mahdia"
+  },
+  {
+    "name": "Monica Hotel Mahdia",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 84.67,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 17,
+    "city": "Mahdia"
+  },
+  {
+    "name": "Thalassa Mahdia",
+    "type": "GUESTHOUSE",
+    "pricePerNight": 65.58,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 17,
+    "city": "Mahdia"
+  },
+  {
+    "name": "Novotel Sfax Centre",
+    "type": "HOTEL",
+    "pricePerNight": 144.34,
+    "rating": 4.0,
+    "status": "AVAILABLE",
+    "city_id": 18,
+    "city": "Sfax"
+  },
+  {
+    "name": "Movenpick Sfax",
+    "type": "HOTEL",
+    "pricePerNight": 421.93,
+    "rating": 5.0,
+    "status": "AVAILABLE",
+    "city_id": 18,
+    "city": "Sfax"
+  },
+  {
+    "name": "Hotel Sfax Centre",
+    "type": "HOTEL",
+    "pricePerNight": 77.57,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 18,
+    "city": "Sfax"
+  },
+  {
+    "name": "Les Oliviers Sfax",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 92.38,
+    "rating": 3.5,
+    "status": "AVAILABLE",
+    "city_id": 18,
+    "city": "Sfax"
+  },
+  {
+    "name": "Thyna Hotel Sfax",
+    "type": "GUESTHOUSE",
+    "pricePerNight": 66.49,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 18,
+    "city": "Sfax"
+  },
+  {
+    "name": "Gafsa Palace Hotel",
+    "type": "HOTEL",
+    "pricePerNight": 71.97,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 19,
+    "city": "Gafsa"
+  },
+  {
+    "name": "Hotel Maamoun Gafsa",
+    "type": "HOTEL",
+    "pricePerNight": 84.67,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 19,
+    "city": "Gafsa"
+  },
+  {
+    "name": "Hotel Khalfallah Gafsa",
+    "type": "HOTEL",
+    "pricePerNight": 71.98,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 19,
+    "city": "Gafsa"
+  },
+  {
+    "name": "Grand Hotel Gafsa",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 72.42,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 19,
+    "city": "Gafsa"
+  },
+  {
+    "name": "Dar Gafsa",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 108.55,
+    "rating": 3.5,
+    "status": "AVAILABLE",
+    "city_id": 19,
+    "city": "Gafsa"
+  },
+  {
+    "name": "Dar Horchani Tozeur",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 94.63,
+    "rating": 3.5,
+    "status": "AVAILABLE",
+    "city_id": 20,
+    "city": "Tozeur"
+  },
+  {
+    "name": "Yadis Ksar Dghara",
+    "type": "HOTEL",
+    "pricePerNight": 192.77,
+    "rating": 4.0,
+    "status": "AVAILABLE",
+    "city_id": 20,
+    "city": "Tozeur"
+  },
+  {
+    "name": "Movenpick Tozeur",
+    "type": "HOTEL",
+    "pricePerNight": 580.76,
+    "rating": 5.0,
+    "status": "AVAILABLE",
+    "city_id": 20,
+    "city": "Tozeur"
+  },
+  {
+    "name": "Ksar El Ain Tozeur",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 81.65,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 20,
+    "city": "Tozeur"
+  },
+  {
+    "name": "Four Seasons Desert Tozeur",
+    "type": "GUESTHOUSE",
+    "pricePerNight": 449.64,
+    "rating": 5.0,
+    "status": "AVAILABLE",
+    "city_id": 20,
+    "city": "Tozeur"
+  },
+  {
+    "name": "Dar Kebili",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 112.2,
+    "rating": 3.5,
+    "status": "AVAILABLE",
+    "city_id": 21,
+    "city": "Kebili"
+  },
+  {
+    "name": "Hotel Kebili",
+    "type": "HOTEL",
+    "pricePerNight": 69.34,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 21,
+    "city": "Kebili"
+  },
+  {
+    "name": "Oasis Palace Kebili",
+    "type": "HOTEL",
+    "pricePerNight": 79.63,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 21,
+    "city": "Kebili"
+  },
+  {
+    "name": "Le Sahara Kebili",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 122.67,
+    "rating": 3.5,
+    "status": "AVAILABLE",
+    "city_id": 21,
+    "city": "Kebili"
+  },
+  {
+    "name": "Hotel du Desert Kebili",
+    "type": "GUESTHOUSE",
+    "pricePerNight": 69.32,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 21,
+    "city": "Kebili"
+  },
+  {
+    "name": "Club Kanta Gabes",
+    "type": "HOTEL",
+    "pricePerNight": 133.71,
+    "rating": 3.5,
+    "status": "AVAILABLE",
+    "city_id": 22,
+    "city": "Gabes"
+  },
+  {
+    "name": "Hotel Chems Gabes",
+    "type": "HOTEL",
+    "pricePerNight": 81.62,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 22,
+    "city": "Gabes"
+  },
+  {
+    "name": "Hotel Atlantic Gabes",
+    "type": "HOTEL",
+    "pricePerNight": 66.56,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 22,
+    "city": "Gabes"
+  },
+  {
+    "name": "Dar Ben Gabes",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 130.46,
+    "rating": 3.5,
+    "status": "AVAILABLE",
+    "city_id": 22,
+    "city": "Gabes"
+  },
+  {
+    "name": "Oasis Hotel Gabes",
+    "type": "GUESTHOUSE",
+    "pricePerNight": 80.23,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 22,
+    "city": "Gabes"
+  },
+  {
+    "name": "Hotel Sangho Djerba",
+    "type": "HOTEL",
+    "pricePerNight": 67.49,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 23,
+    "city": "Medenine"
+  },
+  {
+    "name": "Radisson Blu Djerba",
+    "type": "HOTEL",
+    "pricePerNight": 244.46,
+    "rating": 4.5,
+    "status": "AVAILABLE",
+    "city_id": 23,
+    "city": "Medenine"
+  },
+  {
+    "name": "Hasdrubal Djerba",
+    "type": "HOTEL",
+    "pricePerNight": 312.73,
+    "rating": 4.5,
+    "status": "AVAILABLE",
+    "city_id": 23,
+    "city": "Medenine"
+  },
+  {
+    "name": "Melia Djerba",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 62.4,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 23,
+    "city": "Medenine"
+  },
+  {
+    "name": "Ulysse Palace Djerba",
+    "type": "GUESTHOUSE",
+    "pricePerNight": 73.13,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 23,
+    "city": "Medenine"
+  },
+  {
+    "name": "Ksar Ouled Soltane Hotel",
+    "type": "HOTEL",
+    "pricePerNight": 88.91,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 24,
+    "city": "Tataouine"
+  },
+  {
+    "name": "Sangho Tataouine",
+    "type": "HOTEL",
+    "pricePerNight": 67.69,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 24,
+    "city": "Tataouine"
+  },
+  {
+    "name": "Hotel Hamza Tataouine",
+    "type": "HOTEL",
+    "pricePerNight": 75.09,
+    "rating": 3.0,
+    "status": "AVAILABLE",
+    "city_id": 24,
+    "city": "Tataouine"
+  },
+  {
+    "name": "Dar Ain Tataouine",
+    "type": "MAISON_HOTE",
+    "pricePerNight": 135.36,
+    "rating": 3.5,
+    "status": "AVAILABLE",
+    "city_id": 24,
+    "city": "Tataouine"
+  },
+  {
+    "name": "Le Relais Tataouine",
+    "type": "GUESTHOUSE",
+    "pricePerNight": 133.73,
+    "rating": 3.5,
+    "status": "AVAILABLE",
+    "city_id": 24,
+    "city": "Tataouine"
+  }
+]

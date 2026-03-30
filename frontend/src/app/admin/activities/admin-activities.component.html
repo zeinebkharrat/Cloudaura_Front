@@ -1,0 +1,262 @@
+<div class="admin-page">
+  <header class="page-head">
+    <div>
+      <h1>Gestion des activités</h1>
+    </div>
+    <button class="btn" (click)="openCreateModal()">Ajouter une activité</button>
+  </header>
+
+  @if (error) {
+    <div class="alert">{{ error }}</div>
+  }
+
+  <section class="card surface">
+    <div class="toolbar search-shell">
+      <div class="search-input-wrap">
+        <span class="search-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+        </span>
+        <input type="text" [(ngModel)]="q" (ngModelChange)="onSearchInputChange()" placeholder="Rechercher une activité..." />
+      </div>
+      <select [(ngModel)]="sort" (change)="onSearchInputChange()">
+        <option value="activityId,desc">Plus récentes</option>
+        <option value="name,asc">Nom A → Z</option>
+        <option value="price,asc">Prix croissant</option>
+        <option value="price,desc">Prix décroissant</option>
+      </select>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Nom</th>
+            <th>Ville</th>
+            <th>Type</th>
+            <th>Prix</th>
+            <th>Adresse</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (activity of activities; track activity.activityId) {
+            <tr>
+              <td>{{ activity.name }}</td>
+              <td>{{ activity.cityName }}</td>
+              <td>{{ activity.type || '—' }}</td>
+              <td>{{ activity.price || '—' }}</td>
+              <td>{{ activity.address || '—' }}</td>
+              <td class="actions">
+                <button class="btn icon-btn icon-view" (click)="openDetails(activity)" title="Voir détails" aria-label="Voir détails">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+                <button class="btn icon-btn icon-edit" (click)="edit(activity)" title="Modifier" aria-label="Modifier">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+                </button>
+                <button class="btn icon-btn icon-delete" (click)="delete(activity)" title="Supprimer" aria-label="Supprimer">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pager">
+      <span>Total: {{ totalElements }}</span>
+      <div>
+        <button class="btn ghost" [disabled]="page === 0" (click)="changePage(false)">Précédent</button>
+        <span>Page {{ page + 1 }} / {{ totalPages || 1 }}</span>
+        <button class="btn ghost" [disabled]="page + 1 >= totalPages" (click)="changePage(true)">Suivant</button>
+      </div>
+    </div>
+  </section>
+
+  @if (showModal) {
+    <div class="modal-backdrop" (click)="closeModal()"></div>
+    <section class="modal-card" role="dialog" aria-modal="true">
+      <header class="modal-head">
+        <h2>{{ editingId ? 'Modifier une activité' : 'Ajouter une activité' }}</h2>
+        <button class="btn ghost" (click)="closeModal()">✕</button>
+      </header>
+
+      @if (modalError) {
+        <div class="alert modal-alert">{{ modalError }}</div>
+      }
+
+      <p class="form-intro">Les champs marqués avec * sont obligatoires. Corrigez les champs rouges avant de sauvegarder.</p>
+
+      <div class="form-grid">
+        <label>
+          Ville *
+          <select [(ngModel)]="form.cityId" (ngModelChange)="clearFieldError('cityId')" [class.input-invalid]="fieldErrors.cityId">
+            <option [ngValue]="null">Sélectionner...</option>
+            @for (city of cities; track city.cityId) {
+              <option [ngValue]="city.cityId">{{ city.name }}</option>
+            }
+          </select>
+          @if (fieldErrors.cityId) {
+            <small class="field-error">{{ fieldErrors.cityId }}</small>
+          }
+        </label>
+        <label>
+          Nom *
+          <input type="text" [(ngModel)]="form.name" (ngModelChange)="clearFieldError('name')" [class.input-invalid]="fieldErrors.name" />
+          @if (fieldErrors.name) {
+            <small class="field-error">{{ fieldErrors.name }}</small>
+          }
+        </label>
+        <label>
+          Type
+          <input type="text" [(ngModel)]="form.type" />
+        </label>
+        <label>
+          Prix
+          <input type="number" step="0.1" min="0" [(ngModel)]="form.price" (ngModelChange)="clearFieldError('price')" [class.input-invalid]="fieldErrors.price" />
+          @if (fieldErrors.price) {
+            <small class="field-error">{{ fieldErrors.price }}</small>
+          }
+        </label>
+        <label class="span-2">
+          Description
+          <textarea rows="3" [(ngModel)]="form.description" placeholder="Description touristique de l’activité"></textarea>
+        </label>
+        <label class="span-2">
+          Adresse
+          <input type="text" [(ngModel)]="form.address" />
+        </label>
+        <label>
+          Latitude
+          <input type="number" step="0.000001" [(ngModel)]="form.latitude" (ngModelChange)="clearFieldError('latitude')" [class.input-invalid]="fieldErrors.latitude" (input)="onCoordinatesChanged()" />
+          @if (fieldErrors.latitude) {
+            <small class="field-error">{{ fieldErrors.latitude }}</small>
+          }
+        </label>
+        <label>
+          Longitude
+          <input type="number" step="0.000001" [(ngModel)]="form.longitude" (ngModelChange)="clearFieldError('longitude')" [class.input-invalid]="fieldErrors.longitude" (input)="onCoordinatesChanged()" />
+          @if (fieldErrors.longitude) {
+            <small class="field-error">{{ fieldErrors.longitude }}</small>
+          }
+        </label>
+      </div>
+
+      <div class="geo-actions">
+        <button class="btn" type="button" (click)="geocodeFromName()">Localiser automatiquement</button>
+        <button class="btn ghost" type="button" (click)="openDirectionsFromCurrentPosition()" [disabled]="form.latitude == null || form.longitude == null">
+          Itinéraire depuis ma position
+        </button>
+        @if (geocodeMessage) {
+          <span class="geo-status">{{ geocodeMessage }}</span>
+        }
+      </div>
+
+      <div class="map-panel">
+        <div id="adminActivityMap" class="map-box"></div>
+      </div>
+
+      <div class="media-zone">
+        <div class="media-title">
+          <h3>Upload média</h3>
+          <span>Ajoutez vos images</span>
+        </div>
+        <div class="upload-box modern">
+          <input id="activityMediaInput" class="file-native" type="file" multiple accept="image/*" (change)="onFileChange($event)" />
+          <label class="file-trigger" for="activityMediaInput">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5-5 5 5"/><path d="M12 5v12"/></svg>
+            Choisir des images
+          </label>
+          <span class="file-count">{{ uploadFiles.length }} sélectionnée(s)</span>
+          @if (uploadFiles.length > 0) {
+            <button class="btn ghost" type="button" (click)="clearUploadSelection()">Vider</button>
+          }
+          @if (editingId) {
+            <button class="btn" [disabled]="uploadFiles.length === 0" (click)="uploadMedia()">Uploader maintenant</button>
+          }
+        </div>
+
+        @if (mediaPreviewUrls.length > 0) {
+          <div class="media-grid previews">
+            @for (url of mediaPreviewUrls; track url; let i = $index) {
+              <article class="media-card">
+                <img [src]="url" alt="Aperçu média" />
+                <div class="meta compact-meta">
+                  <span>{{ uploadFiles[i].name }}</span>
+                  <button class="btn icon-btn icon-delete" type="button" (click)="removeSelectedFile(i)" title="Retirer" aria-label="Retirer">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                  </button>
+                </div>
+              </article>
+            }
+          </div>
+        }
+
+        @if (editingId) {
+          <div class="media-grid">
+            @for (media of mediaItems; track media.mediaId) {
+              <article class="media-card">
+                <img [src]="media.url" [alt]="media.activityName" />
+                <div class="meta">
+                  <span>{{ media.mediaType }}</span>
+                  <button class="btn icon-btn icon-delete" (click)="deleteMedia(media)" title="Supprimer" aria-label="Supprimer">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                  </button>
+                </div>
+              </article>
+            }
+          </div>
+        }
+      </div>
+
+      <div class="actions">
+        <button class="btn" (click)="save()">{{ editingId ? 'Mettre à jour' : 'Créer' }}</button>
+        <button class="btn ghost" (click)="closeModal()">Annuler</button>
+      </div>
+    </section>
+  }
+
+  @if (showDetailsModal && detailsActivity) {
+    <div class="modal-backdrop" (click)="closeDetailsModal()"></div>
+    <section class="modal-card details-card" role="dialog" aria-modal="true">
+      <header class="modal-head">
+        <h2>Détails de l’activité</h2>
+        <button class="btn ghost" (click)="closeDetailsModal()">✕</button>
+      </header>
+
+      <div class="details-grid">
+        <article class="details-media-main">
+          @if (detailsMediaItems.length > 0) {
+            <img [src]="detailsMediaItems[0].url" [alt]="detailsActivity.name" />
+          } @else {
+            <div class="details-empty-media">Aucune image disponible</div>
+          }
+        </article>
+
+        <article class="details-info-card">
+          <h3>{{ detailsActivity.name }}</h3>
+          <p>{{ detailsActivity.description || 'Aucune description disponible.' }}</p>
+          <div class="details-meta-grid">
+            <div><strong>Ville:</strong> {{ detailsActivity.cityName }}</div>
+            <div><strong>Type:</strong> {{ detailsActivity.type || '—' }}</div>
+            <div><strong>Prix:</strong> {{ detailsActivity.price ?? '—' }}</div>
+            <div><strong>Adresse:</strong> {{ detailsActivity.address || '—' }}</div>
+            <div><strong>Latitude:</strong> {{ detailsActivity.latitude ?? '—' }}</div>
+            <div><strong>Longitude:</strong> {{ detailsActivity.longitude ?? '—' }}</div>
+            <div><strong>Médias:</strong> {{ detailsMediaItems.length }}</div>
+          </div>
+        </article>
+      </div>
+
+      @if (detailsLoadingMedia) {
+        <p class="empty">Chargement des images...</p>
+      } @else if (detailsMediaItems.length > 0) {
+        <div class="details-gallery">
+          @for (media of detailsMediaItems; track media.mediaId) {
+            <img [src]="media.url" [alt]="detailsActivity.name" />
+          }
+        </div>
+      }
+    </section>
+  }
+</div>

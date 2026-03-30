@@ -1,0 +1,63 @@
+<section class="page" *ngIf="!loading; else loadingTpl">
+  <button class="back-btn floating-back" type="button" (click)="goBack()" aria-label="Back">←</button>
+  <header class="topbar animate-in">
+    <a class="city-link" *ngIf="restaurant" [routerLink]="['/city', restaurant.cityId]">View city</a>
+  </header>
+
+  <div class="error" *ngIf="error">{{ error }}</div>
+
+  <ng-container *ngIf="restaurant && !error">
+    <article class="overview-card animate-in delay-1">
+      <div class="image-panel">
+        <img class="cover-image" [src]="heroImage" [alt]="restaurant.name" />
+        <div class="image-overlay"></div>
+        <span class="badge">Restaurant</span>
+      </div>
+
+      <div class="content-panel">
+        <p class="kicker">Expérience culinaire</p>
+        <h1>{{ restaurant.name }}</h1>
+        <p class="description">{{ restaurant.description || 'An authentic culinary experience awaits you.' }}</p>
+
+        <div class="chips-row">
+          <span class="chip">{{ restaurant.cuisineType || 'Local cuisine' }}</span>
+          <span class="chip" *ngIf="restaurant.rating != null">★ {{ restaurant.rating }}/5</span>
+          <span class="chip">{{ restaurant.cityName }}</span>
+        </div>
+
+        <div class="info-grid">
+          <article class="info-card">
+            <span>City</span>
+            <strong>{{ restaurant.cityName }}</strong>
+          </article>
+          <article class="info-card">
+            <span>Address</span>
+            <strong>{{ restaurant.address || 'Not provided' }}</strong>
+          </article>
+        </div>
+      </div>
+    </article>
+
+    <article class="map-card animate-in delay-2">
+      <div class="card-head">
+        <h2>Location & directions</h2>
+        <p>Check the exact location and open navigation instantly.</p>
+      </div>
+
+      <div id="restaurantMap" class="map" *ngIf="restaurant.latitude && restaurant.longitude"></div>
+      <p class="empty" *ngIf="!restaurant.latitude || !restaurant.longitude">
+        Coordinates are not available for this restaurant.
+      </p>
+
+      <button class="primary-btn" type="button" (click)="openDirectionsFromCurrentPosition()" [disabled]="!restaurant.latitude || !restaurant.longitude">
+        Directions from my location
+      </button>
+    </article>
+  </ng-container>
+</section>
+
+<ng-template #loadingTpl>
+  <section class="page">
+    <div class="loading-card">Loading restaurant...</div>
+  </section>
+</ng-template>

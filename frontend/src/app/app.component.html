@@ -5,6 +5,13 @@
       <h1>YallaTN<span class="logo-plus" aria-hidden="true">+</span></h1>
     </a>
     <div class="logo-dot"></div>
+    
+    @if (selectedCityName()) {
+      <div class="city-pill animate-in">
+        <span class="pulse"></span>
+        {{ selectedCityName() }}
+      </div>
+    }
   </div>
   <ul class="nav-links">
     <li>
@@ -26,6 +33,16 @@
     <li>
       <a routerLink="/artisanat" routerLinkActive="active">Artisanat</a>
     </li>
+    @if (!isArtisan()) {
+     <li>
+      <a routerLink="/panier" routerLinkActive="active" class="nav-cart">
+        Panier
+        @if (shop.cartCount() > 0) {
+          <span class="nav-cart__badge">{{ shop.cartCount() }}</span>
+        }
+      </a>
+    </li>
+    }
     <li>
       <a routerLink="/games" routerLinkActive="active">Jeux &amp; quiz</a>
     </li>
@@ -35,8 +52,42 @@
     <li><a routerLink="/" fragment="story">Notre histoire</a></li>
   </ul>
   <div class="nav-actions">
-    <button type="button" class="theme-toggle-btn" (click)="toggleTheme()" aria-label="Basculer le thème"
-      title="Basculer le thème">
+    @if (!isAuthenticated()) {
+      <a class="connexion-btn" routerLink="/signin" routerLinkActive="active-connexion">Connexion</a>
+      <a class="signup-btn" routerLink="/signup" routerLinkActive="active-signup">Créer un compte</a>
+    } @else {
+      @if (isAdmin()) {
+        <a class="signup-btn" routerLink="/admin/dashboard">Backoffice</a>
+      }
+      <div class="user-menu-wrap" (click)="$event.stopPropagation()">
+        <button type="button" class="user-chip" (click)="toggleUserMenu($event)">
+          @if (currentUser()?.profileImageUrl) {
+            <img class="user-avatar" [src]="currentUser()!.profileImageUrl!" alt="Photo profil" />
+          } @else {
+            <span class="user-avatar fallback">{{ (currentUser()?.firstName || currentUser()?.username || 'U').charAt(0).toUpperCase() }}</span>
+          }
+          <span class="nav-user">Salut, {{ currentUser()?.firstName || currentUser()?.username }}</span>
+          <svg class="user-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </button>
+
+        @if (isUserMenuOpen()) {
+          <div class="user-dropdown">
+            <a class="user-dd-item" [routerLink]="isArtisan() ? '/mes-ordres' : '/mes-commandes'" (click)="closeUserMenu()">
+              @if (isArtisan()) { Mes ordres } @else { Mes commandes }
+            </a>
+            <a class="user-dd-item" routerLink="/profile" (click)="closeUserMenu()">Mon profil</a>
+            @if (isAdmin()) {
+              <a class="user-dd-item" routerLink="/admin/dashboard" (click)="closeUserMenu()">Backoffice admin</a>
+            }
+            <button type="button" class="user-dd-item danger" (click)="logout()">Déconnexion</button>
+          </div>
+        }
+      </div>
+    }
+
+    <button type="button" class="theme-toggle-btn" (click)="toggleTheme()" aria-label="Basculer le thème" title="Basculer le thème">
       @if (isDarkMode()) {
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -51,17 +102,6 @@
       </svg>
       }
     </button>
-
-    @if (auth.isLoggedIn()) {
-      @if (auth.isAdmin()) {
-        <a routerLink="/admin" class="btn-nav-admin" id="nav-admin-link">🛡️ Admin</a>
-      }
-      <button class="btn-nav-logout" (click)="auth.logout()" id="nav-logout-btn">
-        {{ auth.currentUser()?.username }} · Quitter
-      </button>
-    } @else {
-      <a routerLink="/login" class="btn-nav-login" id="nav-login-btn">Connexion</a>
-    }
   </div>
 </nav>
 }
@@ -78,3 +118,17 @@
   </div>
 </footer>
 }
+
+<button
+  type="button"
+  class="theme-toggle-floating"
+  (click)="toggleTheme()"
+  aria-label="Basculer le thème global"
+  title="Basculer le thème"
+>
+  @if (isDarkMode()) {
+    ☀️
+  } @else {
+    🌙
+  }
+</button>

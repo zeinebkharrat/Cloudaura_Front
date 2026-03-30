@@ -1,0 +1,235 @@
+<div class="admin-container">
+  <div class="admin-header">
+    <h1>Gestion des Hébergements</h1>
+    <button class="btn btn-primary" (click)="openCreateForm()">
+      <span>+</span> Nouvel hébergement
+    </button>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-bar">
+    <div class="search-box">
+      <input 
+        type="text" 
+        placeholder="Rechercher par nom ou ville..."
+        [ngModel]="searchQuery()"
+        (ngModelChange)="searchQuery.set($event)"
+      />
+    </div>
+    <div class="filter-group">
+      <select [ngModel]="filterType()" (ngModelChange)="filterType.set($event)">
+        <option value="">Tous les types</option>
+        <option *ngFor="let type of accommodationTypes" [value]="type">
+          {{ getTypeLabel(type) }}
+        </option>
+      </select>
+      <select [ngModel]="filterStatus()" (ngModelChange)="filterStatus.set($event)">
+        <option value="">Tous les statuts</option>
+        <option value="AVAILABLE">Disponible</option>
+        <option value="UNAVAILABLE">Indisponible</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="isLoading()" class="loading-state">
+    <div class="spinner"></div>
+    <p>Chargement des hébergements...</p>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!isLoading() && filteredAccommodations().length === 0" class="empty-state">
+    <div class="empty-icon"><img src="/icones/hotel.png" alt="Hébergement" style="width:3.5rem;height:3.5rem;object-fit:contain;opacity:0.5;" /></div>
+    <h3>Aucun hébergement trouvé</h3>
+    <p>Commencez par ajouter un nouvel hébergement</p>
+  </div>
+
+  <!-- Accommodations Grid -->
+  <div *ngIf="!isLoading() && filteredAccommodations().length > 0" class="accommodations-grid">
+    <div 
+      *ngFor="let acc of filteredAccommodations()" 
+      class="accommodation-card"
+      [class.unavailable]="acc.status === 'UNAVAILABLE'"
+    >
+      <div class="card-header">
+        <div class="type-badge">{{ getTypeLabel(acc.type) }}</div>
+        <div class="status-badge" [class]="getStatusBadgeClass(acc.status)">
+          {{ acc.status === 'AVAILABLE' ? 'Disponible' : 'Indisponible' }}
+        </div>
+      </div>
+
+      <div class="card-body">
+        <h3 class="accommodation-name">{{ acc.name }}</h3>
+        <p class="accommodation-city">📍 {{ acc.cityName || 'Ville #' + acc.cityId }}</p>
+        
+        <div class="accommodation-details">
+          <div class="detail-item">
+            <span class="label">Prix/nuit</span>
+            <span class="value">{{ acc.pricePerNight | currency:'TND':'symbol':'1.2-2' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="label">Note</span>
+            <span class="value stars">
+              {{ '⭐'.repeat(acc.rating || 0) }}
+              <span *ngIf="!acc.rating">-</span>
+            </span>
+          </div>
+          <div class="detail-item">
+            <span class="label">Chambres</span>
+            <span class="value">{{ acc.rooms?.length || 0 }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-actions">
+        <button class="btn btn-sm btn-secondary" (click)="openEditForm(acc)">
+          ✏️ Modifier
+        </button>
+        <button 
+          class="btn btn-sm" 
+          [class.btn-success]="acc.status === 'UNAVAILABLE'"
+          [class.btn-warning]="acc.status === 'AVAILABLE'"
+          (click)="toggleStatus(acc)"
+        >
+          {{ acc.status === 'AVAILABLE' ? '🚫 Désactiver' : '✅ Activer' }}
+        </button>
+        <button class="btn btn-sm btn-danger" (click)="deleteAccommodation(acc)">
+          🗑️
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Accommodation Form Modal -->
+  <div *ngIf="showForm()" class="modal-overlay" (click)="closeForm()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>{{ selectedAccommodation() ? 'Modifier' : 'Nouvel' }} hébergement</h2>
+        <button class="btn-close" (click)="closeForm()">×</button>
+      </div>
+
+      <form [formGroup]="accommodationForm" (ngSubmit)="saveAccommodation()">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Nom *</label>
+            <input type="text" formControlName="name" placeholder="Nom de l'hébergement" />
+            <div *ngIf="accommodationForm.get('name')?.invalid && accommodationForm.get('name')?.touched" class="error">
+              Le nom est requis (min. 2 caractères)
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Type *</label>
+            <select formControlName="type">
+              <option *ngFor="let type of accommodationTypes" [value]="type">
+                {{ getTypeLabel(type) }}
+              </option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Ville *</label>
+            <select formControlName="cityId">
+              <option [ngValue]="null">Sélectionner une ville</option>
+              <option *ngFor="let city of cities()" [ngValue]="city.cityId">
+                {{ city.name }} ({{ city.region }})
+              </option>
+            </select>
+            <div *ngIf="accommodationForm.get('cityId')?.invalid && accommodationForm.get('cityId')?.touched" class="error">
+              La ville est requise
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Prix par nuit (TND) *</label>
+            <input type="number" formControlName="pricePerNight" min="0" step="0.01" />
+          </div>
+
+          <div class="form-group">
+            <label>Note (0-5)</label>
+            <input type="number" formControlName="rating" min="0" max="5" step="0.1" />
+          </div>
+
+          <div class="form-group">
+            <label>Statut *</label>
+            <select formControlName="status">
+              <option value="AVAILABLE">Disponible</option>
+              <option value="UNAVAILABLE">Indisponible</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Room Management Section -->
+        <div *ngIf="selectedAccommodation()" class="rooms-section">
+          <div class="section-header">
+            <h3>Gestion des chambres</h3>
+            <button type="button" class="btn btn-sm btn-primary" (click)="openRoomForm()">
+              + Ajouter une chambre
+            </button>
+          </div>
+
+          <div *ngIf="selectedAccommodation()?.rooms?.length === 0" class="no-rooms">
+            Aucune chambre configurée
+          </div>
+
+          <div *ngIf="selectedAccommodation()?.rooms && selectedAccommodation()!.rooms!.length > 0" class="rooms-list">
+            <div *ngFor="let room of selectedAccommodation()?.rooms" class="room-item">
+              <div class="room-info">
+                <span class="room-type">{{ room.roomType }}</span>
+                <span class="room-capacity">{{ room.capacity }} pers.</span>
+                <span class="room-price">{{ room.price | currency:'TND':'symbol':'1.2-2' }}</span>
+              </div>
+              <div class="room-actions">
+                <button type="button" class="btn btn-xs" (click)="openRoomForm(room)">✏️</button>
+                <button type="button" class="btn btn-xs btn-danger" (click)="deleteRoom(room)">🗑️</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeForm()">Annuler</button>
+          <button type="submit" class="btn btn-primary" [disabled]="accommodationForm.invalid">
+            {{ selectedAccommodation() ? 'Mettre à jour' : 'Créer' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Room Form Modal -->
+  <div *ngIf="showRoomForm()" class="modal-overlay" (click)="closeRoomForm()">
+    <div class="modal-content modal-sm" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ editingRoom() ? 'Modifier' : 'Nouvelle' }} chambre</h3>
+        <button class="btn-close" (click)="closeRoomForm()">×</button>
+      </div>
+
+      <form [formGroup]="roomForm" (ngSubmit)="saveRoom()">
+        <div class="form-group">
+          <label>Type de chambre *</label>
+          <select formControlName="roomType">
+            <option *ngFor="let type of roomTypes" [value]="type">{{ type }}</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Capacité (personnes) *</label>
+          <input type="number" formControlName="capacity" min="1" />
+        </div>
+
+        <div class="form-group">
+          <label>Prix (TND) *</label>
+          <input type="number" formControlName="price" min="0" step="0.01" />
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" (click)="closeRoomForm()">Annuler</button>
+          <button type="submit" class="btn btn-primary" [disabled]="roomForm.invalid">
+            {{ editingRoom() ? 'Mettre à jour' : 'Ajouter' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,166 @@
+<section class="auth-page">
+  <div class="auth-bg-orb auth-bg-orb-left"></div>
+  <div class="auth-bg-orb auth-bg-orb-right"></div>
+
+  <article class="auth-card animate-in">
+    <p class="auth-kicker">Tunisia Travel Access</p>
+    <h1>Créer un compte voyageur</h1>
+    <p class="auth-subtitle">Rejoignez la communauté YallaTN+ pour planifier vos aventures en Tunisie.</p>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+      <div class="upload-block upload-block-top">
+        <label class="upload-label">Photo de profil (optionnel)</label>
+        <div class="upload-top-layout">
+          <div class="upload-preview-shell">
+            @if (uploadedImageUrl()) {
+              <img [src]="uploadedImageUrl()!" alt="Aperçu profil" class="preview-image" />
+            } @else {
+              <div class="preview-placeholder">Photo</div>
+            }
+          </div>
+          <div class="upload-actions">
+            <label class="upload-btn" for="signup-upload">{{ isUploadingImage() ? 'Upload...' : 'Uploader une photo' }}</label>
+            <input id="signup-upload" type="file" accept="image/*" (change)="onImageSelected($event)" [disabled]="isUploadingImage()" />
+            @if (isUploadingImage()) {
+              <p class="upload-state">Upload en cours...</p>
+            } @else if (uploadedImageUrl()) {
+              <p class="upload-state success">Image uploadée avec succès.</p>
+            } @else {
+              <p class="upload-state">Ajoutez une photo pour personnaliser votre compte.</p>
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-two">
+        <label>
+          Prénom
+          <input type="text" formControlName="firstName" placeholder="Votre prénom" autocomplete="given-name" [class.input-invalid]="controlInvalid('firstName')" />
+          @if (controlInvalid('firstName')) {
+            <small class="field-error">Le prénom est obligatoire (min. 2 caractères).</small>
+          }
+        </label>
+
+        <label>
+          Nom
+          <input type="text" formControlName="lastName" placeholder="Votre nom" autocomplete="family-name" [class.input-invalid]="controlInvalid('lastName')" />
+          @if (controlInvalid('lastName')) {
+            <small class="field-error">Le nom est obligatoire (min. 2 caractères).</small>
+          }
+        </label>
+      </div>
+
+      <label>
+        Nom d’utilisateur
+        <input type="text" formControlName="username" placeholder="ex: explorer_sousse" autocomplete="username" [class.input-invalid]="controlInvalid('username')" />
+        @if (controlInvalid('username')) {
+          <small class="field-error">Le nom d'utilisateur est obligatoire (min. 3 caractères).</small>
+        }
+      </label>
+
+      <label>
+        Email
+        <input type="email" formControlName="email" placeholder="vous@email.com" autocomplete="email" [class.input-invalid]="controlInvalid('email')" />
+        @if (controlInvalid('email')) {
+          <small class="field-error">Veuillez saisir un email valide.</small>
+        }
+      </label>
+
+      <label>
+        Numéro téléphone
+        <input type="tel" formControlName="phone" placeholder="+216 22 345 678" autocomplete="tel" [class.input-invalid]="controlInvalid('phone')" />
+        @if (controlInvalid('phone')) {
+          <small class="field-error">{{ phoneErrorMessage() }}</small>
+        }
+      </label>
+
+      <div class="grid-two">
+        <label>
+          Nationalite
+          <select formControlName="nationality">
+            <option value="">Choisir une nationalite</option>
+            @for (nationality of nationalities(); track nationality) {
+              <option [value]="nationality">{{ nationality }}</option>
+            }
+          </select>
+        </label>
+
+        @if (showCityField()) {
+          <label>
+            Ville (Tunisie)
+            <select formControlName="cityId" [class.input-invalid]="cityErrorVisible()">
+              <option value="">Choisir une ville</option>
+              @for (city of cities(); track city.id) {
+                <option [value]="city.id">{{ city.name }} ({{ city.region }})</option>
+              }
+            </select>
+            @if (cityErrorVisible()) {
+              <small class="field-error">Veuillez sélectionner une ville en Tunisie.</small>
+            }
+          </label>
+        }
+      </div>
+
+      <label>
+        Mot de passe
+        <input type="password" formControlName="password" placeholder="Minimum 8 caractères" autocomplete="new-password" [class.input-invalid]="controlInvalid('password')" />
+        @if (controlInvalid('password')) {
+          <small class="field-error">Le mot de passe est obligatoire (min. 8 caractères).</small>
+        }
+      </label>
+
+      <label>
+        Confirmer le mot de passe
+        <input type="password" formControlName="confirmPassword" placeholder="Confirmez votre mot de passe" autocomplete="new-password" [class.input-invalid]="controlInvalid('confirmPassword') || (form.hasError('passwordMismatch') && form.controls.confirmPassword.touched)" />
+        @if (controlInvalid('confirmPassword')) {
+          <small class="field-error">Veuillez confirmer votre mot de passe.</small>
+        }
+      </label>
+
+      <section class="captcha-card" aria-label="Captcha anti-bot">
+        <div class="captcha-head">
+          <strong>Vérification sécurité</strong>
+          <button type="button" class="captcha-refresh" (click)="regenerateCaptcha()">Nouveau</button>
+        </div>
+        <p class="captcha-question">Résolvez: {{ captchaQuestion() }}</p>
+        <label>
+          Réponse captcha
+          <input type="text" formControlName="captchaAnswer" placeholder="Votre réponse" [class.input-invalid]="controlInvalid('captchaAnswer') || (formError() && formError()?.includes('Captcha'))" />
+          @if (controlInvalid('captchaAnswer')) {
+            <small class="field-error">Veuillez répondre au captcha.</small>
+          }
+        </label>
+      </section>
+
+      <div class="artisan-box">
+        <label class="artisan-check">
+          <input type="checkbox" id="becomeArtisan" formControlName="becomeArtisan" />
+          <span class="checkbox-box"></span>
+          <span>Je suis artisan et je souhaite vendre mes produits</span>
+        </label>
+        @if (form.controls.becomeArtisan.value) {
+          <p>Votre demande artisan sera examinée par un administrateur avant activation du rôle.</p>
+        }
+      </div>
+
+      @if (form.hasError('passwordMismatch') && form.controls.confirmPassword.touched) {
+        <p class="field-error">Les mots de passe ne correspondent pas.</p>
+      }
+
+      @if (formError()) {
+        <div class="auth-error">{{ formError() }}</div>
+      }
+      @if (formSuccess()) {
+        <div class="auth-success">{{ formSuccess() }}</div>
+      }
+
+      <button type="submit" class="auth-submit" [disabled]="isLoading()">
+        {{ isLoading() ? 'Création en cours...' : 'Créer mon compte' }}
+      </button>
+    </form>
+
+    <p class="auth-switch">
+      Déjà inscrit ? <a routerLink="/signin">Se connecter</a>
+    </p>
+  </article>
+</section>

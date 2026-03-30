@@ -1,0 +1,16 @@
+{
+  "cities": [
+    { "id": 1, "name": "Tunis", "governorate": "Tunis", "latitude": 36.8065, "longitude": 10.1815, "description": "The vibrant capital of Tunisia." },
+    { "id": 4, "name": "Sousse", "governorate": "Sousse", "latitude": 35.8254, "longitude": 10.6366, "description": "The Pearl of the Sahel." },
+    { "id": 10, "name": "Hammamet", "governorate": "Nabeul", "latitude": 36.4, "longitude": 10.6167, "description": "Famous for its beaches and jasmine." },
+    { "id": 9, "name": "Djerba", "governorate": "Medenine", "latitude": 33.8075, "longitude": 10.8451, "description": "The island of dreams." },
+    { "id": 6, "name": "Mahdia", "governorate": "Mahdia", "latitude": 35.5047, "longitude": 11.0622, "description": "A peaceful coastal town." },
+    { "id": 8, "name": "Sfax", "governorate": "Sfax", "latitude": 34.7406, "longitude": 10.7603, "description": "The economic hub." },
+    { "id": 7, "name": "Kairouan", "governorate": "Kairouan", "latitude": 35.6781, "longitude": 10.0963, "description": "The spiritual capital." },
+    { "id": 14, "name": "Tozeur", "governorate": "Tozeur", "latitude": 33.9197, "longitude": 8.1335, "description": "Gateway to the Sahara." },
+    { "id": 12, "name": "Bizerte", "governorate": "Bizerte", "latitude": 37.2744, "longitude": 9.8739, "description": "Venice of Africa." },
+    { "id": 11, "name": "Nabeul", "governorate": "Nabeul", "latitude": 36.4561, "longitude": 10.7376, "description": "The heart of Cap Bon." },
+    { "id": 5, "name": "Monastir", "governorate": "Monastir", "latitude": 35.778, "longitude": 10.8262, "description": "The ribat city." },
+    { "id": 15, "name": "Douz", "governorate": "Kebili", "latitude": 33.45, "longitude": 9.0167, "description": "The gateway to the desert." }
+  ]
+}

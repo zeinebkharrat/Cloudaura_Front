@@ -1,0 +1,94 @@
+<section class="admin-layout">
+  <header class="admin-header">
+    <div>
+      <p class="admin-kicker">Conformite</p>
+      <h1>Journal d audit</h1>
+      <p>Traçabilite des actions sensibles avec export CSV et XLSX.</p>
+    </div>
+  </header>
+
+  <article class="users-panel glass-panel">
+    <form [formGroup]="filterForm" class="search-form">
+      <input type="text" formControlName="q" placeholder="Rechercher acteur, email cible, IP, details..." />
+      <select formControlName="action">
+        <option value="">Toutes les actions</option>
+        @for (action of actions; track action) {
+          <option [value]="action">{{ action }}</option>
+        }
+      </select>
+      <input type="datetime-local" formControlName="from" />
+      <input type="datetime-local" formControlName="to" />
+      <button type="button" (click)="loadLogs(0)" [disabled]="isLoading()">Filtrer</button>
+    </form>
+
+    <div class="toolbar">
+      <p class="muted">{{ totalElements() }} log(s)</p>
+      <div class="export-actions">
+        <button type="button" class="secondary" (click)="exportCsv()" [disabled]="isExporting() || isLoading()">
+          Export CSV
+        </button>
+        <button type="button" (click)="exportXlsx()" [disabled]="isExporting() || isLoading()">
+          Export XLSX
+        </button>
+      </div>
+    </div>
+
+    @if (actionError()) {
+      <div class="msg error">{{ actionError() }}</div>
+    }
+
+    <div class="table-wrap">
+      @if (isLoading()) {
+        <p class="muted">Chargement...</p>
+      } @else if (logs().length === 0) {
+        <p class="muted">Aucun log trouve.</p>
+      } @else {
+        <table class="users-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Action</th>
+              <th>Acteur</th>
+              <th>Cible</th>
+              <th>IP</th>
+              <th>User-Agent</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (log of logs(); track log.id) {
+              <tr>
+                <td>{{ log.createdAt | date:'yyyy-MM-dd HH:mm:ss' }}</td>
+                <td><span class="role-pill">{{ log.action }}</span></td>
+                <td>{{ log.actor }}</td>
+                <td>
+                  @if (log.targetUserEmail) {
+                    <strong>{{ log.targetUserEmail }}</strong>
+                  } @else {
+                    <span class="muted">N/A</span>
+                  }
+                  @if (log.targetUserId !== null) {
+                    <small>#{{ log.targetUserId }}</small>
+                  }
+                </td>
+                <td>{{ log.ipAddress || '-' }}</td>
+                <td class="ua">{{ log.userAgent || '-' }}</td>
+                <td class="details">{{ log.details }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      }
+    </div>
+
+    <footer class="pager">
+      <button type="button" class="secondary" (click)="previousPage()" [disabled]="page() === 0 || isLoading()">
+        Precedent
+      </button>
+      <span>Page {{ page() + 1 }} / {{ totalPages() === 0 ? 1 : totalPages() }}</span>
+      <button type="button" (click)="nextPage()" [disabled]="page() >= totalPages() - 1 || isLoading()">
+        Suivant
+      </button>
+    </footer>
+  </article>
+</section>
