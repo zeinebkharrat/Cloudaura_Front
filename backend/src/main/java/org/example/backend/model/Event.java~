@@ -29,6 +29,7 @@ public class Event {
     private String imageUrl;
     private Double price;
 
+    // --- GETTERS & SETTERS MANUELS ---
     public Integer getEventId() { return eventId; }
     public void setEventId(Integer eventId) { this.eventId = eventId; }
     public City getCity() { return city; }
@@ -47,9 +48,6 @@ public class Event {
     public void setStatus(String status) { this.status = status; }
     public String getImageUrl() { return imageUrl; }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
-    public Double getPrice() { return price; }
-    public void setPrice(Double price) { this.price = price; }
-
 
     public void setId(Integer eventId) {
         this.eventId = eventId;

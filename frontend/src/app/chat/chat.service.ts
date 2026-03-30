@@ -299,9 +299,7 @@ export class ChatService implements OnDestroy {
   }
 
   private resolveWsEndpoint(): string {
-    if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-      return 'http://localhost:9091/ws';
-    }
+    // Keep WS same-origin and rely on Angular proxy (/ws -> backend).
     return '/ws';
   }
 

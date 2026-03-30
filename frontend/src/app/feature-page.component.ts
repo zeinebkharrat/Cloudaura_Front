@@ -6,6 +6,8 @@ import { HttpClient } from '@angular/common/http';
 import { API_BASE_URL, API_FALLBACK_ORIGIN } from './core/api-url';
 import { AuthService } from './auth.service';
 import { ShopService } from './core/shop.service';
+import { EventService } from './event.service';
+import { Event as TravelEvent } from './models/event';
 
 /** Rich content block for feature pages (front-only). */
 export interface FeatureBlock {
@@ -47,6 +49,7 @@ export class FeaturePageComponent implements OnInit {
   readonly router = inject(Router);
   readonly auth = inject(AuthService);
   readonly shop = inject(ShopService);
+  private eventService = inject(EventService);
 
   kicker = '';
   title = '';
@@ -54,6 +57,9 @@ export class FeaturePageComponent implements OnInit {
   accent: FeatureAccent = 'coral';
   highlights: string[] = [];
   blocks: FeatureBlock[] = [];
+  events: TravelEvent[] = [];
+  isLoadingEvents = false;
+  selectedEvent: TravelEvent | null = null;
 
   /** Si `'products'`, charge et affiche le catalogue sous les blocs informatifs. */
   catalog: 'none' | 'products' = 'none';
@@ -92,10 +98,10 @@ export class FeaturePageComponent implements OnInit {
   private readonly maxFileSize = 10 * 1024 * 1024; // 10MB
 
   ngOnInit(): void {
-        this.applyData(this.route.snapshot.data);
+    this.applyData(this.route.snapshot.data);
 
     this.route.data.subscribe((d) => this.applyData(d));
-    
+
     // Load artisan products if user is artisan
     if (this.isArtisan()) {
       this.loadArtisanProducts();
@@ -127,6 +133,14 @@ export class FeaturePageComponent implements OnInit {
     } else {
       this.catalogProducts = [];
       this.catalogError = null;
+    }
+
+    if (this.title === 'Events') {
+      this.loadEvents();
+    } else {
+      this.events = [];
+      this.isLoadingEvents = false;
+      this.selectedEvent = null;
     }
   }
 
@@ -284,7 +298,7 @@ export class FeaturePageComponent implements OnInit {
     this.clearFileSelection();
   }
 
-  onFileSelected(event: Event): void {
+  onFileSelected(event: globalThis.Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       const file = input.files[0];
@@ -429,6 +443,71 @@ export class FeaturePageComponent implements OnInit {
           setTimeout(() => this.cartToast.set(null), 3000);
         }
       },
+    });
+  }
+
+  private loadEvents(): void {
+    this.isLoadingEvents = true;
+    this.eventService.getEvents().subscribe({
+      next: (events) => {
+        this.events = events;
+        this.isLoadingEvents = false;
+      },
+      error: (err) => {
+        console.error('Error loading events:', err);
+        this.isLoadingEvents = false;
+      }
+    });
+  }
+
+  selectEvent(event: TravelEvent): void {
+    this.selectedEvent = event;
+    document.body.classList.add('modal-open');
+  }
+
+  closeEventDetails(): void {
+    this.selectedEvent = null;
+    document.body.classList.remove('modal-open');
+  }
+
+  onJoinEvent(event: TravelEvent): void {
+    if (!this.auth.isAuthenticated()) {
+      this.router.navigate(['/signin'], { queryParams: { returnUrl: this.router.url } });
+      return;
+    }
+
+    const amount = Number(event.price ?? 0);
+
+    if (amount > 0) {
+      this.eventService.createCheckoutSession({
+        event_id: event.eventId,
+        amount,
+        eventName: event.title,
+      }).subscribe({
+        next: (res) => {
+          if (res?.sessionUrl) {
+            window.location.href = res.sessionUrl;
+            return;
+          }
+          console.error('Stripe session URL missing in response', res);
+        },
+        error: (err) => console.error('Stripe checkout error:', err),
+      });
+      return;
+    }
+
+    const reservationData = {
+      event_id: event.eventId,
+      total_amount: 0,
+      status: 'CONFIRMED',
+    };
+
+    this.eventService.createReservation(reservationData).subscribe({
+      next: (res) => {
+        alert(`Payment successful! Reservation #${res.event_reservation_id} created.`);
+        this.closeEventDetails();
+      },
+      error: (err) => console.error('Database error:', err),
     });
   }
 }

@@ -13,6 +13,9 @@ import { AuthService } from '../../auth.service';
 export class AdminLayoutComponent {
   open = signal(true);
   user = computed(() => this.auth.currentUser());
+  
+  // 1. AJOUT : État pour le menu déroulant des événements
+  isEventsMenuOpen = false;
 
   nav = [
     { label: 'Tableau de bord', icon: '📊', route: '/admin/dashboard' },
@@ -33,7 +36,15 @@ export class AdminLayoutComponent {
   ];
 
   constructor(public auth: AuthService, private router: Router) {}
-  toggle() { this.open.set(!this.open()); }
+
+  toggle() {
+    this.open.set(!this.open());
+    if (!this.open()) this.isEventsMenuOpen = false;
+  }
+
+  toggleEventsMenu() {
+    this.isEventsMenuOpen = !this.isEventsMenuOpen;
+  }
 
   openProfile() {
     this.router.navigateByUrl('/profile');
