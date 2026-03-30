@@ -19,14 +19,11 @@ public class PaymentController {
     @PostMapping("/create-session")
     public Map<String, String> createSession(@RequestBody PaymentRequest request) {
         try {
-            // Le service retourne maintenant l'URL de redirection Stripe
-            String checkoutUrl = stripeService.createCheckoutSession(request);
-
+            String sessionId = stripeService.createCheckoutSession(request);
             Map<String, String> response = new HashMap<>();
-            response.put("url", checkoutUrl); // <--- On change "id" par "url"
+            response.put("id", sessionId);
             return response;
         } catch (Exception e) {
-            e.printStackTrace(); // Pour voir l'erreur dans la console IntelliJ
             throw new RuntimeException(e.getMessage());
         }
     }

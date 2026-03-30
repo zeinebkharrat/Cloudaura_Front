@@ -5,7 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 @Repository
-// Remplace Long par Integer ici
-public interface CityRepository extends JpaRepository<City, Integer>, JpaSpecificationExecutor<City> {
+public interface CityRepository extends JpaRepository<City, Long>, JpaSpecificationExecutor<City> {
+    //                                              Ajoute ceci ici ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 }
 

@@ -77,7 +77,7 @@ public class CityService {
     }
 
     public City findCity(Integer id) {
-        return cityRepository.findById(id)
+        return cityRepository.findById(Long.valueOf(id))
                 .orElseThrow(() -> new ResourceNotFoundException("Ville introuvable: " + id));
     }
 

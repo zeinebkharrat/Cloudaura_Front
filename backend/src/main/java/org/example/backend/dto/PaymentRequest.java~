@@ -1,4 +1,15 @@
 package org.example.backend.dto;
 
 public class PaymentRequest {
+    private long amount;
+    private String productName;
+    private int eventId;
+
+    // SANS CES MÉTHODES, SPRING NE PEUT PAS LIRE LE JSON D'ANGULAR
+    public long getAmount() { return amount; }
+    public void setAmount(long amount) { this.amount = amount; }
+    public String getProductName() { return productName; }
+    public void setProductName(String productName) { this.productName = productName; }
+    public int getEventId() { return eventId; }
+    public void setEventId(int eventId) { this.eventId = eventId; }
 }
