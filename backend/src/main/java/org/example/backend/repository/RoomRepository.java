@@ -17,7 +17,7 @@ public interface RoomRepository extends JpaRepository<Room, Integer> {
            "AND r.roomId NOT IN (" +
            "  SELECT res.room.roomId FROM Reservation res " +
            "  WHERE res.room.roomId IS NOT NULL " +
-           "  AND res.status IN (com.yallatn.model.accommodation.Reservation.ReservationStatus.CONFIRMED, com.yallatn.model.accommodation.Reservation.ReservationStatus.PENDING) " +
+           "  AND res.status IN (org.example.backend.model.ReservationStatus.CONFIRMED, org.example.backend.model.ReservationStatus.PENDING) " +
            "  AND res.checkOutDate > :checkIn " +
            "  AND res.checkInDate < :checkOut" +
            ")")

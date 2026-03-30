@@ -41,6 +41,4 @@ public class Reservation {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "transport_id", nullable = true)
     private Transport transport;
-
-    public enum ReservationStatus { PENDING, CONFIRMED, CANCELLED }
 }

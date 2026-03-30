@@ -73,11 +73,15 @@ export const routes: Routes = [
       { path: 'cities', component: AdminCitiesComponent },
       { path: 'restaurants', component: AdminRestaurantsComponent },
       { path: 'activities', component: AdminActivitiesComponent },
-      //{ path: 'panier', component: CartPageComponent },
       { path: 'orders', component: OrdersAdminComponent },
       { path: 'products', component: ProductsAdminComponent },
-
-
+      { path: 'accommodations', loadComponent: () => import('./admin/entities/accommodations/accommodations-admin.component').then(m => m.AccommodationsAdminComponent) },
+      { path: 'hebergements', redirectTo: 'accommodations' },
+      { path: 'transports', loadComponent: () => import('./admin/entities/transports/transports-admin.component').then(m => m.TransportsAdminComponent) },
+      { path: 'events', redirectTo: 'dashboard' },
+      { path: 'crafts', redirectTo: 'dashboard' },
+      { path: 'artisanat', redirectTo: 'dashboard' },
+      { path: 'settings', redirectTo: 'dashboard' },
     ],
   },
   { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },

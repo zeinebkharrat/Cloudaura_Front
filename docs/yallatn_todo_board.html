@@ -1,0 +1,186 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+.board{padding:0 0 1rem}
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--color-border-tertiary);margin-bottom:20px}
+.tab{padding:10px 20px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:none;color:var(--color-text-secondary);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+.tab.active{color:var(--color-text-primary);border-bottom-color:var(--color-text-primary)}
+.panel{display:none}.panel.active{display:block}
+.section{margin-bottom:24px}
+.section-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--color-text-secondary);margin-bottom:10px;padding-bottom:6px;border-bottom:0.5px solid var(--color-border-tertiary)}
+.task{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;transition:background .12s;margin-bottom:4px}
+.task:hover{background:var(--color-background-secondary)}
+.task input[type=checkbox]{width:15px;height:15px;flex-shrink:0;margin-top:1px;accent-color:#1D9E75;cursor:pointer}
+.task-label{font-size:13px;color:var(--color-text-primary);line-height:1.5;flex:1}
+.task-label code{font-family:monospace;font-size:11px;background:var(--color-background-secondary);padding:1px 5px;border-radius:4px;color:var(--color-text-secondary)}
+.badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:10px;margin-left:8px;font-weight:500;vertical-align:middle}
+.badge-be{background:#EAF3DE;color:#3B6D11}
+.badge-fe{background:#E6F1FB;color:#185FA5}
+.badge-db{background:#FAEEDA;color:#854F0B}
+.badge-svc{background:#EEEDFE;color:#534AB7}
+.progress-wrap{margin-bottom:20px}
+.progress-label{font-size:12px;color:var(--color-text-secondary);margin-bottom:6px;display:flex;justify-content:space-between}
+.progress-bar{height:5px;background:var(--color-border-tertiary);border-radius:3px;overflow:hidden}
+.progress-fill{height:100%;background:#1D9E75;border-radius:3px;transition:width .3s}
+</style>
+<div class="board">
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('backend',this)">Backend</button>
+  <button class="tab" onclick="switchTab('frontend',this)">Front-office</button>
+  <button class="tab" onclick="switchTab('backoffice',this)">Back-office</button>
+  <button class="tab" onclick="switchTab('infra',this)">Services transverses</button>
+</div>
+
+<div id="tab-backend" class="panel active">
+  <div class="progress-wrap">
+    <div class="progress-label"><span id="prog-backend-label">0 / 20 done</span><span style="color:#1D9E75;font-weight:500">Spring Boot</span></div>
+    <div class="progress-bar"><div class="progress-fill" id="prog-backend" style="width:0%"></div></div>
+  </div>
+  <div class="section">
+    <div class="section-title">Database</div>
+    <label class="task"><input type="checkbox" data-grp="backend" onchange="updateProgress('backend')"><span class="task-label">Create all tables with correct types, constraints and indexes <span class="badge badge-db">MySQL</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="backend" onchange="updateProgress('backend')"><span class="task-label">Update <code>cities</code> with <code>has_airport</code>, <code>has_bus_station</code>, <code>has_port</code>, <code>has_train_station</code> <span class="badge badge-db">MySQL</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="backend" onchange="updateProgress('backend')"><span class="task-label">Add <code>qr_code_token</code>, <code>reservation_ref</code>, <code>idempotency_key</code> to both reservation tables <span class="badge badge-db">MySQL</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="backend" onchange="updateProgress('backend')"><span class="task-label">Insert seed data — 24 cities, 15 vehicles, 5 drivers, 28 accommodations, 57 rooms <span class="badge badge-db">SQL</span></span></label>
+  </div>
+  <div class="section">
+    <div class="section-title">Transport module</div>
+    <label class="task"><input type="checkbox" data-grp="backend" onchange="updateProgress('backend')"><span class="task-label">JPA Entities: <code>Transport</code>, <code>Vehicle</code>, <code>Driver</code>, <code>TransportReservation</code> <span class="badge badge-be">JPA</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="backend" onchange="updateProgress('backend')"><span class="task-label">Repositories with custom queries — search by city/date, count confirmed seats <span class="badge badge-be">Spring Data</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="backend" onchange="updateProgress('backend')"><span class="task-label"><code>TransportAvailabilityService</code> — type availability logic per city infrastructure <span class="badge badge-be">Service</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="backend" onchange="updateProgress('backend')"><span class="task-label"><code>TransportBookingService</code> — idempotency check, seat lock, ref generation, events <span class="badge badge-be">Service</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="backend" onchange="updateProgress('backend')"><span class="task-label"><code>TransportController</code> — search, book, cancel, my-reservations endpoints <span class="badge badge-be">REST</span></span></label>
+  </div>
+  <div class="section">
+    <div class="section-title">Hébergement module</div>
+    <label class="task"><input type="checkbox" data-grp="backend" onchange="updateProgress('backend')"><span class="task-label">JPA Entities: <code>Accommodation</code>, <code>Room</code>, <code>Reservation</code> <span class="badge badge-be">JPA</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="backend" onchange="updateProgress('backend')"><span class="task-label">Room availability query — no overlap between check-in/check-out dates <span class="badge badge-be">JPQL</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="backend" onchange="updateProgress('backend')"><span class="task-label"><code>AccommodationService</code> — top rated, search with filters, room listing <span class="badge badge-be">Service</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="backend" onchange="updateProgress('backend')"><span class="task-label"><code>AccommodationBookingService</code> — optimistic lock, price calc (nights × rate + 12% TVA) <span class="badge badge-be">Service</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="backend" onchange="updateProgress('backend')"><span class="task-label"><code>AccommodationController</code> — top-rated, search, rooms, book, cancel endpoints <span class="badge badge-be">REST</span></span></label>
+  </div>
+  <div class="section">
+    <div class="section-title">Security & DTOs</div>
+    <label class="task"><input type="checkbox" data-grp="backend" onchange="updateProgress('backend')"><span class="task-label">JWT Security — public search endpoints, protected booking endpoints <span class="badge badge-be">Spring Security</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="backend" onchange="updateProgress('backend')"><span class="task-label">All Request/Response DTOs + MapStruct mappers <span class="badge badge-be">MapStruct</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="backend" onchange="updateProgress('backend')"><span class="task-label">GlobalExceptionHandler — SeatUnavailable, RoomUnavailable, CapacityExceeded, etc. <span class="badge badge-be">@ControllerAdvice</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="backend" onchange="updateProgress('backend')"><span class="task-label">Swagger / OpenAPI documentation on all endpoints <span class="badge badge-be">Swagger</span></span></label>
+  </div>
+</div>
+
+<div id="tab-frontend" class="panel">
+  <div class="progress-wrap">
+    <div class="progress-label"><span id="prog-frontend-label">0 / 18 done</span><span style="color:#185FA5;font-weight:500">Angular 18 + PrimeNG</span></div>
+    <div class="progress-bar"><div class="progress-fill" id="prog-frontend" style="width:0%"></div></div>
+  </div>
+  <div class="section">
+    <div class="section-title">Setup & shared</div>
+    <label class="task"><input type="checkbox" data-grp="frontend" onchange="updateProgress('frontend')"><span class="task-label">PrimeNG setup — theme Aura/Lara, color palette teal primary + amber accent <span class="badge badge-fe">PrimeNG</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="frontend" onchange="updateProgress('frontend')"><span class="task-label">App routing — lazy modules, <code>AuthGuard</code>, <code>RoleGuard</code> <span class="badge badge-fe">Angular Router</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="frontend" onchange="updateProgress('frontend')"><span class="task-label">HTTP interceptors — JWT attach, error handling, idempotency key auto-inject <span class="badge badge-fe">HttpInterceptor</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="frontend" onchange="updateProgress('frontend')"><span class="task-label">Notification service — in-app toasts (PrimeNG Toast) + pop-up booking confirmation <span class="badge badge-fe">PrimeNG</span></span></label>
+  </div>
+  <div class="section">
+    <div class="section-title">Transport pages</div>
+    <label class="task"><input type="checkbox" data-grp="frontend" onchange="updateProgress('frontend')"><span class="task-label">Transport homepage — hero search card (city from/to + date + passengers) <span class="badge badge-fe">Component</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="frontend" onchange="updateProgress('frontend')"><span class="task-label">Transport type selector — 5 animated cards (BUS/VAN/CAR/TAXI/PLANE), grayed if city has no infrastructure <span class="badge badge-fe">Component</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="frontend" onchange="updateProgress('frontend')"><span class="task-label">Vehicle catalog — 3-col grid, photos, availability badge, price, PrimeNG DataView + sidebar filters <span class="badge badge-fe">PrimeNG DataView</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="frontend" onchange="updateProgress('frontend')"><span class="task-label">Reservation form — 3-step PrimeNG Stepper (passenger info → payment → confirmation QR) <span class="badge badge-fe">PrimeNG Stepper</span></span></label>
+  </div>
+  <div class="section">
+    <div class="section-title">Hébergement pages</div>
+    <label class="task"><input type="checkbox" data-grp="frontend" onchange="updateProgress('frontend')"><span class="task-label">Accommodation list — PrimeNG DataView grid, top-rated by default, sidebar filters <span class="badge badge-fe">Component</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="frontend" onchange="updateProgress('frontend')"><span class="task-label">Accommodation detail — photo gallery, info, rooms table with availability check <span class="badge badge-fe">PrimeNG Dialog</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="frontend" onchange="updateProgress('frontend')"><span class="task-label">Accommodation booking form — 3-step Stepper (guest info → price breakdown → confirmation) <span class="badge badge-fe">PrimeNG Stepper</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="frontend" onchange="updateProgress('frontend')"><span class="task-label">Dynamic price calculator — nights × price/night + 12% TVA, live update on date change <span class="badge badge-fe">Reactive Forms</span></span></label>
+  </div>
+  <div class="section">
+    <div class="section-title">My reservations</div>
+    <label class="task"><input type="checkbox" data-grp="frontend" onchange="updateProgress('frontend')"><span class="task-label">My reservations unified page — Transport + Hébergement tabs, status filter pills <span class="badge badge-fe">Component</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="frontend" onchange="updateProgress('frontend')"><span class="task-label">Reservation detail dialog — full info + QR code display + download button <span class="badge badge-fe">PrimeNG Dialog</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="frontend" onchange="updateProgress('frontend')"><span class="task-label">Cancel reservation with confirmation dialog — business rule validation (< 2h blocked) <span class="badge badge-fe">PrimeNG Confirm</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="frontend" onchange="updateProgress('frontend')"><span class="task-label">In-app notification bell — unread count badge, notification list panel <span class="badge badge-fe">PrimeNG Badge</span></span></label>
+  </div>
+</div>
+
+<div id="tab-backoffice" class="panel">
+  <div class="progress-wrap">
+    <div class="progress-label"><span id="prog-backoffice-label">0 / 16 done</span><span style="color:#854F0B;font-weight:500">Admin panel · ROLE_ADMIN</span></div>
+    <div class="progress-bar"><div class="progress-fill" id="prog-backoffice" style="width:0%"></div></div>
+  </div>
+  <div class="section">
+    <div class="section-title">Dashboard</div>
+    <label class="task"><input type="checkbox" data-grp="backoffice" onchange="updateProgress('backoffice')"><span class="task-label">KPI cards — reservations today, active vehicles, occupancy rate, monthly revenue <span class="badge badge-fe">PrimeNG Card</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="backoffice" onchange="updateProgress('backoffice')"><span class="task-label">Reservations chart — 30-day line chart (PrimeNG Chart.js wrapper) <span class="badge badge-fe">PrimeNG Chart</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="backoffice" onchange="updateProgress('backoffice')"><span class="task-label">Recent reservations table — both transport + accommodation, with status badges <span class="badge badge-fe">PrimeNG Table</span></span></label>
+  </div>
+  <div class="section">
+    <div class="section-title">Transport management</div>
+    <label class="task"><input type="checkbox" data-grp="backoffice" onchange="updateProgress('backoffice')"><span class="task-label">Vehicles CRUD — table + inline edit form, photo upload (multipart) <span class="badge badge-fe">PrimeNG Table</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="backoffice" onchange="updateProgress('backoffice')"><span class="task-label">Drivers CRUD — list, create, activate/deactivate <span class="badge badge-fe">PrimeNG</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="backoffice" onchange="updateProgress('backoffice')"><span class="task-label">Transports CRUD — create routes, assign vehicle + driver, set price & schedule <span class="badge badge-fe">PrimeNG</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="backoffice" onchange="updateProgress('backoffice')"><span class="task-label">Transport reservations table — filter by status/date/city, confirm/cancel manually <span class="badge badge-fe">PrimeNG Table</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="backoffice" onchange="updateProgress('backoffice')"><span class="task-label">Admin backend: stats endpoint, vehicle CRUD endpoints, reservation management <span class="badge badge-be">Spring Boot</span></span></label>
+  </div>
+  <div class="section">
+    <div class="section-title">Hébergement management</div>
+    <label class="task"><input type="checkbox" data-grp="backoffice" onchange="updateProgress('backoffice')"><span class="task-label">Accommodations CRUD — create/edit hotels, type, city, price, photo upload <span class="badge badge-fe">PrimeNG</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="backoffice" onchange="updateProgress('backoffice')"><span class="task-label">Rooms management per hotel — add/edit room types, capacity, price <span class="badge badge-fe">PrimeNG</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="backoffice" onchange="updateProgress('backoffice')"><span class="task-label">Accommodation reservations table — filter, confirm/cancel, view guest details <span class="badge badge-fe">PrimeNG Table</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="backoffice" onchange="updateProgress('backoffice')"><span class="task-label">Availability calendar per room — visual calendar showing booked dates <span class="badge badge-fe">PrimeNG Calendar</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="backoffice" onchange="updateProgress('backoffice')"><span class="task-label">Admin backend: accommodation CRUD, room management, reservation overview <span class="badge badge-be">Spring Boot</span></span></label>
+  </div>
+  <div class="section">
+    <div class="section-title">Admin shell</div>
+    <label class="task"><input type="checkbox" data-grp="backoffice" onchange="updateProgress('backoffice')"><span class="task-label">Admin layout — PrimeNG Sidebar + PanelMenu navigation, sticky topbar <span class="badge badge-fe">PrimeNG</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="backoffice" onchange="updateProgress('backoffice')"><span class="task-label">Role guard on /admin/** — only ROLE_ADMIN, redirect to login if not authorized <span class="badge badge-fe">Angular Guard</span></span></label>
+  </div>
+</div>
+
+<div id="tab-infra" class="panel">
+  <div class="progress-wrap">
+    <div class="progress-label"><span id="prog-infra-label">0 / 12 done</span><span style="color:#534AB7;font-weight:500">Cross-cutting services</span></div>
+    <div class="progress-bar"><div class="progress-fill" id="prog-infra" style="width:0%"></div></div>
+  </div>
+  <div class="section">
+    <div class="section-title">Email service</div>
+    <label class="task"><input type="checkbox" data-grp="infra" onchange="updateProgress('infra')"><span class="task-label">JavaMailSender + @Async — transport confirmation, accommodation confirmation, cancellation <span class="badge badge-svc">Spring Mail</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="infra" onchange="updateProgress('infra')"><span class="task-label">Thymeleaf HTML email templates — beautiful design, QR code embedded, responsive 600px <span class="badge badge-svc">Thymeleaf</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="infra" onchange="updateProgress('infra')"><span class="task-label">Departure reminder scheduler — @Scheduled cron, email 1h before transport departure <span class="badge badge-svc">@Scheduled</span></span></label>
+  </div>
+  <div class="section">
+    <div class="section-title">QR Code</div>
+    <label class="task"><input type="checkbox" data-grp="infra" onchange="updateProgress('infra')"><span class="task-label">ZXing QR code generator — encodes signed JSON payload {ref, uid, date} <span class="badge badge-svc">ZXing</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="infra" onchange="updateProgress('infra')"><span class="task-label">QR code displayed in Angular — base64 image in confirmation step + download button <span class="badge badge-fe">Angular</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="infra" onchange="updateProgress('infra')"><span class="task-label">QR code verification endpoint — scan → validate → return reservation status <span class="badge badge-be">Spring Boot</span></span></label>
+  </div>
+  <div class="section">
+    <div class="section-title">Notifications in-app</div>
+    <label class="task"><input type="checkbox" data-grp="infra" onchange="updateProgress('infra')"><span class="task-label">In-app notification entity + API — store, mark as read, unread count <span class="badge badge-be">Spring Boot</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="infra" onchange="updateProgress('infra')"><span class="task-label">PrimeNG Toast on reservation success — green popup "Réservation confirmée! Réf: YTN-XXXX" <span class="badge badge-fe">PrimeNG Toast</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="infra" onchange="updateProgress('infra')"><span class="task-label">Notification bell component — unread badge, dropdown list, mark all read <span class="badge badge-fe">PrimeNG</span></span></label>
+  </div>
+  <div class="section">
+    <div class="section-title">Payment & gamification</div>
+    <label class="task"><input type="checkbox" data-grp="infra" onchange="updateProgress('infra')"><span class="task-label">Konnect payment integration — initiate, webhook confirm, refund on cancel <span class="badge badge-svc">Konnect API</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="infra" onchange="updateProgress('infra')"><span class="task-label">Gamification service — +50 pts on booking, -20 on cancel, +20 on review, level check <span class="badge badge-svc">Spring Event</span></span></label>
+    <label class="task"><input type="checkbox" data-grp="infra" onchange="updateProgress('infra')"><span class="task-label">File upload service — vehicle photos, hotel photos, stored in /uploads/ with UUID naming <span class="badge badge-be">MultipartFile</span></span></label>
+  </div>
+</div>
+</div>
+
+<script>
+function switchTab(name, el) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  el.classList.add('active');
+}
+function updateProgress(grp) {
+  const all = document.querySelectorAll('[data-grp=' + grp + ']');
+  const done = document.querySelectorAll('[data-grp=' + grp + ']:checked');
+  const pct = Math.round(done.length / all.length * 100);
+  document.getElementById('prog-' + grp).style.width = pct + '%';
+  document.getElementById('prog-' + grp + '-label').textContent = done.length + ' / ' + all.length + ' done';
+}
+</script>

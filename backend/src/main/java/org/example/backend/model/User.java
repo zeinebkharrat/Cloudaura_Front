@@ -34,6 +34,7 @@ public class User {
     private Boolean artisanRequestPending;
     private Date artisanRequestedAt;
     private String authProvider;
+    @Column(columnDefinition = "TEXT")
     private String profileImageUrl;
     private String nationality;
     private Boolean emailVerified;

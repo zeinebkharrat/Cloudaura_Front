@@ -1,4 +1,4 @@
-package org.example.backend.dto;
+package org.example.backend.dto.shop;
 
 import org.example.backend.model.OrderStatus;
 

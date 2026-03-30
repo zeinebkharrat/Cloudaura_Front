@@ -6,6 +6,7 @@ import org.example.backend.exception.CancellationNotAllowedException;
 import org.example.backend.exception.RoomNotAvailableException;
 import org.example.backend.exception.ResourceNotFoundException;
 import org.example.backend.model.Reservation;
+import org.example.backend.model.ReservationStatus;
 import org.example.backend.model.Room;
 import org.example.backend.model.SpecialOffer;
 import org.example.backend.model.User;
@@ -64,7 +65,7 @@ public class AccommodationReservationService {
         Reservation res = Reservation.builder()
                 .checkInDate(req.getCheckIn().atStartOfDay())
                 .checkOutDate(req.getCheckOut().atStartOfDay())
-                .status(Reservation.ReservationStatus.PENDING)
+                .status(ReservationStatus.PENDING)
                 .totalPrice(totalPrice)
                 .room(room)
                 .user(user)
@@ -83,7 +84,7 @@ public class AccommodationReservationService {
             throw new CancellationNotAllowedException("Annulation impossible moins de 24h avant l'arrivée.");
         }
 
-        res.setStatus(Reservation.ReservationStatus.CANCELLED);
+        res.setStatus(ReservationStatus.CANCELLED);
         return mapToResponse(reservationRepository.save(res), 0, 0);
     }
 

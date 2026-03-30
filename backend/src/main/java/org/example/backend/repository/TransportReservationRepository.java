@@ -17,7 +17,25 @@ public interface TransportReservationRepository extends JpaRepository<TransportR
 
     @Query("SELECT COALESCE(SUM(r.numberOfSeats), 0) FROM TransportReservation r " +
            "WHERE r.transport.transportId = :id " +
-           "AND r.status IN (com.yallatn.model.transport.TransportReservation.ReservationStatus.CONFIRMED, " +
-           "com.yallatn.model.transport.TransportReservation.ReservationStatus.PENDING)")
+           "AND r.status IN (org.example.backend.model.TransportReservation.ReservationStatus.CONFIRMED, " +
+           "org.example.backend.model.TransportReservation.ReservationStatus.PENDING)")
     int countBookedSeats(@Param("id") int transportId);
+
+    @Query("SELECT COUNT(r) FROM TransportReservation r " +
+           "WHERE r.transport.transportId = :id " +
+           "AND r.status IN (org.example.backend.model.TransportReservation.ReservationStatus.CONFIRMED, " +
+           "org.example.backend.model.TransportReservation.ReservationStatus.PENDING) " +
+           "AND r.travelDate > CURRENT_TIMESTAMP")
+    long countFutureActiveReservations(@Param("id") int transportId);
+
+    @Query("SELECT COUNT(r) FROM TransportReservation r " +
+           "WHERE r.transport.transportId = :id " +
+           "AND r.status = org.example.backend.model.TransportReservation.ReservationStatus.CONFIRMED " +
+           "AND r.travelDate > CURRENT_TIMESTAMP")
+    long countFutureConfirmedReservations(@Param("id") int transportId);
+
+    @Query("SELECT COUNT(r) FROM TransportReservation r " +
+           "WHERE r.status = org.example.backend.model.TransportReservation.ReservationStatus.CONFIRMED " +
+           "AND FUNCTION('DATE', r.travelDate) = FUNCTION('CURDATE')")
+    long countTodayConfirmed();
 }

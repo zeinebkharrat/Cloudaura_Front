@@ -2,12 +2,16 @@ package org.example.backend.repository;
 
 import org.example.backend.model.Transport;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
 public interface TransportRepository extends JpaRepository<Transport, Integer> {
+
     List<Transport> findByDepartureCity_CityIdAndArrivalCity_CityIdAndIsActiveTrue(int departureCityId, int arrivalCityId);
 
     List<Transport> findByDepartureCity_CityIdAndArrivalCity_CityIdAndDepartureTimeBetweenAndIsActiveTrue(
@@ -16,4 +20,42 @@ public interface TransportRepository extends JpaRepository<Transport, Integer> {
     List<Transport> findByTypeAndIsActiveTrue(Transport.TransportType type);
 
     List<Transport> findByIsActiveTrue();
+
+    @Query("SELECT COUNT(t) > 0 FROM Transport t WHERE t.vehicle.vehicleId = :vehicleId " +
+           "AND t.isActive = true AND t.departureTime < :arrivalTime AND t.arrivalTime > :departureTime")
+    boolean existsByVehicleIdAndTimeOverlap(
+            @Param("vehicleId") Integer vehicleId,
+            @Param("departureTime") LocalDateTime departureTime,
+            @Param("arrivalTime") LocalDateTime arrivalTime);
+
+    @Query("SELECT COUNT(t) > 0 FROM Transport t WHERE t.vehicle.vehicleId = :vehicleId " +
+           "AND t.isActive = true AND t.departureTime < :arrivalTime AND t.arrivalTime > :departureTime " +
+           "AND t.transportId <> :excludeId")
+    boolean existsByVehicleIdAndTimeOverlapExcluding(
+            @Param("vehicleId") Integer vehicleId,
+            @Param("departureTime") LocalDateTime departureTime,
+            @Param("arrivalTime") LocalDateTime arrivalTime,
+            @Param("excludeId") Integer excludeId);
+
+    @Query("SELECT COUNT(t) > 0 FROM Transport t WHERE t.driver.driverId = :driverId " +
+           "AND t.isActive = true AND t.departureTime < :arrivalTime AND t.arrivalTime > :departureTime")
+    boolean existsByDriverIdAndTimeOverlap(
+            @Param("driverId") Integer driverId,
+            @Param("departureTime") LocalDateTime departureTime,
+            @Param("arrivalTime") LocalDateTime arrivalTime);
+
+    @Query("SELECT COUNT(t) > 0 FROM Transport t WHERE t.driver.driverId = :driverId " +
+           "AND t.isActive = true AND t.departureTime < :arrivalTime AND t.arrivalTime > :departureTime " +
+           "AND t.transportId <> :excludeId")
+    boolean existsByDriverIdAndTimeOverlapExcluding(
+            @Param("driverId") Integer driverId,
+            @Param("departureTime") LocalDateTime departureTime,
+            @Param("arrivalTime") LocalDateTime arrivalTime,
+            @Param("excludeId") Integer excludeId);
+
+    @Query("SELECT COUNT(t) FROM Transport t WHERE t.isActive = true")
+    long countActive();
+
+    @Query("SELECT COALESCE(SUM(t.capacity), 0) FROM Transport t WHERE t.isActive = true")
+    long sumCapacityActive();
 }

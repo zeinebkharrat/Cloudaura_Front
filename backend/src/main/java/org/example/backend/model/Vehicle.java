@@ -55,5 +55,5 @@ public class Vehicle {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    public enum VehicleType { BUS, CAR, PLANE, TAXI, VAN }
+    public enum VehicleType { BUS, CAR, PLANE, TAXI, VAN, TRAIN, FERRY }
 }

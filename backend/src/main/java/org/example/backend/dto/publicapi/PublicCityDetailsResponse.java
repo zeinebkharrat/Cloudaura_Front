@@ -1,4 +1,4 @@
-package org.example.backend.dto;
+package org.example.backend.dto.publicapi;
 
 import org.example.backend.dto.ActivityResponse;
 import org.example.backend.dto.CityMediaResponse;

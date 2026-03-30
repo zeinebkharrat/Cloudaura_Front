@@ -1,4 +1,4 @@
-package org.example.backend.dto;
+package org.example.backend.dto.accommodation;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

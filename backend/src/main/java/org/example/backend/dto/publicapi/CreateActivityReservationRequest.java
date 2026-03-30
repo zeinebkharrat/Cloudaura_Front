@@ -1,4 +1,4 @@
-package org.example.backend.dto;
+package org.example.backend.dto.publicapi;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;

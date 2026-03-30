@@ -1,1 +1,21 @@
-package org.example.backend.model; import jakarta.persistence.*; public class Level { @Id @GeneratedValue(strategy = GenerationType.IDENTITY) private Integer levelId; private String name; private Integer minPoints; private Integer maxPoints; public Level(){} public Integer getLevelId(){return levelId;} public void setLevelId(Integer id){this.levelId=id;} public String getName(){return name;} public void setName(String n){this.name=n;} public Integer getMinPoints(){return minPoints;} public void setMinPoints(Integer p){this.minPoints=p;} public Integer getMaxPoints(){return maxPoints;} public void setMaxPoints(Integer p){this.maxPoints=p;} }
+package org.example.backend.model;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Entity
+@Table(name = "levels")
+@Data @Builder @NoArgsConstructor @AllArgsConstructor
+public class Level {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "level_id")
+    private Integer levelId;
+    
+    private String name;
+    private Integer minPoints;
+    private Integer maxPoints;
+}

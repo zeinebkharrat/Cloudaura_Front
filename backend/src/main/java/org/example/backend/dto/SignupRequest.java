@@ -26,7 +26,7 @@ public record SignupRequest(
         @Size(max = 100, message = "Nationality is too long")
         String nationality,
         Integer cityId,
-        @Size(max = 1000, message = "Profile image URL is too long")
+        @Size(max = 100000, message = "Profile image URL is too long")
         String profileImageUrl
 ) {
 }

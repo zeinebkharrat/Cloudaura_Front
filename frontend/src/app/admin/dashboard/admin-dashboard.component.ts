@@ -1,7 +1,7 @@
 import { Component, computed, OnInit, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { AuthService } from '../../auth.service';
+import { AuthService } from '../../core/auth.service';
 import Chart from 'chart.js/auto';
 
 @Component({

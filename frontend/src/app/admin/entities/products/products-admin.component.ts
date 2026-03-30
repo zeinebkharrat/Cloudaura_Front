@@ -3,7 +3,7 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
-import { AuthService } from '../../../auth.service';
+import { AuthService } from '../../../core/auth.service';
 import { API_BASE_URL } from '../../../core/api-url';
 
 @Component({

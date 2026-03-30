@@ -1,4 +1,4 @@
-package org.example.backend.dto;
+package org.example.backend.dto.shop;
 
 /**
  * Coordonnées du client associées à une commande (issue du compte au moment du checkout).

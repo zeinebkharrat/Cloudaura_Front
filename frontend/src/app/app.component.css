@@ -4,12 +4,17 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px 24px;
-  padding: 20px 6%;
-  position: absolute;
+  padding: 16px 6%;
+  position: sticky;
   top: 0;
   left: 0;
   width: 100%;
   z-index: 100;
+  background: color-mix(in srgb, var(--surface-1) 96%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-soft, rgba(255,255,255,0.06));
+  box-shadow: 0 2px 16px rgba(0,0,0,0.15);
 }
 
 .navbar--solid {

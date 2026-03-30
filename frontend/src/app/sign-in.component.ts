@@ -27,7 +27,7 @@ export class SignInComponent implements OnInit {
 
   readonly form = this.fb.nonNullable.group({
     identifier: ['', [Validators.required]],
-    password: ['', [Validators.required, Validators.minLength(8)]],
+    password: ['', [Validators.required]],
   });
 
   controlInvalid(controlName: 'identifier' | 'password'): boolean {

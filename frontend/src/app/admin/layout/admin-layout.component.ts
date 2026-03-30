@@ -1,7 +1,7 @@
 import { Component, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
-import { AuthService } from '../../auth.service';
+import { AuthService } from '../../core/auth.service';
 
 @Component({
   selector: 'app-admin-layout',

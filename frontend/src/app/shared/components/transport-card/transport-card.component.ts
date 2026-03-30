@@ -1,96 +1,129 @@
 import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Transport } from '../../../core/models/travel.models';
+import { TagModule } from 'primeng/tag';
+import { ButtonModule } from 'primeng/button';
+import { RippleModule } from 'primeng/ripple';
+import { Transport, TransportType, TRANSPORT_TYPE_META } from '../../../core/models/travel.models';
 
 @Component({
   selector: 'app-transport-card',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TagModule, ButtonModule, RippleModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="transport-card glass-container">
-      <div class="type-icon">
-        @if (transport.type === 'BUS')         { 🚌 }
-        @else if (transport.type === 'VAN')    { 🚐 }
-        @else if (transport.type === 'TAXI')   { 🚕 }
-        @else if (transport.type === 'CAR')    { 🚗 }
-        @else if (transport.type === 'PLANE')  { ✈️ }
+    <div class="card" pRipple (click)="select.emit()">
+      <div class="card-header">
+        <p-tag [value]="getTypeLabel()" [severity]="getTypeSeverity()"></p-tag>
+        @if (transport.availableSeats !== undefined && transport.availableSeats < 5) {
+          <span class="low-seats"><i class="pi pi-exclamation-triangle"></i> {{ transport.availableSeats }} places</span>
+        }
       </div>
-      
-      <div class="itinerary">
-        <div class="time-block">
-          <span class="time">{{ transport.departureTime | date:'HH:mm' }}</span>
-          <span class="station">{{ transport.departureCityName }}</span>
+
+      <div class="card-schedule">
+        <div class="time-col">
+          <span class="time">{{ formatTime(transport.departureTime) }}</span>
+          <span class="city">{{ transport.departureCityName }}</span>
         </div>
-        
-        <div class="duration-line">
+        <div class="arrow">
           <div class="dot"></div>
-          <div class="line"></div>
+          <div class="line">
+            @if (transport.durationMinutes) {
+              <span class="dur">{{ formatDuration(transport.durationMinutes) }}</span>
+            }
+          </div>
           <div class="dot"></div>
         </div>
-        
-        <div class="time-block">
-          <span class="time">{{ transport.arrivalTime | date:'HH:mm' }}</span>
-          <span class="station">{{ transport.arrivalCityName }}</span>
+        <div class="time-col right">
+          <span class="time">{{ formatTime(transport.arrivalTime) }}</span>
+          <span class="city">{{ transport.arrivalCityName }}</span>
         </div>
       </div>
 
-      <div class="booking-section">
-        <div class="operator">{{ transport.vehicleBrand }} {{ transport.vehicleModel }}</div>
-        <div class="price">{{ transport.price }} TND</div>
-        <button class="btn-primary" (click)="select.emit()">Réserver</button>
+      @if (transport.vehicleBrand) {
+        <div class="vehicle-row">
+          <i class="pi pi-car"></i>
+          <span>{{ transport.vehicleBrand }} {{ transport.vehicleModel }}</span>
+          @if (transport.driverRating) {
+            <span class="rating"><i class="pi pi-star-fill"></i> {{ transport.driverRating }}</span>
+          }
+        </div>
+      }
+
+      <div class="card-footer">
+        <span class="seats"><i class="pi pi-users"></i> {{ transport.availableSeats ?? transport.capacity }} dispo.</span>
+        <div class="price-area">
+          <span class="price">{{ transport.price }} <small>TND</small></span>
+          <button pButton icon="pi pi-arrow-right" class="p-button-sm p-button-rounded"></button>
+        </div>
       </div>
     </div>
   `,
   styles: [`
-    .transport-card {
-      display: flex;
-      align-items: center;
-      gap: 2rem;
-      padding: 1.5rem 2rem;
-      margin-bottom: 1rem;
-      transition: all 0.2s;
+    .card {
+      background: var(--surface-card); border: 1px solid var(--surface-border);
+      border-radius: 16px; padding: 1.25rem; cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    .transport-card:hover {
+    .card:hover {
       border-color: var(--primary-color);
-      transform: scale(1.01);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(29,158,117,0.12);
     }
-    .type-icon { font-size: 2rem; }
-    .itinerary {
-      display: flex;
-      align-items: center;
-      gap: 1.5rem;
-      flex-grow: 1;
-    }
-    .time-block { display: flex; flex-direction: column; min-width: 100px; }
-    .time { font-size: 1.3rem; font-weight: 700; color: white; }
-    .station { font-size: 0.85rem; color: rgba(255,255,255,0.6); }
-    
-    .duration-line {
-      display: flex;
-      align-items: center;
-      flex-grow: 1;
-      max-width: 150px;
-    }
-    .line { height: 2px; background: rgba(255,255,255,0.2); flex-grow: 1; position: relative; }
-    .dot { width: 8px; height: 8px; background: var(--primary-color); border-radius: 50%; }
+    .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+    .low-seats { font-size: 0.73rem; color: var(--orange-400); display: flex; align-items: center; gap: 3px; }
 
-    .booking-section {
-      text-align: right;
-      border-left: 1px solid rgba(255,255,255,0.1);
-      padding-left: 2rem;
+    .card-schedule { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+    .time-col { display: flex; flex-direction: column; }
+    .time-col.right { text-align: right; }
+    .time { font-size: 1.2rem; font-weight: 800; color: var(--text-color); }
+    .city { font-size: 0.75rem; color: var(--text-color); opacity: 0.5; }
+    .arrow { flex: 1; display: flex; align-items: center; gap: 4px; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--primary-color); flex-shrink: 0; }
+    .line { flex: 1; height: 2px; background: var(--surface-border); position: relative; }
+    .dur {
+      position: absolute; top: -16px; left: 50%; transform: translateX(-50%);
+      font-size: 0.65rem; color: var(--text-color); opacity: 0.4; white-space: nowrap;
     }
-    .operator { font-size: 0.9rem; color: var(--secondary-color); font-weight: 600; margin-bottom: 4px; }
-    .price { font-size: 1.5rem; font-weight: 800; color: white; margin-bottom: 10px; }
 
-    @media (max-width: 700px) {
-      .transport-card { flex-direction: column; text-align: center; gap: 1rem; }
-      .itinerary { width: 100%; justify-content: center; }
-      .booking-section { border-left: none; border-top: 1px solid rgba(255,255,255,0.1); padding: 1rem 0 0 0; width: 100%; text-align: center; }
+    .vehicle-row {
+      display: flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; color: var(--text-color); opacity: 0.5; margin-bottom: 1rem;
     }
+    .rating { margin-left: auto; color: var(--yellow-400); font-weight: 600; display: flex; align-items: center; gap: 3px; }
+
+    .card-footer {
+      display: flex; justify-content: space-between; align-items: center;
+      padding-top: 0.75rem; border-top: 1px solid var(--surface-border);
+    }
+    .seats { font-size: 0.8rem; color: var(--text-color); opacity: 0.5; display: flex; align-items: center; gap: 0.3rem; }
+    .price-area { display: flex; align-items: center; gap: 0.75rem; }
+    .price { font-size: 1.3rem; font-weight: 800; color: var(--primary-color); }
+    .price small { font-size: 0.65rem; font-weight: 500; opacity: 0.6; }
   `]
 })
 export class TransportCardComponent {
   @Input() transport!: Transport;
   @Output() select = new EventEmitter<void>();
+
+  getTypeLabel(): string {
+    return TRANSPORT_TYPE_META[this.transport.type]?.label ?? this.transport.type;
+  }
+
+  getTypeSeverity(): 'success' | 'info' | 'warning' | 'danger' | undefined {
+    const map: Record<string, 'success' | 'info' | 'warning' | 'danger'> = {
+      BUS: 'success', VAN: 'info', TAXI: 'warning', PLANE: 'danger', CAR: 'info'
+    };
+    return map[this.transport.type];
+  }
+
+  formatTime(dateStr: string): string {
+    if (!dateStr) return '';
+    return new Date(dateStr).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  formatDuration(minutes: number): string {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return h > 0 ? `${h}h${m > 0 ? String(m).padStart(2, '0') : ''}` : `${m}min`;
+  }
 }
