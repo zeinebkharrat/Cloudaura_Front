@@ -1,0 +1,78 @@
+<div class="admin-page">
+  <header class="page-head">
+    <h1>Réservations activités</h1>
+  </header>
+
+  @if (error) {
+    <div class="alert">{{ error }}</div>
+  }
+
+  <section class="card">
+    <div class="toolbar">
+      <input type="text" placeholder="Recherche activité, username, email..." [(ngModel)]="q" (ngModelChange)="onFiltersChanged()" />
+
+      <select [(ngModel)]="status" (change)="onFiltersChanged()">
+        <option value="">Tous statuts</option>
+        <option value="PENDING">PENDING</option>
+        <option value="CONFIRMED">CONFIRMED</option>
+        <option value="CANCELLED">CANCELLED</option>
+      </select>
+
+      <input type="date" [(ngModel)]="reservationDate" (change)="onFiltersChanged()" />
+
+      <select [(ngModel)]="sort" (change)="onFiltersChanged()">
+        <option value="reservationDate,desc">Date desc</option>
+        <option value="reservationDate,asc">Date asc</option>
+        <option value="totalPrice,desc">Prix desc</option>
+        <option value="totalPrice,asc">Prix asc</option>
+      </select>
+
+      <button class="btn ghost" type="button" (click)="clearFilters()">Réinitialiser</button>
+    </div>
+
+    <div class="table-wrap" [class.loading]="loading">
+      <table>
+        <thead>
+          <tr>
+            <th>Activité</th>
+            <th>Ville</th>
+            <th>Utilisateur</th>
+            <th>Date</th>
+            <th>Participants</th>
+            <th>Total</th>
+            <th>Statut</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (reservation of reservations; track reservation.reservationId) {
+            <tr>
+              <td>{{ reservation.activityName }}</td>
+              <td>{{ reservation.cityName }}</td>
+              <td>
+                <div>{{ reservation.username || '—' }}</div>
+                <small>{{ reservation.userEmail || '—' }}</small>
+              </td>
+              <td>{{ reservation.reservationDate }}</td>
+              <td>{{ reservation.numberOfPeople }}</td>
+              <td>{{ reservation.totalPrice | number: '1.2-2' }} TND</td>
+              <td><span class="status" [class]="'status ' + reservation.status.toLowerCase()">{{ reservation.status }}</span></td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="7" class="empty">Aucune réservation trouvée.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pager">
+      <span>Total: {{ totalElements }}</span>
+      <div>
+        <button class="btn ghost" [disabled]="page === 0" (click)="changePage(false)">Précédent</button>
+        <span>Page {{ page + 1 }} / {{ totalPages || 1 }}</span>
+        <button class="btn ghost" [disabled]="page + 1 >= totalPages" (click)="changePage(true)">Suivant</button>
+      </div>
+    </div>
+  </section>
+</div>

@@ -26,6 +26,7 @@ export class AppComponent implements OnInit {
   readonly isAdmin = this.auth.isAdmin;
   readonly isArtisan = this.auth.isArtisan;
   isUserMenuOpen = signal(false);
+  isServicesMenuOpen = signal(false);
 
   constructor() {
     effect(() => {
@@ -78,8 +79,18 @@ export class AppComponent implements OnInit {
     this.isUserMenuOpen.set(false);
   }
 
+  toggleServicesMenu(event: MouseEvent) {
+    event.stopPropagation();
+    this.isServicesMenuOpen.set(!this.isServicesMenuOpen());
+  }
+
+  closeServicesMenu() {
+    this.isServicesMenuOpen.set(false);
+  }
+
   @HostListener('document:click')
   onDocumentClick() {
     this.isUserMenuOpen.set(false);
+    this.isServicesMenuOpen.set(false);
   }
 }

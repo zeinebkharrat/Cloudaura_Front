@@ -183,7 +183,9 @@ public class PublicExploreService {
             activity.getAddress(),
             activity.getLatitude(),
             activity.getLongitude(),
-            imageUrl
+            imageUrl,
+            activity.getMaxParticipantsPerDay(),
+            activity.getMaxParticipantsStartDate()
         );
     }
 

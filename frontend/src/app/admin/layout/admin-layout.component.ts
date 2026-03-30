@@ -20,6 +20,7 @@ export class AdminLayoutComponent {
     { label: 'Villes',         icon: '🏙️', route: '/admin/cities' },
     { label: 'Restaurants',    icon: '🍽️', route: '/admin/restaurants' },
     { label: 'Activités',      icon: '📍', route: '/admin/activities' },
+    { label: 'Réservations activités', icon: '🗓️', route: '/admin/activity-reservations' },
     { label: 'Hébergements',    icon: '🏨', route: '/admin/accommodations' },
     { label: 'Transports',      icon: '🚌', route: '/admin/transports' },
     { label: 'Événements',      icon: '📅', route: '/admin/events' },

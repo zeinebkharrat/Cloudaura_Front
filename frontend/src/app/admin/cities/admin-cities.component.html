@@ -6,6 +6,21 @@
     <button class="btn" (click)="openCreateModal()">Ajouter une ville</button>
   </header>
 
+  <section class="stats-grid">
+    <article class="stat-card">
+      <span>Total villes</span>
+      <strong>{{ totalElements }}</strong>
+    </article>
+    <article class="stat-card">
+      <span>Villes affichées</span>
+      <strong>{{ cities.length }}</strong>
+    </article>
+    <article class="stat-card">
+      <span>Résultats par page</span>
+      <strong>{{ size }}</strong>
+    </article>
+  </section>
+
   @if (error) {
     <div class="alert">{{ error }}</div>
   }
@@ -32,20 +47,19 @@
           <tr>
             <th>Ville</th>
             <th>Région</th>
+            <th>Description</th>
             <th>Coordonnées</th>
-            <th>Actions</th>
+            <th class="actions-head">Actions</th>
           </tr>
         </thead>
         <tbody>
           @for (city of cities; track city.cityId) {
             <tr>
-              <td>
-                <div class="title">{{ city.name }}</div>
-                <div class="sub">{{ city.description || '—' }}</div>
-              </td>
+              <td><div class="title">{{ city.name }}</div></td>
               <td>{{ city.region || '—' }}</td>
+              <td><div class="desc-cell">{{ (city.description || '—') | slice:0:100 }}{{ city.description && city.description.length > 100 ? '…' : '' }}</div></td>
               <td>{{ city.latitude || '—' }}, {{ city.longitude || '—' }}</td>
-              <td class="actions">
+              <td class="actions table-actions">
                 <button class="btn icon-btn icon-view" (click)="openDetails(city)" title="Voir détails" aria-label="Voir détails">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
                 </button>
@@ -201,7 +215,14 @@
       <div class="details-grid">
         <article class="details-media-main">
           @if (detailsMediaItems.length > 0) {
-            <img [src]="detailsMediaItems[0].url" [alt]="detailsCity.name" />
+            <div class="details-media-stage">
+              <img [src]="detailsMediaItems[detailsMediaIndex].url" [alt]="detailsCity.name" />
+              @if (detailsMediaItems.length > 1) {
+                <button class="details-nav prev" type="button" (click)="previousDetailsMedia()" aria-label="Image précédente">‹</button>
+                <button class="details-nav next" type="button" (click)="nextDetailsMedia()" aria-label="Image suivante">›</button>
+                <div class="details-counter">{{ detailsMediaIndex + 1 }} / {{ detailsMediaItems.length }}</div>
+              }
+            </div>
           } @else {
             <div class="details-empty-media">Aucune image disponible</div>
           }
@@ -222,12 +243,114 @@
       @if (detailsLoadingMedia) {
         <p class="empty">Chargement des images...</p>
       } @else if (detailsMediaItems.length > 0) {
-        <div class="details-gallery">
-          @for (media of detailsMediaItems; track media.mediaId) {
-            <img [src]="media.url" [alt]="detailsCity.name" />
+        <div class="details-dots">
+          @for (media of detailsMediaItems; track media.mediaId; let i = $index) {
+            <button class="details-dot" type="button" [class.active]="i === detailsMediaIndex" (click)="selectDetailsMedia(i)" [attr.aria-label]="'Image ' + (i + 1)"></button>
           }
         </div>
       }
+
+      <section class="related-block animate-in">
+        <div class="related-head">
+          <h3>Restaurants de la ville</h3>
+          <span>{{ detailsRestaurants.length }}</span>
+        </div>
+        @if (detailsLoadingRelated) {
+          <p class="empty">Chargement des restaurants...</p>
+        } @else if (detailsRestaurants.length === 0) {
+          <p class="empty">Aucun restaurant associé.</p>
+        } @else {
+          <div class="related-carousel" [class.with-controls]="hasRestaurantCarouselControls()">
+            @if (hasRestaurantCarouselControls()) {
+              <button class="related-nav prev" type="button" (click)="previousRestaurantPage()" aria-label="Restaurants précédents">‹</button>
+            }
+            <div class="related-viewport">
+              <div class="related-track" [style.transform]="'translateX(-' + (detailsRestaurantPageIndex * 100) + '%)'">
+                @for (page of detailsRestaurantPages(); track $index) {
+                  <div class="related-page">
+                    <div class="related-grid">
+                      @for (restaurant of page; track restaurant.restaurantId) {
+                        <article class="related-card">
+                          <img [src]="restaurant.imageUrl || detailsCityFallbackImage()" [alt]="restaurant.name" />
+                          <div class="related-content">
+                            <h4>{{ restaurant.name }}</h4>
+                            <p>{{ restaurant.description || ('Cuisine: ' + (restaurant.cuisineType || 'Locale')) }}</p>
+                            <div class="related-meta">
+                              <span>{{ restaurant.cuisineType || '—' }}</span>
+                              <span>{{ restaurant.rating ?? '—' }}/5</span>
+                            </div>
+                          </div>
+                        </article>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+            @if (hasRestaurantCarouselControls()) {
+              <button class="related-nav next" type="button" (click)="nextRestaurantPage()" aria-label="Restaurants suivants">›</button>
+            }
+          </div>
+
+          @if (hasRestaurantCarouselControls()) {
+            <div class="related-dots">
+              @for (_page of detailsRestaurantPages(); track $index) {
+                <button class="related-dot" type="button" [class.active]="detailsRestaurantPageIndex === $index" (click)="goToRestaurantPage($index)" [attr.aria-label]="'Restaurants page ' + ($index + 1)"></button>
+              }
+            </div>
+          }
+        }
+      </section>
+
+      <section class="related-block animate-in delay-1">
+        <div class="related-head">
+          <h3>Activités de la ville</h3>
+          <span>{{ detailsActivities.length }}</span>
+        </div>
+        @if (detailsActivities.length === 0) {
+          <p class="empty">Aucune activité associée.</p>
+        } @else {
+          <div class="related-carousel" [class.with-controls]="hasActivityCarouselControls()">
+            @if (hasActivityCarouselControls()) {
+              <button class="related-nav prev" type="button" (click)="previousActivityPage()" aria-label="Activités précédentes">‹</button>
+            }
+            <div class="related-viewport">
+              <div class="related-track" [style.transform]="'translateX(-' + (detailsActivityPageIndex * 100) + '%)'">
+                @for (page of detailsActivityPages(); track $index) {
+                  <div class="related-page">
+                    <div class="related-grid">
+                      @for (activity of page; track activity.activityId) {
+                        <article class="related-card">
+                          <img [src]="detailsActivityImage(activity.activityId)" [alt]="activity.name" />
+                          <div class="related-content">
+                            <h4>{{ activity.name }}</h4>
+                            <p>{{ activity.description || ('Type: ' + (activity.type || 'Touristique')) }}</p>
+                            <div class="related-meta">
+                              <span>{{ activity.type || '—' }}</span>
+                              <span>{{ activity.price ?? '—' }} DT</span>
+                            </div>
+                          </div>
+                        </article>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+            @if (hasActivityCarouselControls()) {
+              <button class="related-nav next" type="button" (click)="nextActivityPage()" aria-label="Activités suivantes">›</button>
+            }
+          </div>
+
+          @if (hasActivityCarouselControls()) {
+            <div class="related-dots">
+              @for (_page of detailsActivityPages(); track $index) {
+                <button class="related-dot" type="button" [class.active]="detailsActivityPageIndex === $index" (click)="goToActivityPage($index)" [attr.aria-label]="'Activities page ' + ($index + 1)"></button>
+              }
+            </div>
+          }
+        }
+      </section>
     </section>
   }
 </div>

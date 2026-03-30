@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { HomeComponent } from './home.component';
+import { DestinationMapComponent } from './destination-map.component';
 import { VirtualTourPageComponent } from './virtual-tour-page.component';
 import { FeaturePageComponent } from './feature-page.component';
 import { CommunityComponent } from './Community/community.component';
@@ -21,6 +22,7 @@ import { AuditLogsComponent } from './audit-logs.component';
 import { AdminCitiesComponent } from './admin/cities/admin-cities.component';
 import { AdminRestaurantsComponent } from './admin/restaurants/admin-restaurants.component';
 import { AdminActivitiesComponent } from './admin/activities/admin-activities.component';
+import { AdminActivityReservationsComponent } from './admin/activity-reservations/admin-activity-reservations.component';
 import { CityExploreComponent } from './explore/city-explore.component';
 import { RestaurantDetailComponent } from './explore/restaurant-detail.component';
 import { ActivityDetailComponent } from './explore/activity-detail.component';
@@ -35,9 +37,12 @@ import { QuizPlayerComponent } from './games/quiz-player.component';
 import { CrosswordPlayerComponent } from './games/crossword-player.component';
 import { PuzzlePlayerComponent } from './games/puzzle-player.component';
 import { LudoPlayerComponent } from './games/ludo-player.component';
+import { ServicesRestaurantsComponent } from './explore/services-restaurants.component';
+import { ServicesActivitiesComponent } from './explore/services-activities.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
+  { path: 'destination-map', component: DestinationMapComponent },
   { path: 'login', component: SignInComponent },
   { path: 'signin', component: SignInComponent },
   { path: 'signup', component: SignUpComponent },
@@ -45,6 +50,8 @@ export const routes: Routes = [
   { path: 'reset-password', component: ResetPasswordComponent },
   { path: 'verify-email', component: VerifyEmailComponent },
   { path: 'city/:cityId', component: CityExploreComponent },
+  { path: 'services/restaurants', component: ServicesRestaurantsComponent },
+  { path: 'services/activities', component: ServicesActivitiesComponent },
   { path: 'restaurants/:restaurantId', component: RestaurantDetailComponent },
   { path: 'activities/:activityId', component: ActivityDetailComponent },
   { path: 'panier', component: CartPageComponent, canActivate: [authGuard] },
@@ -74,6 +81,7 @@ export const routes: Routes = [
       { path: 'activities', component: AdminActivitiesComponent },
       { path: 'orders', component: OrdersAdminComponent },
       { path: 'products', component: ProductsAdminComponent },
+      { path: 'activity-reservations', component: AdminActivityReservationsComponent },
     ],
   },
   { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },

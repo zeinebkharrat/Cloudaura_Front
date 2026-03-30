@@ -30,12 +30,15 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
   showModal = false;
   showDetailsModal = false;
   geocodeMessage = '';
-  fieldErrors: Partial<Record<'cityId' | 'name' | 'price' | 'latitude' | 'longitude', string>> = {};
+  fieldErrors: Partial<Record<'cityId' | 'name' | 'price' | 'latitude' | 'longitude' | 'maxParticipantsPerDay', string>> = {};
 
   mediaItems: ActivityMedia[] = [];
   detailsActivity: Activity | null = null;
   detailsMediaItems: ActivityMedia[] = [];
   detailsLoadingMedia = false;
+  detailsMediaIndex = 0;
+  detailsRating = 0;
+  detailsReviewCount = 0;
   mediaQ = '';
   mediaSort = 'mediaId,desc';
   mediaPage = 0;
@@ -55,6 +58,8 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
     address: string;
     latitude: number | null;
     longitude: number | null;
+    maxParticipantsPerDay: number | null;
+    maxParticipantsStartDate: string | null;
   } = {
     cityId: null,
     name: '',
@@ -64,12 +69,15 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
     address: '',
     latitude: null,
     longitude: null,
+    maxParticipantsPerDay: null,
+    maxParticipantsStartDate: null,
   };
 
   private map?: L.Map;
   private mapMarker?: L.CircleMarker;
   private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   private mediaSearchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private detailsSliderTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private readonly activityService: ActivityAdminService,
@@ -89,6 +97,7 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
     if (this.mediaSearchDebounceTimer) {
       clearTimeout(this.mediaSearchDebounceTimer);
     }
+    this.stopDetailsAutoSlide();
     this.clearSelectedFiles();
     if (this.map) {
       this.map.remove();
@@ -144,6 +153,27 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
     }
   }
 
+  averageDisplayedPrice(): string {
+    const prices = this.activities
+      .map((activity) => activity.price)
+      .filter((price): price is number => price != null);
+    if (!prices.length) {
+      return '—';
+    }
+    const average = prices.reduce((sum, price) => sum + price, 0) / prices.length;
+    return `${average.toFixed(1)} DT`;
+  }
+
+  maxDisplayedPrice(): string {
+    const prices = this.activities
+      .map((activity) => activity.price)
+      .filter((price): price is number => price != null);
+    if (!prices.length) {
+      return '—';
+    }
+    return `${Math.max(...prices).toFixed(1)} DT`;
+  }
+
   edit(item: Activity): void {
     this.editingId = item.activityId;
     this.form = {
@@ -155,6 +185,8 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
       address: item.address ?? '',
       latitude: item.latitude,
       longitude: item.longitude,
+      maxParticipantsPerDay: item.maxParticipantsPerDay,
+      maxParticipantsStartDate: item.maxParticipantsStartDate,
     };
     this.activityForMedia = item;
     this.mediaPage = 0;
@@ -190,24 +222,77 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
     this.detailsActivity = item;
     this.detailsMediaItems = [];
     this.detailsLoadingMedia = true;
+    this.detailsMediaIndex = 0;
+    this.detailsRating = 0;
+    this.detailsReviewCount = 0;
     this.showDetailsModal = true;
+    this.stopDetailsAutoSlide();
+
+    this.http
+      .get<{ averageStars: number; totalReviews: number }>(`/api/public/activities/${item.activityId}/reviews/summary`)
+      .subscribe({
+        next: (summary) => {
+          this.detailsRating = summary?.averageStars ?? 0;
+          this.detailsReviewCount = summary?.totalReviews ?? 0;
+        },
+        error: () => {
+          this.detailsRating = 0;
+          this.detailsReviewCount = 0;
+        },
+      });
 
     this.activityService.listMedia(item.activityId, '', 0, 24, 'mediaId,desc').subscribe({
       next: (res) => {
         this.detailsMediaItems = res.content;
+        this.detailsMediaIndex = 0;
+        this.startDetailsAutoSlide();
         this.detailsLoadingMedia = false;
       },
       error: () => {
+        this.stopDetailsAutoSlide();
         this.detailsLoadingMedia = false;
       },
     });
   }
 
   closeDetailsModal(): void {
+    this.stopDetailsAutoSlide();
     this.showDetailsModal = false;
     this.detailsActivity = null;
     this.detailsMediaItems = [];
     this.detailsLoadingMedia = false;
+    this.detailsMediaIndex = 0;
+    this.detailsRating = 0;
+    this.detailsReviewCount = 0;
+  }
+
+  starStates(value: number | null): Array<'full' | 'empty'> {
+    const safe = value ?? 0;
+    return Array.from({ length: 5 }, (_, index) => (safe >= index + 1 ? 'full' : 'empty'));
+  }
+
+  nextDetailsMedia(): void {
+    if (this.detailsMediaItems.length <= 1) {
+      return;
+    }
+    this.detailsMediaIndex = (this.detailsMediaIndex + 1) % this.detailsMediaItems.length;
+    this.restartDetailsAutoSlide();
+  }
+
+  previousDetailsMedia(): void {
+    if (this.detailsMediaItems.length <= 1) {
+      return;
+    }
+    this.detailsMediaIndex = (this.detailsMediaIndex - 1 + this.detailsMediaItems.length) % this.detailsMediaItems.length;
+    this.restartDetailsAutoSlide();
+  }
+
+  selectDetailsMedia(index: number): void {
+    if (index < 0 || index >= this.detailsMediaItems.length) {
+      return;
+    }
+    this.detailsMediaIndex = index;
+    this.restartDetailsAutoSlide();
   }
 
   resetForm(): void {
@@ -221,6 +306,8 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
       address: '',
       latitude: null,
       longitude: null,
+      maxParticipantsPerDay: null,
+      maxParticipantsStartDate: null,
     };
     this.activityForMedia = null;
     this.mediaItems = [];
@@ -245,6 +332,8 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
       address: this.nullIfBlank(this.form.address),
       latitude: this.form.latitude,
       longitude: this.form.longitude,
+      maxParticipantsPerDay: this.form.maxParticipantsPerDay,
+      maxParticipantsStartDate: this.editingId ? this.form.maxParticipantsStartDate : null,
     };
 
     const request$ = this.editingId == null
@@ -432,7 +521,7 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
     });
   }
 
-  clearFieldError(field: 'cityId' | 'name' | 'price' | 'latitude' | 'longitude'): void {
+  clearFieldError(field: 'cityId' | 'name' | 'price' | 'latitude' | 'longitude' | 'maxParticipantsPerDay'): void {
     delete this.fieldErrors[field];
     this.modalError = '';
   }
@@ -455,6 +544,10 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
 
     if (this.form.price != null && this.form.price < 0) {
       this.fieldErrors.price = 'Le prix doit être supérieur ou égal à 0.';
+    }
+
+    if (this.form.maxParticipantsPerDay != null && this.form.maxParticipantsPerDay < 1) {
+      this.fieldErrors.maxParticipantsPerDay = 'Le maximum de participants doit être supérieur ou égal à 1.';
     }
 
     const latitude = this.form.latitude;
@@ -600,5 +693,30 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
         this.error = err?.error?.message ?? 'Suppression impossible';
       },
     });
+  }
+
+  private startDetailsAutoSlide(): void {
+    this.stopDetailsAutoSlide();
+    if (this.detailsMediaItems.length <= 1) {
+      return;
+    }
+
+    this.detailsSliderTimer = setInterval(() => {
+      if (this.detailsMediaItems.length <= 1) {
+        return;
+      }
+      this.detailsMediaIndex = (this.detailsMediaIndex + 1) % this.detailsMediaItems.length;
+    }, 3400);
+  }
+
+  private restartDetailsAutoSlide(): void {
+    this.startDetailsAutoSlide();
+  }
+
+  private stopDetailsAutoSlide(): void {
+    if (this.detailsSliderTimer) {
+      clearInterval(this.detailsSliderTimer);
+      this.detailsSliderTimer = null;
+    }
   }
 }

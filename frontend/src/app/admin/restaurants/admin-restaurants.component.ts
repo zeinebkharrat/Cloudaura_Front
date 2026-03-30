@@ -18,8 +18,11 @@ import { RestaurantAdminService } from '../services/restaurant-admin.service';
 })
 export class AdminRestaurantsComponent implements OnInit, OnDestroy {
   restaurants: Restaurant[] = [];
+  reviewAverageByRestaurantId: Record<number, number | null> = {};
+  reviewCountByRestaurantId: Record<number, number> = {};
   cities: City[] = [];
   q = '';
+  cuisineFilter = '';
   sort = 'restaurantId,desc';
   page = 0;
   size = 10;
@@ -96,9 +99,10 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
   }
 
   loadRestaurants(): void {
-    this.restaurantService.list(this.q, this.page, this.size, this.sort).subscribe({
+    this.restaurantService.list(this.q, this.page, this.size, this.sort, this.cuisineFilter).subscribe({
       next: (res) => {
         this.restaurants = res.content;
+        this.loadReviewSummaries(res.content);
         this.totalPages = res.totalPages;
         this.totalElements = res.totalElements;
       },
@@ -173,12 +177,26 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
 
   openDetails(item: Restaurant): void {
     this.detailsRestaurant = item;
+    this.loadReviewSummary(item.restaurantId);
     this.showDetailsModal = true;
   }
 
   closeDetailsModal(): void {
     this.showDetailsModal = false;
     this.detailsRestaurant = null;
+  }
+
+  starStates(value: number | null): Array<'full' | 'empty'> {
+    const safe = value ?? 0;
+    return Array.from({ length: 5 }, (_, index) => (safe >= index + 1 ? 'full' : 'empty'));
+  }
+
+  getRestaurantReviewAverage(restaurantId: number): number | null {
+    return this.reviewAverageByRestaurantId[restaurantId] ?? null;
+  }
+
+  getRestaurantReviewCount(restaurantId: number): number {
+    return this.reviewCountByRestaurantId[restaurantId] ?? 0;
   }
 
   resetForm(): void {
@@ -458,6 +476,31 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
       .addTo(this.map)
       .bindPopup(this.form.name || 'Restaurant')
       .openPopup();
+  }
+
+  private loadReviewSummaries(restaurants: Restaurant[]): void {
+    this.reviewAverageByRestaurantId = {};
+    this.reviewCountByRestaurantId = {};
+    for (const restaurant of restaurants) {
+      this.loadReviewSummary(restaurant.restaurantId);
+    }
+  }
+
+  private loadReviewSummary(restaurantId: number): void {
+    this.http
+      .get<{ averageStars: number; totalReviews: number }>(`/api/public/restaurants/${restaurantId}/reviews/summary`)
+      .subscribe({
+        next: (summary) => {
+          this.reviewAverageByRestaurantId[restaurantId] = (summary?.totalReviews ?? 0) > 0
+            ? (summary?.averageStars ?? 0)
+            : null;
+          this.reviewCountByRestaurantId[restaurantId] = summary?.totalReviews ?? 0;
+        },
+        error: () => {
+          this.reviewAverageByRestaurantId[restaurantId] = null;
+          this.reviewCountByRestaurantId[restaurantId] = 0;
+        },
+      });
   }
 
   async delete(item: Restaurant): Promise<void> {

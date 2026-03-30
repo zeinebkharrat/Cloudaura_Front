@@ -6,6 +6,21 @@
     <button class="btn" (click)="openCreateModal()">Ajouter une activité</button>
   </header>
 
+  <section class="stats-grid">
+    <article class="stat-card">
+      <span>Total activités</span>
+      <strong>{{ totalElements }}</strong>
+    </article>
+    <article class="stat-card">
+      <span>Prix moyen (page)</span>
+      <strong>{{ averageDisplayedPrice() }}</strong>
+    </article>
+    <article class="stat-card">
+      <span>Prix max (page)</span>
+      <strong>{{ maxDisplayedPrice() }}</strong>
+    </article>
+  </section>
+
   @if (error) {
     <div class="alert">{{ error }}</div>
   }
@@ -33,9 +48,10 @@
             <th>Nom</th>
             <th>Ville</th>
             <th>Type</th>
+            <th>Description</th>
             <th>Prix</th>
             <th>Adresse</th>
-            <th>Actions</th>
+            <th class="actions-head">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -44,9 +60,10 @@
               <td>{{ activity.name }}</td>
               <td>{{ activity.cityName }}</td>
               <td>{{ activity.type || '—' }}</td>
+              <td><div class="desc-cell">{{ (activity.description || '—') | slice:0:100 }}{{ activity.description && activity.description.length > 100 ? '…' : '' }}</div></td>
               <td>{{ activity.price || '—' }}</td>
               <td>{{ activity.address || '—' }}</td>
-              <td class="actions">
+              <td class="actions table-actions">
                 <button class="btn icon-btn icon-view" (click)="openDetails(activity)" title="Voir détails" aria-label="Voir détails">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
                 </button>
@@ -118,6 +135,19 @@
             <small class="field-error">{{ fieldErrors.price }}</small>
           }
         </label>
+        <label>
+          Max participants / jour (optionnel)
+          <input type="number" min="1" [(ngModel)]="form.maxParticipantsPerDay" (ngModelChange)="clearFieldError('maxParticipantsPerDay')" [class.input-invalid]="fieldErrors.maxParticipantsPerDay" placeholder="Illimité si vide" />
+          @if (fieldErrors.maxParticipantsPerDay) {
+            <small class="field-error">{{ fieldErrors.maxParticipantsPerDay }}</small>
+          }
+        </label>
+        @if (editingId) {
+          <label>
+            Date début validité du max
+            <input type="date" [(ngModel)]="form.maxParticipantsStartDate" />
+          </label>
+        }
         <label class="span-2">
           Description
           <textarea rows="3" [(ngModel)]="form.description" placeholder="Description touristique de l’activité"></textarea>
@@ -227,7 +257,14 @@
       <div class="details-grid">
         <article class="details-media-main">
           @if (detailsMediaItems.length > 0) {
-            <img [src]="detailsMediaItems[0].url" [alt]="detailsActivity.name" />
+            <div class="details-media-stage">
+              <img [src]="detailsMediaItems[detailsMediaIndex].url" [alt]="detailsActivity.name" />
+              @if (detailsMediaItems.length > 1) {
+                <button class="details-nav prev" type="button" (click)="previousDetailsMedia()" aria-label="Image précédente">‹</button>
+                <button class="details-nav next" type="button" (click)="nextDetailsMedia()" aria-label="Image suivante">›</button>
+                <div class="details-counter">{{ detailsMediaIndex + 1 }} / {{ detailsMediaItems.length }}</div>
+              }
+            </div>
           } @else {
             <div class="details-empty-media">Aucune image disponible</div>
           }
@@ -236,6 +273,15 @@
         <article class="details-info-card">
           <h3>{{ detailsActivity.name }}</h3>
           <p>{{ detailsActivity.description || 'Aucune description disponible.' }}</p>
+          <div class="rating-line">
+            <div class="stars" aria-label="activity rating stars">
+              @for (state of starStates(detailsRating); track $index) {
+                <span [class.filled]="state === 'full'">★</span>
+              }
+            </div>
+            <strong>{{ detailsRating | number:'1.1-1' }}/5</strong>
+            <small>({{ detailsReviewCount }} reviews)</small>
+          </div>
           <div class="details-meta-grid">
             <div><strong>Ville:</strong> {{ detailsActivity.cityName }}</div>
             <div><strong>Type:</strong> {{ detailsActivity.type || '—' }}</div>
@@ -243,6 +289,8 @@
             <div><strong>Adresse:</strong> {{ detailsActivity.address || '—' }}</div>
             <div><strong>Latitude:</strong> {{ detailsActivity.latitude ?? '—' }}</div>
             <div><strong>Longitude:</strong> {{ detailsActivity.longitude ?? '—' }}</div>
+            <div><strong>Max/jour:</strong> {{ detailsActivity.maxParticipantsPerDay ?? 'Illimité' }}</div>
+            <div><strong>Début validité:</strong> {{ detailsActivity.maxParticipantsStartDate || '—' }}</div>
             <div><strong>Médias:</strong> {{ detailsMediaItems.length }}</div>
           </div>
         </article>
@@ -251,9 +299,9 @@
       @if (detailsLoadingMedia) {
         <p class="empty">Chargement des images...</p>
       } @else if (detailsMediaItems.length > 0) {
-        <div class="details-gallery">
-          @for (media of detailsMediaItems; track media.mediaId) {
-            <img [src]="media.url" [alt]="detailsActivity.name" />
+        <div class="details-dots">
+          @for (media of detailsMediaItems; track media.mediaId; let i = $index) {
+            <button class="details-dot" type="button" [class.active]="i === detailsMediaIndex" (click)="selectDetailsMedia(i)" [attr.aria-label]="'Image ' + (i + 1)"></button>
           }
         </div>
       }

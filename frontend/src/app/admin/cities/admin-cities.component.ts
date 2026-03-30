@@ -3,8 +3,10 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { concatMap, from, map, Observable, of, switchMap, toArray } from 'rxjs';
 import Swal from 'sweetalert2';
-import { City, CityMedia, CityRequest } from '../admin-api.models';
+import { Activity, City, CityMedia, CityRequest, Restaurant } from '../admin-api.models';
+import { ActivityAdminService } from '../services/activity-admin.service';
 import { CityAdminService } from '../services/city-admin.service';
+import { RestaurantAdminService } from '../services/restaurant-admin.service';
 
 @Component({
   selector: 'app-admin-cities',
@@ -43,6 +45,14 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
   detailsCity: City | null = null;
   detailsMediaItems: CityMedia[] = [];
   detailsLoadingMedia = false;
+  detailsMediaIndex = 0;
+  detailsRestaurants: Restaurant[] = [];
+  detailsActivities: Activity[] = [];
+  detailsActivityImageById: Record<number, string> = {};
+  detailsLoadingRelated = false;
+  detailsRelatedPerPage = 3;
+  detailsRestaurantPageIndex = 0;
+  detailsActivityPageIndex = 0;
   mediaQ = '';
   mediaSort = 'mediaId,desc';
   mediaPage = 0;
@@ -52,8 +62,15 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
   mediaPreviewUrls: string[] = [];
   private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   private mediaSearchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private detailsSliderTimer: ReturnType<typeof setInterval> | null = null;
+  private detailsRestaurantSliderTimer: ReturnType<typeof setInterval> | null = null;
+  private detailsActivitySliderTimer: ReturnType<typeof setInterval> | null = null;
 
-  constructor(private readonly cityService: CityAdminService) {}
+  constructor(
+    private readonly cityService: CityAdminService,
+    private readonly restaurantService: RestaurantAdminService,
+    private readonly activityService: ActivityAdminService
+  ) {}
 
   ngOnInit(): void {
     this.loadCities();
@@ -66,6 +83,8 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
     if (this.mediaSearchDebounceTimer) {
       clearTimeout(this.mediaSearchDebounceTimer);
     }
+    this.stopDetailsAutoSlide();
+    this.stopRelatedAutoSlide();
     this.clearSelectedFiles();
   }
 
@@ -165,24 +184,173 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
     this.detailsCity = city;
     this.detailsMediaItems = [];
     this.detailsLoadingMedia = true;
+    this.detailsMediaIndex = 0;
+    this.detailsRestaurants = [];
+    this.detailsActivities = [];
+    this.detailsActivityImageById = {};
+    this.detailsRestaurantPageIndex = 0;
+    this.detailsActivityPageIndex = 0;
+    this.detailsLoadingRelated = true;
     this.showDetailsModal = true;
+    this.stopDetailsAutoSlide();
+    this.stopRelatedAutoSlide();
 
     this.cityService.listCityMedia(city.cityId, '', 0, 24, 'mediaId,desc').subscribe({
       next: (res) => {
         this.detailsMediaItems = res.content;
+        this.detailsMediaIndex = 0;
+        this.startDetailsAutoSlide();
         this.detailsLoadingMedia = false;
       },
       error: () => {
+        this.stopDetailsAutoSlide();
         this.detailsLoadingMedia = false;
+      },
+    });
+
+    this.restaurantService.list('', 0, 200, 'restaurantId,desc').subscribe({
+      next: (res) => {
+        this.detailsRestaurants = res.content.filter((restaurant) => restaurant.cityId === city.cityId);
+        this.detailsRestaurantPageIndex = 0;
+        this.startRestaurantsAutoSlide();
+        this.detailsLoadingRelated = false;
+      },
+      error: () => {
+        this.detailsRestaurants = [];
+        this.stopRestaurantsAutoSlide();
+        this.detailsLoadingRelated = false;
+      },
+    });
+
+    this.activityService.list('', 0, 200, 'activityId,desc').subscribe({
+      next: (res) => {
+        this.detailsActivities = res.content.filter((activity) => activity.cityId === city.cityId);
+        this.detailsActivityPageIndex = 0;
+        this.loadDetailsActivityImages();
+        this.startActivitiesAutoSlide();
+      },
+      error: () => {
+        this.detailsActivities = [];
+        this.detailsActivityImageById = {};
+        this.stopActivitiesAutoSlide();
       },
     });
   }
 
   closeDetailsModal(): void {
+    this.stopDetailsAutoSlide();
+    this.stopRelatedAutoSlide();
     this.showDetailsModal = false;
     this.detailsCity = null;
     this.detailsMediaItems = [];
     this.detailsLoadingMedia = false;
+    this.detailsMediaIndex = 0;
+    this.detailsRestaurants = [];
+    this.detailsActivities = [];
+    this.detailsActivityImageById = {};
+    this.detailsRestaurantPageIndex = 0;
+    this.detailsActivityPageIndex = 0;
+    this.detailsLoadingRelated = false;
+  }
+
+  detailsRestaurantPages(): Restaurant[][] {
+    return this.chunkRelated(this.detailsRestaurants);
+  }
+
+  detailsActivityPages(): Activity[][] {
+    return this.chunkRelated(this.detailsActivities);
+  }
+
+  hasRestaurantCarouselControls(): boolean {
+    return this.detailsRestaurantPages().length > 1;
+  }
+
+  hasActivityCarouselControls(): boolean {
+    return this.detailsActivityPages().length > 1;
+  }
+
+  nextRestaurantPage(): void {
+    const pages = this.detailsRestaurantPages();
+    if (pages.length <= 1) {
+      return;
+    }
+    this.detailsRestaurantPageIndex = (this.detailsRestaurantPageIndex + 1) % pages.length;
+    this.restartRestaurantsAutoSlide();
+  }
+
+  previousRestaurantPage(): void {
+    const pages = this.detailsRestaurantPages();
+    if (pages.length <= 1) {
+      return;
+    }
+    this.detailsRestaurantPageIndex = (this.detailsRestaurantPageIndex - 1 + pages.length) % pages.length;
+    this.restartRestaurantsAutoSlide();
+  }
+
+  goToRestaurantPage(index: number): void {
+    if (index < 0 || index >= this.detailsRestaurantPages().length) {
+      return;
+    }
+    this.detailsRestaurantPageIndex = index;
+    this.restartRestaurantsAutoSlide();
+  }
+
+  nextActivityPage(): void {
+    const pages = this.detailsActivityPages();
+    if (pages.length <= 1) {
+      return;
+    }
+    this.detailsActivityPageIndex = (this.detailsActivityPageIndex + 1) % pages.length;
+    this.restartActivitiesAutoSlide();
+  }
+
+  previousActivityPage(): void {
+    const pages = this.detailsActivityPages();
+    if (pages.length <= 1) {
+      return;
+    }
+    this.detailsActivityPageIndex = (this.detailsActivityPageIndex - 1 + pages.length) % pages.length;
+    this.restartActivitiesAutoSlide();
+  }
+
+  goToActivityPage(index: number): void {
+    if (index < 0 || index >= this.detailsActivityPages().length) {
+      return;
+    }
+    this.detailsActivityPageIndex = index;
+    this.restartActivitiesAutoSlide();
+  }
+
+  nextDetailsMedia(): void {
+    if (this.detailsMediaItems.length <= 1) {
+      return;
+    }
+    this.detailsMediaIndex = (this.detailsMediaIndex + 1) % this.detailsMediaItems.length;
+    this.restartDetailsAutoSlide();
+  }
+
+  previousDetailsMedia(): void {
+    if (this.detailsMediaItems.length <= 1) {
+      return;
+    }
+    this.detailsMediaIndex = (this.detailsMediaIndex - 1 + this.detailsMediaItems.length) % this.detailsMediaItems.length;
+    this.restartDetailsAutoSlide();
+  }
+
+  selectDetailsMedia(index: number): void {
+    if (index < 0 || index >= this.detailsMediaItems.length) {
+      return;
+    }
+    this.detailsMediaIndex = index;
+    this.restartDetailsAutoSlide();
+  }
+
+  detailsActivityImage(activityId: number): string {
+    return this.detailsActivityImageById[activityId] ?? 'assets/sidi_bou.png';
+  }
+
+  detailsCityFallbackImage(): string {
+    return this.detailsMediaItems.length > 0 ? this.detailsMediaItems[0].url : 'assets/sidi_bou.png';
   }
 
   saveCity(): void {
@@ -461,5 +629,118 @@ export class AdminCitiesComponent implements OnInit, OnDestroy {
     }
     this.mediaPreviewUrls = [];
     this.uploadFiles = [];
+  }
+
+  private loadDetailsActivityImages(): void {
+    this.detailsActivityImageById = {};
+    for (const activity of this.detailsActivities) {
+      this.activityService.listMedia(activity.activityId, '', 0, 1, 'mediaId,desc').subscribe({
+        next: (res) => {
+          const imageUrl = res.content[0]?.url;
+          if (!imageUrl) {
+            return;
+          }
+          this.detailsActivityImageById = {
+            ...this.detailsActivityImageById,
+            [activity.activityId]: imageUrl,
+          };
+        },
+        error: () => {
+        },
+      });
+    }
+  }
+
+  private startDetailsAutoSlide(): void {
+    this.stopDetailsAutoSlide();
+    if (this.detailsMediaItems.length <= 1) {
+      return;
+    }
+
+    this.detailsSliderTimer = setInterval(() => {
+      if (this.detailsMediaItems.length <= 1) {
+        return;
+      }
+      this.detailsMediaIndex = (this.detailsMediaIndex + 1) % this.detailsMediaItems.length;
+    }, 3400);
+  }
+
+  private restartDetailsAutoSlide(): void {
+    this.startDetailsAutoSlide();
+  }
+
+  private stopDetailsAutoSlide(): void {
+    if (this.detailsSliderTimer) {
+      clearInterval(this.detailsSliderTimer);
+      this.detailsSliderTimer = null;
+    }
+  }
+
+  private chunkRelated<T>(items: T[]): T[][] {
+    const pages: T[][] = [];
+    const perPage = Math.max(1, this.detailsRelatedPerPage);
+
+    for (let index = 0; index < items.length; index += perPage) {
+      pages.push(items.slice(index, index + perPage));
+    }
+
+    return pages;
+  }
+
+  private startRestaurantsAutoSlide(): void {
+    this.stopRestaurantsAutoSlide();
+    if (!this.hasRestaurantCarouselControls()) {
+      return;
+    }
+
+    this.detailsRestaurantSliderTimer = setInterval(() => {
+      const pages = this.detailsRestaurantPages();
+      if (pages.length <= 1) {
+        return;
+      }
+      this.detailsRestaurantPageIndex = (this.detailsRestaurantPageIndex + 1) % pages.length;
+    }, 4500);
+  }
+
+  private restartRestaurantsAutoSlide(): void {
+    this.startRestaurantsAutoSlide();
+  }
+
+  private stopRestaurantsAutoSlide(): void {
+    if (this.detailsRestaurantSliderTimer) {
+      clearInterval(this.detailsRestaurantSliderTimer);
+      this.detailsRestaurantSliderTimer = null;
+    }
+  }
+
+  private startActivitiesAutoSlide(): void {
+    this.stopActivitiesAutoSlide();
+    if (!this.hasActivityCarouselControls()) {
+      return;
+    }
+
+    this.detailsActivitySliderTimer = setInterval(() => {
+      const pages = this.detailsActivityPages();
+      if (pages.length <= 1) {
+        return;
+      }
+      this.detailsActivityPageIndex = (this.detailsActivityPageIndex + 1) % pages.length;
+    }, 5000);
+  }
+
+  private restartActivitiesAutoSlide(): void {
+    this.startActivitiesAutoSlide();
+  }
+
+  private stopActivitiesAutoSlide(): void {
+    if (this.detailsActivitySliderTimer) {
+      clearInterval(this.detailsActivitySliderTimer);
+      this.detailsActivitySliderTimer = null;
+    }
+  }
+
+  private stopRelatedAutoSlide(): void {
+    this.stopRestaurantsAutoSlide();
+    this.stopActivitiesAutoSlide();
   }
 }
