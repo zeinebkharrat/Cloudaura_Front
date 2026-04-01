@@ -28,6 +28,14 @@
             <span class="label">Statut</span>
             <span class="status-pill">{{ orderStatusLabel(orderDone()!.status) }}</span>
           </p>
+          <p class="receipt-card__row">
+            <span class="label">Sous-total</span>
+            <span>{{ formatPrice((orderDone()?.totalAmount ?? 0) - 7) }}</span>
+          </p>
+          <p class="receipt-card__row">
+            <span class="label">Livraison</span>
+            <span>7,00 TND</span>
+          </p>
           <p class="receipt-card__row receipt-card__row--total">
             <span class="label">Total TTC</span>
             <strong>{{ formatPrice(orderDone()!.totalAmount) }}</strong>
@@ -73,7 +81,12 @@
           <tbody>
             @for (line of orderDone()!.lines; track line.orderItemId) {
               <tr>
-                <td>{{ line.name }}</td>
+                <td>
+                  {{ line.name }}
+                  <div class="line-variant-info" *ngIf="line.size || line.color">
+                    <small>{{ line.size }} {{ line.color ? '- ' + line.color : '' }}</small>
+                  </div>
+                </td>
                 <td class="num">{{ line.quantity }}</td>
                 <td class="num">{{ formatPrice(line.unitPrice) }}</td>
                 <td class="num"><strong>{{ formatPrice(line.lineTotal) }}</strong></td>
@@ -129,6 +142,10 @@
             </div>
             <div class="line-body">
               <h2>{{ line.name }}</h2>
+              <div class="line-variant" *ngIf="line.size || line.color">
+                <span class="badge">{{ line.size }}</span>
+                <span class="badge" *ngIf="line.color">{{ line.color }}</span>
+              </div>
               <div class="qty-row">
                 <span class="unit-price">{{ formatPrice(line.unitPrice) }}</span>
                 <div class="qty-stepper">
@@ -166,19 +183,59 @@
       </ul>
 
       <footer class="cart-footer glass-panel">
-        <div class="total">
-          Total : <strong>{{ formatPrice(cart()!.total) }}</strong>
+        <div class="cart-extra">
+          <div class="payment-section">
+            <h3>Mode de paiement</h3>
+            <div class="payment-options">
+              <div class="payment-option" [class.active]="paymentMethod() === 'CARD'" (click)="paymentMethod.set('CARD')">
+                <div class="icon">💳</div>
+                <div class="info">
+                  <strong>Carte Bancaire</strong>
+                  <span>Paiement sécurisé</span>
+                </div>
+                <div class="radio"></div>
+              </div>
+              <div class="payment-option" [class.active]="paymentMethod() === 'COD'" (click)="paymentMethod.set('COD')">
+                <div class="icon">🚚</div>
+                <div class="info">
+                  <strong>À la livraison</strong>
+                  <span>Payez en espèces</span>
+                </div>
+                <div class="radio"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cart-summary">
+          <div class="summary-line">
+            <span>Sous-total :</span>
+            <span>{{ formatPrice(cart()!.total) }}</span>
+          </div>
+          @if (hasDiscount()) {
+            <div class="summary-line discount-line">
+              <span>Remise 5% (panier &gt; 200 TND) :</span>
+              <span class="discount-amount">-{{ formatPrice(discountAmount()) }}</span>
+            </div>
+          }
+          <div class="summary-line">
+            <span>Livraison (fixe) :</span>
+            <span>7,00 TND</span>
+          </div>
+          <div class="total">
+            Total : <strong>{{ formatPrice(finalTotal()) }}</strong>
+          </div>
         </div>
         <button
           type="button"
-          class="btn primary"
+          class="btn primary large w-full"
           [disabled]="checkoutLoading()"
           (click)="checkout()"
         >
           @if (checkoutLoading()) {
             Commande…
           } @else {
-            Commander
+            {{ paymentMethod() === 'CARD' ? 'Procéder au paiement' : 'Confirmer la commande' }}
           }
         </button>
       </footer>

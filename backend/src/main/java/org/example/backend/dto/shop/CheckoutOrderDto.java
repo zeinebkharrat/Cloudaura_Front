@@ -12,6 +12,18 @@ public class CheckoutOrderDto {
     private String orderedAt;
     private CheckoutBuyerDto buyer;
     private List<OrderLineDto> lines = new ArrayList<>();
+    private String paymentUrl;
+    /** Mode de paiement : "CARD" ou "COD". */
+    private String paymentMethod;
+    private String newPromoCode; // Field for auto-generated code
+
+    public String getNewPromoCode() {
+        return newPromoCode;
+    }
+
+    public void setNewPromoCode(String newPromoCode) {
+        this.newPromoCode = newPromoCode;
+    }
 
     public Integer getOrderId() {
         return orderId;
@@ -59,5 +71,21 @@ public class CheckoutOrderDto {
 
     public void setLines(List<OrderLineDto> lines) {
         this.lines = lines != null ? lines : new ArrayList<>();
+    }
+
+    public String getPaymentUrl() {
+        return paymentUrl;
+    }
+
+    public void setPaymentUrl(String paymentUrl) {
+        this.paymentUrl = paymentUrl;
+    }
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
     }
 }

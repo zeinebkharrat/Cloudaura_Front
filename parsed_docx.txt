@@ -1,0 +1,365 @@
+                       YallaTN
+
+Module : Artisan & Souvenir Management
+
+Parcours complet — Product / Cart / Order
+
+  Produit  
+
+1. Catalogue & affichage produit
+
+L'artisan publie ses créations. Le visiteur parcourt, filtre et consulte les fiches produit.
+
+Flux du processus
+
+  Produit2. Recherche & découverte
+
+Le touriste cherche un souvenir. Il utilise la recherche ou les filtres pour trouver l'artisan idéal.
+
+Flux du processus
+
+  Panier  
+
+3. Ajout au panier
+
+Le client sélectionne ses produits et les ajoute au panier. Le stock est réservé temporairement.
+
+Flux du processus
+
+  Panier  
+
+4. Calcul & promotions
+
+Avant de payer, le système calcule le total final : livraison, réductions, taxes.
+
+Flux du processus
+
+  Commande  
+
+5. Paiement & confirmation
+
+Le client paie de manière sécurisée. La commande est créée et l'artisan est notifié.
+
+Flux du processus
+
+  Commande  
+
+6. Suivi & livraison
+
+La commande passe par des statuts clairs. Le client suit en temps réel, l'artisan gère sa partie.
+
+Flux du processus
+
+  1. Catalogue & affichage produit
+
+  2. Recherche & découverte
+
+  3. Ajout au panier
+
+  4. Calcul & promotions
+
+  5. Paiement & confirmation
+
+  6. Suivi & livraison
+
+
+
+Créer un produit
+
+Artisan remplit : nom, description, catégorie, prix, stock, photos
+
+
+	Galerie médias
+
+Upload photos → stockées sur CDN → chargées rapidement partout
+
+
+
+Variantes
+
+Ex : Jebba en taille S/M/L, couleur beige/rouge — chaque variante a son stock
+
+
+	Fiche produit
+
+Visiteur voit : prix, disponibilité, avis, localisation de l'artisan
+
+
+
+Artisan
+
+
+	›
+
+
+	Crée produit
+
+
+	›
+
+
+	Validation admin
+
+
+	›
+
+
+	Publié en ligne
+
+
+	›
+
+
+	Visible client
+
+
+
+Recherche texte
+
+Cherche 'poterie Nabeul' → résultats par pertinence
+
+
+	Tri & pagination
+
+Tri par popularité / nouveauté / prix — chargement par pages
+
+
+
+Filtres avancés
+
+Par région(car chaque produit ajoutée par un artisan qui est liéé un un city ) , catégorie (bijou, textile, céramique), prix, note
+
+
+	Fiche artisan
+
+Profil de l'artisan : bio, localisation, toute sa boutique
+
+
+
+Client tape mot-clé
+
+
+	›
+
+
+	API Search
+
+
+	›
+
+
+	Résultats filtrés
+
+
+	›
+
+
+	Clique produit
+
+
+	›
+
+
+	Fiche détail
+
+
+
+Ajouter au panier
+
+Choisit variante + quantité → stock bloqué 15 min pour lui
+
+
+	Multi-artisans
+
+Panier unifié : produits de Sfax + Kairouan dans le même panier
+
+
+
+Panier persistant
+
+Session sauvegardée → retrouve son panier s'il revient demain
+
+
+	Résumé panier
+
+Liste produits, sous-total, options de livraison estimées
+
+
+
+Choisit produit
+
+
+	›
+
+
+	Ajouter panier
+
+
+	›
+
+
+	Stock réservé
+
+
+	›
+
+
+	Panier mis à jour
+
+
+	›
+
+
+	Continuer achats
+
+
+
+Frais de livraison
+
+Calculé selon wilaya destination + poids total + artisan source
+
+
+	Récap final
+
+Sous-total + livraison - réduction = total TTC à payer
+
+
+
+Code promo
+
+Client entre un code → réduction % ou montant fixe appliquée
+
+
+	Adresse livraison
+
+Client entre ou choisit adresse sauvegardée
+
+
+
+Récap panier
+
+
+	›
+
+
+	Appliquer promo
+
+
+	›
+
+
+	Choisir livraison
+
+
+	›
+
+
+	Total calculé
+
+
+	›
+
+
+	Passer commande
+
+
+
+Paiement en ligne
+
+Via Konnect (Tunisie) ou Stripe (international) — HTTPS sécurisé
+
+
+	Commande créée
+
+Numéro unique généré, stock déduit définitivement
+
+
+
+Paiement livraison
+
+Option COD (cash on delivery) avec confirmation OTP
+
+
+	Notifications
+
+Email client + notification artisan + SMS de confirmation
+
+
+
+Client paie
+
+
+	›
+
+
+	Gateway vérifie
+
+
+	›
+
+
+	Paiement OK
+
+
+	›
+
+
+	Commande créée
+
+
+	›
+
+
+	Artisan notifié
+
+
+
+Statut en temps réel
+
+Confirmée → Préparée → Expédiée → En transit → Livrée
+
+
+	Tracking client
+
+Client suit la livraison sur son espace avec notifications push
+
+
+
+Espace artisan
+
+Artisan voit ses commandes, met à jour le statut, ajoute le tracking
+
+
+	Livrée + avis
+
+À réception, le client est invité à noter le produit et l'artisan
+
+
+
+Confirmée
+
+
+	›
+
+
+	En préparation
+
+
+	›
+
+
+	Expédiée
+
+
+	›
+
+
+	En transit
+
+
+	›
+
+
+	Livrée
+
+

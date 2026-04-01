@@ -32,7 +32,7 @@ public class CityController {
     private final CityRepository cityRepository;
     private final CityService cityService;
 
-    @GetMapping("/api/cities")
+    @GetMapping({"/api/cities", "/api/public/cities/all"})
     public List<CityResponse> listPublicCities() {
         return cityRepository.findAll().stream()
                 .map(city -> new CityResponse(

@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { ShopService, ShopCart, ShopCartLine, CheckoutOrder, CheckoutBuyer } from '../core/shop.service';
 
 @Component({
@@ -12,6 +12,7 @@ import { ShopService, ShopCart, ShopCartLine, CheckoutOrder, CheckoutBuyer } fro
 })
 export class CartPageComponent implements OnInit {
   private readonly shop = inject(ShopService);
+  private readonly router = inject(Router);
 
   readonly cart = signal<ShopCart | null>(null);
   readonly loading = signal(true);
@@ -20,6 +21,29 @@ export class CartPageComponent implements OnInit {
   readonly orderDone = signal<CheckoutOrder | null>(null);
   /** Ligne en cours de mise à jour quantité (cartItemId). */
   readonly qtyUpdatingId = signal<number | null>(null);
+
+  readonly paymentMethod = signal<'CARD' | 'COD'>('CARD');
+
+  /** Remise automatique 5 % si le sous-total dépasse 200 TND (aligné sur le backend) */
+  hasDiscount(): boolean {
+    if (!this.cart()) return false;
+    return Number(this.cart()!.total) > 200;
+  }
+
+  /** Calculate discount amount */
+  discountAmount(): number {
+    if (!this.hasDiscount()) return 0;
+    return Math.round(this.cart()!.total * 0.05 * 100) / 100; // Round to 2 decimal places
+  }
+
+  /** Calculate final total with discount and delivery */
+  finalTotal(): number {
+    if (!this.cart()) return 0;
+    const subtotal = this.cart()!.total;
+    const discount = this.discountAmount();
+    const delivery = 7;
+    return Math.round((subtotal - discount + delivery) * 100) / 100;
+  }
 
   ngOnInit(): void {
     this.load();
@@ -83,17 +107,23 @@ export class CartPageComponent implements OnInit {
 
   clearReceipt(): void {
     this.orderDone.set(null);
+    this.router.navigate(['/mes-commandes']);
   }
 
   checkout(): void {
     this.checkoutLoading.set(true);
     this.error.set(null);
-    this.shop.checkout().subscribe({
+    this.shop.checkout(this.paymentMethod()).subscribe({
       next: (o) => {
-        this.orderDone.set(o);
         this.cart.set({ cartId: null, items: [], total: 0 });
-        this.checkoutLoading.set(false);
         this.shop.refreshCartCount();
+        
+        if (o.paymentUrl) {
+          window.location.href = o.paymentUrl;
+        } else {
+          this.orderDone.set(o);
+          this.checkoutLoading.set(false);
+        }
       },
       error: (e) => {
         this.checkoutLoading.set(false);

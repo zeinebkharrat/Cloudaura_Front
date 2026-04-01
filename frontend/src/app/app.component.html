@@ -1,5 +1,5 @@
 @if (!isAdminArea()) {
-<nav class="navbar animate-in">
+<nav class="navbar animate-in" [class.navbar--scrolled]="isScrolled()">
   <div class="logo">
     <a routerLink="/" class="logo-link" aria-label="YallaTN+ home">
       <h1>YallaTN<span class="logo-plus" aria-hidden="true">+</span></h1>
@@ -10,7 +10,6 @@
     <li>
       <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Accueil</a>
     </li>
-
     <li>
       <a routerLink="/destinations" routerLinkActive="active">Destinations</a>
     </li>
@@ -26,16 +25,6 @@
     <li>
       <a routerLink="/artisanat" routerLinkActive="active">Artisanat</a>
     </li>
-    @if (!isArtisan()) {
-     <li>
-      <a routerLink="/panier" routerLinkActive="active" class="nav-cart">
-        Panier
-        @if (shop.cartCount() > 0) {
-          <span class="nav-cart__badge">{{ shop.cartCount() }}</span>
-        }
-      </a>
-    </li>
-    }
     <li>
       <a routerLink="/virtual-tour" routerLinkActive="active">360° Tour</a>
     </li>
@@ -65,16 +54,46 @@
         @if (isUserMenuOpen()) {
           <div class="user-dropdown">
             <a class="user-dd-item" [routerLink]="isArtisan() ? '/mes-ordres' : '/mes-commandes'" (click)="closeUserMenu()">
-              @if (isArtisan()) { Mes ordres } @else { Mes commandes }
+              <i class="pi pi-box"></i>
+              <span>{{ isArtisan() ? 'Mes ordres (Ventes)' : 'Mes commandes' }}</span>
             </a>
-            <a class="user-dd-item" routerLink="/profile" (click)="closeUserMenu()">Mon profil</a>
+            <a class="user-dd-item" routerLink="/favoris" (click)="closeUserMenu()">
+              <i class="pi pi-heart"></i>
+              <span>Mes favoris</span>
+            </a>
+            <a class="user-dd-item" routerLink="/profile" (click)="closeUserMenu()">
+              <i class="pi pi-user"></i>
+              <span>Mon profil</span>
+            </a>
             @if (isAdmin()) {
-              <a class="user-dd-item" routerLink="/admin/dashboard" (click)="closeUserMenu()">Backoffice admin</a>
+              <a class="user-dd-item" routerLink="/admin/dashboard" (click)="closeUserMenu()">
+                <i class="pi pi-cog"></i>
+                <span>Backoffice admin</span>
+              </a>
             }
-            <button type="button" class="user-dd-item danger" (click)="logout()">Déconnexion</button>
+            <button type="button" class="user-dd-item danger" (click)="logout()">
+              <i class="pi pi-power-off"></i>
+              <span>Déconnexion</span>
+            </button>
           </div>
         }
       </div>
+    }
+
+    @if (!isArtisan()) {
+      <!-- Favorites Icon -->
+      @if (isAuthenticated()) {
+        <a routerLink="/favoris" routerLinkActive="active" class="nav-icon-btn" aria-label="Mes favoris" title="Mes favoris">
+          <i class="pi pi-heart nav-icon"></i>
+        </a>
+      }
+      <!-- Cart Icon -->
+      <a routerLink="/panier" routerLinkActive="active" class="nav-cart-btn" aria-label="Voir le panier" title="Mon panier">
+        <i class="pi pi-shopping-bag nav-cart-icon"></i>
+        @if (shop.cartCount() > 0) {
+          <span class="nav-cart-count">{{ shop.cartCount() }}</span>
+        }
+      </a>
     }
 
     <button type="button" class="theme-toggle-btn" (click)="toggleTheme()" aria-label="Basculer le thème" title="Basculer le thème">
@@ -94,6 +113,15 @@
     </button>
   </div>
 </nav>
+}
+
+<!-- Global Toast Notification -->
+@if (toastMessage()) {
+  <div class="global-toast" [class.toast-success]="toastType() === 'success'" [class.toast-error]="toastType() === 'error'" [class.toast-info]="toastType() === 'info'">
+    <i class="pi" [class.pi-check-circle]="toastType() === 'success'" [class.pi-times-circle]="toastType() === 'error'" [class.pi-info-circle]="toastType() === 'info'"></i>
+    <span>{{ toastMessage() }}</span>
+    <button class="toast-close" (click)="clearToast()"><i class="pi pi-times"></i></button>
+  </div>
 }
 
 <router-outlet />

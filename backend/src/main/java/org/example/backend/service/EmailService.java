@@ -81,7 +81,69 @@ public class EmailService {
                 sendEmail(toEmail, subject, plainText, html);
     }
 
-        private void sendEmail(String toEmail, String subject, String plainText, String htmlText) {
+    public void sendOrderConfirmation(String toEmail, String orderId, Double totalAmount) {
+        String subject = "Confirmation de votre commande Cloudaura #" + orderId;
+        String title = "Merci pour votre commande !";
+        String preheader = "Votre commande #" + orderId + " a été validée.";
+        String body = "Votre commande d'artisanat a été enregistrée avec succès. " +
+                      "Le montant total payé (ou à régler à la livraison) est de " + String.format("%.2f", totalAmount) + " TND.";
+        
+        String html = buildTravelEmailHtml(
+                title,
+                "L'artisanat tunisien, livré chez vous.",
+                body,
+                "Voir mes commandes",
+                "http://localhost:4200/mes-commandes",
+                "Livraison prévue sous 3-5 jours ouvrés.",
+                "Cher client",
+                preheader
+        );
+        String plain = "Merci pour votre commande #" + orderId + ".\nTotal: " + totalAmount + " TND.\nEquipe Cloudaura";
+        
+        sendEmail(toEmail, subject, plain, html);
+    }
+
+    public void sendDeliveryUpdate(String toEmail, String productName, String status) {
+        String subject = "Mise à jour de livraison : " + productName;
+        String title = "Votre colis bouge !";
+        String statusFrench = status.equals("SHIPPED") ? "est en cours de livraison" : (status.equals("DELIVERED") ? "a été livré" : "est en cours de préparation");
+        String preheader = "Le statut de votre produit " + productName + " a changé.";
+        
+        String html = buildTravelEmailHtml(
+                title,
+                "Suivi de votre commande Cloudaura.",
+                "Bonne nouvelle ! Votre produit <strong>" + productName + "</strong> " + statusFrench + ".",
+                "Suivre mon colis",
+                "http://localhost:4200/mes-commandes",
+                "Merci de votre confiance.",
+                "Cher client",
+                preheader
+        );
+        String plain = "Votre produit " + productName + " " + statusFrench + ".\nEquipe Cloudaura";
+        sendEmail(toEmail, subject, plain, html);
+    }
+
+    public void sendPromoCode(String toEmail, String firstName, String code) {
+        String displayName = (firstName == null) ? "client" : firstName;
+        String subject = "Un cadeau pour vous : 5% de réduction !";
+        String title = "Félicitations !";
+        String preheader = "Voici votre code promo Cloudaura.";
+        
+        String html = buildTravelEmailHtml(
+                title,
+                "Merci pour votre fidélité sur Cloudaura.",
+                "Parce que vous soutenez nos artisans, voici un code promo de <strong>5%</strong> valable sur votre prochaine commande : <br/><br/><center><strong style='font-size:24px; color:#e8002d;'>" + code + "</strong></center>",
+                "Utiliser mon code",
+                "http://localhost:4200/artisanat",
+                "Code valable 30 jours.",
+                displayName,
+                preheader
+        );
+        String plain = "Félicitations " + displayName + "! Voici votre code promo de 5%: " + code + "\nEquipe Cloudaura";
+        sendEmail(toEmail, subject, plain, html);
+    }
+
+    private void sendEmail(String toEmail, String subject, String plainText, String htmlText) {
                 MimeMessage message = mailSender.createMimeMessage();
                 try {
                     MimeMessageHelper helper = new MimeMessageHelper(

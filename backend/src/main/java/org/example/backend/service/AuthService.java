@@ -10,7 +10,6 @@ import org.example.backend.dto.ResendVerificationRequest;
 import org.example.backend.dto.ResetPasswordRequest;
 import org.example.backend.dto.SignupRequest;
 import org.example.backend.dto.UserSummaryResponse;
-import org.example.backend.model.Ban;
 import org.example.backend.model.City;
 import org.example.backend.model.Role;
 import org.example.backend.model.User;

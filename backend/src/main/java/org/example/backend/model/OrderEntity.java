@@ -17,6 +17,15 @@ public class OrderEntity {
     private User user;
 
     private Double totalAmount;
+    
+    /** Frais de livraison fixe de 7 TND. */
+    private Double deliveryFee;
+
+    /** Adresse complète saisie lors de la commande. */
+    private String deliveryAddress;
+
+    /** Mode de paiement : "CARD" (carte bancaire) ou "COD" (à la livraison). */
+    private String paymentMethod;
 
     @Enumerated(EnumType.STRING)
     private OrderStatus status;

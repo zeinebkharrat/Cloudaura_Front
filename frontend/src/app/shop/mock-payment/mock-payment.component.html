@@ -1,0 +1,117 @@
+<main class="mock-payment-page">
+  <div class="mock-payment-inner animate-in">
+    <header class="mock-payment-head">
+      <p class="mock-payment-kicker">Paiement sécurisé</p>
+      <h1 class="mock-payment-title">
+        YallaTN<span class="accent">+</span> · <span class="sub">simulation</span>
+      </h1>
+      @if (!showSuccess()) {
+        <div class="order-summary">
+          <span class="label">Montant à régler</span>
+          <span class="amount">{{ formatAmount(amount()) }}</span>
+        </div>
+      }
+    </header>
+
+    @if (showSuccess()) {
+      <section class="success-state glass-panel">
+        <div class="success-icon-wrap">
+          <i class="pi pi-check-circle success-icon"></i>
+        </div>
+        <h2>Paiement réussi</h2>
+        <p>Votre commande <strong>#{{ orderId() }}</strong> est en cours de préparation.</p>
+
+        @if (isEligibleForPromo()) {
+          <div class="promo-box animate-bounce">
+            <span class="promo-label">Félicitations</span>
+            <span class="promo-code">ARTISAN-LOYAL-5</span>
+            <p class="promo-hint">-5 % sur votre prochaine commande (panier &gt; 200 TND)</p>
+          </div>
+        }
+
+        <p class="redirect-hint">Redirection vers vos commandes…</p>
+      </section>
+    } @else {
+      <section class="payment-card glass-panel">
+        <div class="card-visual">
+          <div class="card-chip"></div>
+          <div class="card-number-display">•••• •••• •••• ••••</div>
+          <div class="card-bottom">
+            <div class="card-holder">Nom du titulaire</div>
+            <div class="card-expiry">MM/AA</div>
+          </div>
+          <div class="card-type">VISA</div>
+        </div>
+
+        <form class="payment-form" (ngSubmit)="confirmPayment($event)" autocomplete="off">
+          <div class="form-group">
+            <label for="mock-cc-number">Numéro de carte</label>
+            <div class="input-wrap">
+              <i class="pi pi-credit-card" aria-hidden="true"></i>
+              <input
+                id="mock-cc-number"
+                name="mock-cc-number"
+                type="text"
+                inputmode="numeric"
+                autocomplete="cc-number"
+                placeholder="0000 0000 0000 0000"
+                maxlength="19"
+              />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="mock-cc-exp">Date d'expiration</label>
+              <input
+                id="mock-cc-exp"
+                name="mock-cc-exp"
+                type="text"
+                inputmode="numeric"
+                autocomplete="cc-exp"
+                placeholder="MM/AA"
+                maxlength="5"
+              />
+            </div>
+            <div class="form-group flex-1">
+              <label for="mock-cc-csc">CVV</label>
+              <input
+                id="mock-cc-csc"
+                name="mock-cc-csc"
+                type="password"
+                autocomplete="cc-csc"
+                placeholder="•••"
+                maxlength="4"
+              />
+            </div>
+          </div>
+
+          @if (error()) {
+            <div class="error-strip">
+              <i class="pi pi-exclamation-triangle"></i>
+              <span>{{ error() }}</span>
+            </div>
+          }
+
+          <div class="actions">
+            <button type="submit" class="btn-pay" [disabled]="loading()">
+              @if (!loading()) {
+                <span>Payer {{ formatAmount(amount()) }}</span>
+              } @else {
+                <span><i class="pi pi-spin pi-spinner"></i> Traitement…</span>
+              }
+            </button>
+            <button type="button" class="btn-cancel" (click)="cancelPayment()" [disabled]="loading()">
+              Annuler la transaction
+            </button>
+          </div>
+        </form>
+      </section>
+    }
+
+    <footer class="mock-payment-foot">
+      <span class="security-badges"><i class="pi pi-lock"></i> Démonstration — aucune carte réelle</span>
+      <p class="disclaimer">Simulation de paiement pour le projet YallaTN+ / Cloudaura.</p>
+    </footer>
+  </div>
+</main>

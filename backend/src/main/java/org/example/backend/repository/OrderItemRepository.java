@@ -18,7 +18,9 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Integer> {
 
     @Query(
         "SELECT DISTINCT oi FROM OrderItem oi "
-            + "LEFT JOIN FETCH oi.product "
+            + "LEFT JOIN FETCH oi.product p "
+            + "LEFT JOIN FETCH p.user "
+            + "LEFT JOIN FETCH oi.variant "
             + "LEFT JOIN FETCH oi.order ord "
             + "LEFT JOIN FETCH ord.user"
     )

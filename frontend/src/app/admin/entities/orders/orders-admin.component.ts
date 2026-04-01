@@ -148,8 +148,11 @@ export class OrdersAdminComponent implements OnInit, OnDestroy {
             this.loading = false;
             this.clampPage();
           },
-          error: () => {
-            this.error = 'Impossible de charger les lignes de commande (/api/order-items).';
+          error: (err) => {
+            console.error('Order items load failed', err);
+            this.orderItems = [];
+            this.error =
+              'Commandes chargées, mais impossible de charger les lignes (/api/order-items). Réessayez ou vérifiez le backend.';
             this.loading = false;
           },
         });

@@ -141,105 +141,243 @@
     </div>
   </section>
 
+  <!-- Modal ajout / édition — même logique visuelle que la fiche Artisanat -->
   @if (showProductModal) {
-    <div class="modal-backdrop" (click)="onModalBackdropClick($event)"></div>
-    <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="product-modal-title">
-      <header class="modal-head">
-        <h2 id="product-modal-title">{{ editingProductId ? 'Modifier le produit' : 'Ajouter un produit' }}</h2>
-        <button type="button" class="btn ghost" (click)="closeProductModal()" aria-label="Fermer">✕</button>
-      </header>
+    <div class="fp-modal-root">
+      <div class="fp-modal-overlay" (click)="onModalOverlayClick($event)">
+        <div class="fp-modal-card glass-panel" (click)="$event.stopPropagation()">
+          <header class="fp-modal-head">
+            <div class="fp-modal-head__titles">
+              <span class="fp-modal-kicker">{{ editingProductId ? '✏️' : '➕' }}</span>
+              <div>
+                <h2 id="product-modal-title">{{ editingProductId ? 'Modifier le produit' : 'Nouveau produit' }}</h2>
+                <p class="fp-modal-sub">Même présentation que l’espace artisan — informations catalogue.</p>
+              </div>
+            </div>
+            <button type="button" class="fp-modal-close" (click)="closeProductModal()" aria-label="Fermer">✕</button>
+          </header>
 
-      @if (modalError) {
-        <div class="alert modal-alert">{{ modalError }}</div>
-      }
-      @if (uploading) {
-        <p class="empty">Envoi de l’image en cours…</p>
-      }
-
-      <div class="form-grid">
-        <label>
-          Nom *
-          <input type="text" [(ngModel)]="productForm.name" name="pname" />
-        </label>
-        <label>
-          Prix
-          <input type="number" step="any" [(ngModel)]="productForm.price" name="pprice" />
-        </label>
-        <label>
-          Stock
-          <input type="number" step="1" [(ngModel)]="productForm.stock" name="pstock" />
-        </label>
-      </div>
-
-      <div class="media-zone">
-        <div class="media-title">
-          <h3>Image produit</h3>
-          <span>Fichier depuis votre PC (optionnel si l’image existe déjà)</span>
-        </div>
-        <div class="upload-box modern">
-          <input id="productImageInput" class="file-native" type="file" accept="image/*" (change)="onFileSelected($event)" />
-          <label class="file-trigger" for="productImageInput">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <path d="M7 10l5-5 5 5" />
-              <path d="M12 5v12" />
-            </svg>
-            Choisir une image
-          </label>
-          @if (selectedFile) {
-            <span class="file-count">{{ selectedFile.name }}</span>
-            <button type="button" class="btn ghost" (click)="clearFileSelection()">Retirer le fichier</button>
+          @if (modalError) {
+            <div class="alert modal-alert">{{ modalError }}</div>
           }
-        </div>
+          @if (uploading) {
+            <p class="empty">Envoi des images en cours…</p>
+          }
 
-        @if (modalPreviewSrc()) {
-          <div class="modal-image-preview">
-            <img [src]="modalPreviewSrc()" alt="Aperçu produit" />
+          <div class="fp-modal-body">
+            <div class="form-group">
+              <label class="form-label">Nom <span class="req">*</span></label>
+              <input type="text" [(ngModel)]="productForm.name" name="pname" class="form-input" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Description</label>
+              <textarea
+                [(ngModel)]="productForm.description"
+                name="pdesc"
+                rows="3"
+                class="form-textarea"
+                placeholder="Matériaux, dimensions, histoire…"
+              ></textarea>
+            </div>
+            <div class="form-row-2">
+              <div class="form-group">
+                <label class="form-label">Catégorie</label>
+                <select [(ngModel)]="productForm.category" name="pcat" class="form-select">
+                  <option value="">Sélectionner</option>
+                  <option value="BIJOUX">💎 Bijoux</option>
+                  <option value="TEXTILE">🧵 Textile</option>
+                  <option value="CERAMIQUE">🏺 Céramique</option>
+                  <option value="BOIS">🪵 Bois</option>
+                  <option value="TAPIS">🪬 Tapis</option>
+                  <option value="AUTRE">✦ Autre</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Statut</label>
+                <select [(ngModel)]="productForm.status" name="pstatus" class="form-select">
+                  <option value="PENDING">En attente</option>
+                  <option value="PUBLISHED">Publié</option>
+                  <option value="REJECTED">Refusé</option>
+                  <option value="DRAFT">Brouillon</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row-2">
+              <div class="form-group">
+                <label class="form-label">Prix (TND)</label>
+                <input type="number" step="any" [(ngModel)]="productForm.price" name="pprice" class="form-input" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Stock global</label>
+                <input type="number" step="1" [(ngModel)]="productForm.stock" name="pstock" class="form-input" />
+              </div>
+            </div>
+
+            @if (productForm.category === 'TEXTILE') {
+              <div class="form-section">
+                <div class="form-section__head">
+                  <h3 class="form-section__title">Variantes (taille / couleur)</h3>
+                  <button type="button" class="btn-add-variant" (click)="addVariantRow()">+ Ajouter</button>
+                </div>
+                @for (v of productForm.variants; track $index; let j = $index) {
+                  <div class="variant-row">
+                    <div class="form-row-2">
+                      <div class="form-group">
+                        <label class="form-label-sm">Taille</label>
+                        <input type="text" [(ngModel)]="v.size" [name]="'vsz-' + j" class="form-input form-input--sm" />
+                      </div>
+                      <div class="form-group">
+                        <label class="form-label-sm">Couleur</label>
+                        <input type="text" [(ngModel)]="v.color" [name]="'vcl-' + j" class="form-input form-input--sm" />
+                      </div>
+                    </div>
+                    <div class="form-row-2">
+                      <div class="form-group">
+                        <label class="form-label-sm">Stock variante</label>
+                        <input type="number" [(ngModel)]="v.stock" [name]="'vst-' + j" class="form-input form-input--sm" />
+                      </div>
+                      <div class="form-group">
+                        <label class="form-label-sm">Prix spécifique (0 = prix produit)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          [(ngModel)]="v.priceOverride"
+                          [name]="'vpo-' + j"
+                          class="form-input form-input--sm"
+                        />
+                      </div>
+                    </div>
+                    <button type="button" class="btn-remove-variant" (click)="removeVariantRow(j)">Supprimer</button>
+                  </div>
+                }
+              </div>
+            }
+
+            <div class="media-zone">
+              <div class="media-title">
+                <h3>Photos</h3>
+                <span>Plusieurs fichiers locaux (optionnel)</span>
+              </div>
+              <div class="upload-box modern">
+                <input
+                  id="productImageInput"
+                  class="file-native"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  (change)="onFilesSelected($event)"
+                />
+                <label class="file-trigger" for="productImageInput">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <path d="M7 10l5-5 5 5" />
+                    <path d="M12 5v12" />
+                  </svg>
+                  Choisir des images
+                </label>
+                @if (pendingFiles.length) {
+                  <button type="button" class="btn ghost" (click)="clearFileSelection()">Effacer les nouveaux fichiers</button>
+                }
+              </div>
+              @if (existingImageUrls().length || pendingPreviewUrls.length) {
+                <div class="admin-photo-grid" aria-label="Aperçu des photos">
+                  @for (u of existingImageUrls(); track $index) {
+                    <div class="admin-photo-tile">
+                      <img [src]="u" alt="" />
+                      <button type="button" class="admin-photo-remove" (click)="removeExistingImage($index)" title="Retirer">×</button>
+                    </div>
+                  }
+                  @for (u of pendingPreviewUrls; track $index) {
+                    <div class="admin-photo-tile admin-photo-tile--new">
+                      <img [src]="u" alt="" />
+                      <button type="button" class="admin-photo-remove" (click)="removePendingImage($index)" title="Retirer">×</button>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
           </div>
-        }
-      </div>
 
-      <div class="modal-actions">
-        <button type="button" class="btn" [disabled]="uploading" (click)="save()">
-          {{ editingProductId ? 'Mettre à jour' : 'Créer le produit' }}
-        </button>
-        <button type="button" class="btn ghost" [disabled]="uploading" (click)="closeProductModal()">Annuler</button>
+          <div class="fp-modal-footer">
+            <button type="button" class="btn-cancel" [disabled]="uploading" (click)="closeProductModal()">Annuler</button>
+            <button type="button" class="btn-save" [disabled]="uploading" (click)="save()">
+              {{ editingProductId ? 'Mettre à jour' : 'Créer' }}
+            </button>
+          </div>
+        </div>
       </div>
-    </section>
+    </div>
   }
 
   @if (showDetailsModal && detailsProduct) {
-    <div class="modal-backdrop" (click)="onDetailsBackdropClick($event)"></div>
-    <section class="modal-card details-card" role="dialog" aria-modal="true">
-      <header class="modal-head">
-        <h2>{{ detailsProduct.name }}</h2>
-        <button type="button" class="btn ghost" (click)="closeDetailsModal()" aria-label="Fermer">✕</button>
-      </header>
-
-      <div class="details-grid">
-        <article class="details-media-main">
-          @if (detailsProduct.imageUrl) {
-            <img [src]="resolveImageUrl(detailsProduct.imageUrl)" [alt]="detailsProduct.name" />
-          } @else {
-            <div class="details-empty-media">Aucune image</div>
-          }
-        </article>
-        <article class="details-info-card">
-          <div class="details-meta-grid">
+    <div class="fp-modal-root">
+      <div class="fp-modal-overlay" (click)="onDetailsOverlayClick($event)">
+        <div class="fp-modal-card fp-modal-card--wide glass-panel" (click)="$event.stopPropagation()">
+          <header class="fp-modal-head">
             <div>
-              <strong>Vendeur :</strong>
-              @if (detailsProduct.user?.username) {
-                {{ '@' + detailsProduct.user.username }}
+              @if (detailsProduct.category) {
+                <span class="fp-badge">{{ detailsProduct.category }}</span>
+              }
+              <h2>{{ detailsProduct.name }}</h2>
+            </div>
+            <button type="button" class="fp-modal-close" (click)="closeDetailsModal()" aria-label="Fermer">✕</button>
+          </header>
+
+          <div class="detail-grid-admin">
+            <div class="detail-gallery-admin">
+              @if (detailGalleryUrls().length) {
+                <div class="detail-gallery-main">
+                  <img [src]="detailMainImageUrl()" [alt]="detailsProduct.name" />
+                </div>
+                @if (detailGalleryUrls().length > 1) {
+                  <div class="detail-gallery-thumbs" role="tablist" aria-label="Miniatures">
+                    @for (u of detailGalleryUrls(); track $index) {
+                      <button
+                        type="button"
+                        class="detail-thumb"
+                        [class.detail-thumb--active]="detailImageIndex === $index"
+                        (click)="detailImageIndex = $index"
+                      >
+                        <img [src]="u" alt="" />
+                      </button>
+                    }
+                  </div>
+                }
               } @else {
-                —
+                <div class="details-empty-media">Aucune image</div>
               }
             </div>
-            <div><strong>Prix :</strong> {{ formatPrice(detailsProduct.price) }}</div>
-            <div><strong>Stock :</strong> {{ detailsProduct.stock ?? '—' }}</div>
-            <div><strong>Réf. :</strong> #{{ detailsProduct.productId }}</div>
+            <div class="detail-info-admin">
+              @if (detailsProduct.description) {
+                <p class="detail-desc">{{ detailsProduct.description }}</p>
+              } @else {
+                <p class="detail-desc muted">Pas de description.</p>
+              }
+              <div class="details-meta-grid">
+                <div><span class="meta-label">Vendeur</span> {{ detailsProduct.user?.username ? '@' + detailsProduct.user.username : '—' }}</div>
+                <div><span class="meta-label">Prix</span> {{ formatPrice(detailsProduct.price) }}</div>
+                <div><span class="meta-label">Stock</span> {{ detailsProduct.stock ?? '—' }}</div>
+                <div><span class="meta-label">Réf.</span> #{{ detailsProduct.productId }}</div>
+              </div>
+              @if (detailsProduct.category === 'TEXTILE' && detailsProduct.variants?.length) {
+                <div class="variants-list">
+                  <strong>Variantes</strong>
+                  <ul>
+                    @for (vv of detailsProduct.variants; track $index) {
+                      <li>
+                        {{ vv.size }} / {{ vv.color }} — stock {{ vv.stock }}
+                        @if (vv.priceOverride) {
+                          <span class="sub">({{ formatPrice(vv.priceOverride) }})</span>
+                        }
+                      </li>
+                    }
+                  </ul>
+                </div>
+              }
+            </div>
           </div>
-        </article>
+        </div>
       </div>
-    </section>
+    </div>
   }
 </div>

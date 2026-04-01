@@ -14,4 +14,10 @@ public interface CartItemRepository extends JpaRepository<CartItem, Integer> {
 
     @Query("SELECT ci FROM CartItem ci JOIN FETCH ci.product WHERE ci.cart.cartId = :cartId")
     List<CartItem> findByCartIdWithProduct(@Param("cartId") Integer cartId);
+
+    @Query("SELECT SUM(ci.quantity) FROM CartItem ci WHERE ci.product.productId = :productId AND ci.variant IS NULL AND ci.reservedUntil > CURRENT_TIMESTAMP AND ci.cart.cartId <> :excludeCartId")
+    Integer sumReservedQuantityForProduct(@Param("productId") Integer productId, @Param("excludeCartId") Integer excludeCartId);
+
+    @Query("SELECT SUM(ci.quantity) FROM CartItem ci WHERE ci.variant.variantId = :variantId AND ci.reservedUntil > CURRENT_TIMESTAMP AND ci.cart.cartId <> :excludeCartId")
+    Integer sumReservedQuantityForVariant(@Param("variantId") Integer variantId, @Param("excludeCartId") Integer excludeCartId);
 }

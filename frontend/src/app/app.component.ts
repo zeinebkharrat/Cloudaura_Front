@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from './auth.service';
 import { ShopService } from './core/shop.service';
+import { NotificationService } from './core/notification.service';
 
 @Component({
   selector: 'app-root',
@@ -16,13 +17,28 @@ export class AppComponent implements OnInit {
   private readonly renderer = inject(Renderer2);
   readonly auth = inject(AuthService);
   readonly shop = inject(ShopService);
+  readonly notifier = inject(NotificationService);
 
   isDarkMode = signal(true);
   readonly isAuthenticated = this.auth.isAuthenticated;
   readonly currentUser = this.auth.currentUser;
   readonly isAdmin = this.auth.isAdmin;
   readonly isArtisan = this.auth.isArtisan;
-  isUserMenuOpen = signal(false);
+  isScrolled = signal(false);
+  readonly isUserMenuOpen = signal(false);
+
+  // Use the notification service's signals directly
+  readonly toastMessage = this.notifier.message;
+  readonly toastType = this.notifier.type;
+
+  clearToast(): void {
+    this.notifier.clear();
+  }
+
+  @HostListener('window:scroll', [])
+  onWindowScroll() {
+    this.isScrolled.set(window.scrollY > 20);
+  }
 
   ngOnInit() {
     this.auth.restoreSession();

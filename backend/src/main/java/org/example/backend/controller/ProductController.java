@@ -62,7 +62,17 @@ public class ProductController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ProductCatalogItem>> findAll() {
+    public ResponseEntity<List<ProductCatalogItem>> findAll(
+            Authentication authentication,
+            @RequestParam(required = false) Integer cityId
+    ) {
+        if (authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+            return ResponseEntity.ok(productService.findAllWithCatalogDto());
+        }
+        if (cityId != null) {
+            return ResponseEntity.ok(productService.findAllByCity(cityId));
+        }
         return ResponseEntity.ok(productService.findAllForCatalog());
     }
 
@@ -84,7 +94,7 @@ public class ProductController {
     }
 
     @PostMapping
-    public ResponseEntity<Product> create(Authentication authentication, @RequestBody Product entity) {
+    public ResponseEntity<?> create(Authentication authentication, @RequestBody Product entity) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -98,16 +108,22 @@ public class ProductController {
                 .created(URI.create("/api/products/" + created.getProductId()))
                 .body(created);
         } catch (NoSuchElementException ex) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", ex.getMessage() != null ? ex.getMessage() : "Unexpected error"));
         }
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Product> update(@PathVariable Integer id, @RequestBody Product entity) {
+    public ResponseEntity<?> update(@PathVariable Integer id, @RequestBody Product entity) {
         try {
             return ResponseEntity.ok(productService.update(id, entity));
         } catch (NoSuchElementException ex) {
             return ResponseEntity.notFound().build();
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", ex.getMessage() != null ? ex.getMessage() : "Unexpected error"));
         }
     }
 

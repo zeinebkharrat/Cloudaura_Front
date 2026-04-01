@@ -1,5 +1,7 @@
 package org.example.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 
 import java.util.Date;
@@ -21,6 +23,8 @@ public class User {
     @Column(unique = true)
     private String email;
 
+    /** Never expose in JSON responses; still accepted on deserialize when needed (e.g. signup DTOs using User). */
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String passwordHash;
     private String phone;
     private Integer points;
@@ -49,6 +53,14 @@ public class User {
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles;
+
+    /** LAZY — never serialize on nested User (e.g. inside Product JSON) or response fails after session closes. */
+    @JsonIgnore
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(name = "user_favorites",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "product_id"))
+    private Set<Product> favorites;
 
     public Integer getUserId() {
         return userId;
@@ -216,5 +228,13 @@ public class User {
 
     public void setRoles(Set<Role> roles) {
         this.roles = roles;
+    }
+
+    public Set<Product> getFavorites() {
+        return favorites;
+    }
+
+    public void setFavorites(Set<Product> favorites) {
+        this.favorites = favorites;
     }
 }

@@ -5,6 +5,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import org.example.backend.dto.shop.AddToCartRequest;
 import org.example.backend.dto.shop.UpdateCartItemRequest;
 import org.example.backend.dto.shop.CheckoutBuyerDto;
@@ -20,12 +21,16 @@ import org.example.backend.model.OrderItem;
 import org.example.backend.model.OrderStatus;
 import org.example.backend.model.Product;
 import org.example.backend.model.User;
+import org.example.backend.model.ProductVariant;
+import org.example.backend.model.PromoCode;
 import org.example.backend.repository.CartItemRepository;
 import org.example.backend.repository.CartRepository;
 import org.example.backend.repository.OrderEntityRepository;
 import org.example.backend.repository.OrderItemRepository;
 import org.example.backend.repository.ProductRepository;
+import org.example.backend.repository.ProductVariantRepository;
 import org.example.backend.repository.UserRepository;
+import org.example.backend.repository.PromoCodeRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,6 +45,10 @@ public class ShopService {
     private final ProductRepository productRepository;
     private final OrderEntityRepository orderEntityRepository;
     private final OrderItemRepository orderItemRepository;
+    private final ProductVariantRepository productVariantRepository;
+    private final PromoCodeRepository promoCodeRepository;
+    private final EmailService emailService;
+    private final PaymentService paymentService;
 
     public ShopService(
         UserRepository userRepository,
@@ -47,7 +56,11 @@ public class ShopService {
         CartItemRepository cartItemRepository,
         ProductRepository productRepository,
         OrderEntityRepository orderEntityRepository,
-        OrderItemRepository orderItemRepository
+        OrderItemRepository orderItemRepository,
+        ProductVariantRepository productVariantRepository,
+        PromoCodeRepository promoCodeRepository,
+        EmailService emailService,
+        PaymentService paymentService
     ) {
         this.userRepository = userRepository;
         this.cartRepository = cartRepository;
@@ -55,6 +68,10 @@ public class ShopService {
         this.productRepository = productRepository;
         this.orderEntityRepository = orderEntityRepository;
         this.orderItemRepository = orderItemRepository;
+        this.productVariantRepository = productVariantRepository;
+        this.promoCodeRepository = promoCodeRepository;
+        this.emailService = emailService;
+        this.paymentService = paymentService;
     }
 
     public ShopCartDto getCart(String username) {
@@ -65,6 +82,17 @@ public class ShopService {
             .flatMap(u -> cartRepository.findByUser_UserId(u.getUserId()))
             .map(this::toCartDto)
             .orElseGet(this::newEmptyCart);
+    }
+
+    private int getAvailableStock(Product product, ProductVariant variant, Integer excludeCartId) {
+        int totalStock = (variant != null) ? (variant.getStock() != null ? variant.getStock() : 0)
+                                           : (product.getStock() != null ? product.getStock() : 0);
+        
+        Integer reserved = (variant != null) 
+            ? cartItemRepository.sumReservedQuantityForVariant(variant.getVariantId(), excludeCartId)
+            : cartItemRepository.sumReservedQuantityForProduct(product.getProductId(), excludeCartId);
+            
+        return totalStock - (reserved != null ? reserved : 0);
     }
 
     @Transactional
@@ -79,28 +107,50 @@ public class ShopService {
         User user = findUser(username);
         Product product = productRepository.findById(request.getProductId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Produit introuvable"));
-        int stock = product.getStock() != null ? product.getStock() : 0;
-        if (stock < qty) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Stock insuffisant");
+        
+        ProductVariant variant = null;
+        if (request.getVariantId() != null) {
+            variant = productVariantRepository.findById(request.getVariantId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Variante introuvable"));
+            if (!variant.getProduct().getProductId().equals(product.getProductId())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Variante non liée à ce produit");
+            }
         }
 
         Cart cart = getOrCreateCart(user);
-        CartItem existing = cartItemRepository
-            .findByCart_CartIdAndProduct_ProductId(cart.getCartId(), product.getProductId())
+        int available = getAvailableStock(product, variant, cart.getCartId());
+        
+        if (available < qty) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Stock insuffisant (déjà réservé par d'autres)");
+        }
+
+        // Find existing item with same product AND same variant
+        CartItem existing = cartItemRepository.findAll().stream()
+            .filter(i -> i.getCart().getCartId().equals(cart.getCartId()))
+            .filter(i -> i.getProduct().getProductId().equals(product.getProductId()))
+            .filter(i -> (request.getVariantId() == null && i.getVariant() == null) || 
+                         (request.getVariantId() != null && i.getVariant() != null && i.getVariant().getVariantId().equals(request.getVariantId())))
+            .findFirst()
             .orElse(null);
+
+        Date reservationEnd = new Date(System.currentTimeMillis() + 15 * 60 * 1000);
 
         if (existing != null) {
             int newQty = existing.getQuantity() + qty;
-            if (newQty > stock) {
+            if (newQty > available + existing.getQuantity()) {
+                 // Technically covered by 'available' logic above but good to be safe
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Stock insuffisant pour ce panier");
             }
             existing.setQuantity(newQty);
+            existing.setReservedUntil(reservationEnd);
             cartItemRepository.save(existing);
         } else {
             CartItem line = new CartItem();
             line.setCart(cart);
             line.setProduct(product);
+            line.setVariant(variant);
             line.setQuantity(qty);
+            line.setReservedUntil(reservationEnd);
             cartItemRepository.save(line);
         }
         return toCartDto(cartRepository.findById(cart.getCartId()).orElseThrow());
@@ -136,17 +186,16 @@ public class ShopService {
             || !cart.getUser().getUserId().equals(user.getUserId())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Ligne non autorisée");
         }
-        Product product = productRepository.findById(line.getProduct().getProductId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Produit introuvable"));
-
+        
         if (qty <= 0) {
             cartItemRepository.deleteById(cartItemId);
         } else {
-            int stock = product.getStock() != null ? product.getStock() : 0;
-            if (qty > stock) {
+            int available = getAvailableStock(line.getProduct(), line.getVariant(), cart.getCartId());
+            if (qty > available + line.getQuantity()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Stock insuffisant");
             }
             line.setQuantity(qty);
+            line.setReservedUntil(new Date(System.currentTimeMillis() + 15 * 60 * 1000));
             cartItemRepository.save(line);
         }
         return cartRepository.findByUser_UserId(user.getUserId())
@@ -155,8 +204,9 @@ public class ShopService {
     }
 
     @Transactional
-    public CheckoutOrderDto checkout(String username) {
+    public CheckoutOrderDto checkout(String username, String paymentMethod) {
         User user = findUser(username);
+        String pm = (paymentMethod != null && paymentMethod.equalsIgnoreCase("COD")) ? "COD" : "CARD";
         Cart cart = cartRepository.findByUser_UserId(user.getUserId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Panier vide"));
         List<CartItem> lines = cartItemRepository.findByCartIdWithProduct(cart.getCartId());
@@ -164,54 +214,126 @@ public class ShopService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Panier vide");
         }
 
-        double total = 0;
+        double subtotal = 0;
+        boolean allSameCity = true;
+        String userCity = user.getCity() != null ? user.getCity().getName() : null;
+
         for (CartItem line : lines) {
-            Product p = line.getProduct();
             int qty = line.getQuantity();
-            int stock = p.getStock() != null ? p.getStock() : 0;
-            if (stock < qty) {
-                throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Stock insuffisant pour: " + p.getName()
-                );
+            int available = getAvailableStock(line.getProduct(), line.getVariant(), cart.getCartId());
+            if (available < 0) {
+                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Stock plus disponible pour " + line.getProduct().getName());
             }
-            double price = p.getPrice() != null ? p.getPrice() : 0;
-            total += price * qty;
+
+            // Delivery fee logic
+            String artisanCity = (line.getProduct().getUser() != null && line.getProduct().getUser().getCity() != null) 
+                                 ? line.getProduct().getUser().getCity().getName() : null;
+            if (userCity == null || artisanCity == null || !userCity.equalsIgnoreCase(artisanCity)) {
+                allSameCity = false;
+            }
+
+            double price = effectiveUnitPrice(line.getProduct(), line.getVariant());
+            subtotal += price * qty;
         }
+
+        // Remise automatique 5 % dès que le sous-total dépasse 200 TND (sans code promo)
+        double discount = 0;
+        if (subtotal > 200) {
+            discount = subtotal * 0.05;
+        }
+
+        double deliveryFee = allSameCity ? 5.0 : 7.0;
+        double total = (subtotal - discount) + deliveryFee;
+        if (total < 0) total = deliveryFee; // Can't be negative but just in case
 
         OrderEntity order = new OrderEntity();
         order.setUser(user);
         order.setTotalAmount(total);
+        order.setDeliveryFee(deliveryFee);
+        order.setPaymentMethod(pm);
         order.setStatus(OrderStatus.PENDING);
         order.setCreatedAt(new Date());
         order = orderEntityRepository.save(order);
 
+        String autoPromo = null;
+        if (total >= 200.0) {
+            try {
+                // Code unique (évite collision sur la contrainte unique + erreur 500 au checkout)
+                autoPromo = "GIFT-" + UUID.randomUUID().toString().replace("-", "").substring(0, 10).toUpperCase();
+                PromoCode pc = new PromoCode();
+                pc.setCode(autoPromo);
+                pc.setDiscountPercent(5.0);
+                pc.setActive(true);
+                pc.setExpiryDate(new Date(System.currentTimeMillis() + 30L * 24 * 3600 * 1000));
+                promoCodeRepository.save(pc);
+            } catch (Exception ex) {
+                System.err.println("Promo auto non enregistrée (checkout continue) : " + ex.getMessage());
+                autoPromo = null;
+            }
+        }
+
         List<OrderLineDto> outLines = new ArrayList<>();
         for (CartItem line : lines) {
             Product p = line.getProduct();
+            ProductVariant v = line.getVariant();
             int qty = line.getQuantity();
-            double price = p.getPrice() != null ? p.getPrice() : 0;
+            double price = effectiveUnitPrice(p, v);
 
             OrderItem oi = new OrderItem();
             oi.setOrder(order);
             oi.setProduct(p);
+            oi.setVariant(v);
             oi.setQuantity(qty);
+            oi.setStatus(OrderStatus.PENDING);
             oi = orderItemRepository.save(oi);
 
-            p.setStock(p.getStock() - qty);
-            productRepository.save(p);
+            if (v != null) {
+                v.setStock(Math.max(0, (v.getStock() != null ? v.getStock() : 0) - qty));
+                productVariantRepository.save(v);
+                
+                // Update overall product stock sum
+                int totalProductStock = productVariantRepository.findByProduct_ProductId(p.getProductId()).stream()
+                    .mapToInt(var -> var.getStock() != null ? var.getStock() : 0)
+                    .sum();
+                p.setStock(totalProductStock);
+                if (totalProductStock <= 0) {
+                    p.setStatus(org.example.backend.model.ProductStatus.OUT_OF_STOCK);
+                }
+                productRepository.save(p);
+            } else {
+                int newStock = Math.max(0, (p.getStock() != null ? p.getStock() : 0) - qty);
+                p.setStock(newStock);
+                if (newStock <= 0) {
+                    p.setStatus(org.example.backend.model.ProductStatus.OUT_OF_STOCK);
+                }
+                productRepository.save(p);
+            }
 
-            outLines.add(new OrderLineDto(
+            OrderLineDto lineDto = new OrderLineDto(
                 oi.getOrderItemId(),
                 p.getProductId(),
                 p.getName(),
                 qty,
                 price,
                 price * qty
-            ));
+            );
+            lineDto.setStatus(oi.getStatus() != null ? oi.getStatus().name() : null);
+            lineDto.setVariantId(v != null ? v.getVariantId() : null);
+            lineDto.setSize(v != null ? v.getSize() : null);
+            lineDto.setColor(v != null ? v.getColor() : null);
+            outLines.add(lineDto);
         }
 
         cartItemRepository.deleteAll(lines);
+        
+        // Envoi de l'email de confirmation
+        try {
+            if (user.getEmail() != null && !user.getEmail().isBlank()) {
+                emailService.sendOrderConfirmation(user.getEmail(), order.getOrderId().toString(), total);
+            }
+        } catch (Exception e) {
+            System.err.println("Email non envoyé : " + e.getMessage());
+        }
 
         CheckoutOrderDto dto = new CheckoutOrderDto();
         dto.setOrderId(order.getOrderId());
@@ -220,6 +342,26 @@ public class ShopService {
         dto.setLines(outLines);
         dto.setOrderedAt(formatOrderInstant(order.getCreatedAt()));
         dto.setBuyer(toBuyerDto(user));
+        dto.setPaymentMethod(pm);
+        dto.setNewPromoCode(autoPromo);
+        // Emails (récap + code promo si créé)
+        try {
+            if (user.getEmail() != null && !user.getEmail().isBlank()) {
+                emailService.sendOrderConfirmation(user.getEmail(), order.getOrderId().toString(), order.getTotalAmount());
+                if (autoPromo != null) {
+                    emailService.sendPromoCode(user.getEmail(), user.getFirstName(), autoPromo);
+                }
+            }
+        } catch (Exception ex) {
+            // Log error but don't block checkout
+            System.err.println("Failed to send checkout email: " + ex.getMessage());
+        }
+
+        if ("CARD".equals(pm)) {
+            dto.setPaymentUrl(paymentService.generatePaymentUrl(order));
+        } else {
+            dto.setPaymentUrl(null);
+        }
         return dto;
     }
 
@@ -286,16 +428,23 @@ public class ShopService {
         List<OrderLineDto> lines = new ArrayList<>();
         for (OrderItem oi : items) {
             Product p = oi.getProduct();
+            ProductVariant v = oi.getVariant();
             int qty = oi.getQuantity() != null ? oi.getQuantity() : 0;
-            double price = p.getPrice() != null ? p.getPrice() : 0;
-            lines.add(new OrderLineDto(
+            double price = effectiveUnitPrice(p, v);
+            
+            OrderLineDto ldto = new OrderLineDto(
                 oi.getOrderItemId(),
                 p.getProductId(),
                 p.getName(),
                 qty,
                 price,
                 price * qty
-            ));
+            );
+            ldto.setStatus(oi.getStatus() != null ? oi.getStatus().name() : null);
+            ldto.setVariantId(v != null ? v.getVariantId() : null);
+            ldto.setSize(v != null ? v.getSize() : null);
+            ldto.setColor(v != null ? v.getColor() : null);
+            lines.add(ldto);
         }
         CheckoutOrderDto dto = new CheckoutOrderDto();
         dto.setOrderId(order.getOrderId());
@@ -305,6 +454,35 @@ public class ShopService {
         dto.setOrderedAt(formatOrderInstant(order.getCreatedAt()));
         dto.setBuyer(toBuyerDto(buyer));
         return dto;
+    }
+
+    @Transactional
+    public void updateOrderItemStatus(Integer orderItemId, OrderStatus newStatus, String artisanUsername) {
+        User artisan = findUser(artisanUsername);
+        OrderItem item = orderItemRepository.findById(orderItemId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ligne de commande introuvable"));
+        
+        if (item.getProduct() == null || item.getProduct().getUser() == null || 
+            !item.getProduct().getUser().getUserId().equals(artisan.getUserId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Non autorisé à modifier cet article");
+        }
+        
+        if (newStatus == OrderStatus.SHIPPED || newStatus == OrderStatus.DELIVERED) {
+            try {
+                User buyer = item.getOrder().getUser();
+                if (buyer != null && buyer.getEmail() != null) {
+                    emailService.sendDeliveryUpdate(buyer.getEmail(), item.getProduct().getName(), newStatus.name());
+                }
+            } catch (Exception ex) {
+                System.err.println("Failed to send delivery update email: " + ex.getMessage());
+            }
+        }
+        
+        item.setStatus(newStatus);
+        orderItemRepository.save(item);
+
+        // Optional: Update main order status if all items are delivered?
+        // For now, per-item is enough.
     }
 
     private static String formatOrderInstant(Date createdAt) {
@@ -335,6 +513,23 @@ public class ShopService {
         });
     }
 
+    /**
+     * Prix unitaire : override variante uniquement s'il est strictement &gt; 0, sinon prix produit.
+     * Les variantes textile avec override à 0 utilisent le prix catalogue.
+     */
+    private static double effectiveUnitPrice(Product p, ProductVariant v) {
+        if (p == null) {
+            return 0;
+        }
+        if (v != null) {
+            Double po = v.getPriceOverride();
+            if (po != null && po > 0) {
+                return po;
+            }
+        }
+        return p.getPrice() != null ? p.getPrice() : 0;
+    }
+
     private ShopCartDto toCartDto(Cart cart) {
         List<CartItem> lines = cartItemRepository.findByCartIdWithProduct(cart.getCartId());
         ShopCartDto dto = new ShopCartDto();
@@ -343,11 +538,13 @@ public class ShopService {
         List<ShopCartLineDto> items = new ArrayList<>();
         for (CartItem line : lines) {
             Product p = line.getProduct();
+            ProductVariant v = line.getVariant();
             int qty = line.getQuantity();
-            double price = p.getPrice() != null ? p.getPrice() : 0;
+            double price = effectiveUnitPrice(p, v);
             double lineTotal = price * qty;
             total += lineTotal;
-            items.add(new ShopCartLineDto(
+            
+            ShopCartLineDto ldto = new ShopCartLineDto(
                 line.getCartItemId(),
                 p.getProductId(),
                 p.getName(),
@@ -355,8 +552,12 @@ public class ShopService {
                 price,
                 qty,
                 lineTotal,
-                p.getStock()
-            ));
+                (v != null ? v.getStock() : p.getStock())
+            );
+            ldto.setVariantId(v != null ? v.getVariantId() : null);
+            ldto.setSize(v != null ? v.getSize() : null);
+            ldto.setColor(v != null ? v.getColor() : null);
+            items.add(ldto);
         }
         dto.setItems(items);
         dto.setTotal(total);

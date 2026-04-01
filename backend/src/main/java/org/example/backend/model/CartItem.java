@@ -9,5 +9,8 @@ public class CartItem {
     private Cart cart;
     @ManyToOne @JoinColumn(name="product_id")
     private Product product;
+    @ManyToOne @JoinColumn(name="variant_id")
+    private ProductVariant variant;
     private Integer quantity;
+    private java.util.Date reservedUntil;
 }

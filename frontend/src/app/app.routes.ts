@@ -24,6 +24,9 @@ import { ProductsAdminComponent } from './admin/entities/products/products-admin
 import { OrdersAdminComponent } from './admin/entities/orders/orders-admin.component';
 import { CartPageComponent } from './shop/cart-page.component';
 import { MyOrdersComponent } from './shop/my-orders.component';
+import { MockPaymentComponent } from './shop/mock-payment/mock-payment.component';
+import { ArtisanOrdersComponent } from './artisan/artisan-orders.component';
+import { FavoritesComponent } from './shop/favorites.component';
 
 
 export const routes: Routes = [
@@ -40,7 +43,9 @@ export const routes: Routes = [
   { path: 'login', component: SignInComponent },
   { path: 'panier', component: CartPageComponent, canActivate: [authGuard] },
   { path: 'mes-commandes', component: MyOrdersComponent, canActivate: [authGuard] },
-  { path: 'mes-ordres', component: MyOrdersComponent, canActivate: [authGuard] },
+  { path: 'mes-ordres', component: ArtisanOrdersComponent, canActivate: [authGuard], data: { roles: ['ROLE_ARTISAN', 'ROLE_ADMIN'] } },
+  { path: 'mock-payment', component: MockPaymentComponent, canActivate: [authGuard] },
+  { path: 'favoris', component: FavoritesComponent, canActivate: [authGuard] },
 
   { path: 'virtual-tour', component: VirtualTourPageComponent },
   {
