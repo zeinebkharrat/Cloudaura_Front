@@ -23,7 +23,7 @@
       <a routerLink="/activites" routerLinkActive="active">Activités</a>
     </li>
     <li>
-      <a routerLink="/artisanat" routerLinkActive="active">Artisanat</a>
+      <a routerLink="/artisanat" routerLinkActive="active">Crafts</a>
     </li>
     <li>
       <a routerLink="/virtual-tour" routerLinkActive="active">360° Tour</a>
@@ -55,7 +55,7 @@
           <div class="user-dropdown">
             <a class="user-dd-item" [routerLink]="isArtisan() ? '/mes-ordres' : '/mes-commandes'" (click)="closeUserMenu()">
               <i class="pi pi-box"></i>
-              <span>{{ isArtisan() ? 'Mes ordres (Ventes)' : 'Mes commandes' }}</span>
+              <span>{{ isArtisan() ? 'My orders (sales)' : 'My orders' }}</span>
             </a>
             <a class="user-dd-item" routerLink="/favoris" (click)="closeUserMenu()">
               <i class="pi pi-heart"></i>

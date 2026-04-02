@@ -14,5 +14,6 @@ public class OrderItem {
     private ProductVariant variant;
     private Integer quantity;
     @Enumerated(EnumType.STRING)
+    @Column(name = "status", columnDefinition = "VARCHAR(20)")
     private OrderStatus status;
 }

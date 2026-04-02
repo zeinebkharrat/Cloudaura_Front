@@ -325,15 +325,6 @@ public class ShopService {
         }
 
         cartItemRepository.deleteAll(lines);
-        
-        // Envoi de l'email de confirmation
-        try {
-            if (user.getEmail() != null && !user.getEmail().isBlank()) {
-                emailService.sendOrderConfirmation(user.getEmail(), order.getOrderId().toString(), total);
-            }
-        } catch (Exception e) {
-            System.err.println("Email non envoyé : " + e.getMessage());
-        }
 
         CheckoutOrderDto dto = new CheckoutOrderDto();
         dto.setOrderId(order.getOrderId());

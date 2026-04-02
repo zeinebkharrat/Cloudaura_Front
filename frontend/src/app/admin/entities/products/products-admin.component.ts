@@ -129,7 +129,7 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
         this.clampPage();
       },
       error: () => {
-        this.error = 'Erreur de chargement des produits.';
+        this.error = 'Could not load products.';
         this.loading = false;
       },
     });
@@ -272,7 +272,7 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
     for (let i = 0; i < list.length; i++) {
       const file = list[i];
       if (file.size > this.maxImageSizeBytes) {
-        this.modalError = 'Une ou plusieurs images dépassent 15 Mo.';
+        this.modalError = 'One or more images exceed 15 MB.';
         continue;
       }
       this.pendingFiles.push(file);
@@ -327,11 +327,11 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
     this.modalError = '';
     const name = String(this.productForm.name ?? '').trim();
     if (!name) {
-      this.modalError = 'Le nom du produit est obligatoire.';
+      this.modalError = 'Product name is required.';
       return;
     }
     if (!String(this.productForm.category ?? '').trim()) {
-      this.modalError = 'La catégorie est obligatoire.';
+      this.modalError = 'Category is required.';
       return;
     }
 
@@ -364,7 +364,7 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
         },
         error: () => {
           this.uploading = false;
-          this.modalError = 'Upload des images impossible.';
+          this.modalError = 'Image upload failed.';
         },
       });
       return;
@@ -384,12 +384,12 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
 
   async remove(item: any): Promise<void> {
     const confirmation = await Swal.fire({
-      title: 'Supprimer ce produit ?',
-      text: `${item.name ?? 'Ce produit'} sera supprimé définitivement.`,
+      title: 'Delete this product?',
+      text: `${item.name ?? 'This product'} will be permanently removed.`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Oui, supprimer',
-      cancelButtonText: 'Annuler',
+      confirmButtonText: 'Delete',
+      cancelButtonText: 'Cancel',
       confirmButtonColor: '#e63946',
       background: '#181d24',
       color: '#e2e8f0',
@@ -411,7 +411,7 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
         this.loadAll();
         await Swal.fire({
           icon: 'success',
-          title: 'Produit supprimé',
+          title: 'Product deleted',
           timer: 1300,
           showConfirmButton: false,
           background: '#181d24',
@@ -420,7 +420,7 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
         });
       },
       error: () => {
-        this.error = 'Suppression impossible.';
+        this.error = 'Could not delete.';
       },
     });
   }
@@ -433,7 +433,7 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
 
   formatPrice(p: unknown): string {
     if (p === '' || p == null || Number.isNaN(Number(p))) return '—';
-    return new Intl.NumberFormat('fr-TN', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'TND',
       minimumFractionDigits: 2,
@@ -458,6 +458,29 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
   detailMainImageUrl(): string {
     const urls = this.detailGalleryUrls();
     return urls[this.detailImageIndex] ?? '';
+  }
+
+  detailGalleryLength(): number {
+    return this.detailGalleryUrls().length;
+  }
+
+  detailImagePrev(): void {
+    const n = this.detailGalleryLength();
+    if (n <= 1) return;
+    this.detailImageIndex = (this.detailImageIndex - 1 + n) % n;
+  }
+
+  detailImageNext(): void {
+    const n = this.detailGalleryLength();
+    if (n <= 1) return;
+    this.detailImageIndex = (this.detailImageIndex + 1) % n;
+  }
+
+  selectDetailImage(i: number): void {
+    const n = this.detailGalleryLength();
+    if (i >= 0 && i < n) {
+      this.detailImageIndex = i;
+    }
   }
 
   private persistProduct(
@@ -494,7 +517,7 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
           this.loadAll();
           await Swal.fire({
             icon: 'success',
-            title: 'Produit mis à jour',
+            title: 'Product updated',
             timer: 1400,
             showConfirmButton: false,
             background: '#181d24',
@@ -503,14 +526,14 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
           });
         },
         error: () => {
-          this.modalError = 'Erreur de mise à jour.';
+          this.modalError = 'Update failed.';
         },
       });
       return;
     }
 
     if (!this.auth.isAuthenticated()) {
-      this.modalError = 'Connectez-vous pour créer un produit.';
+      this.modalError = 'Sign in to create a product.';
       return;
     }
     this.http.post(this.apiUrl, payload).subscribe({
@@ -519,7 +542,7 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
         this.loadAll();
         await Swal.fire({
           icon: 'success',
-          title: 'Produit ajouté',
+          title: 'Product added',
           timer: 1400,
           showConfirmButton: false,
           background: '#181d24',
@@ -530,9 +553,9 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
       error: (err: HttpErrorResponse) => {
         if (err.status === 400) {
           this.modalError =
-            'Création refusée : utilisateur inconnu en base. Redémarrez le backend ou reconnectez-vous.';
+            'Could not create: user not found. Restart the backend or sign in again.';
         } else {
-          this.modalError = 'Erreur de création.';
+          this.modalError = 'Could not create product.';
         }
       },
     });

@@ -17,7 +17,7 @@ public class OrderEntity {
     private User user;
 
     private Double totalAmount;
-    
+
     /** Frais de livraison fixe de 7 TND. */
     private Double deliveryFee;
 
@@ -28,6 +28,7 @@ public class OrderEntity {
     private String paymentMethod;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "status", columnDefinition = "VARCHAR(20)")
     private OrderStatus status;
 
     /** Date de création de la commande (checkout). */

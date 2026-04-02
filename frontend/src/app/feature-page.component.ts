@@ -134,6 +134,97 @@ export class FeaturePageComponent implements OnInit {
 
   readonly selectedVariantId = signal<Record<number, number>>({});
 
+  /** Detail modal: pick color first, then size (TEXTILE). */
+  readonly detailSelectedColor = signal<string | null>(null);
+  readonly detailSelectedSize = signal<string | null>(null);
+
+  /** Stable label for variant color (empty → em dash). */
+  private colorLabel(v: { color?: string | null }): string {
+    return (v.color ?? '').trim() || '—';
+  }
+
+  /** Unique in-stock colors for variant pickers (TEXTILE). */
+  distinctColorsInStock(p: CatalogProduct): string[] {
+    if (!p.variants?.length) return [];
+    const set = new Set<string>();
+    for (const v of p.variants) {
+      if ((v.stock ?? 0) > 0) {
+        set.add(this.colorLabel(v));
+      }
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, 'en'));
+  }
+
+  /** Sizes available for the selected color. */
+  sizesForSelectedColor(p: CatalogProduct): string[] {
+    const color = this.detailSelectedColor();
+    if (!p.variants?.length || color == null) return [];
+    const target = (color ?? '').trim() || '—';
+    const set = new Set<string>();
+    for (const v of p.variants) {
+      if ((v.stock ?? 0) > 0 && this.colorLabel(v) === target) {
+        set.add((v.size ?? '').trim() || '—');
+      }
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, 'en'));
+  }
+
+  /** Read-only lists for artisan detail modal. */
+  distinctSizesInStock(p: CatalogProduct): string[] {
+    if (!p.variants?.length) return [];
+    const set = new Set<string>();
+    for (const v of p.variants) {
+      if ((v.stock ?? 0) > 0) {
+        set.add((v.size ?? '').trim() || '—');
+      }
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, 'en'));
+  }
+
+  onDetailColorSelect(p: CatalogProduct, color: string | null): void {
+    this.detailSelectedColor.set(color);
+    this.detailSelectedSize.set(null);
+    this.selectedVariantId.update((m) => {
+      const c = { ...m };
+      delete c[p.productId];
+      return c;
+    });
+    if (color == null) return;
+    const sizes = this.sizesForSelectedColor(p);
+    if (sizes.length === 1) {
+      this.detailSelectedSize.set(sizes[0]);
+      this.applyVariantFromColorSize(p, color, sizes[0]);
+    }
+  }
+
+  onDetailSizeSelect(p: CatalogProduct, size: string | null): void {
+    this.detailSelectedSize.set(size);
+    const color = this.detailSelectedColor();
+    if (!color || !size) {
+      this.selectedVariantId.update((m) => {
+        const c = { ...m };
+        delete c[p.productId];
+        return c;
+      });
+      return;
+    }
+    this.applyVariantFromColorSize(p, color, size);
+  }
+
+  private applyVariantFromColorSize(p: CatalogProduct, color: string, size: string): void {
+    const colorTarget = (color ?? '').trim() || '—';
+    const sz = (size ?? '').trim() || '—';
+    const match = p.variants!.find(
+      (v) =>
+        (v.stock ?? 0) > 0 &&
+        this.colorLabel(v) === colorTarget &&
+        ((v.size ?? '').trim() || '—') === sz
+    );
+    if (match) {
+      this.onVariantChange(p.productId, this.variantIdOf(match));
+    }
+  }
+
   onVariantChange(productId: number, variantId: number): void {
     const vid = Number(variantId);
     if (Number.isNaN(vid)) return;
@@ -151,6 +242,8 @@ export class FeaturePageComponent implements OnInit {
   readonly selectedItem = signal<CatalogProduct | null>(null);
 
   openProductDetails(p: CatalogProduct): void {
+    this.detailSelectedColor.set(null);
+    this.detailSelectedSize.set(null);
     this.selectedItem.set(p);
     this.showProductDetails.set(true);
     this.maybePreselectVariant(p);
@@ -165,17 +258,32 @@ export class FeaturePageComponent implements OnInit {
     }
   }
 
-  /** If Textile with a single in-stock variant, select it to simplify add-to-cart. */
+  /** If Textile with a single in-stock variant, select it; else auto-fill color/size when unique. */
   private maybePreselectVariant(p: CatalogProduct): void {
     if (p.category !== 'TEXTILE' || !p.variants?.length) return;
-    const inStock = p.variants.filter((v) => v.stock > 0);
+    const inStock = p.variants.filter((v) => (v.stock ?? 0) > 0);
     if (inStock.length === 1) {
-      this.onVariantChange(p.productId, this.variantIdOf(inStock[0]));
+      const v0 = inStock[0];
+      this.detailSelectedColor.set(this.colorLabel(v0));
+      this.detailSelectedSize.set((v0.size ?? '').trim() || '—');
+      this.onVariantChange(p.productId, this.variantIdOf(v0));
+      return;
+    }
+    const colors = this.distinctColorsInStock(p);
+    if (colors.length === 1) {
+      this.detailSelectedColor.set(colors[0]);
+      const sizes = this.sizesForSelectedColor(p);
+      if (sizes.length === 1) {
+        this.detailSelectedSize.set(sizes[0]);
+        this.applyVariantFromColorSize(p, colors[0], sizes[0]);
+      }
     }
   }
 
   closeProductDetails(): void {
     this.showProductDetails.set(false);
+    this.detailSelectedColor.set(null);
+    this.detailSelectedSize.set(null);
     const item = this.selectedItem();
     if (item) {
       this.selectedVariantId.update(v => {
@@ -250,7 +358,7 @@ export class FeaturePageComponent implements OnInit {
         this.catalogImageFailed.set(new Set());
       },
       error: () => {
-        this.catalogError = 'Impossible de charger le catalogue. Vérifiez que le backend est actif.';
+        this.catalogError = 'Could not load the catalog. Check that the backend is running.';
         this.catalogLoading = false;
       },
     });
@@ -278,7 +386,7 @@ export class FeaturePageComponent implements OnInit {
 
   formatPrice(p: number | null | undefined): string {
     if (p == null || Number.isNaN(Number(p))) return '—';
-    return new Intl.NumberFormat('fr-TN', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'TND',
       minimumFractionDigits: 2,
@@ -313,7 +421,7 @@ export class FeaturePageComponent implements OnInit {
     }
     const varId = this.selectedVariantId()[p.productId];
     if (this.needsVariantChoice(p) && !varId) {
-      this.notifier.show('⚠ Veuillez sélectionner une taille/couleur.', 'info');
+      this.notifier.show('Please select a color and size.', 'info');
       return;
     }
     this.addingProductId.set(p.productId);
@@ -321,11 +429,11 @@ export class FeaturePageComponent implements OnInit {
       next: () => {
         this.addingProductId.set(null);
         this.shop.refreshCartCount();
-        this.notifier.show(`✓ "${p.name}" ajouté au panier !`, 'success');
+        this.notifier.show(`"${p.name}" added to cart.`, 'success');
       },
       error: () => {
         this.addingProductId.set(null);
-        this.notifier.show('✕ Impossible d\'ajouter au panier.', 'error');
+        this.notifier.show('Could not add to cart.', 'error');
       },
     });
   }
@@ -351,7 +459,7 @@ export class FeaturePageComponent implements OnInit {
         this.artisanProductsLoading.set(false);
       },
       error: () => {
-        this.artisanProductsError.set('Impossible de charger vos produits.');
+        this.artisanProductsError.set('Could not load your products.');
         this.artisanProductsLoading.set(false);
       },
     });
@@ -390,7 +498,7 @@ export class FeaturePageComponent implements OnInit {
   addVariant(): void {
     const p = this.newProduct();
     if (!p.variants) p.variants = [];
-    p.variants.push({ variantId: 0, size: '', color: '', stock: 0, priceOverride: 0 });
+    p.variants.push({ variantId: 0, size: '', color: '', stock: 0 });
     this.newProduct.set({ ...p });
   }
 
@@ -446,7 +554,7 @@ export class FeaturePageComponent implements OnInit {
           this.persistProduct(p);
         },
         error: () => {
-          this.notifier.show('Erreur lors du transfert des images.', 'error');
+          this.notifier.show('Error uploading images.', 'error');
           this.isUploadingImage.set(false);
           this.submittingProduct.set(false);
         }
@@ -473,7 +581,7 @@ export class FeaturePageComponent implements OnInit {
       error: (err) => {
         this.isUploadingImage.set(false);
         this.submittingProduct.set(false);
-        const msg = err?.error?.error ?? 'Erreur lors de l\'enregistrement.';
+        const msg = err?.error?.error ?? 'Could not save the product.';
         this.notifier.show(`✕ ${msg}`, 'error');
       }
     });
@@ -482,10 +590,10 @@ export class FeaturePageComponent implements OnInit {
   private afterProductSaved(prod: CatalogProduct, isEdit: boolean): void {
     if (isEdit) {
       this.artisanProducts.update(list => list.map(p => p.productId === prod.productId ? prod : p));
-      this.notifier.show('✓ Produit mis à jour !', 'success');
+      this.notifier.show('Product updated.', 'success');
     } else {
       this.artisanProducts.update(list => [prod, ...list]);
-      this.notifier.show('✓ Produit ajouté !', 'success');
+      this.notifier.show('Product added.', 'success');
     }
     this.submittingProduct.set(false);
     this.closeProductForm();
@@ -493,24 +601,24 @@ export class FeaturePageComponent implements OnInit {
 
   deleteProduct(productId: number, event?: Event): void {
     event?.stopPropagation();
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) return;
+    if (!confirm('Delete this product?')) return;
     this.http.delete(`${API_BASE_URL}/api/products/${productId}`).subscribe({
       next: () => {
         this.artisanProducts.update(products => products.filter(p => p.productId !== productId));
-        this.notifier.show('✓ Produit supprimé.', 'success');
+        this.notifier.show('Product deleted.', 'success');
       },
       error: () => {
-        this.notifier.show('✕ Erreur lors de la suppression.', 'error');
+        this.notifier.show('Could not delete the product.', 'error');
       },
     });
   }
 
   getStatusLabel(status: string | undefined): string {
     switch (status) {
-      case 'PUBLISHED': return 'En ligne';
-      case 'REJECTED': return 'Refusé';
-      case 'DRAFT': return 'Brouillon';
-      default: return 'En attente';
+      case 'PUBLISHED': return 'Published';
+      case 'REJECTED': return 'Rejected';
+      case 'DRAFT': return 'Draft';
+      default: return 'Pending';
     }
   }
 

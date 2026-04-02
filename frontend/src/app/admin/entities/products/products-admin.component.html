@@ -1,9 +1,9 @@
 <div class="admin-page">
   <header class="page-head">
     <div>
-      <h1>Gestion des produits</h1>
+      <h1>Product management</h1>
     </div>
-    <button type="button" class="btn" (click)="openCreateModal()">Ajouter un produit</button>
+    <button type="button" class="btn" (click)="openCreateModal()">Add product</button>
   </header>
 
   @if (error) {
@@ -23,28 +23,28 @@
           type="text"
           [(ngModel)]="q"
           (ngModelChange)="onSearchInputChange()"
-          placeholder="Rechercher un produit ou un vendeur…"
+          placeholder="Search product or seller…"
         />
       </div>
       <select [(ngModel)]="sort" (change)="sortChanged()">
-        <option value="productId,desc">Plus récent</option>
-        <option value="name,asc">Nom A → Z</option>
-        <option value="name,desc">Nom Z → A</option>
-        <option value="price,asc">Prix croissant</option>
-        <option value="price,desc">Prix décroissant</option>
+        <option value="productId,desc">Newest first</option>
+        <option value="name,asc">Name A → Z</option>
+        <option value="name,desc">Name Z → A</option>
+        <option value="price,asc">Price ↑</option>
+        <option value="price,desc">Price ↓</option>
       </select>
     </div>
 
     <div class="table-wrap">
       @if (loading) {
-        <p class="empty">Chargement…</p>
+        <p class="empty">Loading…</p>
       } @else {
         <table>
           <thead>
             <tr>
-              <th>Produit</th>
+              <th>Product</th>
               <th>Image</th>
-              <th>Prix</th>
+              <th>Price</th>
               <th>Stock</th>
               <th>Actions</th>
             </tr>
@@ -76,8 +76,8 @@
                     type="button"
                     class="btn icon-btn icon-view"
                     (click)="openDetails(item)"
-                    title="Voir détails"
-                    aria-label="Voir détails"
+                    title="View details"
+                    aria-label="View details"
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" />
@@ -88,8 +88,8 @@
                     type="button"
                     class="btn icon-btn icon-edit"
                     (click)="editProduct(item)"
-                    title="Modifier"
-                    aria-label="Modifier"
+                    title="Edit"
+                    aria-label="Edit"
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M12 20h9" />
@@ -100,8 +100,8 @@
                     type="button"
                     class="btn icon-btn icon-delete"
                     (click)="remove(item)"
-                    title="Supprimer"
-                    aria-label="Supprimer"
+                    title="Delete"
+                    aria-label="Delete"
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M3 6h18" />
@@ -117,7 +117,7 @@
         </table>
 
         @if (!loading && pagedProducts.length === 0) {
-          <p class="empty">Aucun produit trouvé.</p>
+          <p class="empty">No products found.</p>
         }
       }
     </div>
@@ -126,7 +126,7 @@
       <span>Total: {{ totalElements }}</span>
       <div>
         <button type="button" class="btn ghost" [disabled]="page === 0" (click)="changeProductPage(false)">
-          Précédent
+          Previous
         </button>
         <span>Page {{ page + 1 }} / {{ totalPages }}</span>
         <button
@@ -135,7 +135,7 @@
           [disabled]="page + 1 >= totalPages"
           (click)="changeProductPage(true)"
         >
-          Suivant
+          Next
         </button>
       </div>
     </div>
@@ -145,28 +145,28 @@
   @if (showProductModal) {
     <div class="fp-modal-root">
       <div class="fp-modal-overlay" (click)="onModalOverlayClick($event)">
-        <div class="fp-modal-card glass-panel" (click)="$event.stopPropagation()">
+        <div class="fp-modal-card admin-products-modal-light" (click)="$event.stopPropagation()">
           <header class="fp-modal-head">
             <div class="fp-modal-head__titles">
               <span class="fp-modal-kicker">{{ editingProductId ? '✏️' : '➕' }}</span>
               <div>
-                <h2 id="product-modal-title">{{ editingProductId ? 'Modifier le produit' : 'Nouveau produit' }}</h2>
-                <p class="fp-modal-sub">Même présentation que l’espace artisan — informations catalogue.</p>
+                <h2 id="product-modal-title">{{ editingProductId ? 'Edit product' : 'New product' }}</h2>
+                <p class="fp-modal-sub">Catalog information (same fields as the artisan workspace).</p>
               </div>
             </div>
-            <button type="button" class="fp-modal-close" (click)="closeProductModal()" aria-label="Fermer">✕</button>
+            <button type="button" class="fp-modal-close" (click)="closeProductModal()" aria-label="Close">✕</button>
           </header>
 
           @if (modalError) {
             <div class="alert modal-alert">{{ modalError }}</div>
           }
           @if (uploading) {
-            <p class="empty">Envoi des images en cours…</p>
+            <p class="empty">Uploading images…</p>
           }
 
           <div class="fp-modal-body">
             <div class="form-group">
-              <label class="form-label">Nom <span class="req">*</span></label>
+              <label class="form-label">Name <span class="req">*</span></label>
               <input type="text" [(ngModel)]="productForm.name" name="pname" class="form-input" />
             </div>
             <div class="form-group">
@@ -176,14 +176,14 @@
                 name="pdesc"
                 rows="3"
                 class="form-textarea"
-                placeholder="Matériaux, dimensions, histoire…"
+                placeholder="Materials, dimensions, story…"
               ></textarea>
             </div>
             <div class="form-row-2">
               <div class="form-group">
-                <label class="form-label">Catégorie</label>
+                <label class="form-label">Category</label>
                 <select [(ngModel)]="productForm.category" name="pcat" class="form-select">
-                  <option value="">Sélectionner</option>
+                  <option value="">Select</option>
                   <option value="BIJOUX">💎 Bijoux</option>
                   <option value="TEXTILE">🧵 Textile</option>
                   <option value="CERAMIQUE">🏺 Céramique</option>
@@ -193,22 +193,22 @@
                 </select>
               </div>
               <div class="form-group">
-                <label class="form-label">Statut</label>
+                <label class="form-label">Status</label>
                 <select [(ngModel)]="productForm.status" name="pstatus" class="form-select">
-                  <option value="PENDING">En attente</option>
-                  <option value="PUBLISHED">Publié</option>
-                  <option value="REJECTED">Refusé</option>
-                  <option value="DRAFT">Brouillon</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="PUBLISHED">Published</option>
+                  <option value="REJECTED">Rejected</option>
+                  <option value="DRAFT">Draft</option>
                 </select>
               </div>
             </div>
             <div class="form-row-2">
               <div class="form-group">
-                <label class="form-label">Prix (TND)</label>
+                <label class="form-label">Price (TND)</label>
                 <input type="number" step="any" [(ngModel)]="productForm.price" name="pprice" class="form-input" />
               </div>
               <div class="form-group">
-                <label class="form-label">Stock global</label>
+                <label class="form-label">Total stock</label>
                 <input type="number" step="1" [(ngModel)]="productForm.stock" name="pstock" class="form-input" />
               </div>
             </div>
@@ -216,38 +216,28 @@
             @if (productForm.category === 'TEXTILE') {
               <div class="form-section">
                 <div class="form-section__head">
-                  <h3 class="form-section__title">Variantes (taille / couleur)</h3>
-                  <button type="button" class="btn-add-variant" (click)="addVariantRow()">+ Ajouter</button>
+                  <h3 class="form-section__title">Variants (size / color)</h3>
+                  <button type="button" class="btn-add-variant" (click)="addVariantRow()">+ Add</button>
                 </div>
                 @for (v of productForm.variants; track $index; let j = $index) {
                   <div class="variant-row">
                     <div class="form-row-2">
                       <div class="form-group">
-                        <label class="form-label-sm">Taille</label>
+                        <label class="form-label-sm">Size</label>
                         <input type="text" [(ngModel)]="v.size" [name]="'vsz-' + j" class="form-input form-input--sm" />
                       </div>
                       <div class="form-group">
-                        <label class="form-label-sm">Couleur</label>
+                        <label class="form-label-sm">Color</label>
                         <input type="text" [(ngModel)]="v.color" [name]="'vcl-' + j" class="form-input form-input--sm" />
                       </div>
                     </div>
                     <div class="form-row-2">
                       <div class="form-group">
-                        <label class="form-label-sm">Stock variante</label>
+                        <label class="form-label-sm">Variant stock</label>
                         <input type="number" [(ngModel)]="v.stock" [name]="'vst-' + j" class="form-input form-input--sm" />
                       </div>
-                      <div class="form-group">
-                        <label class="form-label-sm">Prix spécifique (0 = prix produit)</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          [(ngModel)]="v.priceOverride"
-                          [name]="'vpo-' + j"
-                          class="form-input form-input--sm"
-                        />
-                      </div>
                     </div>
-                    <button type="button" class="btn-remove-variant" (click)="removeVariantRow(j)">Supprimer</button>
+                    <button type="button" class="btn-remove-variant" (click)="removeVariantRow(j)">Remove</button>
                   </div>
                 }
               </div>
@@ -256,7 +246,7 @@
             <div class="media-zone">
               <div class="media-title">
                 <h3>Photos</h3>
-                <span>Plusieurs fichiers locaux (optionnel)</span>
+                <span>Multiple local files (optional)</span>
               </div>
               <div class="upload-box modern">
                 <input
@@ -273,24 +263,24 @@
                     <path d="M7 10l5-5 5 5" />
                     <path d="M12 5v12" />
                   </svg>
-                  Choisir des images
+                  Choose images
                 </label>
                 @if (pendingFiles.length) {
-                  <button type="button" class="btn ghost" (click)="clearFileSelection()">Effacer les nouveaux fichiers</button>
+                  <button type="button" class="btn ghost" (click)="clearFileSelection()">Clear new files</button>
                 }
               </div>
               @if (existingImageUrls().length || pendingPreviewUrls.length) {
-                <div class="admin-photo-grid" aria-label="Aperçu des photos">
+                <div class="admin-photo-grid" aria-label="Photo previews">
                   @for (u of existingImageUrls(); track $index) {
                     <div class="admin-photo-tile">
                       <img [src]="u" alt="" />
-                      <button type="button" class="admin-photo-remove" (click)="removeExistingImage($index)" title="Retirer">×</button>
+                      <button type="button" class="admin-photo-remove" (click)="removeExistingImage($index)" title="Remove">×</button>
                     </div>
                   }
                   @for (u of pendingPreviewUrls; track $index) {
                     <div class="admin-photo-tile admin-photo-tile--new">
                       <img [src]="u" alt="" />
-                      <button type="button" class="admin-photo-remove" (click)="removePendingImage($index)" title="Retirer">×</button>
+                      <button type="button" class="admin-photo-remove" (click)="removePendingImage($index)" title="Remove">×</button>
                     </div>
                   }
                 </div>
@@ -299,9 +289,9 @@
           </div>
 
           <div class="fp-modal-footer">
-            <button type="button" class="btn-cancel" [disabled]="uploading" (click)="closeProductModal()">Annuler</button>
+            <button type="button" class="btn-cancel" [disabled]="uploading" (click)="closeProductModal()">Cancel</button>
             <button type="button" class="btn-save" [disabled]="uploading" (click)="save()">
-              {{ editingProductId ? 'Mettre à jour' : 'Créer' }}
+              {{ editingProductId ? 'Update' : 'Create' }}
             </button>
           </div>
         </div>
@@ -312,31 +302,62 @@
   @if (showDetailsModal && detailsProduct) {
     <div class="fp-modal-root">
       <div class="fp-modal-overlay" (click)="onDetailsOverlayClick($event)">
-        <div class="fp-modal-card fp-modal-card--wide glass-panel" (click)="$event.stopPropagation()">
-          <header class="fp-modal-head">
-            <div>
+        <div class="fp-modal-card fp-modal-card--wide admin-products-modal-light pd-view-modal" (click)="$event.stopPropagation()">
+          <header class="pd-view-head">
+            <div class="pd-view-head__titles">
               @if (detailsProduct.category) {
-                <span class="fp-badge">{{ detailsProduct.category }}</span>
+                <span class="pd-view-badge">{{ detailsProduct.category }}</span>
               }
-              <h2>{{ detailsProduct.name }}</h2>
+              <h2 class="pd-view-title">{{ detailsProduct.name }}</h2>
             </div>
-            <button type="button" class="fp-modal-close" (click)="closeDetailsModal()" aria-label="Fermer">✕</button>
+            <button type="button" class="pd-view-close" (click)="closeDetailsModal()" aria-label="Close">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
           </header>
 
-          <div class="detail-grid-admin">
-            <div class="detail-gallery-admin">
+          <div class="pd-view-body">
+            <div class="pd-view-gallery">
               @if (detailGalleryUrls().length) {
-                <div class="detail-gallery-main">
-                  <img [src]="detailMainImageUrl()" [alt]="detailsProduct.name" />
+                <div class="pd-view-stage">
+                  <img [src]="detailMainImageUrl()" [alt]="detailsProduct.name" class="pd-view-stage__img" />
+                  @if (detailGalleryLength() > 1) {
+                    <button
+                      type="button"
+                      class="pd-view-nav pd-view-nav--prev"
+                      (click)="detailImagePrev()"
+                      aria-label="Previous image"
+                    >
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M15 18l-6-6 6-6" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      class="pd-view-nav pd-view-nav--next"
+                      (click)="detailImageNext()"
+                      aria-label="Next image"
+                    >
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M9 18l6-6-6-6" />
+                      </svg>
+                    </button>
+                    <span class="pd-view-counter" aria-live="polite">
+                      {{ detailImageIndex + 1 }} / {{ detailGalleryLength() }}
+                    </span>
+                  }
                 </div>
-                @if (detailGalleryUrls().length > 1) {
-                  <div class="detail-gallery-thumbs" role="tablist" aria-label="Miniatures">
+                @if (detailGalleryLength() > 1) {
+                  <div class="pd-view-thumbs" role="tablist" aria-label="Product images">
                     @for (u of detailGalleryUrls(); track $index) {
                       <button
                         type="button"
-                        class="detail-thumb"
-                        [class.detail-thumb--active]="detailImageIndex === $index"
-                        (click)="detailImageIndex = $index"
+                        class="pd-view-thumb"
+                        [class.pd-view-thumb--active]="detailImageIndex === $index"
+                        (click)="selectDetailImage($index)"
+                        [attr.aria-selected]="detailImageIndex === $index"
+                        [attr.aria-label]="'Image ' + ($index + 1)"
                       >
                         <img [src]="u" alt="" />
                       </button>
@@ -344,35 +365,56 @@
                   </div>
                 }
               } @else {
-                <div class="details-empty-media">Aucune image</div>
+                <div class="pd-view-empty">No image</div>
               }
             </div>
-            <div class="detail-info-admin">
-              @if (detailsProduct.description) {
-                <p class="detail-desc">{{ detailsProduct.description }}</p>
-              } @else {
-                <p class="detail-desc muted">Pas de description.</p>
-              }
-              <div class="details-meta-grid">
-                <div><span class="meta-label">Vendeur</span> {{ detailsProduct.user?.username ? '@' + detailsProduct.user.username : '—' }}</div>
-                <div><span class="meta-label">Prix</span> {{ formatPrice(detailsProduct.price) }}</div>
-                <div><span class="meta-label">Stock</span> {{ detailsProduct.stock ?? '—' }}</div>
-                <div><span class="meta-label">Réf.</span> #{{ detailsProduct.productId }}</div>
-              </div>
+
+            <div class="pd-view-info">
+              <section class="pd-view-card pd-view-card--desc">
+                <h3 class="pd-view-card__label">Description</h3>
+                @if (detailsProduct.description) {
+                  <p class="pd-view-desc">{{ detailsProduct.description }}</p>
+                } @else {
+                  <p class="pd-view-desc pd-view-desc--muted">No description provided.</p>
+                }
+              </section>
+
+              <section class="pd-view-card">
+                <h3 class="pd-view-card__label">Product details</h3>
+                <dl class="pd-view-specs">
+                  <div class="pd-view-spec">
+                    <dt>Seller</dt>
+                    <dd>{{ detailsProduct.user?.username ? '@' + detailsProduct.user.username : '—' }}</dd>
+                  </div>
+                  <div class="pd-view-spec">
+                    <dt>Price</dt>
+                    <dd class="pd-view-spec--accent">{{ formatPrice(detailsProduct.price) }}</dd>
+                  </div>
+                  <div class="pd-view-spec">
+                    <dt>Stock</dt>
+                    <dd>{{ detailsProduct.stock ?? '—' }}</dd>
+                  </div>
+                  <div class="pd-view-spec">
+                    <dt>Reference</dt>
+                    <dd><span class="pd-view-ref">#{{ detailsProduct.productId }}</span></dd>
+                  </div>
+                </dl>
+              </section>
+
               @if (detailsProduct.category === 'TEXTILE' && detailsProduct.variants?.length) {
-                <div class="variants-list">
-                  <strong>Variantes</strong>
-                  <ul>
+                <section class="pd-view-card">
+                  <h3 class="pd-view-card__label">Variants</h3>
+                  <ul class="pd-view-variant-list">
                     @for (vv of detailsProduct.variants; track $index) {
-                      <li>
-                        {{ vv.size }} / {{ vv.color }} — stock {{ vv.stock }}
-                        @if (vv.priceOverride) {
-                          <span class="sub">({{ formatPrice(vv.priceOverride) }})</span>
-                        }
+                      <li class="pd-view-variant">
+                        <span class="pd-view-variant__size">{{ vv.size }}</span>
+                        <span class="pd-view-variant__sep">·</span>
+                        <span class="pd-view-variant__color">{{ vv.color }}</span>
+                        <span class="pd-view-variant__stock">Stock {{ vv.stock }}</span>
                       </li>
                     }
                   </ul>
-                </div>
+                </section>
               }
             </div>
           </div>

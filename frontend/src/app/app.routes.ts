@@ -43,7 +43,7 @@ export const routes: Routes = [
   { path: 'login', component: SignInComponent },
   { path: 'panier', component: CartPageComponent, canActivate: [authGuard] },
   { path: 'mes-commandes', component: MyOrdersComponent, canActivate: [authGuard] },
-  { path: 'mes-ordres', component: ArtisanOrdersComponent, canActivate: [authGuard], data: { roles: ['ROLE_ARTISAN', 'ROLE_ADMIN'] } },
+  { path: 'mes-ordres', component: ArtisanOrdersComponent, canActivate: [authGuard], data: { roles: ['ROLE_ARTISAN', 'ROLE_ADMIN'], title: 'My orders (sales)' } },
   { path: 'mock-payment', component: MockPaymentComponent, canActivate: [authGuard] },
   { path: 'favoris', component: FavoritesComponent, canActivate: [authGuard] },
 
@@ -276,36 +276,36 @@ export const routes: Routes = [
     path: 'artisanat',
     component: FeaturePageComponent,
     data: {
-      kicker: 'Patrimoine vivant',
+      kicker: 'Living heritage',
       accent: 'sand',
-      title: 'Artisanat & souvenirs',
-      /** Affiche le catalogue produits (GET /api/products) sous le bandeau hero. */
+      title: 'Crafts & souvenirs',
+      /** Product catalog (GET /api/products) */
       catalog: 'products',
       description:
-        'Mettre en avant les artisans et leurs créations : vitrine numérique, parcours d’achat et impact positif sur l’économie locale.',
+        'Showcase artisans and their work: digital storefront, a simple purchase path, and positive impact on the local economy.',
       blocks: [
         {
           icon: '👤',
-          title: 'Artisans tunisiens',
+          title: 'Tunisian artisans',
           items: [
-            'Profils avec spécialités, localisation et moyens de contact.',
-            'Histoire de l’atelier et savoir-faire.',
+            'Profiles with specialties, location, and contact options.',
+            'Workshop story and craftsmanship.',
           ],
         },
         {
           icon: '🛒',
-          title: 'Catalogue & souvenirs',
+          title: 'Catalog & souvenirs',
           items: [
-            'Vitrine de produits faits main, crafts et souvenirs.',
-            'Parcours d’achat et tunnel e-commerce (front préparé, paiement sécurisé à venir).',
+            'Handmade products, crafts, and souvenirs.',
+            'Checkout flow with secure payment integration.',
           ],
         },
         {
           icon: '🌿',
           title: 'Promotion & impact',
           items: [
-            'Mise en avant des produits uniques et circuits courts.',
-            'Soutien à l’entrepreneuriat local et au tourisme durable.',
+            'Highlighting unique products and short supply chains.',
+            'Supporting local entrepreneurship and sustainable tourism.',
           ],
         },
       ],

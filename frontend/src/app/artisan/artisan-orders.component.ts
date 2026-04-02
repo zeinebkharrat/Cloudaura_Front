@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   CheckoutBuyer,
@@ -26,28 +26,41 @@ export class ArtisanOrdersComponent implements OnInit {
   readonly orders = signal<MyOrderSummary[] | null>(null);
   readonly loading = signal(true);
   readonly error = signal<string | null>(null);
+
+  /** Dashboard strip: order count, line items, revenue. */
+  readonly summary = computed(() => {
+    const list = this.orders();
+    if (!list?.length) return null;
+    let revenue = 0;
+    let items = 0;
+    for (const o of list) {
+      revenue += o.totalAmount ?? 0;
+      items += o.itemCount ?? 0;
+    }
+    return { orders: list.length, revenue, items };
+  });
   
   readonly expandedOrderId = signal<number | null>(null);
   readonly detail = signal<CheckoutOrder | null>(null);
   readonly detailLoading = signal(false);
 
   readonly statusOptions = [
-    { value: 'PENDING', label: 'En attente' },
-    { value: 'CONFIRMED', label: 'Confirmé' },
-    { value: 'SHIPPED', label: 'Expédié' },
-    { value: 'DELIVERED', label: 'Livré' },
-    { value: 'CANCELLED', label: 'Annulé' },
+    { value: 'PENDING', label: 'Pending' },
+    { value: 'CONFIRMED', label: 'Confirmed' },
+    { value: 'SHIPPED', label: 'Shipped' },
+    { value: 'DELIVERED', label: 'Delivered' },
+    { value: 'CANCELLED', label: 'Cancelled' },
   ] as const;
 
   readonly updatingItems = signal<Set<number>>(new Set());
 
   orderStatusLabel(status: string | undefined | null): string {
     const map: Record<string, string> = {
-      PENDING: 'En attente',
-      CONFIRMED: 'Confirmée',
-      SHIPPED: 'Expédiée',
-      DELIVERED: 'Livrée',
-      CANCELLED: 'Annulée',
+      PENDING: 'Pending',
+      CONFIRMED: 'Confirmed',
+      SHIPPED: 'Shipped',
+      DELIVERED: 'Delivered',
+      CANCELLED: 'Cancelled',
     };
     if (status == null) return '—';
     return map[status] ?? status;
@@ -55,7 +68,7 @@ export class ArtisanOrdersComponent implements OnInit {
 
   ngOnInit(): void {
     if (!this.auth.isArtisan() && !this.auth.isAdmin()) {
-        this.error.set('Accès non autorisé.');
+        this.error.set('Access denied.');
         this.loading.set(false);
         return;
     }
@@ -71,7 +84,7 @@ export class ArtisanOrdersComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
-        this.error.set('Impossible de charger vos commandes.');
+        this.error.set('Could not load your orders.');
         this.loading.set(false);
       },
     });
@@ -105,29 +118,35 @@ export class ArtisanOrdersComponent implements OnInit {
     this.shop.updateOrderItemStatus(orderItemId, newStatus).subscribe({
       next: () => {
         this.updatingItems.update(s => { s.delete(orderItemId); return new Set(s); });
-        this.notifier.show('✓ Statut mis à jour avec succès.', 'success');
+        this.notifier.show('Status updated.', 'success');
       },
       error: () => {
         this.updatingItems.update(s => { s.delete(orderItemId); return new Set(s); });
-        this.notifier.show('✕ Erreur lors de la mise à jour du statut.', 'error');
+        this.notifier.show('Could not update status.', 'error');
       }
     });
   }
 
   formatPrice(p: number | null | undefined): string {
     if (p == null) return '—';
-    return new Intl.NumberFormat('fr-TN', { style: 'currency', currency: 'TND' }).format(p);
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'TND' }).format(p);
   }
 
   formatDate(iso: string | null | undefined): string {
     if (!iso) return '—';
-    return new Date(iso).toLocaleString('fr-FR', { 
-        dateStyle: 'medium', 
-        timeStyle: 'short' 
+    return new Date(iso).toLocaleString('en-US', {
+        dateStyle: 'medium',
+        timeStyle: 'short'
     });
   }
 
   rowExpanded(row: MyOrderSummary): boolean {
     return this.expandedOrderId() === row.orderId;
+  }
+
+  lineInitial(name: string | undefined): string {
+    const t = (name ?? '').trim();
+    if (!t) return '?';
+    return t.charAt(0).toUpperCase();
   }
 }

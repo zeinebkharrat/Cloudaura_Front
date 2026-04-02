@@ -26,8 +26,8 @@ export class AdminLayoutComponent {
     { label: 'Logs d\'audit',   icon: '📋', route: '/admin/audit-logs' },
     { label: 'Utilisateurs',    icon: '👥', route: '/admin/users' },
     { label: 'Paramètres',      icon: '⚙️',  route: '/admin/settings' },
-    { label: 'Produits',        icon: '🏺', route: '/admin/products' },
-    { label: 'Commandes',       icon: '🧾', route: '/admin/orders' }
+    { label: 'Products',        icon: '🏺', route: '/admin/products' },
+    { label: 'Orders',          icon: '🧾', route: '/admin/orders' }
   ];
 
   constructor(public auth: AuthService, private router: Router) {}
