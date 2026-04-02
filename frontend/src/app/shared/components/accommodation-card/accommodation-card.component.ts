@@ -12,8 +12,13 @@ import { Accommodation } from '../../../core/models/travel.models';
       <!-- Image Area with gradient overlay -->
       <div class="card-visual" [style.background]="getGradient()">
         <div class="visual-content">
-          <span class="type-pill">{{ formatType(accommodation.type) }}</span>
-          <div class="visual-icon">{{ getIcon(accommodation.type) }}</div>
+          <span class="type-pill">
+            <img class="type-pill-icon" [src]="typeIconSrc(accommodation.type)" alt="" width="18" height="18" />
+            {{ formatType(accommodation.type) }}
+          </span>
+          <div class="visual-icon-wrap">
+            <img class="visual-icon-img" [src]="typeIconSrc(accommodation.type)" alt="" />
+          </div>
         </div>
         <!-- Rating badge -->
         <div class="rating-badge" [class.excellent]="accommodation.rating >= 4.5"
@@ -35,9 +40,9 @@ import { Accommodation } from '../../../core/models/travel.models';
 
         <!-- Quick amenities -->
         <div class="amenity-row">
-          <span class="amenity-chip">📶 Wi-Fi</span>
-          <span class="amenity-chip">🅿️ Parking</span>
-          <span class="amenity-chip" *ngIf="accommodation.rating >= 4">🏊 Piscine</span>
+          <span class="amenity-chip"><i class="pi pi-wifi amenity-pi" aria-hidden="true"></i> Wi‑Fi</span>
+          <span class="amenity-chip"><i class="pi pi-car amenity-pi" aria-hidden="true"></i> Parking</span>
+          <span class="amenity-chip" *ngIf="accommodation.rating >= 4"><i class="pi pi-database amenity-pi" aria-hidden="true"></i> Pool</span>
         </div>
 
         <!-- Footer -->
@@ -87,12 +92,22 @@ import { Accommodation } from '../../../core/models/travel.models';
       justify-content: space-between;
       z-index: 2;
     }
-    .visual-icon {
-      font-size: 3.5rem;
-      opacity: 0.15;
+    .visual-icon-wrap {
       position: absolute;
-      right: 16px;
-      bottom: 10px;
+      right: 12px;
+      bottom: 8px;
+      opacity: 0.2;
+      pointer-events: none;
+    }
+    .visual-icon-img {
+      width: 72px;
+      height: 72px;
+      object-fit: contain;
+    }
+    .type-pill-icon {
+      vertical-align: middle;
+      margin-right: 6px;
+      object-fit: contain;
     }
     .type-pill {
       background: rgba(0,0,0,0.45);
@@ -171,6 +186,9 @@ import { Accommodation } from '../../../core/models/travel.models';
       margin-bottom: 16px;
     }
     .amenity-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
       font-size: 0.72rem;
       padding: 4px 8px;
       background: rgba(255,255,255,0.04);
@@ -178,6 +196,7 @@ import { Accommodation } from '../../../core/models/travel.models';
       border-radius: 6px;
       color: rgba(255,255,255,0.6);
     }
+    .amenity-pi { font-size: 0.78rem; color: rgba(200, 184, 232, 0.95); }
 
     /* Footer */
     .card-footer {
@@ -230,19 +249,17 @@ export class AccommodationCardComponent {
 
   formatType(type: string): string {
     const map: Record<string, string> = {
-      'HOTEL': '🏨 Hôtel',
-      'MAISON_HOTE': '🏡 Maison d\'hôtes',
-      'GUESTHOUSE': '🛖 Gîte',
-      'AUTRE': '🏠 Hébergement'
+      HOTEL: 'Hotel',
+      MAISON_HOTE: 'Guest house',
+      GUESTHOUSE: 'Rural guesthouse',
+      AUTRE: 'Stay',
     };
     return map[type] || type;
   }
 
-  getIcon(type: string): string {
-    const icons: Record<string, string> = {
-      'HOTEL': '🏨', 'MAISON_HOTE': '🏡', 'GUESTHOUSE': '🛖', 'AUTRE': '🏠'
-    };
-    return icons[type] || '🏨';
+  typeIconSrc(type: string): string {
+    if (type === 'HOTEL') return 'icones/hotel.png';
+    return 'icones/home.png';
   }
 
   getStars(rating: number): string {

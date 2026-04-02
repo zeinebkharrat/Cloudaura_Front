@@ -2,10 +2,13 @@ import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { ActivatedRoute, Data, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { extractApiErrorMessage } from './api-error.util';
 import { API_BASE_URL, API_FALLBACK_ORIGIN } from './core/api-url';
 import { AuthService } from './core/auth.service';
 import { ShopService } from './core/shop.service';
+import { EventService } from './event.service';
+import { Event as TravelEvent } from './models/event';
 
 /** Rich content block for feature pages (front-only). */
 export interface FeatureBlock {
@@ -47,6 +50,7 @@ export class FeaturePageComponent implements OnInit {
   readonly router = inject(Router);
   readonly auth = inject(AuthService);
   readonly shop = inject(ShopService);
+  private eventService = inject(EventService);
 
   kicker = '';
   title = '';
@@ -54,6 +58,11 @@ export class FeaturePageComponent implements OnInit {
   accent: FeatureAccent = 'coral';
   highlights: string[] = [];
   blocks: FeatureBlock[] = [];
+  events: TravelEvent[] = [];
+  isLoadingEvents = false;
+  selectedEvent: TravelEvent | null = null;
+  readonly eventJoinLoading = signal(false);
+  readonly eventJoinError = signal<string | null>(null);
 
   /** Si `'products'`, charge et affiche le catalogue sous les blocs informatifs. */
   catalog: 'none' | 'products' = 'none';
@@ -92,10 +101,10 @@ export class FeaturePageComponent implements OnInit {
   private readonly maxFileSize = 10 * 1024 * 1024; // 10MB
 
   ngOnInit(): void {
-        this.applyData(this.route.snapshot.data);
+    this.applyData(this.route.snapshot.data);
 
     this.route.data.subscribe((d) => this.applyData(d));
-    
+
     // Load artisan products if user is artisan
     if (this.isArtisan()) {
       this.loadArtisanProducts();
@@ -128,6 +137,14 @@ export class FeaturePageComponent implements OnInit {
       this.catalogProducts = [];
       this.catalogError = null;
     }
+
+    if (this.title === 'Events') {
+      this.loadEvents();
+    } else {
+      this.events = [];
+      this.isLoadingEvents = false;
+      this.selectedEvent = null;
+    }
   }
 
   private loadCatalogProducts(): void {
@@ -152,13 +169,13 @@ export class FeaturePageComponent implements OnInit {
             },
             error: () => {
               this.catalogError =
-                'Impossible de charger le catalogue. Lancez le backend (port 9091 par défaut) et « ng serve » avec le proxy.';
+                'Could not load the catalog. Start the backend (default port 9091) and run `ng serve` with the Angular proxy.';
               this.catalogLoading = false;
             },
           });
         } else {
           this.catalogError =
-            'Impossible de charger le catalogue. Vérifiez que le backend tourne (ex. port 9091) et le proxy Angular.';
+            'Could not load the catalog. Check that the backend is running (e.g. port 9091) and that the Angular proxy is configured.';
           this.catalogLoading = false;
         }
       },
@@ -205,7 +222,7 @@ export class FeaturePageComponent implements OnInit {
     }
     const stock = p.stock ?? 0;
     if (stock <= 0) {
-      this.cartToast.set('Ce produit n’est pas disponible (stock).');
+      this.cartToast.set('This product is unavailable (out of stock).');
       return;
     }
     this.addingProductId.set(p.productId);
@@ -213,12 +230,12 @@ export class FeaturePageComponent implements OnInit {
       next: () => {
         this.addingProductId.set(null);
         this.shop.refreshCartCount();
-        this.cartToast.set('Ajouté au panier.');
+        this.cartToast.set('Added to cart.');
         setTimeout(() => this.cartToast.set(null), 2500);
       },
       error: () => {
         this.addingProductId.set(null);
-        this.cartToast.set('Impossible d’ajouter au panier (stock ou connexion).');
+        this.cartToast.set('Could not add to cart (stock or connection issue).');
       },
     });
   }
@@ -244,12 +261,12 @@ export class FeaturePageComponent implements OnInit {
               this.artisanProductsLoading.set(false);
             },
             error: () => {
-              this.artisanProductsError.set('Impossible de charger vos produits.');
+              this.artisanProductsError.set('Could not load your products.');
               this.artisanProductsLoading.set(false);
             },
           });
         } else {
-          this.artisanProductsError.set('Impossible de charger vos produits.');
+          this.artisanProductsError.set('Could not load your products.');
           this.artisanProductsLoading.set(false);
         }
       },
@@ -284,12 +301,12 @@ export class FeaturePageComponent implements OnInit {
     this.clearFileSelection();
   }
 
-  onFileSelected(event: Event): void {
+  onFileSelected(event: globalThis.Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       const file = input.files[0];
       if (file.size > this.maxFileSize) {
-        this.cartToast.set('Fichier trop volumineux (max 10Mo).');
+        this.cartToast.set('File too large (max 10 MB).');
         return;
       }
       this.selectedFile.set(file);
@@ -324,7 +341,7 @@ export class FeaturePageComponent implements OnInit {
         },
         error: () => {
           this.isUploadingImage.set(false);
-          this.cartToast.set('Erreur lors de l\'envoi de l\'image.');
+          this.cartToast.set('Error uploading the image.');
         }
       });
     } else {
@@ -380,10 +397,10 @@ export class FeaturePageComponent implements OnInit {
   private afterProductSaved(prod: CatalogProduct, isEdit: boolean): void {
     if (isEdit) {
       this.artisanProducts.update(list => list.map(p => p.productId === prod.productId ? prod : p));
-      this.cartToast.set('Produit mis à jour!');
+      this.cartToast.set('Product updated!');
     } else {
       this.artisanProducts.update(list => [prod, ...list]);
-      this.cartToast.set('Produit ajouté!');
+      this.cartToast.set('Product added!');
     }
     this.submittingProduct.set(false);
     this.closeProductForm();
@@ -392,12 +409,12 @@ export class FeaturePageComponent implements OnInit {
 
   private handleSaveError(): void {
     this.submittingProduct.set(false);
-    this.cartToast.set('Erreur lors de l\'ajout du produit.');
+    this.cartToast.set('Error adding the product.');
     setTimeout(() => this.cartToast.set(null), 3000);
   }
 
   deleteProduct(productId: number): void {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce produit?')) {
+    if (!confirm('Are you sure you want to delete this product?')) {
       return;
     }
 
@@ -408,7 +425,7 @@ export class FeaturePageComponent implements OnInit {
     this.http.delete(primary).subscribe({
       next: () => {
         this.artisanProducts.update(products => products.filter((p: CatalogProduct) => p.productId !== productId));
-        this.cartToast.set('Produit supprimé avec succès!');
+        this.cartToast.set('Product removed successfully!');
         setTimeout(() => this.cartToast.set(null), 3000);
       },
       error: () => {
@@ -416,18 +433,133 @@ export class FeaturePageComponent implements OnInit {
           this.http.delete(fallback).subscribe({
             next: () => {
               this.artisanProducts.update(products => products.filter((p: CatalogProduct) => p.productId !== productId));
-              this.cartToast.set('Produit supprimé avec succès!');
+              this.cartToast.set('Product removed successfully!');
               setTimeout(() => this.cartToast.set(null), 3000);
             },
             error: () => {
-              this.cartToast.set('Erreur lors de la suppression du produit.');
+              this.cartToast.set('Error removing the product.');
               setTimeout(() => this.cartToast.set(null), 3000);
             },
           });
         } else {
-          this.cartToast.set('Erreur lors de la suppression du produit.');
+          this.cartToast.set('Error removing the product.');
           setTimeout(() => this.cartToast.set(null), 3000);
         }
+      },
+    });
+  }
+
+  private loadEvents(): void {
+    this.isLoadingEvents = true;
+    this.eventService.getEvents().subscribe({
+      next: (events) => {
+        this.events = events;
+        this.isLoadingEvents = false;
+      },
+      error: (err) => {
+        console.error('Error loading events:', err);
+        this.isLoadingEvents = false;
+      }
+    });
+  }
+
+  selectEvent(event: TravelEvent): void {
+    this.selectedEvent = event;
+    document.body.classList.add('modal-open');
+  }
+
+  closeEventDetails(): void {
+    this.selectedEvent = null;
+    this.eventJoinError.set(null);
+    this.eventJoinLoading.set(false);
+    document.body.classList.remove('modal-open');
+  }
+
+  /** Normalized ticket price; Stripe checkout only runs when this is &gt; 0. */
+  eventPriceAmount(event: TravelEvent): number {
+    const raw = event.price as unknown;
+    if (typeof raw === 'number' && !Number.isNaN(raw)) {
+      return raw;
+    }
+    const n = Number.parseFloat(String(raw ?? '').replace(',', '.'));
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  isPaidEvent(event: TravelEvent | null): boolean {
+    return event != null && this.eventPriceAmount(event) > 0;
+  }
+
+  joinActionLabel(event: TravelEvent | null): string {
+    if (!event) {
+      return 'Join Event';
+    }
+    return this.isPaidEvent(event) ? 'Pay & join' : 'Join free';
+  }
+
+  joinLoadingLabel(event: TravelEvent | null): string {
+    if (!event) {
+      return 'Please wait…';
+    }
+    return this.isPaidEvent(event) ? 'Opening payment…' : 'Registering…';
+  }
+
+  onJoinEvent(event: TravelEvent): void {
+    this.eventJoinError.set(null);
+
+    if (!this.auth.isAuthenticated()) {
+      this.router.navigate(['/signin'], { queryParams: { returnUrl: this.router.url } });
+      return;
+    }
+
+    const eventId = event.eventId;
+    if (eventId == null) {
+      this.eventJoinError.set('This event cannot be booked (missing identifier).');
+      return;
+    }
+
+    const amount = this.eventPriceAmount(event);
+
+    if (amount > 0) {
+      this.eventJoinLoading.set(true);
+      this.eventService
+        .createCheckoutSession({
+          event_id: eventId,
+          amount,
+          eventName: event.title,
+        })
+        .subscribe({
+          next: (res) => {
+            this.eventJoinLoading.set(false);
+            if (res?.sessionUrl) {
+              window.location.href = res.sessionUrl;
+              return;
+            }
+            this.eventJoinError.set('Payment did not return a Stripe checkout link. Check the backend Stripe key.');
+          },
+          error: (err: HttpErrorResponse) => {
+            this.eventJoinLoading.set(false);
+            this.eventJoinError.set(extractApiErrorMessage(err, 'Could not start payment.'));
+          },
+        });
+      return;
+    }
+
+    const reservationData = {
+      event_id: eventId,
+      total_amount: 0,
+      status: 'CONFIRMED',
+    };
+
+    this.eventJoinLoading.set(true);
+    this.eventService.createReservation(reservationData).subscribe({
+      next: (res) => {
+        this.eventJoinLoading.set(false);
+        alert(`You're registered! Reservation #${res.event_reservation_id} created.`);
+        this.closeEventDetails();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.eventJoinLoading.set(false);
+        this.eventJoinError.set(extractApiErrorMessage(err, 'Could not complete registration.'));
       },
     });
   }

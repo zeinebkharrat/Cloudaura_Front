@@ -20,6 +20,16 @@ const TRANSPORT_META: Record<string, { icon: string; color: string; bg: string }
   'Train SNCFT':             { icon: '/icones/bus.png',   color: '#38bdf8', bg: 'rgba(56,189,248,0.10)'  },
 };
 
+/** English labels for engine `type` strings (icon lookup still uses the raw API key). */
+const TRANSPORT_TYPE_LABEL_EN: Record<string, string> = {
+  Taxi: 'Taxi',
+  'Louage (Taxi Collectif)': 'Shared taxi (louage)',
+  'Bus SNTRI': 'SNTRI bus',
+  'Avion (Tunisair Express)': 'Flight (Tunisair Express)',
+  'Location de Voiture': 'Car rental',
+  'Train SNCFT': 'SNCFT train',
+};
+
 @Component({
   selector: 'app-transport-ai-recommendation',
   standalone: true,
@@ -30,10 +40,10 @@ const TRANSPORT_META: Record<string, { icon: string; color: string; bg: string }
 
     <!-- ══ HEADER ══════════════════════════════════════════════════ -->
     <div class="ai-header">
-      <span class="ai-badge"><i class="pi pi-microchip"></i> MOTEUR IA</span>
+      <span class="ai-badge"><i class="pi pi-microchip"></i> AI ENGINE</span>
       <h1 class="ai-title">Transport Intelligence Engine</h1>
       <p class="ai-subtitle">
-        Analyse en temps réel depuis la base de données · Calcul dynamique des prix, durées et disponibilités
+        Real-time analysis from the database · Dynamic pricing, duration, and availability
       </p>
     </div>
 
@@ -45,27 +55,27 @@ const TRANSPORT_META: Record<string, { icon: string; color: string; bg: string }
         <!-- Row 1: cities -->
         <div class="form-grid-2">
           <div class="fg">
-            <label class="fg-label">Ville de départ</label>
+            <label class="fg-label">From city</label>
             <select formControlName="fromCityId" class="fg-select">
-              <option value="">— Sélectionner —</option>
+              <option value="">— Select —</option>
               @for (c of cities(); track c.id) {
                 <option [value]="c.id">{{ c.name }}</option>
               }
             </select>
             @if (form.get('fromCityId')?.invalid && form.get('fromCityId')?.touched) {
-              <span class="fg-err">Ville de départ requise</span>
+              <span class="fg-err">From city is required</span>
             }
           </div>
           <div class="fg">
-            <label class="fg-label">Ville d'arrivée</label>
+            <label class="fg-label">To city</label>
             <select formControlName="toCityId" class="fg-select">
-              <option value="">— Sélectionner —</option>
+              <option value="">— Select —</option>
               @for (c of cities(); track c.id) {
                 <option [value]="c.id">{{ c.name }}</option>
               }
             </select>
             @if (form.get('toCityId')?.invalid && form.get('toCityId')?.touched) {
-              <span class="fg-err">Ville d'arrivée requise</span>
+              <span class="fg-err">To city is required</span>
             }
           </div>
         </div>
@@ -73,11 +83,11 @@ const TRANSPORT_META: Record<string, { icon: string; color: string; bg: string }
         <!-- Row 2: date + passengers -->
         <div class="form-grid-2">
           <div class="fg">
-            <label class="fg-label">Date de voyage</label>
+            <label class="fg-label">Travel date</label>
             <input type="date" formControlName="date" class="fg-input" [min]="today" />
           </div>
           <div class="fg">
-            <label class="fg-label">Nombre de passagers</label>
+            <label class="fg-label">Number of passengers</label>
             <input type="number" formControlName="passengers" class="fg-input"
                    min="1" max="20" placeholder="1" />
           </div>
@@ -85,12 +95,18 @@ const TRANSPORT_META: Record<string, { icon: string; color: string; bg: string }
 
         <!-- Preference -->
         <div class="pref-section">
-          <label class="pref-title">Votre priorité</label>
+          <label class="pref-title">Your priority</label>
           <div class="pref-grid">
             @for (opt of preferences; track opt.value) {
               <label class="pref-opt" [class.selected]="form.get('preference')?.value === opt.value">
                 <input type="radio" formControlName="preference" [value]="opt.value" />
-                <span class="pref-icon">{{ opt.emoji }}</span>
+                <span class="pref-icon">
+                  @if (opt.iconSrc) {
+                    <img [src]="opt.iconSrc" alt="" class="pref-icon-img" />
+                  } @else if (opt.iconClass) {
+                    <i [class]="opt.iconClass + ' pref-pi'" aria-hidden="true"></i>
+                  }
+                </span>
                 <span class="pref-label">{{ opt.label }}</span>
                 <span class="pref-desc">{{ opt.desc }}</span>
               </label>
@@ -103,8 +119,8 @@ const TRANSPORT_META: Record<string, { icon: string; color: string; bg: string }
         }
 
         <button type="submit" class="btn-search" [disabled]="loading()">
-          @if (loading()) { <span class="spin"></span> Analyse en cours… }
-          @else { <i class="pi pi-microchip"></i> Lancer l'analyse IA }
+          @if (loading()) { <span class="spin"></span> Analysing… }
+          @else { <i class="pi pi-microchip"></i> Run AI analysis }
         </button>
       </form>
     </div>
@@ -116,7 +132,7 @@ const TRANSPORT_META: Record<string, { icon: string; color: string; bg: string }
       <div class="wave-bars">
         @for (i of [1,2,3,4,5]; track i) { <div class="bar" [style.--i]="i"></div> }
       </div>
-      <h3 class="loading-title">Moteur IA en action</h3>
+      <h3 class="loading-title">AI engine at work</h3>
       <div class="loading-steps">
         @for (step of loadingSteps; track step) {
           <div class="ls-item"><span class="ls-dot"></span>{{ step }}</div>
@@ -139,21 +155,21 @@ const TRANSPORT_META: Record<string, { icon: string; color: string; bg: string }
         <div class="rb-pills">
           <span class="rb-pill">{{ rec()!.distanceKm }} km</span>
           <span class="rb-pill">{{ rec()!.passengers }} passager{{ rec()!.passengers > 1 ? 's' : '' }}</span>
-          <button class="rb-reset" (click)="reset()">Modifier</button>
+          <button class="rb-reset" (click)="reset()">Edit</button>
         </div>
       </div>
 
       <!-- Best option card -->
       @if (best()) {
       <div class="best-card" [style.border-color]="getMeta(best()!.type).color">
-        <div class="best-ribbon">🏆 Meilleure Option</div>
+        <div class="best-ribbon"><i class="pi pi-trophy ribbon-trophy" aria-hidden="true"></i> Best option</div>
         <div class="bc-header">
           <div class="bc-icon" [style.background]="getMeta(best()!.type).bg">
             <img [src]="getMeta(best()!.type).icon"
-                 [alt]="best()!.type" class="transport-icon-img" />
+                 [alt]="typeLabelEn(best()!.type)" class="transport-icon-img" />
           </div>
           <div class="bc-info">
-            <h2>{{ best()!.type }}</h2>
+            <h2>{{ typeLabelEn(best()!.type) }}</h2>
             <p class="bc-desc">{{ best()!.description }}</p>
           </div>
           <div class="bc-score-badge" [style.background]="getMeta(best()!.type).color">
@@ -163,26 +179,26 @@ const TRANSPORT_META: Record<string, { icon: string; color: string; bg: string }
 
         <div class="bc-price" [style.color]="getMeta(best()!.type).color">
           {{ best()!.priceFormatted }}
-          <span class="bc-ppp">soit {{ best()!.pricePerPerson | number:'1.2-2' }} TND/pers.</span>
+          <span class="bc-ppp">i.e. {{ best()!.pricePerPerson | number:'1.2-2' }} TND / person</span>
         </div>
 
         <div class="bc-stats">
           <div class="bcs">
-            <span class="bcs-label">Départ</span>
+            <span class="bcs-label">Departure</span>
             <span class="bcs-val">{{ best()!.departureTime }}</span>
           </div>
           <div class="bcs">
-            <span class="bcs-label">Arrivée</span>
+            <span class="bcs-label">Arrival</span>
             <span class="bcs-val" [style.color]="getMeta(best()!.type).color">
               {{ best()!.arrivalTime }}
             </span>
           </div>
           <div class="bcs">
-            <span class="bcs-label">Durée</span>
+            <span class="bcs-label">Duration</span>
             <span class="bcs-val">{{ best()!.duration }}</span>
           </div>
           <div class="bcs">
-            <span class="bcs-label">Places restantes</span>
+            <span class="bcs-label">Seats left</span>
             <span class="bcs-val" [class.seats-low]="best()!.seatsLeft <= 5">
               {{ best()!.seatsLeft }}
             </span>
@@ -197,7 +213,7 @@ const TRANSPORT_META: Record<string, { icon: string; color: string; bg: string }
 
         <button class="btn-choose" [style.background]="getMeta(best()!.type).color"
                 (click)="selectOption(best()!)">
-          Choisir cette option →
+          Choose this option →
         </button>
       </div>
       }
@@ -220,47 +236,47 @@ const TRANSPORT_META: Record<string, { icon: string; color: string; bg: string }
 
       <!-- Alternatives -->
       @if (alts().length > 0) {
-      <h3 class="alts-title">Alternatives disponibles</h3>
+      <h3 class="alts-title">Available alternatives</h3>
       <div class="alts-grid">
         @for (opt of alts(); track opt.rawType) {
         <div class="alt-card"
              [style.border-color]="getMeta(opt.type).color + '55'">
           <div class="alt-head">
             <span class="alt-icon">
-              <img [src]="getMeta(opt.type).icon" [alt]="opt.type" class="transport-icon-img-sm" />
+              <img [src]="getMeta(opt.type).icon" [alt]="typeLabelEn(opt.type)" class="transport-icon-img-sm" />
             </span>
             <div>
-              <div class="alt-type" [style.color]="getMeta(opt.type).color">{{ opt.type }}</div>
-              <div class="alt-score">Score IA : {{ opt.aiScore }}/100</div>
+              <div class="alt-type" [style.color]="getMeta(opt.type).color">{{ typeLabelEn(opt.type) }}</div>
+              <div class="alt-score">AI score: {{ opt.aiScore }}/100</div>
             </div>
           </div>
           <div class="alt-price" [style.color]="getMeta(opt.type).color">{{ opt.priceFormatted }}</div>
           <div class="alt-meta">
-            <span>🕐 {{ opt.duration }}</span>
-            <span>🚪 {{ opt.departureTime }} → {{ opt.arrivalTime }}</span>
-            <span [class.low]="opt.seatsLeft <= 5">{{ opt.seatsLeft }} places</span>
+            <span><i class="pi pi-clock alt-meta-pi" aria-hidden="true"></i> {{ opt.duration }}</span>
+            <span><i class="pi pi-arrow-right-arrow-left alt-meta-pi" aria-hidden="true"></i> {{ opt.departureTime }} → {{ opt.arrivalTime }}</span>
+            <span [class.low]="opt.seatsLeft <= 5">{{ opt.seatsLeft }} seats</span>
           </div>
-          <button class="alt-btn" (click)="selectOption(opt)">Choisir →</button>
+          <button class="alt-btn" (click)="selectOption(opt)">Choose →</button>
         </div>
         }
       </div>
       }
 
       <!-- Full comparison table -->
-      <h3 class="table-title">Comparatif complet</h3>
+      <h3 class="table-title">Full comparison</h3>
       <div class="compare-table-wrap">
         <div class="ct-head">
-          <span>Mode</span><span>Prix total</span><span>Par pers.</span>
-          <span>Départ</span><span>Arrivée</span><span>Durée</span>
-          <span>Places</span><span>Score IA</span>
+          <span>Mode</span><span>Total price</span><span>Per person</span>
+          <span>Departure</span><span>Arrival</span><span>Duration</span>
+          <span>Seats</span><span>AI score</span>
         </div>
         @for (opt of allOptions(); track opt.rawType) {
         <div class="ct-row"
              [class.ct-best]="opt === best()"
              [class.ct-unavail]="!opt.available">
           <span class="ct-mode">
-            <img [src]="getMeta(opt.type).icon" [alt]="opt.type" class="transport-icon-img-xs" />
-            {{ opt.type }}
+            <img [src]="getMeta(opt.type).icon" [alt]="typeLabelEn(opt.type)" class="transport-icon-img-xs" />
+            {{ typeLabelEn(opt.type) }}
           </span>
           <span class="ct-price" [style.color]="opt.available ? getMeta(opt.type).color : 'rgba(255,255,255,0.3)'">
             {{ opt.priceFormatted }}
@@ -271,7 +287,7 @@ const TRANSPORT_META: Record<string, { icon: string; color: string; bg: string }
           <span>{{ opt.duration }}</span>
           <span>
             @if (opt.available) { {{ opt.seatsLeft }} }
-            @else { <span class="ct-unavail-txt">{{ opt.availabilityInfo || 'Indisponible' }}</span> }
+            @else { <span class="ct-unavail-txt">{{ opt.availabilityInfo || 'Unavailable' }}</span> }
           </span>
           <span class="ct-score" [style.color]="opt.available ? getMeta(opt.type).color : 'rgba(255,255,255,0.2)'">
             {{ opt.available ? opt.aiScore + '/100' : '—' }}
@@ -338,7 +354,9 @@ const TRANSPORT_META: Record<string, { icon: string; color: string; bg: string }
 }
 .pref-opt input { display: none; }
 .pref-opt.selected { border-color: rgba(241,37,69,0.5); background: rgba(241,37,69,0.08); }
-.pref-icon { font-size: 1.4rem; }
+.pref-icon { display: flex; align-items: center; justify-content: center; min-height: 2rem; }
+.pref-icon-img { width: 28px; height: 28px; object-fit: contain; }
+.pref-pi { font-size: 1.2rem; color: rgba(232, 213, 255, 0.95); }
 .pref-label { font-size: 0.8rem; font-weight: 700; color: #fff; }
 .pref-desc { font-size: 0.68rem; color: rgba(255,255,255,0.4); }
 
@@ -407,10 +425,12 @@ const TRANSPORT_META: Record<string, { icon: string; color: string; bg: string }
 }
 .best-ribbon {
   position: absolute; top: 0; right: 0;
+  display: flex; align-items: center; gap: 0.35rem;
   background: linear-gradient(135deg, #f59e0b, #d97706);
   color: #fff; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.5px;
   padding: 0.35rem 1rem; border-bottom-left-radius: 12px;
 }
+.ribbon-trophy { font-size: 0.85rem; }
 .bc-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap; }
 .bc-icon { width: 54px; height: 54px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .transport-icon-img { width: 34px; height: 34px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); }
@@ -471,7 +491,9 @@ const TRANSPORT_META: Record<string, { icon: string; color: string; bg: string }
 .alt-type { font-size: 0.88rem; font-weight: 700; }
 .alt-score { font-size: 0.72rem; color: rgba(255,255,255,0.35); }
 .alt-price { font-size: 1.2rem; font-weight: 800; }
-.alt-meta { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.75rem; color: rgba(255,255,255,0.45); }
+.alt-meta { display: flex; flex-direction: column; gap: 0.35rem; font-size: 0.75rem; color: rgba(255,255,255,0.45); }
+.alt-meta span { display: flex; align-items: center; gap: 0.35rem; }
+.alt-meta-pi { font-size: 0.78rem; opacity: 0.8; flex-shrink: 0; }
 .alt-meta .low { color: #f87171; }
 .alt-btn {
   border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06);
@@ -524,20 +546,26 @@ export class TransportAiRecommendationComponent implements OnInit {
   error   = signal<string | null>(null);
   today   = new Date().toISOString().split('T')[0];
 
-  readonly preferences = [
-    { value: 'budget',  emoji: '💰', label: 'Économique',  desc: 'Prix le plus bas'      },
-    { value: 'fast',    emoji: '⚡', label: 'Rapide',      desc: 'Temps de trajet min.'  },
-    { value: 'comfort', emoji: '🛋️', label: 'Confort',    desc: 'Confort maximal'        },
-    { value: 'balanced',emoji: '⚖️', label: 'Équilibré',  desc: 'Prix / durée / confort' },
+  readonly preferences: Array<{
+    value: string;
+    label: string;
+    desc: string;
+    iconSrc?: string;
+    iconClass?: string;
+  }> = [
+    { value: 'budget', iconSrc: 'icones/money-bag.png', label: 'Budget', desc: 'Lowest price' },
+    { value: 'fast', iconClass: 'pi pi-bolt', label: 'Fast', desc: 'Shortest travel time' },
+    { value: 'comfort', iconClass: 'pi pi-star', label: 'Comfort', desc: 'Maximum comfort' },
+    { value: 'balanced', iconClass: 'pi pi-sliders-h', label: 'Balanced', desc: 'Price / time / comfort' },
   ];
 
   readonly loadingSteps = [
-    'Lecture des transports en base de données…',
-    'Calcul des distances et durées réalistes…',
-    'Vérification des disponibilités de places…',
-    'Application des formules de tarification…',
-    'Validation et correction automatique…',
-    'Scoring IA et classement des options…',
+    'Reading transport data from the database…',
+    'Computing realistic distances and durations…',
+    'Checking seat availability…',
+    'Applying pricing rules…',
+    'Validating and auto-correcting…',
+    'AI scoring and ranking options…',
   ];
 
   form = this.fb.group({
@@ -562,7 +590,7 @@ export class TransportAiRecommendationComponent implements OnInit {
 
     const v = this.form.value;
     if (v.fromCityId === v.toCityId) {
-      this.error.set('La ville de départ et d\'arrivée doivent être différentes.');
+      this.error.set('From city and to city must be different.');
       return;
     }
     this.error.set(null);
@@ -586,7 +614,7 @@ export class TransportAiRecommendationComponent implements OnInit {
       },
       error: (err) => {
         this.loading.set(false);
-        this.error.set(err?.error?.message ?? 'Erreur lors de l\'analyse. Réessayez.');
+        this.error.set(err?.error?.message ?? 'Analysis failed. Please try again.');
       },
     });
   }
@@ -620,11 +648,15 @@ export class TransportAiRecommendationComponent implements OnInit {
     return TRANSPORT_META[type] ?? { icon: '/icones/taxi.png', color: '#8c9bb0', bg: 'rgba(140,155,176,0.08)' };
   }
 
+  typeLabelEn(type: string): string {
+    return TRANSPORT_TYPE_LABEL_EN[type] ?? type;
+  }
+
   getScoreLabel(score: number): string {
     if (score >= 90) return 'Excellent';
-    if (score >= 75) return 'Très bon';
-    if (score >= 60) return 'Bon';
-    if (score >= 45) return 'Correct';
-    return 'Passable';
+    if (score >= 75) return 'Very good';
+    if (score >= 60) return 'Good';
+    if (score >= 45) return 'Fair';
+    return 'Basic';
   }
 }

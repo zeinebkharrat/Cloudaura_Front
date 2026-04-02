@@ -6,8 +6,17 @@
       and the heritage of antiquity, like never before through premium 3D realism.
     </p>
     <div class="hero-buttons animate-in delay-3">
-      <button class="btn-primary">Start Your Journey</button>
-      <button class="btn-outline" style="margin-left: 15px">Watch Video</button>
+      <button type="button" class="btn-primary">Start Your Journey</button>
+      <button
+        type="button"
+        class="btn-outline"
+        style="margin-left: 15px"
+        (click)="openHeroVideoModal()"
+        aria-haspopup="dialog"
+        [attr.aria-expanded]="videoModalOpen() ? 'true' : 'false'"
+      >
+        Watch Video
+      </button>
     </div>
   </div>
 
@@ -19,47 +28,78 @@
   </div>
 </header>
 
-<section class="home-manifesto" aria-label="Valeurs de la plateforme">
+@if (videoModalOpen()) {
+  <div
+    class="hero-video-backdrop"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Promotional video"
+    (click)="onHeroVideoBackdrop($event)"
+  >
+    <div class="hero-video-dialog" (click)="$event.stopPropagation()">
+      <button
+        type="button"
+        class="hero-video-close"
+        (click)="closeHeroVideoModal()"
+        aria-label="Close video"
+      >
+        &times;
+      </button>
+      <video
+        #heroVideoPlayer
+        class="hero-video-player"
+        controls
+        playsinline
+        preload="metadata"
+        [poster]="heroVideoPoster"
+      >
+        <source [src]="heroVideoSrc" type="video/mp4" />
+      </video>
+    </div>
+  </div>
+}
+
+<section class="home-manifesto" aria-label="Platform values">
   <div class="home-manifesto__glow" aria-hidden="true"></div>
   <div class="home-manifesto__inner">
     <div class="home-manifesto__ornament" aria-hidden="true"></div>
     <p class="home-manifesto__line">
-      Villes &amp; parcours · Mobilité &amp; séjour · Événements · Artisanat · Communauté
+      Cities &amp; routes · Mobility &amp; stays · Events · Crafts · Community
     </p>
     <p class="home-manifesto__sub">
-      Une vision front-end : interfaces soignées, prêtes à accueillir données, réservations et échanges.
+      A polished front-end vision: interfaces ready for data, bookings, and social features.
     </p>
   </div>
 </section>
 
 <section id="hub" class="hub-section destinations">
   <div class="section-header">
-    <p class="hub-kicker animate-in">Écosystème YallaTN+</p>
-    <h2 class="animate-in">Le reste de l’écosystème</h2>
+    <p class="hub-kicker animate-in">YallaTN+ ecosystem</p>
+    <h2 class="animate-in">More from the ecosystem</h2>
     <p class="animate-in delay-1">
-      Destinations, transports, hébergement, activités et artisanat sont dans la barre du haut. Ici : quiz, événements, recommandations et communauté.
+      Destinations, transport, accommodation, activities, and crafts live in the top bar. Here: quizzes, events, recommendations, and community.
     </p>
   </div>
   <div class="hub-grid hub-grid--secondary">
     <a routerLink="/jeux" class="hub-card glass-panel animate-in delay-1">
       <span class="hub-card__icon" aria-hidden="true">🧠</span>
-      <h3>Jeux &amp; quiz</h3>
-      <p>Roadmap interactive : avancez étape par étape.</p>
+      <h3>Games &amp; quizzes</h3>
+      <p>Interactive roadmap: progress step by step.</p>
     </a>
     <a routerLink="/evenements" class="hub-card glass-panel animate-in delay-1">
       <span class="hub-card__icon" aria-hidden="true">📅</span>
-      <h3>Événements</h3>
-      <p>Festivals, sport, tech et calendrier interactif.</p>
+      <h3>Events</h3>
+      <p>Festivals, sports, tech, and an interactive calendar.</p>
     </a>
     <a routerLink="/recommandations" class="hub-card glass-panel animate-in delay-2">
       <span class="hub-card__icon" aria-hidden="true">✨</span>
-      <h3>Recommandations</h3>
-      <p>Suggestions adaptées à votre profil.</p>
+      <h3>Recommendations</h3>
+      <p>Suggestions tailored to your profile.</p>
     </a>
     <a routerLink="/communaute" class="hub-card glass-panel animate-in delay-3">
       <span class="hub-card__icon" aria-hidden="true">💬</span>
-      <h3>Communauté</h3>
-      <p>Chat, forums, avis et carnets de voyage.</p>
+      <h3>Community</h3>
+      <p>Chat, forums, reviews, and travel journals.</p>
     </a>
   </div>
 </section>
@@ -125,6 +165,10 @@
 
     <div *ngIf="selectedRegion()" class="region-info-panel slide-up">
       <button class="close-btn" (click)="selectedRegion.set(null)">&times;</button>
+      <div class="region-badges">
+        <span class="region-chip">Tunisia</span>
+        <span class="region-chip">Interactive</span>
+      </div>
       <h3>{{ selectedRegion()?.name }}</h3>
       <p>{{ selectedRegion()?.description }}</p>
       <button

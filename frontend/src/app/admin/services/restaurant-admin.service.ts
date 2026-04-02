@@ -9,7 +9,7 @@ export class RestaurantAdminService {
 
   constructor(private readonly http: HttpClient) {}
 
-  list(q: string, page: number, size: number, sort: string): Observable<PageResponse<Restaurant>> {
+  list(q: string, page: number, size: number, sort: string, cuisineType?: string): Observable<PageResponse<Restaurant>> {
     let params = new HttpParams()
       .set('page', page)
       .set('size', size)
@@ -17,6 +17,10 @@ export class RestaurantAdminService {
 
     if (q.trim()) {
       params = params.set('q', q.trim());
+    }
+
+    if (cuisineType?.trim()) {
+      params = params.set('cuisineType', cuisineType.trim());
     }
 
     return this.http.get<PageResponse<Restaurant>>(this.base, { params });

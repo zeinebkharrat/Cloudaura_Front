@@ -84,7 +84,7 @@ public class ProductController {
     }
 
     @PostMapping
-    public ResponseEntity<Product> create(Authentication authentication, @RequestBody Product entity) {
+    public ResponseEntity<ProductCatalogItem> create(Authentication authentication, @RequestBody Product entity) {
         if (authentication == null || !authentication.isAuthenticated()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -93,9 +93,9 @@ public class ProductController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         try {
-            Product created = productService.save(entity, username);
+            ProductCatalogItem created = productService.save(entity, username);
             return ResponseEntity
-                .created(URI.create("/api/products/" + created.getProductId()))
+                .created(URI.create("/api/products/" + created.productId()))
                 .body(created);
         } catch (NoSuchElementException ex) {
             return ResponseEntity.badRequest().build();
@@ -103,7 +103,7 @@ public class ProductController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Product> update(@PathVariable Integer id, @RequestBody Product entity) {
+    public ResponseEntity<ProductCatalogItem> update(@PathVariable Integer id, @RequestBody Product entity) {
         try {
             return ResponseEntity.ok(productService.update(id, entity));
         } catch (NoSuchElementException ex) {

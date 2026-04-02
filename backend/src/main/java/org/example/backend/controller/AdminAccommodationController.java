@@ -40,7 +40,7 @@ public class AdminAccommodationController {
     @Transactional(readOnly = true)
     public ApiResponse<AccommodationDTO> getAccommodation(@PathVariable Integer id) {
         Accommodation acc = accommodationRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Hébergement non trouvé"));
+            .orElseThrow(() -> new RuntimeException("Accommodation not found"));
         return ApiResponse.success(toDTO(acc));
     }
 
@@ -69,7 +69,7 @@ public class AdminAccommodationController {
             @PathVariable Integer id,
             @RequestBody AccommodationRequest request) {
         Accommodation acc = accommodationRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Hébergement non trouvé"));
+            .orElseThrow(() -> new RuntimeException("Accommodation not found"));
 
         City city = cityRepository.findById(request.cityId())
             .orElseThrow(() -> new RuntimeException("Ville non trouvée"));
@@ -106,7 +106,7 @@ public class AdminAccommodationController {
     @Transactional
     public ApiResponse<AccommodationDTO> toggleStatus(@PathVariable Integer id, @RequestBody StatusRequest request) {
         Accommodation acc = accommodationRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Hébergement non trouvé"));
+            .orElseThrow(() -> new RuntimeException("Accommodation not found"));
         acc.setStatus(Accommodation.AccommodationStatus.valueOf(request.status()));
         acc = accommodationRepository.save(acc);
         return ApiResponse.success(toDTO(acc));
@@ -117,7 +117,7 @@ public class AdminAccommodationController {
     @Transactional
     public ApiResponse<RoomDTO> addRoom(@PathVariable Integer id, @RequestBody RoomRequest request) {
         Accommodation acc = accommodationRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Hébergement non trouvé"));
+            .orElseThrow(() -> new RuntimeException("Accommodation not found"));
 
         Room room = Room.builder()
             .roomType(Room.RoomType.valueOf(request.roomType()))

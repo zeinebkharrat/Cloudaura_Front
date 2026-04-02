@@ -5,6 +5,7 @@ import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { TripContextStore } from '../../../core/stores/trip-context.store';
 import { DATA_SOURCE_TOKEN } from '../../../core/adapters/data-source.adapter';
 import { AuthService } from '../../../core/auth.service';
+import { AppAlertsService } from '../../../core/services/app-alerts.service';
 
 @Component({
   standalone: true,
@@ -31,43 +32,46 @@ import { AuthService } from '../../../core/auth.service';
           <!-- Step 1: Guest Info -->
           @if (step() === 1) {
             <div class="step-content">
-              <h2>👤 Informations du voyageur</h2>
+              <h2 class="step-h2"><i class="pi pi-user step-h2-ico"></i> Guest details</h2>
               <form [formGroup]="guestForm" (ngSubmit)="nextStep()">
                 <div class="form-row">
                   <div class="form-field">
-                    <label>Prénom *</label>
-                    <input type="text" formControlName="firstName" placeholder="Mohamed">
+                    <label>First name *</label>
+                    <input type="text" formControlName="firstName" placeholder="First name">
                     @if (guestForm.get('firstName')?.invalid && guestForm.get('firstName')?.touched) {
-                      <span class="field-error">Prénom requis</span>
+                      <span class="field-error">At least 2 characters</span>
                     }
                   </div>
                   <div class="form-field">
-                    <label>Nom *</label>
-                    <input type="text" formControlName="lastName" placeholder="Ben Salem">
+                    <label>Last name *</label>
+                    <input type="text" formControlName="lastName" placeholder="Last name">
                     @if (guestForm.get('lastName')?.invalid && guestForm.get('lastName')?.touched) {
-                      <span class="field-error">Nom requis</span>
+                      <span class="field-error">At least 2 characters</span>
                     }
                   </div>
                 </div>
                 <div class="form-field">
                   <label>Email *</label>
-                  <input type="email" formControlName="email" placeholder="email@exemple.com">
+                  <input type="email" formControlName="email" placeholder="you@example.com">
                   @if (guestForm.get('email')?.invalid && guestForm.get('email')?.touched) {
-                    <span class="field-error">Email invalide</span>
+                    <span class="field-error">Valid email required</span>
                   }
                 </div>
                 <div class="form-field">
-                  <label>Téléphone</label>
+                  <label>Phone (optional)</label>
                   <input type="tel" formControlName="phone" placeholder="+216 XX XXX XXX">
+                  @if (guestForm.get('phone')?.invalid && guestForm.get('phone')?.touched) {
+                    <span class="field-error">Use +216 and 8+ digits, or leave empty</span>
+                  }
                 </div>
                 <div class="form-field">
-                  <label>Demandes spéciales (optionnel)</label>
-                  <textarea formControlName="notes" placeholder="Ex: chambre au calme, arrivée tardive..."></textarea>
+                  <label>Special requests (optional)</label>
+                  <textarea formControlName="notes" placeholder="e.g. quiet room, late arrival…"></textarea>
                 </div>
                 <div class="step-actions">
-                  <button type="button" class="btn-ghost" (click)="goBack()">← Retour</button>
+                  <button type="button" class="btn-ghost" (click)="goBack()">← Back</button>
                   <button type="submit" class="btn-primary" [disabled]="guestForm.invalid">
-                    Continuer →
+                    Continue →
                   </button>
                 </div>
               </form>
@@ -77,11 +81,11 @@ import { AuthService } from '../../../core/auth.service';
           <!-- Step 2: Summary & Payment -->
           @if (step() === 2) {
             <div class="step-content">
-              <h2>💳 Récapitulatif & Paiement</h2>
+              <h2 class="step-h2"><img src="icones/money-bag.png" alt="" class="step-h2-img" width="24" height="24" /> Summary &amp; payment</h2>
 
               <div class="summary-box">
                 <div class="summary-row">
-                  <span>Voyageur</span>
+                  <span>Guest</span>
                   <strong>{{ guestForm.value.firstName }} {{ guestForm.value.lastName }}</strong>
                 </div>
                 <div class="summary-row">
@@ -89,11 +93,11 @@ import { AuthService } from '../../../core/auth.service';
                   <strong>{{ guestForm.value.email }}</strong>
                 </div>
                 <div class="summary-row">
-                  <span>Hôtel</span>
+                  <span>Property</span>
                   <strong>{{ store.selectedAccommodation()?.name }}</strong>
                 </div>
                 <div class="summary-row">
-                  <span>Ville</span>
+                  <span>City</span>
                   <strong>{{ store.selectedAccommodation()?.cityName }}</strong>
                 </div>
                 <div class="summary-row">
@@ -105,16 +109,16 @@ import { AuthService } from '../../../core/auth.service';
                   <strong>{{ store.dates().checkOut }}</strong>
                 </div>
                 <div class="summary-row">
-                  <span>Durée</span>
-                  <strong>{{ nightCount() }} nuit(s)</strong>
+                  <span>Length of stay</span>
+                  <strong>{{ nightCount() }} night(s)</strong>
                 </div>
                 <div class="summary-row">
-                  <span>Voyageurs</span>
-                  <strong>{{ store.pax().adults }} personne(s)</strong>
+                  <span>Guests</span>
+                  <strong>{{ store.pax().adults }} guest(s)</strong>
                 </div>
                 <hr class="sum-divider">
                 <div class="summary-row price-row">
-                  <span>{{ store.selectedAccommodation()?.pricePerNight | number:'1.0-0' }} TND × {{ nightCount() }} nuits</span>
+                  <span>{{ store.selectedAccommodation()?.pricePerNight | number:'1.0-0' }} TND × {{ nightCount() }} night(s)</span>
                   <span>{{ baseTotal() | number:'1.0-0' }} TND</span>
                 </div>
                 <div class="summary-row price-row">
@@ -122,14 +126,14 @@ import { AuthService } from '../../../core/auth.service';
                   <span>{{ taxAmount() | number:'1.0-0' }} TND</span>
                 </div>
                 <div class="summary-row total-row">
-                  <strong>Total à payer</strong>
+                  <strong>Total due</strong>
                   <strong class="total-amount">{{ grandTotal() | number:'1.0-0' }} TND</strong>
                 </div>
               </div>
 
               <!-- Mock Payment Card -->
               <div class="payment-section">
-                <h3>💳 Paiement sécurisé</h3>
+                <h3 class="pay-title"><img src="icones/money-bag.png" alt="" class="pay-title-ico" width="22" height="22" /> Secure payment</h3>
                 <div class="card-mock">
                   <div class="card-chip">⬜</div>
                   <div class="card-number">**** **** **** 4242</div>
@@ -138,14 +142,14 @@ import { AuthService } from '../../../core/auth.service';
                     <span>VISA</span>
                   </div>
                 </div>
-                <p class="secure-note">🔒 Paiement simulé — Aucune donnée bancaire réelle utilisée</p>
+                <p class="secure-note"><i class="pi pi-info-circle secure-note-ico"></i> Simulated payment — no real card data is used</p>
               </div>
 
               <div class="step-actions">
-                <button type="button" class="btn-ghost" (click)="step.set(1)">← Modifier</button>
+                <button type="button" class="btn-ghost" (click)="step.set(1)">← Edit</button>
                 <button type="button" class="btn-primary" (click)="confirmBooking()" [disabled]="loading()">
-                  @if (loading()) { <span class="spinner-sm"></span> Confirmation... }
-                  @else { 🎉 Payer & Confirmer }
+                  @if (loading()) { <span class="spinner-sm"></span> Processing... }
+                  @else { <i class="pi pi-check-circle"></i> Pay & confirm }
                 </button>
               </div>
             </div>
@@ -159,16 +163,16 @@ import { AuthService } from '../../../core/auth.service';
                   <i class="pi pi-check conf-check"></i>
                 </div>
               </div>
-              <h2 class="conf-title-heb">Réservation Confirmée !</h2>
-              <p class="conf-desc">Votre séjour au <strong>{{ store.selectedAccommodation()?.name }}</strong> a été réservé avec succès.</p>
+              <h2 class="conf-title-heb">Booking confirmed</h2>
+              <p class="conf-desc">Your stay at <strong>{{ store.selectedAccommodation()?.name }}</strong> has been reserved.</p>
               <div class="conf-welcome">
-                <span class="conf-wave">👋</span>
-                <p class="conf-welcome-msg">Merci <strong>{{ guestForm.value.firstName }}</strong>, votre réservation est confirmée !</p>
+                <span class="conf-wave"><i class="pi pi-heart-fill"></i></span>
+                <p class="conf-welcome-msg">Thank you <strong>{{ guestForm.value.firstName }}</strong>, you’re all set.</p>
               </div>
-              <p class="conf-email">Un email de confirmation a été envoyé à <strong>{{ guestForm.value.email }}</strong></p>
+              <p class="conf-email">A confirmation summary was sent to <strong>{{ guestForm.value.email }}</strong></p>
               <div class="conf-actions">
-                <button class="btn-ghost" (click)="router.navigate(['/'])"><img src="/icones/home.png" alt="Accueil" style="width:1.1rem;height:1.1rem;object-fit:contain;vertical-align:middle;margin-right:0.35rem;" /> Accueil</button>
-                <button class="btn-primary" (click)="router.navigate(['/transport'])"><img src="/icones/bus.png" alt="Transport" style="width:1.1rem;height:1.1rem;object-fit:contain;vertical-align:middle;margin-right:0.35rem;" /> Trouver un transport</button>
+                <button class="btn-ghost" (click)="router.navigate(['/'])"><img src="icones/home.png" alt="" class="btn-ico" width="18" height="18" /> Home</button>
+                <button class="btn-primary" (click)="router.navigate(['/transport'])"><img src="icones/bus.png" alt="" class="btn-ico" width="18" height="18" /> Find transport</button>
               </div>
             </div>
           }
@@ -180,11 +184,11 @@ import { AuthService } from '../../../core/auth.service';
           <div class="summary-panel">
             <div class="stay-card">
               <div class="stay-img" [style.background]="'linear-gradient(135deg, #1a0a14, #2d0d1c)'">
-                <span class="stay-type-badge">{{ formatType(store.selectedAccommodation()?.type) }}</span>
+                <span class="stay-type-badge"><img [src]="typeIconSrc(store.selectedAccommodation()?.type)" alt="" class="stay-type-ico" width="16" height="16" />{{ formatType(store.selectedAccommodation()?.type) }}</span>
               </div>
               <div class="stay-info">
                 <h3>{{ store.selectedAccommodation()?.name }}</h3>
-                <p class="stay-city">📍 {{ store.selectedAccommodation()?.cityName }}</p>
+                <p class="stay-city"><img src="icones/city.png" alt="" class="stay-city-ico" width="16" height="16" /> {{ store.selectedAccommodation()?.cityName }}</p>
                 <div class="stay-rating">
                   {{ getStars(store.selectedAccommodation()?.rating || 0) }}
                   <span>{{ store.selectedAccommodation()?.rating }}/5</span>
@@ -195,24 +199,24 @@ import { AuthService } from '../../../core/auth.service';
                   <span class="date-lbl">CHECK-IN</span>
                   <span class="date-val">{{ store.dates().checkIn || '—' }}</span>
                 </div>
-                <div class="nights-block">{{ nightCount() }} <span>nuits</span></div>
+                <div class="nights-block">{{ nightCount() }} <span>nights</span></div>
                 <div class="date-block">
                   <span class="date-lbl">CHECK-OUT</span>
                   <span class="date-val">{{ store.dates().checkOut || '—' }}</span>
                 </div>
               </div>
               <div class="stay-total">
-                <span>Total estimé</span>
+                <span>Estimated total</span>
                 <strong>{{ grandTotal() | number:'1.0-0' }} TND</strong>
               </div>
             </div>
 
             <!-- Guarantees -->
             <div class="guarantees">
-              <div class="guarantee-item"><span>✅</span><span>Annulation gratuite</span></div>
-              <div class="guarantee-item"><span>🔒</span><span>Paiement sécurisé</span></div>
-              <div class="guarantee-item"><span>🏅</span><span>Meilleur prix garanti</span></div>
-              <div class="guarantee-item"><span>📞</span><span>Assistance 24h/24</span></div>
+              <div class="guarantee-item"><i class="pi pi-check-circle g-ico"></i><span>Flexible cancellation (where applicable)</span></div>
+              <div class="guarantee-item"><i class="pi pi-lock g-ico"></i><span>Secure checkout</span></div>
+              <div class="guarantee-item"><i class="pi pi-star-fill g-ico"></i><span>Best price focus</span></div>
+              <div class="guarantee-item"><i class="pi pi-phone g-ico"></i><span>24/7 assistance</span></div>
             </div>
           </div>
         }
@@ -238,6 +242,20 @@ import { AuthService } from '../../../core/auth.service';
     /* Form Panel */
     .form-panel { background: #161922; border: 1px solid rgba(255,255,255,0.06); border-radius: 20px; padding: 2.5rem; }
     .step-content h2 { font-size: 1.5rem; color: #fff; margin-bottom: 2rem; }
+    .step-h2 { display: flex; align-items: center; gap: 10px; }
+    .step-h2-ico { font-size: 1.35rem; color: #a78bfa; }
+    .step-h2-img { object-fit: contain; flex-shrink: 0; }
+    .pay-h3 { display: flex; align-items: center; gap: 8px; }
+    .pay-h3-ico { font-size: 1rem; color: #94a3b8; }
+    .secure-note { display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .secure-note-ico { font-size: 0.95rem; color: rgba(255,255,255,0.45); }
+    .btn-ico { object-fit: contain; vertical-align: middle; margin-right: 6px; }
+    .stay-type-badge { display: inline-flex; align-items: center; gap: 6px; }
+    .stay-type-ico { object-fit: contain; }
+    .stay-city { display: flex; align-items: center; gap: 8px; font-size: 0.88rem; color: rgba(255,255,255,0.5); margin-bottom: 6px; }
+    .stay-city-ico { object-fit: contain; opacity: 0.85; flex-shrink: 0; }
+    .g-ico { font-size: 1.1rem; color: #f12545; flex-shrink: 0; }
+    .conf-wave { display: flex; align-items: center; color: #f12545; font-size: 1.25rem; }
 
     /* Form Fields */
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
@@ -273,7 +291,8 @@ import { AuthService } from '../../../core/auth.service';
 
     /* Payment */
     .payment-section { margin-bottom: 2rem; }
-    .payment-section h3 { color: rgba(255,255,255,0.7); font-size: 0.95rem; margin-bottom: 1rem; }
+    .pay-title { display: flex; align-items: center; gap: 10px; color: rgba(255,255,255,0.7); font-size: 0.95rem; margin: 0 0 1rem 0; font-weight: 600; }
+    .pay-title-ico { object-fit: contain; flex-shrink: 0; }
     .card-mock { background: linear-gradient(135deg, #1a0a14, #3d1828); border-radius: 14px; padding: 1.5rem; color: #fff; position: relative; box-shadow: 0 8px 20px rgba(241,37,69,0.2); }
     .card-chip { font-size: 1.5rem; margin-bottom: 0.5rem; }
     .card-number { font-family: monospace; font-size: 1.3rem; letter-spacing: 3px; margin-bottom: 1rem; }
@@ -314,7 +333,6 @@ import { AuthService } from '../../../core/auth.service';
     .stay-type-badge { background: rgba(241,37,69,0.9); color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 700; }
     .stay-info { padding: 1.2rem 1.5rem 0; }
     .stay-info h3 { color: #fff; font-size: 1.1rem; margin: 0 0 4px 0; }
-    .stay-city { font-size: 0.88rem; color: rgba(255,255,255,0.5); margin-bottom: 6px; }
     .stay-rating { font-size: 0.9rem; color: #f1c40f; }
     .stay-rating span { color: rgba(255,255,255,0.5); margin-left: 4px; }
     .stay-dates { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; background: rgba(255,255,255,0.03); margin: 1rem 0 0 0; }
@@ -344,23 +362,24 @@ export class AccommodationBookingPageComponent implements OnInit {
   router = inject(Router);
   route = inject(ActivatedRoute);
   auth = inject(AuthService);
+  private alerts = inject(AppAlertsService);
 
   step = signal(1);
   loading = signal(false);
   reservationId = signal('');
 
   steps = [
-    { num: 1, label: 'Voyageur' },
-    { num: 2, label: 'Paiement' },
-    { num: 3, label: 'Confirmation' }
+    { num: 1, label: 'Guest' },
+    { num: 2, label: 'Payment' },
+    { num: 3, label: 'Done' },
   ];
 
   guestForm = this.fb.group({
-    firstName: ['', Validators.required],
-    lastName: ['', Validators.required],
+    firstName: ['', [Validators.required, Validators.minLength(2)]],
+    lastName: ['', [Validators.required, Validators.minLength(2)]],
     email: ['', [Validators.required, Validators.email]],
-    phone: [''],
-    notes: ['']
+    phone: ['', [Validators.pattern(/^$|^(\+216\s?)?[0-9\s]{8,12}$/)]],
+    notes: ['', [Validators.maxLength(500)]],
   });
 
   nightCount = computed(() => {
@@ -397,7 +416,22 @@ export class AccommodationBookingPageComponent implements OnInit {
   }
 
   nextStep() {
-    if (this.guestForm.valid) this.step.set(2);
+    if (!this.guestForm.valid) {
+      this.guestForm.markAllAsTouched();
+      void this.alerts.warning('Guest details', 'Please complete all required fields correctly.');
+      return;
+    }
+    const ci = this.store.dates().checkIn;
+    const co = this.store.dates().checkOut;
+    if (!ci || !co) {
+      void this.alerts.warning('Stay dates', 'Check-in and check-out are required for this booking.');
+      return;
+    }
+    if (new Date(co) <= new Date(ci)) {
+      void this.alerts.warning('Invalid dates', 'Check-out must be after check-in.');
+      return;
+    }
+    this.step.set(2);
   }
 
   goBack() {
@@ -406,47 +440,78 @@ export class AccommodationBookingPageComponent implements OnInit {
   }
 
   confirmBooking() {
-    this.loading.set(true);
+    const user = this.auth.currentUser();
+    if (!user) {
+      void this.alerts.warning('Sign in required', 'Please sign in to complete your stay booking.');
+      this.router.navigate(['/signin']);
+      return;
+    }
+
     const acc = this.store.selectedAccommodation();
-    const guest = this.guestForm.value;
+    if (!acc) {
+      void this.alerts.error('Missing listing', 'No property selected. Please choose an accommodation again.');
+      return;
+    }
+
+    const ci = this.store.dates().checkIn;
+    const co = this.store.dates().checkOut;
+    if (!ci || !co || new Date(co) <= new Date(ci)) {
+      void this.alerts.warning('Invalid stay', 'Check-in and check-out dates must be valid.');
+      return;
+    }
+
+    const guests = this.store.pax().adults;
+    if (guests < 1 || guests > 20) {
+      void this.alerts.warning('Guests', 'Number of guests must be between 1 and 20.');
+      return;
+    }
+
+    this.loading.set(true);
+    const guest = this.guestForm.getRawValue();
 
     const payload = {
-      accommodationId: acc?.id,
-      checkIn: this.store.dates().checkIn,
-      checkOut: this.store.dates().checkOut,
-      guestFirstName: guest.firstName,
-      guestLastName: guest.lastName,
-      guestEmail: guest.email,
-      guestPhone: guest.phone,
-      numberOfGuests: this.store.pax().adults,
+      accommodationId: acc.id,
+      checkIn: ci,
+      checkOut: co,
+      guestFirstName: guest.firstName?.trim(),
+      guestLastName: guest.lastName?.trim(),
+      guestEmail: guest.email?.trim(),
+      guestPhone: guest.phone?.trim() || undefined,
+      numberOfGuests: guests,
       totalPrice: this.grandTotal(),
-      specialRequests: guest.notes
+      specialRequests: guest.notes?.trim() || undefined,
     };
 
     this.dataSource.createReservation(payload).subscribe({
       next: (res: any) => {
         this.loading.set(false);
-        this.reservationId.set(
-          res?.id?.toString() || 'YTN-' + Math.floor(Math.random() * 90000 + 10000)
-        );
+        this.reservationId.set(res?.id?.toString() || 'YTN-' + Math.floor(Math.random() * 90000 + 10000));
         this.step.set(3);
       },
-      error: () => {
-        // Even on error, show confirmation (offline-first UX)
+      error: (err) => {
         this.loading.set(false);
-        this.reservationId.set('YTN-' + Math.floor(Math.random() * 90000 + 10000));
-        this.step.set(3);
-      }
+        void this.alerts.error(
+          'Booking failed',
+          err.error?.message ?? 'We could not complete the reservation. Please try again.'
+        );
+      },
     });
   }
 
   formatType(type?: string): string {
     if (!type) return '';
     const map: Record<string, string> = {
-      'HOTEL': 'Hôtel', 'MAISON_HOTE': 'Maison d\'hôtes',
-      'GUESTHOUSE': 'Gîte rural', 'AUTRE': 'Hébergement'
+      HOTEL: 'Hotel',
+      MAISON_HOTE: 'Guest house',
+      GUESTHOUSE: 'Rural guesthouse',
+      AUTRE: 'Stay',
     };
     return map[type] || type;
+  }
+
+  typeIconSrc(type?: string): string {
+    if (type === 'HOTEL') return 'icones/hotel.png';
+    return 'icones/home.png';
   }
 
   getStars(rating: number): string {

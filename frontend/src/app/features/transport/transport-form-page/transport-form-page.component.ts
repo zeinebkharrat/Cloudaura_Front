@@ -23,8 +23,8 @@ import { City } from '../../../core/models/travel.models';
             <button class="tab-btn" [class.active]="transportType === 'VAN'" (click)="setType('VAN')"><img src="/icones/taxi.png" alt="Van" class="tab-icon" /> Van privé</button>
             <button class="tab-btn" [class.active]="transportType === 'CAR'" (click)="setType('CAR')"><img src="/icones/car.png" alt="Voiture" class="tab-icon" /> Voiture</button>
             <button class="tab-btn" [class.active]="transportType === 'PLANE'" (click)="setType('PLANE')"><img src="/icones/plane.png" alt="Avion" class="tab-icon" /> Avion</button>
-            <button class="tab-btn" [class.active]="transportType === 'TRAIN'" (click)="setType('TRAIN')"><i class="icon">🚆</i> Train</button>
-            <button class="tab-btn" [class.active]="transportType === 'FERRY'" (click)="setType('FERRY')"><i class="icon">⛴️</i> Bateau</button>
+            <button class="tab-btn" [class.active]="transportType === 'TRAIN'" (click)="setType('TRAIN')"><i class="pi pi-compass tab-pi" aria-hidden="true"></i> Train</button>
+            <button class="tab-btn" [class.active]="transportType === 'FERRY'" (click)="setType('FERRY')"><i class="pi pi-send tab-pi" aria-hidden="true"></i> Bateau</button>
           </div>
         </div>
 
@@ -73,7 +73,7 @@ import { City } from '../../../core/models/travel.models';
 
               <!-- Submit Button -->
               <button type="submit" class="btn-search" [disabled]="searchForm.invalid">
-                Rechercher
+                Search
               </button>
 
             </div>
@@ -147,8 +147,8 @@ import { City } from '../../../core/models/travel.models';
       background: #f12545;
       border-radius: 3px 3px 0 0;
     }
-    .icon { font-style: normal; font-size: 1.1rem; }
     .tab-icon { width: 1.1rem; height: 1.1rem; object-fit: contain; vertical-align: middle; flex-shrink: 0; }
+    .tab-pi { font-size: 1.05rem; opacity: 0.92; flex-shrink: 0; }
 
     /* Form Area Styling */
     .form-area {

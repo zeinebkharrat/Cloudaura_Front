@@ -1,0 +1,197 @@
+<section class="my-posts-page">
+  <!-- Header -->
+  <div class="my-posts-header glass-panel">
+    <div class="my-posts-header__left">
+      <button type="button" class="back-btn" (click)="goToCommunity()" title="Back to community">
+        <span class="back-icon">←</span>
+      </button>
+      <div>
+        <h2>My posts</h2>
+        <p>Edit, delete, or review your content.</p>
+      </div>
+    </div>
+    <div class="my-posts-header__stats" *ngIf="feedLoaded()">
+      <div class="stat-badge glass-panel">
+        <span class="stat-number">{{ posts().length }}</span>
+        <span class="stat-label">Posts</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="feed-loading glass-panel" *ngIf="!loadError() && !feedLoaded()">
+    <div class="loading-spinner"></div>
+    <span>Loading your posts…</span>
+  </div>
+
+  <!-- Error State -->
+  <div class="feed-error glass-panel" *ngIf="loadError()">
+    <i class="error-icon pi pi-exclamation-triangle" aria-hidden="true"></i>
+    <span>{{ loadError() }}</span>
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state glass-panel" *ngIf="feedLoaded() && posts().length === 0">
+    <div class="empty-state__content">
+      <div class="empty-icon" aria-hidden="true"><i class="pi pi-inbox"></i></div>
+      <h3>No posts yet</h3>
+      <p>You have not created a post yet. Go back to the community to create one.</p>
+      <button type="button" class="btn-primary" (click)="goToCommunity()">
+        <i class="pi pi-arrow-right btn-ico-pi" aria-hidden="true"></i> Go to community
+      </button>
+    </div>
+  </div>
+
+  <!-- Posts Grid -->
+  <div class="posts-grid" *ngIf="feedLoaded() && posts().length > 0">
+    <ng-container *ngFor="let post of posts(); trackBy: trackByPost">
+      <article class="post-card glass-panel" *ngIf="post.postId != null" [class.post-card--editing]="editingPostId() === post.postId">
+        
+        <!-- Post Header -->
+        <header class="post-header">
+          <div class="post-author">
+            <div class="avatar">{{ displayName(post.author).charAt(0).toUpperCase() || 'U' }}</div>
+            <div class="author-info">
+              <span class="author-name">{{ displayName(post.author) }}</span>
+              <span class="post-time">{{ formatDate(post.createdAt) }}</span>
+            </div>
+          </div>
+          <div class="post-badge" *ngIf="post.visibility === 'private'">
+            <span><i class="pi pi-lock badge-pi" aria-hidden="true"></i> Private</span>
+          </div>
+        </header>
+
+        <!-- Normal View -->
+        <ng-container *ngIf="editingPostId() !== post.postId">
+          <div class="post-body">
+            <p class="post-text">{{ post.content }}</p>
+            <div class="post-location" *ngIf="post.location">
+              <img src="icones/city.png" alt="" class="location-icon-img" width="16" height="16" />
+              <span>{{ post.location }}</span>
+            </div>
+          </div>
+
+          <!-- Media -->
+          <div class="media-grid" *ngIf="getMediaForPost(post.postId!).length > 0">
+            <ng-container *ngFor="let m of getMediaForPost(post.postId!)">
+              <ng-container *ngIf="m.fileUrl">
+                <div class="media-item">
+                  <video class="media-video" controls *ngIf="m.mediaType === 'VIDEO'" [src]="m.fileUrl"></video>
+                  <img class="media-image" *ngIf="m.mediaType !== 'VIDEO'" [src]="m.fileUrl" [alt]="'Post media ' + post.postId" />
+                </div>
+              </ng-container>
+            </ng-container>
+          </div>
+
+          <!-- Stats Bar -->
+          <div class="post-stats">
+            <div class="stat-item">
+              <img
+                src="icones/like.png"
+                alt=""
+                class="stat-ico stat-ico--like"
+                [class.stat-ico--muted]="!isPostLiked(post.postId!)"
+                width="18"
+                height="18"
+              />
+              <span>{{ getLikeNicknames(post.postId!).length }} likes</span>
+            </div>
+            <div class="stat-item">
+              <img src="icones/commenter.png" alt="" class="stat-ico stat-ico--comment" width="18" height="18" />
+              <span>{{ getCommentCount(post.postId!) }} comments</span>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="post-actions-row">
+            <button type="button" class="action-btn action-btn--edit" (click)="startEditPost(post)" title="Edit">
+              <i class="pi pi-pencil action-pi"></i>
+              <span>Edit</span>
+            </button>
+            <button type="button" class="action-btn action-btn--delete" (click)="startDeletePost(post.postId!)" title="Delete">
+              <i class="pi pi-trash action-pi"></i>
+              <span>Delete</span>
+            </button>
+          </div>
+        </ng-container>
+
+        <!-- Edit Mode -->
+        <ng-container *ngIf="editingPostId() === post.postId">
+          <div class="edit-form">
+            <div class="edit-form__header">
+              <h4><i class="pi pi-pencil edit-h-pi" aria-hidden="true"></i> Edit post</h4>
+            </div>
+
+            <label class="field-label">
+              <span><i class="pi pi-align-left field-pi" aria-hidden="true"></i> Content</span>
+              <textarea
+                rows="4"
+                [value]="editPostContent()"
+                (input)="editPostContent.set($any($event.target).value)"
+                placeholder="Update your post…"
+                class="form-textarea"
+              ></textarea>
+            </label>
+
+            <div class="edit-form__row">
+              <label class="field-label">
+                <span><img src="icones/city.png" alt="" class="field-ico" width="14" height="14" /> Place</span>
+                <input
+                  type="text"
+                  [value]="editPostLocation()"
+                  (input)="editPostLocation.set($any($event.target).value)"
+                  placeholder="Ex: Sidi Bou Saïd"
+                  class="form-input"
+                />
+              </label>
+
+              <label class="field-label">
+                <span><i class="pi pi-eye field-pi" aria-hidden="true"></i> Visibility</span>
+                <select
+                  [value]="editPostVisibility()"
+                  (change)="editPostVisibility.set($any($event.target).value)"
+                  class="form-select"
+                >
+                  <option value="public">Public</option>
+                  <option value="private">Private</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="edit-form__actions">
+              <button type="button" class="btn-outline" (click)="cancelEdit()">
+                Cancel
+              </button>
+              <button
+                type="button"
+                class="btn-primary"
+                (click)="saveEdit()"
+                [disabled]="!editPostContent().trim() || isEditing()"
+              >
+                <span *ngIf="!isEditing()"><i class="pi pi-save btn-ico-pi" aria-hidden="true"></i> Save</span>
+                <span *ngIf="isEditing()"><i class="pi pi-spinner pi-spin btn-ico-pi" aria-hidden="true"></i> Saving…</span>
+              </button>
+            </div>
+          </div>
+        </ng-container>
+      </article>
+    </ng-container>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div class="delete-modal-backdrop" *ngIf="deletingPostId()" (click)="cancelDelete()">
+    <div class="delete-modal glass-panel" (click)="$event.stopPropagation()">
+      <div class="delete-modal__icon" aria-hidden="true"><i class="pi pi-trash"></i></div>
+      <h3>Delete this post?</h3>
+      <p>This cannot be undone. The post and all related content (comments, likes, media) will be permanently removed.</p>
+      <div class="delete-modal__actions">
+        <button type="button" class="btn-outline" (click)="cancelDelete()">
+          Cancel
+        </button>
+        <button type="button" class="btn-danger" (click)="confirmDelete()">
+          <i class="pi pi-trash btn-ico-pi" aria-hidden="true"></i> Delete permanently
+        </button>
+      </div>
+    </div>
+  </div>
+</section>

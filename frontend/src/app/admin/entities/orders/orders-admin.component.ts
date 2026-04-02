@@ -34,11 +34,11 @@ export class OrdersAdminComponent implements OnInit, OnDestroy {
   private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   readonly statusOptions = [
-    { value: 'PENDING', label: 'En attente' },
-    { value: 'PROCESSING', label: 'En traitement' },
-    { value: 'SHIPPED', label: 'Expédiée' },
-    { value: 'DELIVERED', label: 'Livrée' },
-    { value: 'CANCELLED', label: 'Annulée' },
+    { value: 'PENDING', label: 'Pending' },
+    { value: 'PROCESSING', label: 'Processing' },
+    { value: 'SHIPPED', label: 'Shipped' },
+    { value: 'DELIVERED', label: 'Delivered' },
+    { value: 'CANCELLED', label: 'Cancelled' },
   ] as const;
 
   orders: AdminOrderRow[] = [];
@@ -89,7 +89,7 @@ export class OrdersAdminComponent implements OnInit, OnDestroy {
       if (key === 'username') {
         const au = (a.user?.username ?? '').toLowerCase();
         const bu = (b.user?.username ?? '').toLowerCase();
-        return mult * au.localeCompare(bu, 'fr', { sensitivity: 'base' });
+        return mult * au.localeCompare(bu, 'en', { sensitivity: 'base' });
       }
       if (key === 'totalAmount') {
         const at = Number(a.totalAmount ?? 0);
@@ -149,13 +149,13 @@ export class OrdersAdminComponent implements OnInit, OnDestroy {
             this.clampPage();
           },
           error: () => {
-            this.error = 'Impossible de charger les lignes de commande (/api/order-items).';
+            this.error = 'Could not load order line items (/api/order-items).';
             this.loading = false;
           },
         });
       },
       error: () => {
-        this.error = 'Impossible de charger les commandes (/api/orders).';
+        this.error = 'Could not load orders (/api/orders).';
         this.loading = false;
       },
     });
@@ -262,7 +262,7 @@ export class OrdersAdminComponent implements OnInit, OnDestroy {
         }
         await Swal.fire({
           icon: 'success',
-          title: 'Statut mis à jour',
+          title: 'Status updated',
           timer: 1300,
           showConfirmButton: false,
           background: '#181d24',
@@ -272,7 +272,7 @@ export class OrdersAdminComponent implements OnInit, OnDestroy {
       },
       error: () => {
         this.statusSaving = false;
-        this.statusActionError = 'Impossible de mettre à jour le statut.';
+        this.statusActionError = 'Could not update status.';
       },
     });
   }
@@ -301,12 +301,12 @@ export class OrdersAdminComponent implements OnInit, OnDestroy {
   async deleteOrder(order: AdminOrderRow, event?: Event): Promise<void> {
     event?.stopPropagation();
     const confirmation = await Swal.fire({
-      title: 'Supprimer cette commande ?',
-      html: `La commande <strong>#${order.orderId}</strong> et ses lignes seront supprimées définitivement.`,
+      title: 'Delete this order?',
+      html: `Order <strong>#${order.orderId}</strong> and its line items will be permanently deleted.`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Oui, supprimer',
-      cancelButtonText: 'Annuler',
+      confirmButtonText: 'Yes, delete',
+      cancelButtonText: 'Cancel',
       confirmButtonColor: '#e63946',
       background: '#181d24',
       color: '#e2e8f0',
@@ -330,7 +330,7 @@ export class OrdersAdminComponent implements OnInit, OnDestroy {
         this.clampPage();
         await Swal.fire({
           icon: 'success',
-          title: 'Commande supprimée',
+          title: 'Order deleted',
           timer: 1200,
           showConfirmButton: false,
           background: '#181d24',
@@ -339,14 +339,14 @@ export class OrdersAdminComponent implements OnInit, OnDestroy {
         });
       },
       error: () => {
-        this.error = 'Suppression impossible (droits ou erreur serveur).';
+        this.error = 'Could not delete (permissions or server error).';
       },
     });
   }
 
   formatPrice(p: number | null | undefined): string {
     if (p == null || Number.isNaN(Number(p))) return '—';
-    return new Intl.NumberFormat('fr-TN', {
+    return new Intl.NumberFormat('en-GB', {
       style: 'currency',
       currency: 'TND',
       minimumFractionDigits: 2,

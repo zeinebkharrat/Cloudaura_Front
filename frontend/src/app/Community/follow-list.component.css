@@ -1,0 +1,175 @@
+.follow-list-page {
+  padding: 96px 16px 40px;
+  min-height: 100vh;
+}
+
+.follow-shell {
+  max-width: 780px;
+  margin: 0 auto;
+  background: var(--surface-1);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 6px 22px rgba(15, 28, 46, 0.09);
+}
+
+.follow-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.follow-head h2 {
+  margin: 0;
+  color: var(--text-color);
+}
+
+.back-btn {
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  background: var(--surface-1);
+  color: var(--text-color);
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.follow-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 12px 16px;
+}
+
+.follow-tabs button {
+  border: 1px solid var(--glass-border);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  border-radius: 10px;
+  padding: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.follow-tabs button.active {
+  border-color: #d60326;
+  color: #d60326;
+  background: color-mix(in srgb, var(--surface-1) 84%, #d60326 16%);
+}
+
+.users-list {
+  padding: 4px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.user-item {
+  border: 1px solid var(--glass-border);
+  background: var(--surface-1);
+  border-radius: 12px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.user-item:hover {
+  border-color: var(--glass-border);
+  background: var(--surface-2);
+}
+
+.user-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.user-avatar--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0f9ac2;
+  color: #fff;
+  font-weight: 700;
+}
+
+.user-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.user-meta strong {
+  color: var(--text-color);
+}
+
+.user-meta span {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.state-box {
+  padding: 16px;
+  color: var(--text-muted);
+}
+
+.state-box--error {
+  color: #b11f38;
+}
+
+:root[data-theme='dark'] .follow-shell {
+  background: #121a29;
+  border-color: #2a3650;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.42);
+}
+
+:root[data-theme='dark'] .follow-head {
+  border-color: #2b3954;
+}
+
+:root[data-theme='dark'] .follow-head h2,
+:root[data-theme='dark'] .user-meta strong {
+  color: #e6edf7;
+}
+
+:root[data-theme='dark'] .back-btn {
+  background: #1a2437;
+  border-color: #34425e;
+  color: #d2dced;
+}
+
+:root[data-theme='dark'] .follow-tabs button {
+  background: #1a2437;
+  border-color: #33425e;
+  color: #c7d2e5;
+}
+
+:root[data-theme='dark'] .follow-tabs button.active {
+  background: rgba(214, 3, 38, 0.16);
+  border-color: rgba(214, 3, 38, 0.4);
+  color: #ff8ea1;
+}
+
+:root[data-theme='dark'] .user-item {
+  background: #162234;
+  border-color: #2d3a52;
+}
+
+:root[data-theme='dark'] .user-item:hover {
+  background: #1b2a40;
+  border-color: #3b4c6c;
+}
+
+:root[data-theme='dark'] .user-meta span,
+:root[data-theme='dark'] .state-box {
+  color: #a3b1c8;
+}
+
+:root[data-theme='dark'] .state-box--error {
+  color: #f2a2b2;
+}

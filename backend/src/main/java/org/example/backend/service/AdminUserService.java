@@ -46,6 +46,7 @@ public class AdminUserService {
         this.auditService = auditService;
     }
 
+    @Transactional(readOnly = true)
     public List<AdminUserResponse> listUsers(String query) {
         List<User> users;
         if (query == null || query.isBlank()) {
@@ -56,6 +57,7 @@ public class AdminUserService {
         return users.stream().map(this::toAdminUserResponse).toList();
     }
 
+    @Transactional(readOnly = true)
     public AdminUserResponse getUser(Integer userId) {
         User user = getExistingUser(userId);
         return toAdminUserResponse(user);

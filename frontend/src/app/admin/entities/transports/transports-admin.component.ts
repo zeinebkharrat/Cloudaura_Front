@@ -170,13 +170,13 @@ export class TransportsAdminComponent {
   set driverPage(v: number)    { this.driverPageSig.set(v); }
 
   transportTypes = [
-    { label: 'Bus',          value: 'BUS'   },
-    { label: 'Taxi',         value: 'TAXI'  },
-    { label: 'Van / Louage', value: 'VAN'   },
-    { label: 'Voiture',      value: 'CAR'   },
-    { label: 'Avion',        value: 'PLANE' },
-    { label: 'Train',        value: 'TRAIN' },
-    { label: 'Ferry',        value: 'FERRY' },
+    { label: 'Bus',                 value: 'BUS'   },
+    { label: 'Taxi',                value: 'TAXI'  },
+    { label: 'Van / shared taxi',   value: 'VAN'   },
+    { label: 'Car',                 value: 'CAR'   },
+    { label: 'Plane',               value: 'PLANE' },
+    { label: 'Train',               value: 'TRAIN' },
+    { label: 'Ferry',               value: 'FERRY' },
   ];
 
   airlines = [
@@ -191,7 +191,7 @@ export class TransportsAdminComponent {
     { label: 'Bus',    value: 'BUS'   },
     { label: 'Taxi',   value: 'TAXI'  },
     { label: 'Van',    value: 'VAN'   },
-    { label: 'Voiture', value: 'CAR'  },
+    { label: 'Car',    value: 'CAR'  },
     { label: 'Train',  value: 'TRAIN' },
     { label: 'Ferry',  value: 'FERRY' },
   ];
@@ -220,7 +220,7 @@ export class TransportsAdminComponent {
         t.departureCityName ?? '', t.arrivalCityName ?? '',
         t.vehicleInfo ?? '', t.driverName ?? '',
         t.operatorName ?? '', t.flightCode ?? '',
-        String(t.price), t.isActive ? 'actif' : 'inactif',
+        String(t.price), t.isActive ? 'active' : 'inactive',
         t.departureTime, t.arrivalTime,
         String(t.capacity), String(t.availableSeats ?? ''),
       ].join(' ').toLowerCase();
@@ -476,7 +476,7 @@ export class TransportsAdminComponent {
       const diffH   = Math.floor(diffMs / 3600000);
       const diffMin = Math.floor((diffMs % 3600000) / 60000);
       this.calculatedDuration = diffH > 0
-        ? `${diffH}h${diffMin > 0 ? diffMin + 'min' : ''}`
+        ? `${diffH}h${diffMin > 0 ? ' ' + diffMin + 'm' : ''}`
         : `${diffMin} min`;
       this.checkDurationWarning(diffH);
       this.loadAvailableVehicles();
@@ -489,7 +489,7 @@ export class TransportsAdminComponent {
     const type = this.transportForm.get('type')!.value;
     const max = MAX[type];
     if (type && max && hours > max) {
-      this.durationWarning = `Durée anormalement longue pour un ${type} (max ${max}h recommandé)`;
+      this.durationWarning = `Unusually long duration for a ${type} (recommended max ${max}h)`;
     } else {
       this.durationWarning = null;
     }
@@ -502,7 +502,7 @@ export class TransportsAdminComponent {
     const type = this.transportForm.get('type')!.value;
     const max = MAX[type];
     if (type && max && v > max) {
-      this.priceWarning = `Prix élevé pour un ${type} (max recommandé : ${max} TND)`;
+      this.priceWarning = `High price for a ${type} (recommended max: ${max} TND)`;
     } else {
       this.priceWarning = null;
     }
@@ -519,7 +519,7 @@ export class TransportsAdminComponent {
 
   getSeatLabel(t: Transport): string {
     const avail = t.availableSeats ?? 0;
-    if (avail === 0) return 'COMPLET';
+    if (avail === 0) return 'FULL';
     return `${avail} / ${t.capacity}`;
   }
 
@@ -593,15 +593,15 @@ export class TransportsAdminComponent {
         this.showTransportDialog = false;
         this.messageService.add({
           severity: 'success',
-          summary: id ? 'Transport mis à jour' : 'Transport créé',
+          summary: id ? 'Transport updated' : 'Transport created',
           detail: id
-            ? `Le trajet ${fromCity} → ${toCity} a été modifié avec succès.`
-            : `Nouveau trajet ${fromCity} → ${toCity} créé avec succès.`,
+            ? `Route ${fromCity} → ${toCity} was updated successfully.`
+            : `New route ${fromCity} → ${toCity} was created successfully.`,
           life: 4500,
         });
       },
       error: (err) => {
-        const msg = err?.error?.message ?? 'Impossible d\'effectuer cette opération.';
+        const msg = err?.error?.message ?? 'Could not complete this operation.';
         this.messageService.add({ severity: 'warn', summary: 'Validation', detail: msg, life: 6000 });
       },
     });
@@ -609,11 +609,11 @@ export class TransportsAdminComponent {
 
   deleteTransport(transport: Transport) {
     this.confirmService.confirm({
-      header: 'Confirmer la suppression',
-      message: `Supprimer le transport <strong>${this.getTypeLabel(transport.type)}</strong> — <strong>${transport.departureCityName} → ${transport.arrivalCityName}</strong> ? Cette action est irréversible.`,
+      header: 'Confirm deletion',
+      message: `Delete transport <strong>${this.getTypeLabel(transport.type)}</strong> — <strong>${transport.departureCityName} → ${transport.arrivalCityName}</strong>? This cannot be undone.`,
       icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Oui, supprimer',
-      rejectLabel: 'Annuler',
+      acceptLabel: 'Yes, delete',
+      rejectLabel: 'Cancel',
       acceptButtonStyleClass: 'p-button-danger',
       accept: () => {
         this.http.delete<any>(`/api/admin/transports/${transport.transportId}`).subscribe({
@@ -622,14 +622,14 @@ export class TransportsAdminComponent {
             this.loadStats();
             this.messageService.add({
               severity: 'warn',
-              summary: 'Transport supprimé',
-              detail: `Le trajet ${transport.departureCityName} → ${transport.arrivalCityName} a été supprimé.`,
+              summary: 'Transport deleted',
+              detail: `Route ${transport.departureCityName} → ${transport.arrivalCityName} was removed.`,
               life: 4500,
             });
           },
           error: (err) => {
-            const msg = err?.error?.message ?? 'La suppression a échoué.';
-            this.messageService.add({ severity: 'error', summary: 'Suppression impossible', detail: msg, life: 6000 });
+            const msg = err?.error?.message ?? 'Deletion failed.';
+            this.messageService.add({ severity: 'error', summary: 'Could not delete', detail: msg, life: 6000 });
           },
         });
       },
@@ -639,13 +639,13 @@ export class TransportsAdminComponent {
   toggleTransportStatus(transport: Transport) {
     const willActivate = !transport.isActive;
     this.confirmService.confirm({
-      header: willActivate ? 'Activer le transport' : 'Désactiver le transport',
+      header: willActivate ? 'Activate transport' : 'Deactivate transport',
       message: willActivate
-        ? `Voulez-vous activer le trajet <strong>${transport.departureCityName} → ${transport.arrivalCityName}</strong> ?`
-        : `Voulez-vous désactiver le trajet <strong>${transport.departureCityName} → ${transport.arrivalCityName}</strong> ? Les nouvelles réservations seront bloquées.`,
+        ? `Activate route <strong>${transport.departureCityName} → ${transport.arrivalCityName}</strong>?`
+        : `Deactivate route <strong>${transport.departureCityName} → ${transport.arrivalCityName}</strong>? New bookings will be blocked.`,
       icon: willActivate ? 'pi pi-check-circle' : 'pi pi-ban',
-      acceptLabel: willActivate ? 'Oui, activer' : 'Oui, désactiver',
-      rejectLabel: 'Annuler',
+      acceptLabel: willActivate ? 'Yes, activate' : 'Yes, deactivate',
+      rejectLabel: 'Cancel',
       accept: () => {
         this.http.patch<any>(`/api/admin/transports/${transport.transportId}/status`, { isActive: willActivate }).subscribe({
           next: () => {
@@ -653,14 +653,14 @@ export class TransportsAdminComponent {
             this.loadStats();
             this.messageService.add({
               severity: willActivate ? 'success' : 'warn',
-              summary: willActivate ? 'Transport activé' : 'Transport désactivé',
-              detail: `Le trajet ${transport.departureCityName} → ${transport.arrivalCityName} est maintenant ${willActivate ? 'actif' : 'inactif'}.`,
+              summary: willActivate ? 'Transport activated' : 'Transport deactivated',
+              detail: `Route ${transport.departureCityName} → ${transport.arrivalCityName} is now ${willActivate ? 'active' : 'inactive'}.`,
               life: 4500,
             });
           },
           error: (err) => {
-            const msg = err?.error?.message ?? 'Impossible de changer le statut.';
-            this.messageService.add({ severity: 'error', summary: 'Erreur', detail: msg, life: 6000 });
+            const msg = err?.error?.message ?? 'Could not change status.';
+            this.messageService.add({ severity: 'error', summary: 'Error', detail: msg, life: 6000 });
           },
         });
       },
@@ -688,13 +688,13 @@ export class TransportsAdminComponent {
         this.showVehicleDialog = false;
         this.messageService.add({
           severity: 'success',
-          summary: id ? 'Véhicule mis à jour' : 'Véhicule ajouté',
-          detail: `${data.brand} ${data.model} (${data.plateNumber}) ${id ? 'modifié' : 'ajouté à la flotte'}.`,
+          summary: id ? 'Vehicle updated' : 'Vehicle added',
+          detail: `${data.brand} ${data.model} (${data.plateNumber}) ${id ? 'updated' : 'added to the fleet'}.`,
           life: 4500,
         });
       },
       error: (err) => {
-        const msg = err?.error?.message ?? 'Impossible d\'enregistrer ce véhicule.';
+        const msg = err?.error?.message ?? 'Could not save this vehicle.';
         this.messageService.add({ severity: 'warn', summary: 'Validation', detail: msg, life: 6000 });
       },
     });
@@ -702,20 +702,20 @@ export class TransportsAdminComponent {
 
   deleteVehicle(vehicle: Vehicle) {
     this.confirmService.confirm({
-      header: 'Supprimer le véhicule',
-      message: `Supprimer <strong>${vehicle.brand} ${vehicle.model}</strong> (${vehicle.plateNumber}) de la flotte ?`,
+      header: 'Delete vehicle',
+      message: `Remove <strong>${vehicle.brand} ${vehicle.model}</strong> (${vehicle.plateNumber}) from the fleet?`,
       icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Oui, supprimer', rejectLabel: 'Annuler', acceptButtonStyleClass: 'p-button-danger',
+      acceptLabel: 'Yes, delete', rejectLabel: 'Cancel', acceptButtonStyleClass: 'p-button-danger',
       accept: () => {
         this.http.delete<any>(`/api/admin/vehicles/${vehicle.vehicleId}`).subscribe({
           next: () => {
             this.loadVehicles();
             this.loadStats();
-            this.messageService.add({ severity: 'warn', summary: 'Véhicule supprimé', detail: `${vehicle.brand} ${vehicle.model} retiré de la flotte.`, life: 4500 });
+            this.messageService.add({ severity: 'warn', summary: 'Vehicle removed', detail: `${vehicle.brand} ${vehicle.model} removed from the fleet.`, life: 4500 });
           },
           error: (err) => {
-            const msg = err?.error?.message ?? 'Ce véhicule est peut-être assigné à un trajet actif.';
-            this.messageService.add({ severity: 'error', summary: 'Suppression impossible', detail: msg, life: 6000 });
+            const msg = err?.error?.message ?? 'This vehicle may be assigned to an active route.';
+            this.messageService.add({ severity: 'error', summary: 'Could not delete', detail: msg, life: 6000 });
           },
         });
       },
@@ -743,13 +743,13 @@ export class TransportsAdminComponent {
         this.showDriverDialog = false;
         this.messageService.add({
           severity: 'success',
-          summary: id ? 'Conducteur mis à jour' : 'Conducteur ajouté',
-          detail: `${data.firstName} ${data.lastName} ${id ? 'mis à jour' : 'ajouté à l\'équipe'}.`,
+          summary: id ? 'Driver updated' : 'Driver added',
+          detail: `${data.firstName} ${data.lastName} ${id ? 'updated' : 'added to the team'}.`,
           life: 4500,
         });
       },
       error: (err) => {
-        const msg = err?.error?.message ?? 'Impossible d\'enregistrer ce conducteur.';
+        const msg = err?.error?.message ?? 'Could not save this driver.';
         this.messageService.add({ severity: 'warn', summary: 'Validation', detail: msg, life: 6000 });
       },
     });
@@ -757,20 +757,20 @@ export class TransportsAdminComponent {
 
   deleteDriver(driver: Driver) {
     this.confirmService.confirm({
-      header: 'Supprimer le conducteur',
-      message: `Supprimer <strong>${driver.firstName} ${driver.lastName}</strong> de l'équipe ?`,
+      header: 'Delete driver',
+      message: `Remove <strong>${driver.firstName} ${driver.lastName}</strong> from the team?`,
       icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Oui, supprimer', rejectLabel: 'Annuler', acceptButtonStyleClass: 'p-button-danger',
+      acceptLabel: 'Yes, delete', rejectLabel: 'Cancel', acceptButtonStyleClass: 'p-button-danger',
       accept: () => {
         this.http.delete<any>(`/api/admin/drivers/${driver.driverId}`).subscribe({
           next: () => {
             this.loadDrivers();
             this.loadStats();
-            this.messageService.add({ severity: 'warn', summary: 'Conducteur supprimé', detail: `${driver.firstName} ${driver.lastName} retiré de l'équipe.`, life: 4500 });
+            this.messageService.add({ severity: 'warn', summary: 'Driver removed', detail: `${driver.firstName} ${driver.lastName} was removed from the team.`, life: 4500 });
           },
           error: (err) => {
-            const msg = err?.error?.message ?? 'Ce conducteur est peut-être assigné à un trajet actif.';
-            this.messageService.add({ severity: 'error', summary: 'Suppression impossible', detail: msg, life: 6000 });
+            const msg = err?.error?.message ?? 'This driver may be assigned to an active route.';
+            this.messageService.add({ severity: 'error', summary: 'Could not delete', detail: msg, life: 6000 });
           },
         });
       },
@@ -786,17 +786,17 @@ export class TransportsAdminComponent {
 
   confirmReservation(res: TransportReservation) {
     this.confirmService.confirm({
-      header: 'Confirmer la réservation',
-      message: `Confirmer <strong>${res.reservationRef}</strong> de <strong>${res.passengerFirstName} ${res.passengerLastName}</strong> — ${res.numberOfSeats} place(s) ?`,
+      header: 'Confirm booking',
+      message: `Confirm <strong>${res.reservationRef}</strong> for <strong>${res.passengerFirstName} ${res.passengerLastName}</strong> — ${res.numberOfSeats} seat(s)?`,
       icon: 'pi pi-check-circle',
-      acceptLabel: 'Oui, confirmer', rejectLabel: 'Annuler',
+      acceptLabel: 'Yes, confirm', rejectLabel: 'Cancel',
       accept: () => {
         this.http.patch<any>(`/api/admin/transport-reservations/${res.transportReservationId}/confirm`, {}).subscribe({
           next: () => {
             if (this.selectedTransport()) this.loadReservations(this.selectedTransport()!.transportId);
-            this.messageService.add({ severity: 'success', summary: 'Réservation confirmée', detail: `${res.reservationRef} — ${res.passengerFirstName} ${res.passengerLastName}`, life: 4500 });
+            this.messageService.add({ severity: 'success', summary: 'Booking confirmed', detail: `${res.reservationRef} — ${res.passengerFirstName} ${res.passengerLastName}`, life: 4500 });
           },
-          error: () => this.messageService.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de confirmer cette réservation.', life: 5000 }),
+          error: () => this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Could not confirm this booking.', life: 5000 }),
         });
       },
     });
@@ -804,17 +804,17 @@ export class TransportsAdminComponent {
 
   cancelReservation(res: TransportReservation) {
     this.confirmService.confirm({
-      header: 'Annuler la réservation',
-      message: `Annuler <strong>${res.reservationRef}</strong> de <strong>${res.passengerFirstName} ${res.passengerLastName}</strong> ?`,
+      header: 'Cancel booking',
+      message: `Cancel <strong>${res.reservationRef}</strong> for <strong>${res.passengerFirstName} ${res.passengerLastName}</strong>?`,
       icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Oui, annuler', rejectLabel: 'Garder', acceptButtonStyleClass: 'p-button-danger',
+      acceptLabel: 'Yes, cancel', rejectLabel: 'Keep', acceptButtonStyleClass: 'p-button-danger',
       accept: () => {
         this.http.patch<any>(`/api/admin/transport-reservations/${res.transportReservationId}/cancel`, { reason: 'Admin' }).subscribe({
           next: () => {
             if (this.selectedTransport()) this.loadReservations(this.selectedTransport()!.transportId);
-            this.messageService.add({ severity: 'warn', summary: 'Réservation annulée', detail: `${res.reservationRef} annulée.`, life: 4500 });
+            this.messageService.add({ severity: 'warn', summary: 'Booking cancelled', detail: `${res.reservationRef} was cancelled.`, life: 4500 });
           },
-          error: () => this.messageService.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible d\'annuler cette réservation.', life: 5000 }),
+          error: () => this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Could not cancel this booking.', life: 5000 }),
         });
       },
     });

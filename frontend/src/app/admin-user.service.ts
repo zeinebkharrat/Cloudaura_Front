@@ -26,8 +26,15 @@ export class AdminUserService {
   }
 
   listCities() {
-    return this.http.get<Array<CityOption & { cityId?: number; id?: number }>>('/api/cities').pipe(
-      map((cities) => {
+    return this.http.get<
+      | Array<CityOption & { cityId?: number; id?: number }>
+      | { data?: Array<CityOption & { cityId?: number; id?: number }> }
+    >('/api/cities').pipe(
+      map((raw) => {
+        const cities = Array.isArray(raw) ? raw : raw?.data;
+        if (!Array.isArray(cities)) {
+          return [] as CityOption[];
+        }
         const normalized: CityOption[] = [];
         for (const city of cities) {
           const resolvedId = city.id ?? city.cityId;

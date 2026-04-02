@@ -7,6 +7,7 @@ import { SkeletonModule } from 'primeng/skeleton';
 import { RippleModule } from 'primeng/ripple';
 import { TripContextStore } from '../../../core/stores/trip-context.store';
 import { DATA_SOURCE_TOKEN } from '../../../core/adapters/data-source.adapter';
+import { AppAlertsService } from '../../../core/services/app-alerts.service';
 import { Transport, City, TransportType, TRANSPORT_TYPE_META } from '../../../core/models/travel.models';
 
 @Component({
@@ -38,7 +39,7 @@ import { Transport, City, TransportType, TRANSPORT_TYPE_META } from '../../../co
 
         <button class="rp-back" pRipple (click)="goBack()">
           <i class="pi pi-arrow-left"></i>
-          <span>Modifier la recherche</span>
+          <span>Edit search</span>
         </button>
       </header>
 
@@ -67,13 +68,13 @@ import { Transport, City, TransportType, TRANSPORT_TYPE_META } from '../../../co
           <!-- Empty State -->
           <div class="rp-empty">
             <div class="rp-empty-icon">{{ getTypeEmoji(queryParams.transportType) }}</div>
-            <h3>Aucun trajet disponible</h3>
-            <p>Pas de <strong>{{ getTypeLabel(queryParams.transportType) }}</strong> pour cette date et ce trajet.</p>
-            <p class="rp-empty-hint">Utilisez le bouton ci-dessus pour modifier vos criteres de recherche.</p>
+            <h3>No trips available</h3>
+            <p>No <strong>{{ getTypeLabel(queryParams.transportType) }}</strong> options for this route and date.</p>
+            <p class="rp-empty-hint">Use the button above to change your search criteria.</p>
           </div>
         } @else {
           <!-- Results Count -->
-          <p class="rp-count">{{ sortedResults().length }} trajet(s) disponible(s)</p>
+          <p class="rp-count">{{ sortedResults().length }} trip(s) available</p>
 
           <!-- Result Cards -->
           <div class="rp-list">
@@ -83,7 +84,7 @@ import { Transport, City, TransportType, TRANSPORT_TYPE_META } from '../../../co
                 <div class="tc-top">
                   <p-tag [value]="getTypeLabel(t.type)" [severity]="getTypeSeverity(t.type)"></p-tag>
                   @if (t.availableSeats !== undefined && t.availableSeats < 5) {
-                    <span class="tc-warn"><i class="pi pi-exclamation-triangle"></i> {{ t.availableSeats }} place(s) restante(s)</span>
+                    <span class="tc-warn"><i class="pi pi-exclamation-triangle"></i> Only {{ t.availableSeats }} seat(s) left</span>
                   }
                 </div>
 
@@ -116,7 +117,7 @@ import { Transport, City, TransportType, TRANSPORT_TYPE_META } from '../../../co
                     @if (t.vehicleBrand) {
                       <span class="tc-vehicle"><i class="pi pi-car"></i> {{ t.vehicleBrand }} {{ t.vehicleModel }}</span>
                     }
-                    <span class="tc-seats"><i class="pi pi-users"></i> {{ t.availableSeats ?? t.capacity }} places</span>
+                    <span class="tc-seats"><i class="pi pi-users"></i> {{ t.availableSeats ?? t.capacity }} seats</span>
                     @if (t.driverRating) {
                       <span class="tc-rating"><i class="pi pi-star-fill"></i> {{ t.driverRating }}</span>
                     }
@@ -127,7 +128,7 @@ import { Transport, City, TransportType, TRANSPORT_TYPE_META } from '../../../co
                       <span class="tc-amount">{{ t.price }}</span>
                       <span class="tc-currency">TND</span>
                     </div>
-                    <button pButton label="Reserver" icon="pi pi-arrow-right"
+                    <button pButton label="Book" icon="pi pi-arrow-right"
                             iconPos="right" class="p-button-sm p-button-raised"></button>
                   </div>
                 </div>
@@ -315,6 +316,7 @@ export class TransportResultsPageComponent implements OnInit {
   private router = inject(Router);
   private store = inject(TripContextStore);
   private dataSource = inject(DATA_SOURCE_TOKEN);
+  private alerts = inject(AppAlertsService);
 
   loading = signal(true);
   allResults = signal<Transport[]>([]);
@@ -327,12 +329,12 @@ export class TransportResultsPageComponent implements OnInit {
 
   departureCityName = computed(() => {
     const id = parseInt(this.queryParams.from);
-    return this.cities().find(c => c.id === id)?.name ?? 'Depart';
+    return this.cities().find(c => c.id === id)?.name ?? 'From';
   });
 
   arrivalCityName = computed(() => {
     const id = parseInt(this.queryParams.to);
-    return this.cities().find(c => c.id === id)?.name ?? 'Arrivee';
+    return this.cities().find(c => c.id === id)?.name ?? 'To';
   });
 
   ngOnInit() {
@@ -352,8 +354,17 @@ export class TransportResultsPageComponent implements OnInit {
       transportType: this.queryParams.transportType,
       passengers: this.queryParams.passengers ? parseInt(this.queryParams.passengers) : 1
     }).subscribe({
-      next: data => { this.allResults.set(data); this.loading.set(false); },
-      error: () => this.loading.set(false)
+      next: data => {
+        this.allResults.set(data);
+        this.loading.set(false);
+      },
+      error: () => {
+        this.loading.set(false);
+        void this.alerts.error(
+          'Could not load results',
+          'We could not fetch trips. Check your connection and try again.'
+        );
+      },
     });
   }
 
@@ -377,7 +388,7 @@ export class TransportResultsPageComponent implements OnInit {
 
   formatTime(dateStr: string): string {
     if (!dateStr) return '';
-    return new Date(dateStr).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    return new Date(dateStr).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
   }
 
   formatDuration(minutes: number): string {

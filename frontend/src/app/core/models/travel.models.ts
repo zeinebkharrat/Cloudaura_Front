@@ -207,11 +207,11 @@ export interface EngineRecommendationResponse {
 }
 
 export const TRANSPORT_TYPE_META: Record<TransportType, { label: string; icon: string; requiresFrom: keyof CityInfrastructure | null; requiresTo: keyof CityInfrastructure | null }> = {
-  BUS:   { label: 'Bus',        icon: 'pi pi-car',      requiresFrom: null,      requiresTo: null },
-  VAN:   { label: 'Louage',     icon: 'pi pi-truck',    requiresFrom: null,      requiresTo: null },
-  TAXI:  { label: 'Taxi',       icon: 'pi pi-map',      requiresFrom: null,      requiresTo: null },
-  CAR:   { label: 'Voiture',    icon: 'pi pi-car',      requiresFrom: null,      requiresTo: null },
-  PLANE: { label: 'Avion',      icon: 'pi pi-send',     requiresFrom: 'airport', requiresTo: 'airport' },
-  TRAIN: { label: 'Train',      icon: 'pi pi-building', requiresFrom: 'train',   requiresTo: 'train' },
-  FERRY: { label: 'Ferry',      icon: 'pi pi-globe',    requiresFrom: 'ferry',   requiresTo: 'ferry' },
+  BUS:   { label: 'Bus',         icon: 'pi pi-car',      requiresFrom: null,      requiresTo: null },
+  VAN:   { label: 'Shared van',  icon: 'pi pi-truck',    requiresFrom: null,      requiresTo: null },
+  TAXI:  { label: 'Taxi',        icon: 'pi pi-map',      requiresFrom: null,      requiresTo: null },
+  CAR:   { label: 'Car rental',  icon: 'pi pi-car',      requiresFrom: null,      requiresTo: null },
+  PLANE: { label: 'Flight',      icon: 'pi pi-send',     requiresFrom: 'airport', requiresTo: 'airport' },
+  TRAIN: { label: 'Train',       icon: 'pi pi-building', requiresFrom: 'train',   requiresTo: 'train' },
+  FERRY: { label: 'Ferry',       icon: 'pi pi-globe',    requiresFrom: 'ferry',   requiresTo: 'ferry' },
 };

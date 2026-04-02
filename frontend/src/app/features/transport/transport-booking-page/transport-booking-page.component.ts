@@ -9,11 +9,9 @@ import { InputMaskModule } from 'primeng/inputmask';
 import { RadioButtonModule } from 'primeng/radiobutton';
 import { DividerModule } from 'primeng/divider';
 import { TagModule } from 'primeng/tag';
-import { ToastModule } from 'primeng/toast';
-import { DialogModule } from 'primeng/dialog';
 import { RippleModule } from 'primeng/ripple';
-import { MessageService } from 'primeng/api';
 import { TripContextStore } from '../../../core/stores/trip-context.store';
+import { AppAlertsService } from '../../../core/services/app-alerts.service';
 import { DATA_SOURCE_TOKEN } from '../../../core/adapters/data-source.adapter';
 import { AuthService } from '../../../core/auth.service';
 import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } from '../../../core/models/travel.models';
@@ -25,12 +23,9 @@ import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } f
     CommonModule, FormsModule, ReactiveFormsModule,
     StepperModule, ButtonModule, InputTextModule,
     InputMaskModule, RadioButtonModule, DividerModule,
-    TagModule, ToastModule, DialogModule, RippleModule,
+    TagModule, RippleModule,
   ],
-  providers: [MessageService],
   template: `
-    <p-toast position="top-center" />
-
     <div class="bp">
       <div class="bp-wrap">
 
@@ -39,7 +34,7 @@ import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } f
           <p-stepper [linear]="true" [activeStep]="activeStep()">
 
             <!-- ═══ Step 1: Passenger ═══ -->
-            <p-stepperPanel header="Passagers">
+            <p-stepperPanel header="Passengers">
               <ng-template pTemplate="content" let-nextCallback="nextCallback">
                 <div class="step">
                   <!-- Inline trip summary -->
@@ -48,36 +43,36 @@ import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } f
                       <span class="trip-emoji">{{ getTypeEmoji(t.type) }}</span>
                       <div class="trip-detail">
                         <span class="trip-route">{{ t.departureCityName }} → {{ t.arrivalCityName }}</span>
-                        <span class="trip-meta">{{ getTypeLabel(t.type) }} · {{ formatTime(t.departureTime) }} – {{ formatTime(t.arrivalTime) }} · {{ passengerForm.get('seats')?.value }} place(s)</span>
+                        <span class="trip-meta">{{ getTypeLabel(t.type) }} · {{ formatTime(t.departureTime) }} – {{ formatTime(t.arrivalTime) }} · {{ passengerForm.get('seats')?.value }} seat(s)</span>
                       </div>
                       <span class="trip-price">{{ t.price }} <small>TND</small></span>
                     </div>
                   }
 
                   <div class="step-head">
-                    <h2>Informations passager</h2>
-                    <p>Coordonnees du passager principal</p>
+                    <h2>Passenger details</h2>
+                    <p>Primary traveller contact information</p>
                   </div>
 
                   <form [formGroup]="passengerForm" class="f">
                     <!-- Name Row -->
                     <div class="f-row">
                       <div class="f-group">
-                        <label class="f-label"><i class="pi pi-user"></i> Prenom</label>
+                        <label class="f-label"><i class="pi pi-user"></i> First name</label>
                         <div class="f-input-wrap" [class.f-error]="passengerForm.get('firstName')?.invalid && passengerForm.get('firstName')?.touched">
-                          <input pInputText formControlName="firstName" placeholder="Prenom" class="f-input" />
+                          <input pInputText formControlName="firstName" placeholder="First name" class="f-input" />
                         </div>
                         @if (passengerForm.get('firstName')?.invalid && passengerForm.get('firstName')?.touched) {
-                          <small class="f-err-msg">Prenom requis (min. 2 caracteres)</small>
+                          <small class="f-err-msg">First name is required (min. 2 characters)</small>
                         }
                       </div>
                       <div class="f-group">
-                        <label class="f-label"><i class="pi pi-user"></i> Nom</label>
+                        <label class="f-label"><i class="pi pi-user"></i> Last name</label>
                         <div class="f-input-wrap" [class.f-error]="passengerForm.get('lastName')?.invalid && passengerForm.get('lastName')?.touched">
-                          <input pInputText formControlName="lastName" placeholder="Nom de famille" class="f-input" />
+                          <input pInputText formControlName="lastName" placeholder="Last name" class="f-input" />
                         </div>
                         @if (passengerForm.get('lastName')?.invalid && passengerForm.get('lastName')?.touched) {
-                          <small class="f-err-msg">Nom requis (min. 2 caracteres)</small>
+                          <small class="f-err-msg">Last name is required (min. 2 characters)</small>
                         }
                       </div>
                     </div>
@@ -90,17 +85,17 @@ import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } f
                           <input pInputText formControlName="email" placeholder="votre@email.com" class="f-input" />
                         </div>
                         @if (passengerForm.get('email')?.invalid && passengerForm.get('email')?.touched) {
-                          <small class="f-err-msg">Email valide requis</small>
+                          <small class="f-err-msg">Enter a valid email address</small>
                         }
                       </div>
                       <div class="f-group">
-                        <label class="f-label"><i class="pi pi-phone"></i> Telephone</label>
+                        <label class="f-label"><i class="pi pi-phone"></i> Phone</label>
                         <div class="f-phone" [class.f-error]="passengerForm.get('phone')?.invalid && passengerForm.get('phone')?.touched">
                           <span class="f-prefix">+216</span>
                           <input pInputText formControlName="phone" placeholder="98 765 432" class="f-input" />
                         </div>
                         @if (passengerForm.get('phone')?.invalid && passengerForm.get('phone')?.touched) {
-                          <small class="f-err-msg">8 chiffres requis</small>
+                          <small class="f-err-msg">Enter 8 digits (Tunisia mobile without +216)</small>
                         }
                       </div>
                     </div>
@@ -108,13 +103,13 @@ import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } f
                     <!-- Seats (read-only) -->
                     <div class="f-seats">
                       <div class="f-seats-badge">{{ passengerForm.get('seats')?.value }}</div>
-                      <span class="f-seats-txt">place(s) reservee(s)</span>
+                      <span class="f-seats-txt">seat(s) reserved</span>
                     </div>
                   </form>
 
                   <div class="step-nav">
                     <span></span>
-                    <button pButton label="Continuer" icon="pi pi-arrow-right" iconPos="right"
+                    <button pButton label="Continue" icon="pi pi-arrow-right" iconPos="right"
                             class="p-button-raised" (click)="goToStep2(nextCallback)"
                             [disabled]="passengerForm.invalid"></button>
                   </div>
@@ -123,12 +118,12 @@ import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } f
             </p-stepperPanel>
 
             <!-- ═══ Step 2: Payment ═══ -->
-            <p-stepperPanel header="Paiement">
+            <p-stepperPanel header="Payment">
               <ng-template pTemplate="content" let-prevCallback="prevCallback" let-nextCallback="nextCallback">
                 <div class="step">
                   <div class="step-head">
-                    <h2>Recapitulatif & Paiement</h2>
-                    <p>Verifiez les details avant de confirmer</p>
+                    <h2>Summary & payment</h2>
+                    <p>Review details before you confirm</p>
                   </div>
 
                   <!-- Summary -->
@@ -154,17 +149,17 @@ import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } f
                     <div class="sum-divider"></div>
 
                     <div class="sum-grid">
-                      <div class="sum-item"><span class="sum-k"><i class="pi pi-calendar"></i> Date</span><span class="sum-v">{{ formatDateFR(store.dates().travelDate) }}</span></div>
-                      <div class="sum-item"><span class="sum-k"><i class="pi pi-user"></i> Passager</span><span class="sum-v">{{ passengerForm.get('firstName')?.value }} {{ passengerForm.get('lastName')?.value }}</span></div>
-                      <div class="sum-item"><span class="sum-k"><i class="pi pi-users"></i> Places</span><span class="sum-v">{{ passengerForm.get('seats')?.value }}</span></div>
-                      <div class="sum-item"><span class="sum-k"><i class="pi pi-phone"></i> Tel</span><span class="sum-v">+216 {{ passengerForm.get('phone')?.value }}</span></div>
+                      <div class="sum-item"><span class="sum-k"><i class="pi pi-calendar"></i> Date</span><span class="sum-v">{{ formatTravelDate(store.dates().travelDate) }}</span></div>
+                      <div class="sum-item"><span class="sum-k"><i class="pi pi-user"></i> Passenger</span><span class="sum-v">{{ passengerForm.get('firstName')?.value }} {{ passengerForm.get('lastName')?.value }}</span></div>
+                      <div class="sum-item"><span class="sum-k"><i class="pi pi-users"></i> Seats</span><span class="sum-v">{{ passengerForm.get('seats')?.value }}</span></div>
+                      <div class="sum-item"><span class="sum-k"><i class="pi pi-phone"></i> Phone</span><span class="sum-v">+216 {{ passengerForm.get('phone')?.value }}</span></div>
                     </div>
 
                     <div class="sum-divider"></div>
 
                     <div class="sum-pricing">
-                      <div class="sum-pl"><span>Prix unitaire</span><span>{{ transport()?.price }} TND</span></div>
-                      <div class="sum-pl"><span>Places</span><span>&times; {{ passengerForm.get('seats')?.value }}</span></div>
+                      <div class="sum-pl"><span>Unit price</span><span>{{ transport()?.price }} TND</span></div>
+                      <div class="sum-pl"><span>Seats</span><span>&times; {{ passengerForm.get('seats')?.value }}</span></div>
                       <div class="sum-pl sum-total">
                         <span>Total</span>
                         <span class="sum-total-val">{{ calculateTotal() }} TND</span>
@@ -174,15 +169,15 @@ import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } f
 
                   <!-- Payment Methods -->
                   <div class="pay">
-                    <h3 class="pay-title">Mode de paiement</h3>
+                    <h3 class="pay-title">Payment method</h3>
                     <div class="pay-grid">
                       <label class="pay-opt" [class.pay-active]="paymentMethod() === 'CASH'"
                              (click)="paymentMethod.set('CASH'); paymentMethodValue = 'CASH'">
                         <span class="pay-radio" [class.pay-checked]="paymentMethod() === 'CASH'"></span>
                         <i class="pi pi-wallet pay-icon"></i>
                         <div class="pay-txt">
-                          <span class="pay-name">Especes</span>
-                          <span class="pay-desc">Payer au chauffeur</span>
+                          <span class="pay-name">Cash</span>
+                          <span class="pay-desc">Pay the driver directly</span>
                         </div>
                       </label>
                       <label class="pay-opt" [class.pay-active]="paymentMethod() === 'KONNECT'"
@@ -191,16 +186,16 @@ import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } f
                         <i class="pi pi-credit-card pay-icon"></i>
                         <div class="pay-txt">
                           <span class="pay-name">Konnect</span>
-                          <span class="pay-desc">Paiement en ligne securise</span>
+                          <span class="pay-desc">Secure online payment</span>
                         </div>
                       </label>
                     </div>
                   </div>
 
                   <div class="step-nav">
-                    <button pButton label="Retour" icon="pi pi-arrow-left"
+                    <button pButton label="Back" icon="pi pi-arrow-left"
                             class="p-button-text" (click)="prevCallback.emit()"></button>
-                    <button pButton [label]="'Confirmer · ' + calculateTotal() + ' TND'"
+                    <button pButton [label]="'Confirm · ' + calculateTotal() + ' TND'"
                             icon="pi pi-lock" class="p-button-raised"
                             (click)="confirmBooking(nextCallback)"
                             [loading]="loading()" [disabled]="loading()"></button>
@@ -216,10 +211,10 @@ import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } f
                   <div class="conf-icon">
                     <div class="conf-circle"><i class="pi pi-check"></i></div>
                   </div>
-                  <h2 class="conf-title">Reservation confirmee !</h2>
+                  <h2 class="conf-title">Booking confirmed</h2>
                   <div class="conf-welcome-msg">
                     <span>👋</span>
-                    <span>Merci <strong>{{ authService.currentUser()?.firstName || passengerForm.get('firstName')?.value }}</strong>, votre billet est confirme !</span>
+                    <span>Thank you <strong>{{ authService.currentUser()?.firstName || passengerForm.get('firstName')?.value }}</strong>, your ticket is confirmed.</span>
                   </div>
 
                   @if (reservation(); as r) {
@@ -230,14 +225,14 @@ import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } f
                       </div>
                       <div class="conf-divider"></div>
                       <div class="conf-rows">
-                        <div class="conf-row"><span>Montant</span><strong>{{ r.totalPrice }} TND</strong></div>
-                        <div class="conf-row"><span>Statut</span><p-tag [value]="r.status" severity="success"></p-tag></div>
-                        <div class="conf-row"><span>Paiement</span><p-tag [value]="r.paymentMethod" severity="info"></p-tag></div>
+                        <div class="conf-row"><span>Amount</span><strong>{{ r.totalPrice }} TND</strong></div>
+                        <div class="conf-row"><span>Status</span><p-tag [value]="r.status" severity="success"></p-tag></div>
+                        <div class="conf-row"><span>Payment</span><p-tag [value]="r.paymentMethod" severity="info"></p-tag></div>
                       </div>
                       @if (r.qrCodeToken) {
                         <div class="conf-divider"></div>
                         <div class="conf-qr">
-                          <p>Presentez ce QR code lors de l'embarquement</p>
+                          <p>Show this QR code at boarding</p>
                           <div class="conf-qr-box">
                             <i class="pi pi-qrcode"></i>
                             <small>{{ r.qrCodeToken }}</small>
@@ -248,9 +243,9 @@ import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } f
                   }
 
                   <div class="conf-btns">
-                    <button pButton label="Mes reservations" icon="pi pi-list"
+                    <button pButton label="My bookings" icon="pi pi-list"
                             class="p-button-raised" (click)="router.navigate(['/profile'])"></button>
-                    <button pButton label="Nouvelle recherche" icon="pi pi-search"
+                    <button pButton label="New search" icon="pi pi-search"
                             class="p-button-text" (click)="router.navigate(['/transport'])"></button>
                   </div>
                 </div>
@@ -496,7 +491,7 @@ import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } f
 export class TransportBookingPageComponent implements OnInit {
   private fb = inject(FormBuilder);
   private route = inject(ActivatedRoute);
-  private messageService = inject(MessageService);
+  private alerts = inject(AppAlertsService);
   authService = inject(AuthService);
   private dataSource = inject(DATA_SOURCE_TOKEN);
 
@@ -535,32 +530,53 @@ export class TransportBookingPageComponent implements OnInit {
     const selected = this.store.selectedTransport();
     if (selected) {
       this.transport.set(selected);
+      this.applySeatCapacityValidators(selected);
     } else {
       const id = this.route.snapshot.paramMap.get('id');
       if (id) {
         this.dataSource.getTransportById(parseInt(id)).subscribe({
-          next: t => this.transport.set(t),
-          error: () => this.router.navigate(['/transport'])
+          next: t => {
+            this.transport.set(t);
+            this.applySeatCapacityValidators(t);
+          },
+          error: () => {
+            void this.alerts.error('Trip not found', 'We could not load this trip. Returning to search.');
+            this.router.navigate(['/transport']);
+          },
         });
       }
     }
   }
 
   goToStep2(nextCallback: any) {
-    if (this.passengerForm.valid) nextCallback.emit();
-    else this.passengerForm.markAllAsTouched();
+    if (this.passengerForm.valid) {
+      nextCallback.emit();
+    } else {
+      this.passengerForm.markAllAsTouched();
+      void this.alerts.warning('Check passenger details', 'Please correct the highlighted fields before continuing.');
+    }
   }
 
   confirmBooking(nextCallback: any) {
     const user = this.authService.currentUser();
     if (!user) {
-      this.messageService.add({ severity: 'warn', summary: 'Connexion requise', detail: 'Veuillez vous connecter pour reserver' });
+      void this.alerts.warning('Sign in required', 'Please sign in to complete your booking.');
       this.router.navigate(['/signin']);
       return;
     }
 
     const t = this.transport();
     if (!t) return;
+
+    const seats = this.passengerForm.get('seats')?.value ?? 1;
+    const maxSeats = this.maxBookableSeats(t);
+    if (seats > maxSeats) {
+      void this.alerts.warning(
+        'Not enough seats',
+        `This trip only has ${maxSeats} seat(s) available. Reduce the number of seats and try again.`
+      );
+      return;
+    }
 
     this.loading.set(true);
     const idempotencyKey = crypto.randomUUID();
@@ -580,13 +596,32 @@ export class TransportBookingPageComponent implements OnInit {
         this.loading.set(false);
         this.reservation.set(res);
         nextCallback.emit();
-        this.messageService.add({ severity: 'success', summary: 'Réservation confirmée !', detail: 'Votre billet a été réservé avec succès.', life: 5000 });
       },
       error: err => {
         this.loading.set(false);
-        this.messageService.add({ severity: 'error', summary: 'Erreur', detail: err.error?.message ?? 'Erreur lors de la reservation.', life: 5000 });
-      }
+        void this.alerts.error(
+          'Booking failed',
+          err.error?.message ?? 'We could not complete the reservation. Please try again.'
+        );
+      },
     });
+  }
+
+  private maxBookableSeats(t: Transport): number {
+    const cap = t.availableSeats ?? t.capacity ?? 20;
+    return Math.min(20, Math.max(1, cap));
+  }
+
+  private applySeatCapacityValidators(t: Transport): void {
+    const ctrl = this.passengerForm.get('seats');
+    if (!ctrl) return;
+    const max = this.maxBookableSeats(t);
+    ctrl.setValidators([Validators.required, Validators.min(1), Validators.max(max)]);
+    const current = ctrl.value ?? 1;
+    if (current > max) {
+      ctrl.patchValue(max, { emitEvent: false });
+    }
+    ctrl.updateValueAndValidity({ emitEvent: false });
   }
 
   calculateTotal(): number {
@@ -598,12 +633,17 @@ export class TransportBookingPageComponent implements OnInit {
 
   formatTime(dateStr: string): string {
     if (!dateStr) return '';
-    return new Date(dateStr).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    return new Date(dateStr).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
   }
 
-  formatDateFR(date: string | null | undefined): string {
+  formatTravelDate(date: string | null | undefined): string {
     if (!date) return '';
-    return new Date(date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    return new Date(date).toLocaleDateString('en-GB', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
   }
 
   getTypeLabel(type: string): string {

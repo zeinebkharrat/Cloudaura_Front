@@ -5,6 +5,8 @@ import java.util.NoSuchElementException;
 import org.example.backend.dto.ProductCatalogItem;
 import org.example.backend.model.Product;
 import org.example.backend.model.User;
+import org.example.backend.repository.CartItemRepository;
+import org.example.backend.repository.OrderItemRepository;
 import org.example.backend.repository.ProductRepository;
 import org.example.backend.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -14,10 +16,18 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProductService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final CartItemRepository cartItemRepository;
+    private final OrderItemRepository orderItemRepository;
 
-    public ProductService(ProductRepository productRepository, UserRepository userRepository) {
+    public ProductService(
+            ProductRepository productRepository,
+            UserRepository userRepository,
+            CartItemRepository cartItemRepository,
+            OrderItemRepository orderItemRepository) {
         this.productRepository = productRepository;
         this.userRepository = userRepository;
+        this.cartItemRepository = cartItemRepository;
+        this.orderItemRepository = orderItemRepository;
     }
 
     /**
@@ -85,33 +95,44 @@ public class ProductService {
         return t.startsWith("/") ? t : "/" + t;
     }
 
-    public Product save(Product entity, String username) {
+    @Transactional
+    public ProductCatalogItem save(Product entity, String username) {
         User currentUser = userRepository.findByUsernameIgnoreCase(username)
                 .orElseThrow(() -> new NoSuchElementException("User not found with username: " + username));
         entity.setUser(currentUser);
         entity.setImageUrl(normalizeImageUrlForApi(entity.getImageUrl()));
-        return productRepository.save(entity);
+        Product saved = productRepository.save(entity);
+        return productRepository.findByIdWithSeller(saved.getProductId())
+                .map(this::toCatalogItem)
+                .orElseThrow(() -> new NoSuchElementException("Product not found after save"));
     }
 
-    public Product update(Integer id, Product entityDetails) {
-        Product existing = productRepository.findById(id)
+    /**
+     * Updates catalog fields only. Seller ({@code user}) is never taken from the JSON body (avoids detached
+     * {@code User} proxies and keeps ownership stable). Returns a DTO so Jackson does not touch
+     * {@code Product.user} after the session closes (open-in-view=false).
+     */
+    @Transactional
+    public ProductCatalogItem update(Integer id, Product entityDetails) {
+        Product existing = productRepository.findByIdWithSeller(id)
                 .orElseThrow(() -> new NoSuchElementException("Product not found with id: " + id));
 
         existing.setName(entityDetails.getName());
         existing.setImageUrl(normalizeImageUrlForApi(entityDetails.getImageUrl()));
         existing.setPrice(entityDetails.getPrice());
         existing.setStock(entityDetails.getStock());
-        if (entityDetails.getUser() != null) {
-            existing.setUser(entityDetails.getUser());
-        }
 
-        return productRepository.save(existing);
+        Product saved = productRepository.save(existing);
+        return toCatalogItem(saved);
     }
 
+    @Transactional
     public void deleteById(Integer id) {
         if (!productRepository.existsById(id)) {
             throw new NoSuchElementException("Product not found with id: " + id);
         }
+        cartItemRepository.deleteAllByProduct_ProductId(id);
+        orderItemRepository.deleteAllByProduct_ProductId(id);
         productRepository.deleteById(id);
     }
 }

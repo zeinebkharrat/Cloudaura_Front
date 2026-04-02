@@ -18,16 +18,16 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
       <!-- Hero Header -->
       <div class="hero-header">
         <div class="hero-content">
-          <span class="hero-label">HÉBERGEMENTS</span>
+          <span class="hero-label">STAYS</span>
           <h1>
             @if (currentCity(); as city) {
-              Séjournez à <span class="city-highlight">{{ city.name }}</span>
+              Stay in <span class="city-highlight">{{ city.name }}</span>
             } @else {
-              Découvrez nos hébergements en <span class="city-highlight">Tunisie</span>
+              Discover places to stay in <span class="city-highlight">Tunisia</span>
             }
           </h1>
           <p class="hero-sub">
-            {{ currentCity()?.description || 'Les meilleurs hôtels, maisons d\\'hôtes et gîtes sélectionnés pour vous.' }}
+            {{ currentCity()?.description || 'Hand-picked hotels, guest houses and rural stays for your trip.' }}
           </p>
           
         </div>
@@ -39,17 +39,17 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
         <!-- Sidebar Filters -->
         <aside class="filter-panel">
           <div class="filter-header">
-            <h3>Filtrer</h3>
-            <button class="btn-clear" (click)="resetFilters()">Effacer</button>
+            <h3>Filters</h3>
+            <button class="btn-clear" (click)="resetFilters()">Clear</button>
           </div>
 
           <form [formGroup]="filterForm">
             
             <!-- City Selector -->
             <div class="filter-block">
-              <label class="filter-label">📍 Ville</label>
+              <label class="filter-label"><img src="/icones/city.png" alt="" class="filter-label-icon" /> City</label>
               <select formControlName="cityId" class="filter-select" (change)="onCityChange()">
-                <option [value]="0">Toutes les villes</option>
+                <option [value]="0">All cities</option>
                 <option *ngFor="let city of cities()" [value]="city.id">{{ city.name }}</option>
               </select>
             </div>
@@ -59,20 +59,20 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
               <label class="filter-label"><img src="/icones/hotel.png" alt="Type" class="filter-label-icon" /> Type</label>
               <div class="type-chips">
                 <button class="chip" [class.active]="filterForm.value.type === ''" 
-                        (click)="setType('')">Tous</button>
+                        (click)="setType('')">All</button>
                 <button class="chip" [class.active]="filterForm.value.type === 'HOTEL'"
-                        (click)="setType('HOTEL')"><img src="/icones/hotel.png" alt="Hôtel" class="chip-icon" /> Hôtel</button>
+                        (click)="setType('HOTEL')"><img src="/icones/hotel.png" alt="Hotel" class="chip-icon" /> Hotel</button>
                 <button class="chip" [class.active]="filterForm.value.type === 'MAISON_HOTE'"
-                        (click)="setType('MAISON_HOTE')"><img src="/icones/home.png" alt="Maison" class="chip-icon" /> Maison d'hôtes</button>
+                        (click)="setType('MAISON_HOTE')"><img src="/icones/home.png" alt="Guest house" class="chip-icon" /> Guest house</button>
                 <button class="chip" [class.active]="filterForm.value.type === 'GUESTHOUSE'"
-                        (click)="setType('GUESTHOUSE')"><img src="/icones/home.png" alt="Gîte" class="chip-icon" /> Gîte</button>
+                        (click)="setType('GUESTHOUSE')"><img src="/icones/home.png" alt="Rural stay" class="chip-icon" /> Rural stay</button>
               </div>
             </div>
 
             <!-- Price Range -->
             <div class="filter-block">
               <label class="filter-label">
-                <img src="/icones/money-bag.png" alt="Budget" class="filter-label-icon" /> Budget max
+                <img src="/icones/money-bag.png" alt="Budget" class="filter-label-icon" /> Max budget
                 <span class="price-display">{{ filterForm.value.maxPrice }} TND</span>
               </label>
               <input type="range" formControlName="maxPrice" min="50" max="800" step="10" class="range-input">
@@ -84,7 +84,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
 
             <!-- Star Rating -->
             <div class="filter-block">
-              <label class="filter-label">⭐ Note minimum</label>
+              <label class="filter-label"><i class="pi pi-star-fill filter-label-pi" aria-hidden="true"></i> Minimum rating</label>
               <div class="star-picker">
                 @for (star of [1,2,3,4,5]; track star) {
                   <button class="star-btn" 
@@ -109,9 +109,9 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
           <div class="results-header">
             <div class="results-count">
               @if (loading()) {
-                <span class="pulse-dot"></span> Recherche en cours...
+                <span class="pulse-dot"></span> Searching...
               } @else {
-                <strong>{{ accommodations().length }}</strong> hébergement(s) trouvé(s)
+                <strong>{{ accommodations().length }}</strong> listing(s) found
               }
             </div>
           </div>
@@ -141,15 +141,15 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
             } @else {
               <!-- Empty State -->
               <div class="empty-state">
-                <div class="empty-icon">🔍</div>
-                <h3>Aucun hébergement trouvé</h3>
-                <p>Essayez d'élargir vos critères de recherche ou de choisir une autre ville.</p>
+                <div class="empty-icon" aria-hidden="true"><i class="pi pi-search"></i></div>
+                <h3>No listings found</h3>
+                <p>Try widening your filters or picking another city.</p>
                 <div class="empty-actions">
                   <button class="btn-reset" (click)="resetFilters()">
-                    <i class="pi pi-refresh"></i> Réinitialiser les filtres
+                    <i class="pi pi-refresh"></i> Reset filters
                   </button>
                   <button class="btn-home" routerLink="/">
-                    <img src="/icones/home.png" alt="Accueil" style="width:1rem;height:1rem;object-fit:contain;vertical-align:middle;margin-right:0.25rem;" /> Choisir une ville
+                    <img src="/icones/home.png" alt="Home" style="width:1rem;height:1rem;object-fit:contain;vertical-align:middle;margin-right:0.25rem;" /> Pick a city
                   </button>
                 </div>
               </div>
@@ -245,6 +245,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
       gap: 0.4rem;
     }
     .filter-label-icon { width: 1rem; height: 1rem; object-fit: contain; flex-shrink: 0; }
+    .filter-label-pi { font-size: 0.95rem; color: #f1c40f; flex-shrink: 0; }
     .price-display {
       background: rgba(241,37,69,0.15);
       color: #f12545;
@@ -412,7 +413,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
       border: 1px solid rgba(255,255,255,0.06);
       border-radius: 20px;
     }
-    .empty-icon { font-size: 4rem; margin-bottom: 1rem; }
+    .empty-icon { font-size: 3rem; margin-bottom: 1rem; color: rgba(255,255,255,0.25); display: flex; justify-content: center; }
     .empty-state h3 { color: #fff; font-size: 1.4rem; margin-bottom: 0.75rem; }
     .empty-state p { color: rgba(255,255,255,0.5); max-width: 400px; margin: 0 auto 2rem; }
     .empty-actions { display: flex; gap: 12px; justify-content: center; }

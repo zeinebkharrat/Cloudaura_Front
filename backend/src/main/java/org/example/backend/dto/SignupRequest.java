@@ -27,6 +27,8 @@ public record SignupRequest(
         String nationality,
         Integer cityId,
         @Size(max = 100000, message = "Profile image URL is too long")
-        String profileImageUrl
+        String profileImageUrl,
+        /** Google reCAPTCHA v2 response; required when {@code app.recaptcha.secret} is set. */
+        String captchaToken
 ) {
 }

@@ -46,7 +46,7 @@ export class MyOrdersComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
-        this.error.set('Impossible de charger les données.');
+        this.error.set('Could not load data.');
         this.loading.set(false);
       },
     });
@@ -73,25 +73,25 @@ export class MyOrdersComponent implements OnInit {
       },
       error: () => {
         this.detailLoading.set(false);
-        this.detailError.set('Détail indisponible ou accès refusé.');
+        this.detailError.set('Details unavailable or access denied.');
       },
     });
   }
 
   formatPrice(p: number | null | undefined): string {
     if (p == null || Number.isNaN(Number(p))) return '—';
-    return new Intl.NumberFormat('fr-TN', { style: 'currency', currency: 'TND', minimumFractionDigits: 2 }).format(
+    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'TND', minimumFractionDigits: 2 }).format(
       Number(p)
     );
   }
 
   orderStatusLabel(status: string | null | undefined): string {
     const s = (status ?? '').toUpperCase();
-    if (s === 'PENDING') return 'En attente de traitement';
-    if (s === 'CONFIRMED' || s === 'CONFIRMÉE') return 'Confirmée';
-    if (s === 'SHIPPED') return 'Expédiée';
-    if (s === 'DELIVERED') return 'Livrée';
-    if (s === 'CANCELLED') return 'Annulée';
+    if (s === 'PENDING') return 'Pending';
+    if (s === 'CONFIRMED' || s === 'CONFIRMÉE') return 'Confirmed';
+    if (s === 'SHIPPED') return 'Shipped';
+    if (s === 'DELIVERED') return 'Delivered';
+    if (s === 'CANCELLED') return 'Cancelled';
     return status ?? '—';
   }
 
@@ -99,7 +99,7 @@ export class MyOrdersComponent implements OnInit {
     if (!iso) return '—';
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
-    return new Intl.DateTimeFormat('fr-FR', {
+    return new Intl.DateTimeFormat('en-GB', {
       dateStyle: 'long',
       timeStyle: 'short',
     }).format(d);

@@ -40,6 +40,18 @@ export interface SignUpPayload {
   nationality?: string | null;
   cityId?: number | null;
   profileImageUrl?: string | null;
+  captchaToken?: string | null;
+}
+
+export interface CaptchaConfig {
+  enabled: boolean;
+  siteKey: string;
+  /** Backend has a secret but no site key — widget cannot load; signup will still fail server-side. */
+  secretConfiguredButMissingSiteKey?: boolean;
+  /** `v2` = checkbox · `v3` = score (execute) — must match key type in Google Admin. */
+  version?: 'v2' | 'v3';
+  /** Set when GET /captcha-config failed (e.g. backend down) — do not submit without retry. */
+  configUnavailable?: boolean;
 }
 
 export interface AdminUser {
@@ -96,6 +108,7 @@ export interface ChangePasswordPayload {
 
 export interface ForgotPasswordPayload {
   email: string;
+  captchaToken?: string | null;
 }
 
 export interface ResetPasswordPayload {

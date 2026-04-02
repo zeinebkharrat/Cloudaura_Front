@@ -3,6 +3,8 @@ package org.example.backend.service;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -33,23 +35,23 @@ public class EmailService {
     }
 
     public void sendVerificationEmail(String toEmail, String firstName, String verificationLink) {
-        String displayName = (firstName == null || firstName.isBlank()) ? "voyageur" : firstName;
-        String subject = "YallaTN+ - Verification de votre compte";
-        String title = "Bienvenue sur YallaTN+";
-        String preheader = "Confirmez votre email pour activer votre compte et commencer a voyager en Tunisie.";
-        String plainText = "Salut " + displayName + ",\n\n"
-                                + "Bienvenue sur YallaTN+ !\n"
-                                + "Cliquez sur ce lien pour verifier votre compte :\n"
+        String displayName = (firstName == null || firstName.isBlank()) ? "traveller" : firstName;
+        String subject = "YallaTN+ - Verify your account";
+        String title = "Welcome to YallaTN+";
+        String preheader = "Confirm your email to activate your account and start exploring Tunisia.";
+        String plainText = "Hi " + displayName + ",\n\n"
+                                + "Welcome to YallaTN+!\n"
+                                + "Click this link to verify your account:\n"
                                 + verificationLink + "\n\n"
-                                + "Ce lien expire dans 24 heures.\n\n"
-                                + "Equipe YallaTN+";
+                                + "This link expires in 24 hours.\n\n"
+                                + "The YallaTN+ team";
         String html = buildTravelEmailHtml(
                                 title,
-                                "Votre passeport digital pour explorer la Tunisie.",
-                                "Confirmez votre email pour activer votre compte, sauvegarder vos itineraire et acceder a nos recommandations locales.",
-                                "Verifier mon compte",
+                                "Your digital passport to explore Tunisia.",
+                                "Confirm your email to activate your account, save itineraries, and access local recommendations.",
+                                "Verify my account",
                                 verificationLink,
-                                "Lien valide pendant 24 heures.",
+                                "Link valid for 24 hours.",
                                 displayName,
                                 preheader
         );
@@ -57,47 +59,49 @@ public class EmailService {
     }
 
     public void sendPasswordResetEmail(String toEmail, String firstName, String resetLink) {
-        String displayName = (firstName == null || firstName.isBlank()) ? "voyageur" : firstName;
-        String subject = "YallaTN+ - Reinitialisation du mot de passe";
-                String title = "Reinitialisation du mot de passe";
-                String preheader = "Reprenez l acces a votre compte YallaTN+ de maniere securisee.";
-                String plainText = "Salut " + displayName + ",\n\n"
-                                + "Vous avez demande la reinitialisation de votre mot de passe.\n"
-                                + "Cliquez ici pour definir un nouveau mot de passe :\n"
+        String displayName = (firstName == null || firstName.isBlank()) ? "traveller" : firstName;
+        String subject = "YallaTN+ - Reset your password";
+                String title = "Password reset";
+                String preheader = "Securely regain access to your YallaTN+ account.";
+                String plainText = "Hi " + displayName + ",\n\n"
+                                + "You asked to reset your password.\n"
+                                + "Click here to set a new password:\n"
                                 + resetLink + "\n\n"
-                                + "Ce lien expire dans 30 minutes.\n"
-                                + "Si vous n'etes pas a l'origine de cette demande, ignorez simplement cet email.\n\n"
-                                + "Equipe YallaTN+";
+                                + "This link expires in 30 minutes.\n"
+                                + "If you did not request this, you can ignore this email.\n\n"
+                                + "The YallaTN+ team";
                 String html = buildTravelEmailHtml(
                                 title,
-                                "Un clic pour securiser votre compte voyageur.",
-                                "Nous avons recu une demande de reinitialisation. Si vous etes bien a l origine de cette action, utilisez le bouton ci dessous.",
-                                "Reinitialiser mon mot de passe",
+                                "One click to secure your traveller account.",
+                                "We received a reset request. If this was you, use the button below.",
+                                "Reset my password",
                                 resetLink,
-                                "Lien valide pendant 30 minutes.",
+                                "Link valid for 30 minutes.",
                                 displayName,
                                 preheader
                 );
                 sendEmail(toEmail, subject, plainText, html);
     }
 
-        private void sendEmail(String toEmail, String subject, String plainText, String htmlText) {
-                MimeMessage message = mailSender.createMimeMessage();
-                try {
-                    MimeMessageHelper helper = new MimeMessageHelper(
-                            message,
-                            MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED,
-                            "UTF-8"
-                    );
-                        helper.setFrom(fromAddress);
-                        helper.setTo(toEmail);
-                        helper.setSubject(subject);
-                        helper.setText(plainText, htmlText);
-                        mailSender.send(message);
-                } catch (MessagingException ex) {
-                        throw new IllegalStateException("Failed to build email message", ex);
+    private void sendEmail(String toEmail, String subject, String plainText, String htmlText) {
+        MimeMessage message = mailSender.createMimeMessage();
+        try {
+            MimeMessageHelper helper = new MimeMessageHelper(
+                    message,
+                    MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED,
+                    "UTF-8"
+            );
+            helper.setFrom(fromAddress);
+            helper.setTo(toEmail);
+            helper.setSubject(subject);
+            helper.setText(plainText, htmlText);
+            mailSender.send(message);
+        } catch (MessagingException ex) {
+            throw new MailSendException("Failed to build or send email message", ex);
+        } catch (MailException ex) {
+            throw ex;
         }
-        }
+    }
 
         private String buildTravelEmailHtml(String title,
                                                                                 String heroLine,
@@ -118,7 +122,7 @@ public class EmailService {
 
                 return """
                                 <!doctype html>
-                                <html lang=\"fr\">
+                                <html lang=\"en\">
                                 <head>
                                     <meta charset=\"UTF-8\" />
                                     <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />

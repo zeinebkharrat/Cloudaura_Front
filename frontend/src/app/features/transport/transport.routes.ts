@@ -16,6 +16,7 @@ export const TRANSPORT_ROUTES: Routes = [
     loadComponent: () => import('./transport-ai-recommendation/transport-ai-recommendation.component')
       .then(m => m.TransportAiRecommendationComponent),
   },
+  /* Litéraux et segments fixes avant :id pour éviter que « results » soit pris pour un id. */
   {
     path: ':id/book',
     loadComponent: () => import('./transport-booking-page/transport-booking-page.component')

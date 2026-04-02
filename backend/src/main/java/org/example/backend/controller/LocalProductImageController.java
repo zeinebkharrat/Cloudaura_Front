@@ -26,12 +26,18 @@ public class LocalProductImageController {
 
     @GetMapping("/uploads/products/{filename:.+}")
     public ResponseEntity<Resource> serveProductImage(@PathVariable String filename) {
-        Path base = Paths.get(uploadDir, "products").toAbsolutePath().normalize();
-        Path file = base.resolve(filename).normalize();
-        if (!file.startsWith(base)) {
-            return ResponseEntity.badRequest().build();
+        Path primaryBase = Paths.get(uploadDir, "products").toAbsolutePath().normalize();
+        Path file = resolveReadableFile(primaryBase, filename);
+
+        // Legacy fallback when backend is started from /backend and historical files are in ../uploads.
+        if (file == null) {
+            Path legacyBase = Paths.get(System.getProperty("user.dir"), "..", "uploads", "products")
+                    .toAbsolutePath()
+                    .normalize();
+            file = resolveReadableFile(legacyBase, filename);
         }
-        if (!Files.isRegularFile(file) || !Files.isReadable(file)) {
+
+        if (file == null) {
             return ResponseEntity.notFound().build();
         }
 
@@ -52,5 +58,16 @@ public class LocalProductImageController {
                 .header(HttpHeaders.CACHE_CONTROL, "public, max-age=86400")
                 .contentType(mediaType)
                 .body(resource);
+    }
+
+    private static Path resolveReadableFile(Path base, String filename) {
+        Path candidate = base.resolve(filename).normalize();
+        if (!candidate.startsWith(base)) {
+            return null;
+        }
+        if (!Files.isRegularFile(candidate) || !Files.isReadable(candidate)) {
+            return null;
+        }
+        return candidate;
     }
 }

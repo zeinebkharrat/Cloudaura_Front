@@ -1,12 +1,15 @@
 package org.example.backend.model;
- 
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import jakarta.persistence.*;
 import java.util.Date;
 import java.util.Set;
 import java.util.HashSet;
- 
+
 @Entity
 @Table(name = "users")
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -64,12 +67,14 @@ public class User {
     public void setLastName(String lastName) { this.lastName = lastName; }
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public String getPasswordHash() { return passwordHash; }
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
     public Integer getPoints() { return points; }
     public void setPoints(Integer points) { this.points = points; }
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public Level getLevel() { return level; }
     public void setLevel(Level level) { this.level = level; }
     public String getStatus() { return status; }
@@ -92,8 +97,13 @@ public class User {
     public void setFailedLoginAttempts(Integer failedLoginAttempts) { this.failedLoginAttempts = failedLoginAttempts; }
     public Date getLockedUntil() { return lockedUntil; }
     public void setLockedUntil(Date lockedUntil) { this.lockedUntil = lockedUntil; }
+    @com.fasterxml.jackson.annotation.JsonIgnore
     public City getCity() { return city; }
     public void setCity(City city) { this.city = city; }
     public Set<Role> getRoles() { return roles; }
     public void setRoles(Set<Role> roles) { this.roles = roles; }
+
+    /** Alias for serializers / legacy code expecting `id`. */
+    public Integer getId() { return userId; }
+    public void setId(Integer id) { this.userId = id; }
 }

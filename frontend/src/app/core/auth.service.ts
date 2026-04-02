@@ -14,6 +14,7 @@ import {
   SignUpPayload,
   SocialProviders,
   UserProfile,
+  CaptchaConfig,
 } from './auth.types';
 
 const TOKEN_STORAGE_KEY = 'auth_token';
@@ -72,6 +73,20 @@ export class AuthService {
     return !!user && user.roles.includes(role);
   }
 
+  getCaptchaConfig() {
+    return this.http.get<CaptchaConfig>(`${this.apiBase}/auth/captcha-config`).pipe(
+      catchError(() =>
+        of({
+          enabled: false,
+          siteKey: '',
+          secretConfiguredButMissingSiteKey: false,
+          version: 'v2',
+          configUnavailable: true,
+        } as CaptchaConfig)
+      )
+    );
+  }
+
   signup(payload: SignUpPayload) {
     return this.http.post<AuthMessageResponse>(`${this.apiBase}/auth/signup`, payload);
   }
@@ -121,24 +136,34 @@ export class AuthService {
   }
 
   getCities() {
-    return this.http.get<Array<CityOption & { cityId?: number; id?: number }>>(`${this.apiBase}/cities`).pipe(
-      map((cities) => {
-        const normalized: CityOption[] = [];
-        for (const city of cities) {
-          const resolvedId = city.id ?? city.cityId;
-          if (resolvedId == null) {
-            continue;
+    return this.http
+      .get<
+        | CityOption[]
+        | { success?: boolean; data?: Array<{ cityId?: number; id?: number; name?: string; region?: string | null }> }
+      >(`${this.apiBase}/cities`)
+      .pipe(
+        map((res) => {
+          const raw = Array.isArray(res) ? res : res?.data;
+          return Array.isArray(raw) ? raw : [];
+        }),
+        map((cities) => {
+          const normalized: CityOption[] = [];
+          for (const city of cities) {
+            const resolvedId = city.id ?? city.cityId;
+            if (resolvedId == null || city.name == null) {
+              continue;
+            }
+            normalized.push({
+              id: Number(resolvedId),
+              cityId: city.cityId ?? Number(resolvedId),
+              name: city.name,
+              region: city.region ?? '',
+            });
           }
-          normalized.push({
-            id: Number(resolvedId),
-            cityId: city.cityId ?? Number(resolvedId),
-            name: city.name,
-            region: city.region,
-          });
-        }
-        return normalized;
-      })
-    );
+          normalized.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+          return normalized;
+        })
+      );
   }
 
   getNationalities() {
@@ -150,7 +175,13 @@ export class AuthService {
             .map((item) => item.name?.common?.trim() ?? '')
             .filter((name) => !!name);
 
-          return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b));
+          const unique = Array.from(new Set(values)).sort((a, b) => a.localeCompare(b, 'fr'));
+          const tun = unique.findIndex((n) => n.toLowerCase() === 'tunisia');
+          if (tun > 0) {
+            unique.splice(tun, 1);
+            unique.unshift('Tunisia');
+          }
+          return unique;
         }),
         catchError(() => of([] as string[]))
       );

@@ -1,5 +1,6 @@
 package org.example.backend.config;
 
+import org.example.backend.dto.ApiErrorResponse;
 import org.example.backend.dto.ApiResponse;
 import org.example.backend.exception.*;
 import org.example.backend.exception.InvalidTransportException;
@@ -15,6 +16,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Instant;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
@@ -95,6 +98,32 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleDriverConflict(DriverConflictException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiResponse.error(ex.getMessage(), "DRIVER_CONFLICT"));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+        ApiErrorResponse body = new ApiErrorResponse(
+                HttpStatus.BAD_REQUEST.value(),
+                HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                ex.getMessage() != null ? ex.getMessage() : "Invalid request",
+                Instant.now(),
+                Map.of()
+        );
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiErrorResponse> handleIllegalState(IllegalStateException ex) {
+        ApiErrorResponse body = new ApiErrorResponse(
+                HttpStatus.BAD_GATEWAY.value(),
+                HttpStatus.BAD_GATEWAY.getReasonPhrase(),
+                ex.getMessage() != null ? ex.getMessage() : "Service externe indisponible",
+                Instant.now(),
+                Map.of()
+        );
+
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(body);
     }
 
     @ExceptionHandler(Exception.class)

@@ -14,7 +14,7 @@ import { Accommodation } from '../../../core/models/travel.models';
     @if (loading()) {
       <div class="loader-page">
         <div class="spinner-large"></div>
-        <p>Chargement de l'hébergement...</p>
+        <p>Loading accommodation…</p>
       </div>
     }
 
@@ -26,18 +26,21 @@ import { Accommodation } from '../../../core/models/travel.models';
           <div class="hero-overlay">
             <div class="hero-top">
               <button class="btn-back" (click)="router.navigate(['/hebergement'])">
-                ← Retour aux hébergements
+                ← Back to listings
               </button>
               <div class="hero-badges">
-                <span class="badge-type">{{ formatType(acc.type) }}</span>
+                <span class="badge-type">
+                  <img [src]="typeIconSrc(acc.type)" alt="" class="badge-type-ico" width="16" height="16" />
+                  {{ formatType(acc.type) }}
+                </span>
               </div>
             </div>
             <div class="hero-bottom">
               <div>
                 <h1>{{ acc.name }}</h1>
                 <div class="location-row">
-                  <span class="loc-icon">📍</span>
-                  <span>{{ acc.cityName }}, Tunisie</span>
+                  <img src="icones/city.png" alt="" class="loc-icon-img" width="18" height="18" />
+                  <span>{{ acc.cityName }}, Tunisia</span>
                 </div>
               </div>
               <div class="rating-big">
@@ -56,65 +59,63 @@ import { Accommodation } from '../../../core/models/travel.models';
 
             <!-- Quick Highlights -->
             <div class="card highlights-card">
-              <h3>🏨 Points forts</h3>
+              <h3 class="hl-title"><img src="icones/hotel.png" alt="" class="hl-title-ico" width="22" height="22" /> Highlights</h3>
               <div class="highlights-grid">
-                <div class="highlight"><span>🌡️</span><span>Climatisation</span></div>
-                <div class="highlight"><span>🍳</span><span>Petit-déjeuner inclus</span></div>
-                <div class="highlight"><span>🅿️</span><span>Parking gratuit</span></div>
-                <div class="highlight"><span>🛎️</span><span>Service 24h/24</span></div>
-                <div class="highlight"><span>📶</span><span>Wi-Fi inclus</span></div>
-                <div class="highlight"><span>♿</span><span>Accès PMR</span></div>
+                <div class="highlight"><i class="pi pi-sun hl-pi" aria-hidden="true"></i><span>Air conditioning</span></div>
+                <div class="highlight"><i class="pi pi-shopping-bag hl-pi" aria-hidden="true"></i><span>Breakfast included</span></div>
+                <div class="highlight"><i class="pi pi-car hl-pi" aria-hidden="true"></i><span>Free parking</span></div>
+                <div class="highlight"><i class="pi pi-clock hl-pi" aria-hidden="true"></i><span>24/7 service</span></div>
+                <div class="highlight"><i class="pi pi-wifi hl-pi" aria-hidden="true"></i><span>Wi‑Fi included</span></div>
+                <div class="highlight"><i class="pi pi-users hl-pi" aria-hidden="true"></i><span>Accessible (PRM)</span></div>
                 @if (acc.rating >= 4) {
-                  <div class="highlight"><span>🏊</span><span>Piscine</span></div>
-                  <div class="highlight"><span>💆</span><span>Spa & Bien-être</span></div>
+                  <div class="highlight"><i class="pi pi-database hl-pi" aria-hidden="true"></i><span>Pool</span></div>
+                  <div class="highlight"><i class="pi pi-sparkles hl-pi" aria-hidden="true"></i><span>Spa &amp; wellness</span></div>
                 }
               </div>
             </div>
 
             <!-- Description -->
             <div class="card">
-              <h3>À propos de cet établissement</h3>
+              <h3>About this property</h3>
               <p class="desc-text">
-                Bienvenue au <strong>{{ acc.name }}</strong>, niché au cœur de <strong>{{ acc.cityName }}</strong>.
-                Cet établissement d'exception vous offre une expérience inoubliable mêlant confort moderne
-                et charme tunisien authentique. Profitez de services haut de gamme et d'une situation idéale
-                pour explorer tous les trésors de la région.
+                Welcome to <strong>{{ acc.name }}</strong>, in the heart of <strong>{{ acc.cityName }}</strong>.
+                This standout property blends modern comfort with authentic Tunisian charm.
+                Enjoy quality services and a great base to explore the region.
               </p>
               <p class="desc-text">
-                Avec une note de <strong>{{ acc.rating }}/5</strong>, nos hôtes confirment la qualité
-                exceptionnelle de l'accueil, la propreté irréprochable des chambres et la richesse
-                des équipements proposés.
+                With a <strong>{{ acc.rating }}/5</strong> rating, guests highlight warm hospitality,
+                spotless rooms, and great amenities.
               </p>
             </div>
 
             <!-- Rooms Available -->
             <div class="card">
-              <h3>🛏️ Chambres disponibles</h3>
+              <h3 class="rooms-title"><i class="pi pi-home rooms-title-pi" aria-hidden="true"></i> Available rooms</h3>
               <div class="rooms-list">
                 <div class="room-item" (click)="selectRoom('SINGLE')">
-                  <div class="room-icon">🛏️</div>
+                  <div class="room-icon" aria-hidden="true"><i class="pi pi-user"></i></div>
                   <div class="room-info">
-                    <strong>Chambre Simple</strong>
-                    <span>1 personne · Vue jardin</span>
+                    <strong>Single room</strong>
+                    <span>1 guest · Garden view</span>
                   </div>
-                  <div class="room-price">{{ acc.pricePerNight | number:'1.0-0' }} TND / nuit</div>
+                  <div class="room-price">{{ acc.pricePerNight | number:'1.0-0' }} TND / night</div>
                 </div>
                 <div class="room-item" (click)="selectRoom('DOUBLE')">
-                  <div class="room-icon">🛌</div>
+                  <div class="room-icon" aria-hidden="true"><i class="pi pi-users"></i></div>
                   <div class="room-info">
-                    <strong>Chambre Double</strong>
-                    <span>2 personnes · Vue mer disponible</span>
+                    <strong>Double room</strong>
+                    <span>2 guests · Sea view available</span>
                   </div>
-                  <div class="room-price">{{ acc.pricePerNight | number:'1.0-0' }} TND / nuit</div>
+                  <div class="room-price">{{ acc.pricePerNight | number:'1.0-0' }} TND / night</div>
                 </div>
                 @if (acc.rating >= 4) {
                   <div class="room-item suite" (click)="selectRoom('SUITE')">
-                    <div class="room-icon">🌟</div>
+                    <div class="room-icon" aria-hidden="true"><i class="pi pi-star-fill"></i></div>
                     <div class="room-info">
-                      <strong>Suite de Luxe</strong>
-                      <span>4 personnes · Terrasse · Vue panoramique</span>
+                      <strong>Luxury suite</strong>
+                      <span>4 guests · Terrace · Panoramic view</span>
                     </div>
-                    <div class="room-price">{{ (acc.pricePerNight * 2) | number:'1.0-0' }} TND / nuit</div>
+                    <div class="room-price">{{ (acc.pricePerNight * 2) | number:'1.0-0' }} TND / night</div>
                   </div>
                 }
               </div>
@@ -126,7 +127,7 @@ import { Accommodation } from '../../../core/models/travel.models';
             <div class="widget-card">
               <div class="widget-price">
                 <span class="price-big">{{ acc.pricePerNight | number:'1.0-0' }}</span>
-                <span class="price-unit">TND / nuit</span>
+                <span class="price-unit">TND / night</span>
               </div>
               <div class="rating-small">{{ getStars(acc.rating) }} {{ acc.rating }}/5</div>
 
@@ -136,19 +137,19 @@ import { Accommodation } from '../../../core/models/travel.models';
               <form [formGroup]="dateForm" class="date-form">
                 <div class="date-row">
                   <div class="date-field">
-                    <label>📅 Arrivée</label>
+                    <label><i class="pi pi-calendar widget-label-pi" aria-hidden="true"></i> Check-in</label>
                     <input type="date" formControlName="checkIn" [min]="today">
                   </div>
                   <div class="date-field">
-                    <label>📅 Départ</label>
+                    <label><i class="pi pi-calendar widget-label-pi" aria-hidden="true"></i> Check-out</label>
                     <input type="date" formControlName="checkOut" [min]="tomorrow">
                   </div>
                 </div>
 
                 <div class="pax-field">
-                  <label>👥 Voyageurs</label>
+                  <label><i class="pi pi-users widget-label-pi" aria-hidden="true"></i> Guests</label>
                   <select formControlName="guests">
-                    <option *ngFor="let i of [1,2,3,4,5,6]" [value]="i">{{ i }} personne(s)</option>
+                    <option *ngFor="let i of [1,2,3,4,5,6]" [value]="i">{{ i }} guest(s)</option>
                   </select>
                 </div>
               </form>
@@ -157,11 +158,11 @@ import { Accommodation } from '../../../core/models/travel.models';
               @if (nightCount() > 0) {
                 <div class="price-breakdown">
                   <div class="breakdown-row">
-                    <span>{{ acc.pricePerNight | number:'1.0-0' }} TND × {{ nightCount() }} nuit(s)</span>
+                    <span>{{ acc.pricePerNight | number:'1.0-0' }} TND × {{ nightCount() }} night(s)</span>
                     <span>{{ totalPrice() | number:'1.0-0' }} TND</span>
                   </div>
                   <div class="breakdown-row">
-                    <span>Taxes & frais</span>
+                    <span>Taxes &amp; fees</span>
                     <span>{{ taxAmount() | number:'1.0-0' }} TND</span>
                   </div>
                   <hr class="divider">
@@ -174,10 +175,10 @@ import { Accommodation } from '../../../core/models/travel.models';
 
               <button class="btn-book" (click)="onBook()"
                       [disabled]="dateForm.invalid || nightCount() <= 0">
-                Réserver maintenant
+                Book now
               </button>
 
-              <p class="no-charge">✅ Annulation gratuite · Pas de frais cachés</p>
+              <p class="no-charge"><i class="pi pi-check-circle no-charge-pi" aria-hidden="true"></i> Free cancellation · No hidden fees</p>
             </div>
           </div>
         </div>
@@ -197,9 +198,11 @@ import { Accommodation } from '../../../core/models/travel.models';
     .hero-bottom { align-items: flex-end; }
     .btn-back { background: rgba(255,255,255,0.15); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 10px 20px; border-radius: 30px; cursor: pointer; font-size: 0.95rem; transition: all 0.2s; }
     .btn-back:hover { background: rgba(255,255,255,0.25); }
-    .badge-type { background: #f12545; color: #fff; padding: 6px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.5px; }
+    .badge-type { display: inline-flex; align-items: center; gap: 8px; background: #f12545; color: #fff; padding: 6px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 700; letter-spacing: 0.5px; }
+    .badge-type-ico { object-fit: contain; flex-shrink: 0; }
     h1 { font-size: 2.8rem; font-weight: 800; color: #fff; margin: 0 0 0.5rem 0; text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
-    .location-row { display: flex; align-items: center; gap: 6px; color: rgba(255,255,255,0.85); font-size: 1.05rem; }
+    .location-row { display: flex; align-items: center; gap: 8px; color: rgba(255,255,255,0.85); font-size: 1.05rem; }
+    .loc-icon-img { object-fit: contain; opacity: 0.9; flex-shrink: 0; }
     .rating-big { text-align: right; }
     .stars { font-size: 1.5rem; }
     .score { color: #f1c40f; font-size: 1.2rem; font-weight: 700; }
@@ -213,9 +216,13 @@ import { Accommodation } from '../../../core/models/travel.models';
     .card h3 { font-size: 1.2rem; color: #fff; margin: 0 0 1.5rem 0; font-weight: 700; }
 
     /* Highlights */
+    .hl-title { display: flex; align-items: center; gap: 10px; }
+    .hl-title-ico { object-fit: contain; flex-shrink: 0; }
     .highlights-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
-    .highlight { display: flex; flex-direction: column; align-items: center; gap: 6px; background: rgba(255,255,255,0.04); border-radius: 10px; padding: 1rem; font-size: 0.85rem; color: rgba(255,255,255,0.8); text-align: center; }
-    .highlight span:first-child { font-size: 1.5rem; }
+    .highlight { display: flex; flex-direction: column; align-items: center; gap: 8px; background: rgba(255,255,255,0.04); border-radius: 10px; padding: 1rem; font-size: 0.85rem; color: rgba(255,255,255,0.8); text-align: center; }
+    .hl-pi { font-size: 1.35rem; color: #c8b8e8; }
+    .rooms-title { display: flex; align-items: center; gap: 10px; }
+    .rooms-title-pi { color: #c8b8e8; font-size: 1.1rem; }
 
     /* Description */
     .desc-text { color: rgba(255,255,255,0.65); line-height: 1.8; margin-bottom: 1rem; }
@@ -226,7 +233,7 @@ import { Accommodation } from '../../../core/models/travel.models';
     .room-item:hover { border-color: rgba(241,37,69,0.4); background: rgba(241,37,69,0.05); }
     .room-item.suite { border-color: rgba(255,202,40,0.3); }
     .room-item.suite:hover { border-color: rgba(255,202,40,0.6); background: rgba(255,202,40,0.05); }
-    .room-icon { font-size: 2rem; }
+    .room-icon { font-size: 1.75rem; color: #f12545; display: flex; align-items: center; justify-content: center; width: 2.5rem; }
     .room-info { flex: 1; }
     .room-info strong { display: block; color: #fff; margin-bottom: 2px; }
     .room-info span { font-size: 0.85rem; color: rgba(255,255,255,0.5); }
@@ -245,7 +252,8 @@ import { Accommodation } from '../../../core/models/travel.models';
     .date-form { margin-bottom: 1rem; }
     .date-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
     .date-field, .pax-field { display: flex; flex-direction: column; gap: 6px; }
-    .date-field label, .pax-field label { font-size: 0.8rem; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.5px; }
+    .date-field label, .pax-field label { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.5px; }
+    .widget-label-pi { font-size: 0.95rem; color: rgba(241,37,69,0.85); }
     input[type="date"], select {
       background: #0d0f18; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px;
       padding: 10px 12px; color: #fff; font-size: 0.95rem; outline: none; width: 100%;
@@ -265,7 +273,8 @@ import { Accommodation } from '../../../core/models/travel.models';
     .btn-book { width: 100%; padding: 16px; background: #f12545; color: #fff; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 15px rgba(241,37,69,0.3); }
     .btn-book:hover:not([disabled]) { background: #ff3355; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(241,37,69,0.4); }
     .btn-book[disabled] { opacity: 0.4; cursor: not-allowed; }
-    .no-charge { text-align: center; font-size: 0.82rem; color: rgba(255,255,255,0.4); margin-top: 1rem; margin-bottom: 0; }
+    .no-charge { display: flex; align-items: center; justify-content: center; gap: 8px; text-align: center; font-size: 0.82rem; color: rgba(255,255,255,0.4); margin-top: 1rem; margin-bottom: 0; }
+    .no-charge-pi { color: #2ecc71; font-size: 1rem; }
 
     /* Responsive */
     @media (max-width: 1000px) {
@@ -342,12 +351,17 @@ export class AccommodationDetailsPageComponent implements OnInit {
 
   formatType(type: string): string {
     const map: Record<string, string> = {
-      'HOTEL': '🏨 Hôtel',
-      'MAISON_HOTE': '🏡 Maison d\'hôtes',
-      'GUESTHOUSE': '🛖 Gîte rural',
-      'AUTRE': '🏠 Hébergement'
+      HOTEL: 'Hotel',
+      MAISON_HOTE: 'Guest house',
+      GUESTHOUSE: 'Rural guesthouse',
+      AUTRE: 'Stay',
     };
     return map[type] || type;
+  }
+
+  typeIconSrc(type: string): string {
+    if (type === 'HOTEL') return 'icones/hotel.png';
+    return 'icones/home.png';
   }
 
   getStars(rating: number): string {

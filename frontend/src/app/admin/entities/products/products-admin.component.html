@@ -1,9 +1,9 @@
 <div class="admin-page">
   <header class="page-head">
     <div>
-      <h1>Gestion des produits</h1>
+      <h1>Product management</h1>
     </div>
-    <button type="button" class="btn" (click)="openCreateModal()">Ajouter un produit</button>
+    <button type="button" class="btn" (click)="openCreateModal()">Add product</button>
   </header>
 
   @if (error) {
@@ -23,21 +23,21 @@
           type="text"
           [(ngModel)]="q"
           (ngModelChange)="onSearchInputChange()"
-          placeholder="Rechercher un produit ou un vendeur…"
+          placeholder="Search product or seller…"
         />
       </div>
       <select [(ngModel)]="sort" (change)="sortChanged()">
-        <option value="productId,desc">Plus récent</option>
-        <option value="name,asc">Nom A → Z</option>
-        <option value="name,desc">Nom Z → A</option>
-        <option value="price,asc">Prix croissant</option>
-        <option value="price,desc">Prix décroissant</option>
+        <option value="productId,desc">Newest</option>
+        <option value="name,asc">Name A → Z</option>
+        <option value="name,desc">Name Z → A</option>
+        <option value="price,asc">Price low to high</option>
+        <option value="price,desc">Price high to low</option>
       </select>
     </div>
 
     <div class="table-wrap">
       @if (loading) {
-        <p class="empty">Chargement…</p>
+        <p class="empty">Loading…</p>
       } @else {
         <table>
           <thead>
@@ -76,8 +76,8 @@
                     type="button"
                     class="btn icon-btn icon-view"
                     (click)="openDetails(item)"
-                    title="Voir détails"
-                    aria-label="Voir détails"
+                    title="View details"
+                    aria-label="View details"
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" />
@@ -88,8 +88,8 @@
                     type="button"
                     class="btn icon-btn icon-edit"
                     (click)="editProduct(item)"
-                    title="Modifier"
-                    aria-label="Modifier"
+                    title="Edit"
+                    aria-label="Edit"
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M12 20h9" />
@@ -100,8 +100,8 @@
                     type="button"
                     class="btn icon-btn icon-delete"
                     (click)="remove(item)"
-                    title="Supprimer"
-                    aria-label="Supprimer"
+                    title="Delete"
+                    aria-label="Delete"
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M3 6h18" />
@@ -117,7 +117,7 @@
         </table>
 
         @if (!loading && pagedProducts.length === 0) {
-          <p class="empty">Aucun produit trouvé.</p>
+          <p class="empty">No products found.</p>
         }
       }
     </div>
@@ -126,7 +126,7 @@
       <span>Total: {{ totalElements }}</span>
       <div>
         <button type="button" class="btn ghost" [disabled]="page === 0" (click)="changeProductPage(false)">
-          Précédent
+          Previous
         </button>
         <span>Page {{ page + 1 }} / {{ totalPages }}</span>
         <button
@@ -135,7 +135,7 @@
           [disabled]="page + 1 >= totalPages"
           (click)="changeProductPage(true)"
         >
-          Suivant
+          Next
         </button>
       </div>
     </div>
@@ -145,24 +145,24 @@
     <div class="modal-backdrop" (click)="onModalBackdropClick($event)"></div>
     <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="product-modal-title">
       <header class="modal-head">
-        <h2 id="product-modal-title">{{ editingProductId ? 'Modifier le produit' : 'Ajouter un produit' }}</h2>
-        <button type="button" class="btn ghost" (click)="closeProductModal()" aria-label="Fermer">✕</button>
+        <h2 id="product-modal-title">{{ editingProductId ? 'Edit product' : 'Add product' }}</h2>
+        <button type="button" class="btn ghost" (click)="closeProductModal()" aria-label="Close">✕</button>
       </header>
 
       @if (modalError) {
         <div class="alert modal-alert">{{ modalError }}</div>
       }
       @if (uploading) {
-        <p class="empty">Envoi de l’image en cours…</p>
+        <p class="empty">Uploading image…</p>
       }
 
       <div class="form-grid">
         <label>
-          Nom *
+          Name *
           <input type="text" [(ngModel)]="productForm.name" name="pname" />
         </label>
         <label>
-          Prix
+          Price
           <input type="number" step="any" [(ngModel)]="productForm.price" name="pprice" />
         </label>
         <label>
@@ -173,8 +173,8 @@
 
       <div class="media-zone">
         <div class="media-title">
-          <h3>Image produit</h3>
-          <span>Fichier depuis votre PC (optionnel si l’image existe déjà)</span>
+          <h3>Product image</h3>
+          <span>File from your PC (optional if an image already exists)</span>
         </div>
         <div class="upload-box modern">
           <input id="productImageInput" class="file-native" type="file" accept="image/*" (change)="onFileSelected($event)" />
@@ -184,26 +184,26 @@
               <path d="M7 10l5-5 5 5" />
               <path d="M12 5v12" />
             </svg>
-            Choisir une image
+            Choose an image
           </label>
           @if (selectedFile) {
             <span class="file-count">{{ selectedFile.name }}</span>
-            <button type="button" class="btn ghost" (click)="clearFileSelection()">Retirer le fichier</button>
+            <button type="button" class="btn ghost" (click)="clearFileSelection()">Remove file</button>
           }
         </div>
 
         @if (modalPreviewSrc()) {
           <div class="modal-image-preview">
-            <img [src]="modalPreviewSrc()" alt="Aperçu produit" />
+            <img [src]="modalPreviewSrc()" alt="Product preview" />
           </div>
         }
       </div>
 
       <div class="modal-actions">
         <button type="button" class="btn" [disabled]="uploading" (click)="save()">
-          {{ editingProductId ? 'Mettre à jour' : 'Créer le produit' }}
+          {{ editingProductId ? 'Update' : 'Create product' }}
         </button>
-        <button type="button" class="btn ghost" [disabled]="uploading" (click)="closeProductModal()">Annuler</button>
+        <button type="button" class="btn ghost" [disabled]="uploading" (click)="closeProductModal()">Cancel</button>
       </div>
     </section>
   }
@@ -213,7 +213,7 @@
     <section class="modal-card details-card" role="dialog" aria-modal="true">
       <header class="modal-head">
         <h2>{{ detailsProduct.name }}</h2>
-        <button type="button" class="btn ghost" (click)="closeDetailsModal()" aria-label="Fermer">✕</button>
+        <button type="button" class="btn ghost" (click)="closeDetailsModal()" aria-label="Close">✕</button>
       </header>
 
       <div class="details-grid">
@@ -221,7 +221,7 @@
           @if (detailsProduct.imageUrl) {
             <img [src]="resolveImageUrl(detailsProduct.imageUrl)" [alt]="detailsProduct.name" />
           } @else {
-            <div class="details-empty-media">Aucune image</div>
+            <div class="details-empty-media">No image</div>
           }
         </article>
         <article class="details-info-card">
@@ -236,7 +236,7 @@
             </div>
             <div><strong>Prix :</strong> {{ formatPrice(detailsProduct.price) }}</div>
             <div><strong>Stock :</strong> {{ detailsProduct.stock ?? '—' }}</div>
-            <div><strong>Réf. :</strong> #{{ detailsProduct.productId }}</div>
+            <div><strong>Ref:</strong> #{{ detailsProduct.productId }}</div>
           </div>
         </article>
       </div>

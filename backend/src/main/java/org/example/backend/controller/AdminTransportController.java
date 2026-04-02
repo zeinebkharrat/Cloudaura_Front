@@ -73,7 +73,7 @@ public class AdminTransportController {
     @Transactional(readOnly = true)
     public ApiResponse<TransportDTO> getTransport(@PathVariable Integer id) {
         Transport t = transportRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transport non trouvé"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transport not found"));
         return ApiResponse.success(toTransportDTO(t, reservationRepository.countBookedSeats(id)));
     }
 
@@ -90,7 +90,7 @@ public class AdminTransportController {
     @Transactional
     public ApiResponse<TransportDTO> updateTransport(@PathVariable Integer id, @RequestBody TransportRequest request) {
         Transport existing = transportRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transport non trouvé"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transport not found"));
         Transport transport = buildAndValidateTransport(request, existing);
         transport.setTransportId(id);
         transport = transportRepository.save(transport);
@@ -102,14 +102,14 @@ public class AdminTransportController {
     @Transactional
     public ApiResponse<TransportDTO> toggleTransportStatus(@PathVariable Integer id, @RequestBody StatusRequest request) {
         Transport transport = transportRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transport non trouvé"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transport not found"));
 
         boolean willDeactivate = Boolean.FALSE.equals(request.isActive());
         if (willDeactivate) {
             long activeResCount = reservationRepository.countFutureActiveReservations(id);
             if (activeResCount > 0) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Impossible de désactiver : " + activeResCount + " réservation(s) active(s) sur ce transport");
+                    "Cannot deactivate: " + activeResCount + " active reservation(s) on this transport");
             }
         }
 
@@ -123,12 +123,12 @@ public class AdminTransportController {
     @Transactional
     public ApiResponse<Void> deleteTransport(@PathVariable Integer id) {
         Transport transport = transportRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transport non trouvé"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transport not found"));
 
         long confirmedFuture = reservationRepository.countFutureConfirmedReservations(id);
         if (confirmedFuture > 0) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                "Annuler les réservations avant de supprimer (" + confirmedFuture + " réservation(s) confirmée(s))");
+                "Cancel reservations before deleting (" + confirmedFuture + " confirmed reservation(s))");
         }
 
         transportRepository.delete(transport);
@@ -144,9 +144,9 @@ public class AdminTransportController {
             @RequestParam Integer arrivalCityId) {
 
         City dep = cityRepository.findById(departureCityId).orElseThrow(() ->
-            new ResponseStatusException(HttpStatus.NOT_FOUND, "Ville de départ non trouvée"));
+            new ResponseStatusException(HttpStatus.NOT_FOUND, "Departure city not found"));
         City arr = cityRepository.findById(arrivalCityId).orElseThrow(() ->
-            new ResponseStatusException(HttpStatus.NOT_FOUND, "Ville d'arrivée non trouvée"));
+            new ResponseStatusException(HttpStatus.NOT_FOUND, "Arrival city not found"));
 
         List<TransportTypeAvailabilityDTO> result = new ArrayList<>();
 
@@ -222,7 +222,7 @@ public class AdminTransportController {
     @Transactional(readOnly = true)
     public ApiResponse<VehicleDTO> getVehicle(@PathVariable Integer id) {
         Vehicle vehicle = vehicleRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Véhicule non trouvé"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vehicle not found"));
         return ApiResponse.success(toVehicleDTO(vehicle));
     }
 
@@ -250,7 +250,7 @@ public class AdminTransportController {
     @Transactional
     public ApiResponse<VehicleDTO> updateVehicle(@PathVariable Integer id, @RequestBody VehicleRequest request) {
         Vehicle vehicle = vehicleRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Véhicule non trouvé"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vehicle not found"));
         validateVehicleRequest(request);
         vehicle.setBrand(request.brand());
         vehicle.setModel(request.model());
@@ -271,7 +271,7 @@ public class AdminTransportController {
         boolean inUse = transportRepository.findAll().stream()
             .anyMatch(t -> t.getVehicle() != null && t.getVehicle().getVehicleId().equals(id) && Boolean.TRUE.equals(t.getIsActive()));
         if (inUse) {
-            throw new VehicleConflictException("Ce véhicule est assigné à un transport actif");
+            throw new VehicleConflictException("This vehicle is assigned to an active transport");
         }
         vehicleRepository.deleteById(id);
         return ApiResponse.<Void>success(null);
@@ -291,7 +291,7 @@ public class AdminTransportController {
     @Transactional(readOnly = true)
     public ApiResponse<DriverDTO> getDriver(@PathVariable Integer id) {
         Driver driver = driverRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Conducteur non trouvé"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Driver not found"));
         return ApiResponse.success(toDriverDTOWithTrips(driver));
     }
 
@@ -299,7 +299,7 @@ public class AdminTransportController {
     @Transactional
     public ApiResponse<DriverDTO> createDriver(@RequestBody DriverRequest request) {
         if (request.email() == null || request.email().isBlank()) {
-            throw new InvalidTransportException("EMAIL_REQUIRED", "L'email du conducteur est obligatoire");
+            throw new InvalidTransportException("EMAIL_REQUIRED", "Driver email is required");
         }
         Driver driver = Driver.builder()
             .firstName(request.firstName())
@@ -319,9 +319,9 @@ public class AdminTransportController {
     @Transactional
     public ApiResponse<DriverDTO> updateDriver(@PathVariable Integer id, @RequestBody DriverRequest request) {
         Driver driver = driverRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Conducteur non trouvé"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Driver not found"));
         if (request.email() == null || request.email().isBlank()) {
-            throw new InvalidTransportException("EMAIL_REQUIRED", "L'email du conducteur est obligatoire");
+            throw new InvalidTransportException("EMAIL_REQUIRED", "Driver email is required");
         }
         driver.setFirstName(request.firstName());
         driver.setLastName(request.lastName());
@@ -339,7 +339,7 @@ public class AdminTransportController {
         boolean inUse = transportRepository.findAll().stream()
             .anyMatch(t -> t.getDriver() != null && t.getDriver().getDriverId().equals(id) && Boolean.TRUE.equals(t.getIsActive()));
         if (inUse) {
-            throw new DriverConflictException("Ce conducteur est assigné à un transport actif");
+            throw new DriverConflictException("This driver is assigned to an active transport");
         }
         driverRepository.deleteById(id);
         return ApiResponse.<Void>success(null);
@@ -351,7 +351,7 @@ public class AdminTransportController {
     @Transactional
     public ApiResponse<ReservationDTO> confirmReservation(@PathVariable Integer id) {
         TransportReservation reservation = reservationRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Réservation non trouvée"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reservation not found"));
         reservation.setStatus(TransportReservation.ReservationStatus.CONFIRMED);
         reservation = reservationRepository.save(reservation);
         return ApiResponse.success(toReservationDTO(reservation));
@@ -361,7 +361,7 @@ public class AdminTransportController {
     @Transactional
     public ApiResponse<ReservationDTO> cancelReservation(@PathVariable Integer id, @RequestBody CancelRequest request) {
         TransportReservation reservation = reservationRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Réservation non trouvée"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reservation not found"));
         reservation.setStatus(TransportReservation.ReservationStatus.CANCELLED);
         reservation = reservationRepository.save(reservation);
         return ApiResponse.success(toReservationDTO(reservation));
@@ -376,9 +376,9 @@ public class AdminTransportController {
         }
 
         City departureCity = cityRepository.findById(req.departureCityId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ville de départ non trouvée"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Departure city not found"));
         City arrivalCity = cityRepository.findById(req.arrivalCityId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ville d'arrivée non trouvée"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Arrival city not found"));
 
         Transport.TransportType ttype = Transport.TransportType.valueOf(req.type());
 
@@ -406,7 +406,7 @@ public class AdminTransportController {
         // 3. Driver/operator logic
         if (ttype == Transport.TransportType.PLANE && req.driverId() != null) {
             throw new InvalidTransportException("PLANE_NO_DRIVER",
-                "Un avion ne peut pas avoir de conducteur. Renseignez la compagnie aérienne.");
+                "A plane cannot have a driver. Provide the airline.");
         }
         if (ttype == Transport.TransportType.PLANE && (req.operatorName() == null || req.operatorName().isBlank())) {
             throw new InvalidTransportException("PLANE_NEEDS_OPERATOR",
@@ -414,21 +414,21 @@ public class AdminTransportController {
         }
         if (ttype != Transport.TransportType.PLANE && req.driverId() == null) {
             throw new InvalidTransportException("DRIVER_REQUIRED",
-                "Un conducteur est requis pour ce type de transport");
+                "A driver is required for this transport type");
         }
 
         // 4. Vehicle type compatibility
         Vehicle vehicle = null;
         if (ttype != Transport.TransportType.PLANE) {
             if (req.vehicleId() == null) {
-                throw new InvalidTransportException("VEHICLE_REQUIRED", "Un véhicule est requis pour ce type de transport");
+                throw new InvalidTransportException("VEHICLE_REQUIRED", "A vehicle is required for this transport type");
             }
             vehicle = vehicleRepository.findById(req.vehicleId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Véhicule non trouvé"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vehicle not found"));
             List<Vehicle.VehicleType> allowed = getCompatibleVehicleTypes(req.type());
             if (!allowed.contains(vehicle.getType())) {
                 throw new InvalidTransportException("VEHICLE_TYPE_MISMATCH",
-                    "Un véhicule " + vehicle.getType() + " ne peut pas être utilisé pour un " + ttype);
+                    "A " + vehicle.getType() + " vehicle cannot be used for " + ttype);
             }
         }
 
@@ -463,20 +463,20 @@ public class AdminTransportController {
                 ? transportRepository.existsByVehicleIdAndTimeOverlapExcluding(req.vehicleId(), req.departureTime(), req.arrivalTime(), excludeId)
                 : transportRepository.existsByVehicleIdAndTimeOverlap(req.vehicleId(), req.departureTime(), req.arrivalTime());
             if (vehicleConflict) {
-                throw new VehicleConflictException("Ce véhicule est déjà assigné à un trajet sur ce créneau horaire");
+                throw new VehicleConflictException("This vehicle is already assigned to a trip in this time slot");
             }
         }
 
         Driver driver = null;
         if (req.driverId() != null) {
             driver = driverRepository.findById(req.driverId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Conducteur non trouvé"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Driver not found"));
             if (req.departureTime() != null && req.arrivalTime() != null) {
                 boolean driverConflict = excludeId != null
                     ? transportRepository.existsByDriverIdAndTimeOverlapExcluding(req.driverId(), req.departureTime(), req.arrivalTime(), excludeId)
                     : transportRepository.existsByDriverIdAndTimeOverlap(req.driverId(), req.departureTime(), req.arrivalTime());
                 if (driverConflict) {
-                    throw new DriverConflictException("Ce conducteur est déjà assigné à un trajet sur ce créneau horaire");
+                    throw new DriverConflictException("This driver is already assigned to a trip in this time slot");
                 }
             }
         }
@@ -524,10 +524,10 @@ public class AdminTransportController {
 
     private void validateVehicleRequest(VehicleRequest req) {
         if (req.color() == null || req.color().isBlank()) {
-            throw new InvalidTransportException("COLOR_REQUIRED", "La couleur du véhicule est obligatoire");
+            throw new InvalidTransportException("COLOR_REQUIRED", "Vehicle color is required");
         }
         if (req.year() == null || req.year() < 2000 || req.year() > 2030) {
-            throw new InvalidTransportException("YEAR_INVALID", "L'année du véhicule doit être entre 2000 et 2030");
+            throw new InvalidTransportException("YEAR_INVALID", "Vehicle year must be between 2000 and 2030");
         }
     }
 

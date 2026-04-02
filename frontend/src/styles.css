@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
+@import 'sweetalert2/dist/sweetalert2.min.css';
 @import 'leaflet/dist/leaflet.css';
 
 :root {
@@ -519,4 +520,54 @@ h1, h2, h3, h4, h5, h6 {
 .p-tag.p-tag-danger {
   background: rgba(248,113,113,0.12) !important;
   color: #f87171 !important;
+}
+
+/* ============================================================
+   PrimeNG Lara theme: @font-face "Inter var" → /media/*.woff2
+   Le build Angular peut servir un fichier corrompu (OTS parsing error).
+   On utilise Inter (Google Fonts, déjà importé en tête de fichier).
+   ============================================================ */
+:root {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  --font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+}
+
+/* Ne pas cibler .p-component * (cassait PrimeIcons / .pi). L’héritage depuis :root suffit. */
+.p-component {
+  font-family: var(--font-family) !important;
+}
+
+/* SweetAlert2 — unified with YallaTN+ / event management */
+.yalla-swal-popup {
+  border-radius: 18px !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55) !important;
+  padding: 1.35rem 1.25rem 1.5rem !important;
+}
+.yalla-swal-title {
+  font-family: 'Outfit', sans-serif !important;
+  font-weight: 700 !important;
+  font-size: 1.35rem !important;
+  color: #f9fafb !important;
+}
+.yalla-swal-popup .swal2-html-container {
+  color: #a8b3c7 !important;
+  font-size: 0.95rem !important;
+  line-height: 1.5 !important;
+}
+.yalla-swal-confirm,
+.yalla-swal-cancel {
+  font-weight: 600 !important;
+  border-radius: 10px !important;
+  padding: 0.55rem 1.35rem !important;
+  font-size: 0.9rem !important;
+}
+.yalla-swal-popup .swal2-icon {
+  border-color: rgba(241, 37, 69, 0.35) !important;
+}
+
+/* Above in-app modals (admin city ~1200, event detail ~100000) — use customClass: { container: 'swal-on-top' } */
+body.swal2-shown .swal2-container.swal-on-top,
+.swal2-container.swal-on-top {
+  z-index: 2147483000 !important;
 }

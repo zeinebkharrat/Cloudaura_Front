@@ -1,0 +1,262 @@
+<div class="chat-page">
+  <div class="chat-container glass-panel">
+
+    <!-- ─── Left: Conversation List ─── -->
+    <aside class="chat-sidebar" [class.mobile-hidden]="!showConversationList()">
+
+      <div class="sidebar-header">
+        <h2>Messages</h2>
+        <button class="icon-btn" (click)="toggleSearch()" title="New conversation">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            <line x1="12" y1="8" x2="12" y2="14"/>
+            <line x1="9" y1="11" x2="15" y2="11"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Search Panel -->
+      @if (showSearchPanel()) {
+        <div class="search-panel">
+          <div class="search-input-wrap">
+            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text"
+              placeholder="Search for a user…"
+              [ngModel]="searchQuery()"
+              (ngModelChange)="onSearchInput($event)"
+              class="search-input"
+              id="userSearchInput" />
+            <button class="search-close-btn" (click)="toggleSearch()">✕</button>
+          </div>
+
+          @if (searchLoading()) {
+            <div class="search-loading">
+              <div class="typing-dot-container">
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+              </div>
+            </div>
+          }
+
+          @if (searchResults().length > 0) {
+            <div class="search-results">
+              @for (user of searchResults(); track user.userId) {
+                <button class="search-result-item" (click)="startConversation(user)" id="searchResult_{{user.userId}}">
+                  <div class="avatar avatar--small">
+                    @if (user.profileImageUrl) {
+                      <img [src]="user.profileImageUrl" [alt]="user.username" class="avatar-img" />
+                    } @else {
+                      {{ getInitials(user.username) }}
+                    }
+                  </div>
+                  <div class="search-result-info">
+                    <span class="search-result-name">{{ user.firstName }} {{ user.lastName }}</span>
+                    <span class="search-result-username">&#64;{{ user.username }}</span>
+                  </div>
+                </button>
+              }
+            </div>
+          }
+
+          @if (!searchLoading() && searchQuery().length >= 2 && searchResults().length === 0) {
+            <div class="search-empty">No users found</div>
+          }
+        </div>
+      }
+
+      <!-- Conversation List -->
+      <div class="conversation-list">
+        @if (loading()) {
+          <div class="conversations-loading">
+            @for (i of [1, 2, 3, 4, 5]; track i) {
+              <div class="skeleton-conv">
+                <div class="skeleton-avatar"></div>
+                <div class="skeleton-text">
+                  <div class="skeleton-line skeleton-line--name"></div>
+                  <div class="skeleton-line skeleton-line--msg"></div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        @if (!loading() && conversations().length === 0 && !showSearchPanel()) {
+          <div class="empty-conversations">
+            <div class="empty-icon">💬</div>
+            <p>Aucune conversation</p>
+            <button class="start-chat-btn" (click)="toggleSearch()">
+              Démarrer une conversation
+            </button>
+          </div>
+        }
+
+        @for (conv of conversations(); track trackByConvId($index, conv)) {
+          <button
+            class="conversation-item"
+            [class.active]="activeChatRoomId() === conv.chatRoomId"
+            (click)="selectConversation(conv)"
+            id="conv_{{conv.chatRoomId}}">
+            <div class="conv-avatar-wrap">
+              <div class="avatar">
+                @if (conv.otherUserImage) {
+                  <img [src]="conv.otherUserImage" [alt]="conv.otherUsername" class="avatar-img" />
+                } @else {
+                  {{ getInitials(conv.otherUsername) }}
+                }
+              </div>
+              @if (isUserOnline(conv.otherUserId)) {
+                <span class="online-dot"></span>
+              }
+            </div>
+            <div class="conv-info">
+              <div class="conv-top">
+                <span class="conv-name">{{ conv.otherUsername }}</span>
+                <span class="conv-time">{{ formatTime(conv.lastMessageTime) }}</span>
+              </div>
+              <div class="conv-bottom">
+                <span class="conv-last-msg" [class.has-unread]="conv.unreadCount > 0">
+                  {{ conv.lastMessage || 'Nouvelle conversation' }}
+                </span>
+                @if (conv.unreadCount > 0) {
+                  <span class="unread-badge">{{ conv.unreadCount }}</span>
+                }
+              </div>
+            </div>
+          </button>
+        }
+      </div>
+    </aside>
+
+    <!-- ─── Right: Chat Area ─── -->
+    <main class="chat-main" [class.mobile-hidden]="showConversationList()">
+      @if (!activeChatRoomId()) {
+        <!-- No chat selected -->
+        <div class="no-chat-selected">
+          <div class="no-chat-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+          </div>
+          <h3>Sélectionnez une conversation</h3>
+          <p>Choisissez un contact ou démarrez une nouvelle conversation</p>
+        </div>
+      } @else {
+        <!-- Chat Header -->
+        <div class="chat-header">
+          <button class="back-btn mobile-only" (click)="backToList()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 18 9 12 15 6"/>
+            </svg>
+          </button>
+          <div class="chat-header-user">
+            <div class="conv-avatar-wrap">
+              <div class="avatar">
+                @if (activeConversation()?.otherUserImage) {
+                  <img [src]="activeConversation()?.otherUserImage" [alt]="activeConversation()?.otherUsername" class="avatar-img" />
+                } @else {
+                  {{ getInitials(activeConversation()?.otherUsername || '') }}
+                }
+              </div>
+              @if (isUserOnline(activeConversation()?.otherUserId || 0)) {
+                <span class="online-dot"></span>
+              }
+            </div>
+            <div class="chat-header-info">
+              <span class="chat-header-name">{{ activeConversation()?.otherUsername }}</span>
+              @if (isUserOnline(activeConversation()?.otherUserId || 0)) {
+                <span class="chat-header-status online">En ligne</span>
+              } @else {
+                <span class="chat-header-status">Hors ligne</span>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Messages Area -->
+        <div class="messages-area" #messagesContainer>
+          @if (messagesLoading()) {
+            <div class="messages-loading">
+              <div class="typing-dot-container">
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+              </div>
+            </div>
+          }
+
+          @if (!messagesLoading() && messages().length === 0) {
+            <div class="messages-empty">
+              <p>Envoyez le premier message ! 👋</p>
+            </div>
+          }
+
+          @for (msg of messages(); track trackByMessageId($index, msg)) {
+            <div class="message-row" [class.own]="isOwnMessage(msg)">
+              @if (!isOwnMessage(msg)) {
+                <div class="avatar avatar--msg">
+                  @if (msg.senderImage) {
+                    <img [src]="msg.senderImage" [alt]="msg.senderUsername" class="avatar-img" />
+                  } @else {
+                    {{ getInitials(msg.senderUsername) }}
+                  }
+                </div>
+              }
+              <div class="message-bubble" [class.own]="isOwnMessage(msg)">
+                <p class="message-text">{{ msg.content }}</p>
+                <span class="message-time">{{ formatMessageTime(msg.sentAt) }}</span>
+              </div>
+            </div>
+          }
+
+          <!-- Typing Indicator -->
+          @if (typingUsers().size > 0) {
+            <div class="typing-indicator">
+              <div class="typing-dot-container">
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+              </div>
+              <span class="typing-text">{{ getTypingText() }}</span>
+            </div>
+          }
+        </div>
+
+        <!-- Message Input -->
+        <div class="message-input-area">
+          <div class="message-input-wrap">
+            <textarea
+              #messageInput
+              class="message-input"
+              placeholder="Écrire un message..."
+              [ngModel]="newMessage()"
+              (ngModelChange)="newMessage.set($event)"
+              (keydown)="onMessageKeydown($event)"
+              (input)="onTyping()"
+              rows="1"
+              id="chatMessageInput"></textarea>
+            <button
+              class="send-btn"
+              (click)="sendMessage()"
+              [disabled]="!newMessage().trim()"
+              title="Envoyer"
+              id="sendMessageBtn">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"/>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      }
+    </main>
+  </div>
+</div>

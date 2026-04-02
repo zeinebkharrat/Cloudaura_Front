@@ -25,16 +25,58 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .or(() -> userRepository.findByUsernameIgnoreCase(identifier))
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-        return org.springframework.security.core.userdetails.User.builder()
-                .username(user.getUsername())
-                .password(user.getPasswordHash())
-                .authorities(user.getRoles().stream()
-                        .map(role -> new SimpleGrantedAuthority(role.getName()))
-                        .collect(Collectors.toSet()))
-                .accountExpired(false)
-                .accountLocked(false)
-                .credentialsExpired(false)
-                .disabled(false)
-                .build();
+        return new CustomUserDetails(user);
+    }
+    
+    /**
+     * Custom UserDetails implementation that wraps our User entity
+     */
+    public static class CustomUserDetails implements UserDetails {
+        private final User user;
+
+        public CustomUserDetails(User user) {
+            this.user = user;
+        }
+
+        public User getUser() {
+            return user;
+        }
+
+        @Override
+        public String getUsername() {
+            return user.getUsername();
+        }
+
+        @Override
+        public String getPassword() {
+            return user.getPasswordHash();
+        }
+
+        @Override
+        public java.util.Collection<org.springframework.security.core.GrantedAuthority> getAuthorities() {
+            return user.getRoles().stream()
+                    .map(role -> new SimpleGrantedAuthority(role.getName()))
+                    .collect(Collectors.toSet());
+        }
+
+        @Override
+        public boolean isAccountNonExpired() {
+            return true;
+        }
+
+        @Override
+        public boolean isAccountNonLocked() {
+            return true;
+        }
+
+        @Override
+        public boolean isCredentialsNonExpired() {
+            return true;
+        }
+
+        @Override
+        public boolean isEnabled() {
+            return "ACTIVE".equals(user.getStatus());
+        }
     }
 }

@@ -11,6 +11,7 @@ import { RippleModule } from 'primeng/ripple';
 import { TooltipModule } from 'primeng/tooltip';
 import { TripContextStore } from '../../../core/stores/trip-context.store';
 import { DATA_SOURCE_TOKEN } from '../../../core/adapters/data-source.adapter';
+import { AppAlertsService } from '../../../core/services/app-alerts.service';
 import { City, TransportType, TRANSPORT_TYPE_META, TransportTypeAvailability } from '../../../core/models/travel.models';
 
 interface TypeCard {
@@ -37,8 +38,8 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
       <section class="hero">
         <div class="hero-glow"></div>
         <div class="hero-content">
-          <h1 class="hero-title">Trouvez votre transport</h1>
-          <p class="hero-sub">Comparez et reservez bus, taxis, voitures et vols a travers toute la Tunisie</p>
+          <h1 class="hero-title">Find your ride</h1>
+          <p class="hero-sub">Compare and book buses, taxis, car rentals and flights across Tunisia</p>
         </div>
       </section>
 
@@ -49,7 +50,7 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
           <div class="sb-field sb-city">
             <span class="sb-icon"><i class="pi pi-map-marker"></i></span>
             <div class="sb-inner">
-              <span class="sb-label">Depart</span>
+              <span class="sb-label">From</span>
               <p-dropdown
                 formControlName="from"
                 [options]="cities()"
@@ -57,7 +58,7 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
                 optionValue="id"
                 [filter]="true"
                 filterBy="name"
-                placeholder="Ville de depart"
+                placeholder="Departure city"
                 [showClear]="false"
                 appendTo="body"
                 styleClass="sb-dropdown">
@@ -67,7 +68,7 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
 
           <!-- Swap -->
           <button type="button" class="sb-swap" (click)="swapCities()" pRipple
-                  pTooltip="Inverser" tooltipPosition="top">
+                  pTooltip="Swap cities" tooltipPosition="top">
             <i class="pi pi-arrows-h"></i>
           </button>
 
@@ -75,7 +76,7 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
           <div class="sb-field sb-city">
             <span class="sb-icon"><i class="pi pi-flag"></i></span>
             <div class="sb-inner">
-              <span class="sb-label">Destination</span>
+              <span class="sb-label">To</span>
               <p-dropdown
                 formControlName="to"
                 [options]="cities()"
@@ -83,7 +84,7 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
                 optionValue="id"
                 [filter]="true"
                 filterBy="name"
-                placeholder="Ville d'arrivee"
+                placeholder="Arrival city"
                 [showClear]="false"
                 appendTo="body"
                 styleClass="sb-dropdown">
@@ -103,7 +104,7 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
                 dateFormat="dd/mm/yy"
                 [minDate]="today"
                 [showIcon]="true"
-                placeholder="Date du voyage"
+                placeholder="Travel date"
                 appendTo="body"
                 styleClass="sb-calendar">
               </p-calendar>
@@ -116,7 +117,7 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
           <div class="sb-field sb-pax">
             <span class="sb-icon"><i class="pi pi-users"></i></span>
             <div class="sb-inner">
-              <span class="sb-label">Passagers</span>
+              <span class="sb-label">Passengers</span>
               <p-inputNumber
                 formControlName="passengers"
                 [min]="1" [max]="20"
@@ -134,7 +135,7 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
       <!-- Transport Types -->
       <section class="types-section">
         <h2 class="types-title">
-          {{ hasBothCities() ? 'Choisissez votre mode de transport' : 'Selectionnez vos villes pour commencer' }}
+          {{ hasBothCities() ? 'Choose how you want to travel' : 'Select cities to see available modes' }}
         </h2>
 
         <div class="types-grid">
@@ -151,9 +152,9 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
               <span class="tcard-name">{{ card.label }}</span>
 
               @if (card.available) {
-                <span class="tcard-badge tcard-ok">Disponible</span>
+                <span class="tcard-badge tcard-ok">Available</span>
               } @else if (hasBothCities()) {
-                <span class="tcard-badge tcard-no">Indisponible</span>
+                <span class="tcard-badge tcard-no">Unavailable</span>
               }
             </div>
           }
@@ -162,7 +163,7 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
 
       <!-- Popular Routes -->
       <section class="popular">
-        <h3 class="popular-heading">Trajets populaires</h3>
+        <h3 class="popular-heading">Popular routes</h3>
         <div class="popular-list">
           @for (r of popularRoutes; track r.label) {
             <button class="pop-chip" pRipple (click)="quickSearch(r)">
@@ -382,6 +383,7 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
   private store = inject(TripContextStore);
   private dataSource = inject(DATA_SOURCE_TOKEN);
   private cdr = inject(ChangeDetectorRef);
+  private alerts = inject(AppAlertsService);
   private subs = new Subscription();
 
   cities = signal<City[]>([]);
@@ -394,7 +396,7 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
     from: [null as number | null, Validators.required],
     to: [null as number | null, Validators.required],
     date: [null as Date | null, Validators.required],
-    passengers: [1, [Validators.required, Validators.min(1)]],
+    passengers: [1, [Validators.required, Validators.min(1), Validators.max(20)]],
   });
 
   hasBothCities = computed(() => !!this.fromCityId() && !!this.toCityId());
@@ -413,11 +415,11 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
       if (fromCity && toCity) {
         if (meta.requiresFrom && !fromCity.stations?.[meta.requiresFrom]) {
           available = false;
-          reason = `Pas de ${this.infraLabel(meta.requiresFrom)} a ${fromCity.name}`;
+          reason = `No ${this.infraLabel(meta.requiresFrom)} in ${fromCity.name}`;
         }
         if (available && meta.requiresTo && !toCity.stations?.[meta.requiresTo]) {
           available = false;
-          reason = `Pas de ${this.infraLabel(meta.requiresTo)} a ${toCity.name}`;
+          reason = `No ${this.infraLabel(meta.requiresTo)} in ${toCity.name}`;
         }
       } else {
         available = false;
@@ -434,10 +436,10 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
   });
 
   popularRoutes = [
-    { fromId: 1, toId: 3, type: 'BUS',   label: 'Tunis → Sousse',    icon: '/icones/bus.png' },
-    { fromId: 1, toId: 8, type: 'PLANE', label: 'Tunis → Djerba',    icon: '/icones/plane.png' },
-    { fromId: 3, toId: 5, type: 'TAXI',  label: 'Sousse → Hammamet', icon: '/icones/taxi.png' },
-    { fromId: 1, toId: 4, type: 'CAR',   label: 'Tunis → Sfax',      icon: '/icones/car.png' },
+    { fromId: 1, toId: 3, type: 'BUS',   label: 'Tunis → Sousse',     icon: '/icones/bus.png' },
+    { fromId: 1, toId: 8, type: 'PLANE', label: 'Tunis → Djerba',     icon: '/icones/plane.png' },
+    { fromId: 3, toId: 5, type: 'TAXI',  label: 'Sousse → Hammamet',  icon: '/icones/taxi.png' },
+    { fromId: 1, toId: 4, type: 'CAR',   label: 'Tunis → Sfax',       icon: '/icones/car.png' },
   ];
 
   ngOnInit() {
@@ -492,7 +494,14 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
 
   onTypeClick(card: TypeCard) {
     if (!card.available) return;
-    if (this.searchForm.invalid) { this.searchForm.markAllAsTouched(); return; }
+    if (!this.validateSearchBusinessRules()) {
+      return;
+    }
+    if (this.searchForm.invalid) {
+      this.searchForm.markAllAsTouched();
+      void this.alerts.warning('Check your search', 'Please fill in all required fields correctly.');
+      return;
+    }
 
     const v = this.searchForm.value;
     const dateStr = v.date ? this.isoDate(v.date) : '';
@@ -511,8 +520,17 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
   }
 
   quickSearch(route: { fromId: number; toId: number; type: string }) {
+    if (route.fromId === route.toId) {
+      void this.alerts.warning('Invalid route', 'Departure and destination must be different.');
+      return;
+    }
     this.searchForm.patchValue({ from: route.fromId, to: route.toId });
-    const dateStr = this.isoDate(this.searchForm.get('date')?.value ?? new Date());
+    const dateVal = this.searchForm.get('date')?.value ?? new Date();
+    if (!this.isDateNotInPast(dateVal)) {
+      void this.alerts.warning('Invalid date', 'Travel date cannot be in the past.');
+      return;
+    }
+    const dateStr = this.isoDate(dateVal);
     this.router.navigate(['/transport/results'], {
       queryParams: { from: route.fromId, to: route.toId, date: dateStr, transportType: route.type, passengers: this.searchForm.get('passengers')?.value ?? 1 }
     });
@@ -535,7 +553,43 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
   }
 
   private infraLabel(key: string): string {
-    const map: Record<string, string> = { bus: 'gare routiere', airport: 'aeroport', ferry: 'port maritime', train: 'gare ferroviaire' };
+    const map: Record<string, string> = {
+      bus: 'bus station',
+      airport: 'airport',
+      ferry: 'ferry port',
+      train: 'train station',
+    };
     return map[key] ?? key;
+  }
+
+  /** Business rules before navigating to results. */
+  private validateSearchBusinessRules(): boolean {
+    const v = this.searchForm.getRawValue();
+    if (v.from == null || v.to == null || !v.date) {
+      this.searchForm.markAllAsTouched();
+      void this.alerts.warning('Incomplete search', 'Please select departure city, arrival city, and travel date.');
+      return false;
+    }
+    if (v.from === v.to) {
+      void this.alerts.warning('Invalid route', 'Departure and destination must be different cities.');
+      return false;
+    }
+    if (!this.isDateNotInPast(v.date)) {
+      void this.alerts.warning('Invalid date', 'Travel date cannot be in the past.');
+      return false;
+    }
+    const p = v.passengers ?? 1;
+    if (p < 1 || p > 20) {
+      void this.alerts.warning('Passengers', 'Number of passengers must be between 1 and 20.');
+      return false;
+    }
+    return true;
+  }
+
+  private isDateNotInPast(d: Date): boolean {
+    const chosen = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return chosen >= today;
   }
 }

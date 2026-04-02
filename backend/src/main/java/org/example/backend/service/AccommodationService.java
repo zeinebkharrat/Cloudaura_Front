@@ -42,7 +42,7 @@ public class AccommodationService {
     @Transactional(readOnly = true)
     public AccommodationSearchResponse getAccommodationDetails(int id, LocalDateTime checkIn, LocalDateTime checkOut) {
         Accommodation acc = accommodationRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Hébergement non trouvé."));
+                .orElseThrow(() -> new ResourceNotFoundException("Accommodation not found."));
 
         return mapToResponse(acc,
                 checkIn != null ? checkIn : LocalDateTime.now(),

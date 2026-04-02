@@ -1,10 +1,25 @@
 <div class="admin-page">
   <header class="page-head">
     <div>
-      <h1>Gestion des activités</h1>
+      <h1>Activity management</h1>
     </div>
-    <button class="btn" (click)="openCreateModal()">Ajouter une activité</button>
+    <button class="btn" (click)="openCreateModal()">Add activity</button>
   </header>
+
+  <section class="stats-grid">
+    <article class="stat-card">
+      <span>Total activities</span>
+      <strong>{{ totalElements }}</strong>
+    </article>
+    <article class="stat-card">
+      <span>Average price (page)</span>
+      <strong>{{ averageDisplayedPrice() }}</strong>
+    </article>
+    <article class="stat-card">
+      <span>Max price (page)</span>
+      <strong>{{ maxDisplayedPrice() }}</strong>
+    </article>
+  </section>
 
   @if (error) {
     <div class="alert">{{ error }}</div>
@@ -16,13 +31,13 @@
         <span class="search-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
         </span>
-        <input type="text" [(ngModel)]="q" (ngModelChange)="onSearchInputChange()" placeholder="Rechercher une activité..." />
+        <input type="text" [(ngModel)]="q" (ngModelChange)="onSearchInputChange()" placeholder="Search activities…" />
       </div>
       <select [(ngModel)]="sort" (change)="onSearchInputChange()">
-        <option value="activityId,desc">Plus récentes</option>
+        <option value="activityId,desc">Newest first</option>
         <option value="name,asc">Nom A → Z</option>
         <option value="price,asc">Prix croissant</option>
-        <option value="price,desc">Prix décroissant</option>
+        <option value="price,desc">Price: high to low</option>
       </select>
     </div>
 
@@ -30,12 +45,13 @@
       <table>
         <thead>
           <tr>
-            <th>Nom</th>
-            <th>Ville</th>
+            <th>Name</th>
+            <th>City</th>
             <th>Type</th>
-            <th>Prix</th>
-            <th>Adresse</th>
-            <th>Actions</th>
+            <th>Description</th>
+            <th>Price</th>
+            <th>Address</th>
+            <th class="actions-head">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -44,16 +60,17 @@
               <td>{{ activity.name }}</td>
               <td>{{ activity.cityName }}</td>
               <td>{{ activity.type || '—' }}</td>
+              <td><div class="desc-cell">{{ (activity.description || '—') | slice:0:100 }}{{ activity.description && activity.description.length > 100 ? '…' : '' }}</div></td>
               <td>{{ activity.price || '—' }}</td>
               <td>{{ activity.address || '—' }}</td>
-              <td class="actions">
-                <button class="btn icon-btn icon-view" (click)="openDetails(activity)" title="Voir détails" aria-label="Voir détails">
+              <td class="actions table-actions">
+                <button class="btn icon-btn icon-view" (click)="openDetails(activity)" title="View details" aria-label="View details">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
                 </button>
-                <button class="btn icon-btn icon-edit" (click)="edit(activity)" title="Modifier" aria-label="Modifier">
+                <button class="btn icon-btn icon-edit" (click)="edit(activity)" title="Edit" aria-label="Edit">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
                 </button>
-                <button class="btn icon-btn icon-delete" (click)="delete(activity)" title="Supprimer" aria-label="Supprimer">
+                <button class="btn icon-btn icon-delete" (click)="delete(activity)" title="Delete" aria-label="Delete">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
                 </button>
               </td>
@@ -66,9 +83,9 @@
     <div class="pager">
       <span>Total: {{ totalElements }}</span>
       <div>
-        <button class="btn ghost" [disabled]="page === 0" (click)="changePage(false)">Précédent</button>
+        <button class="btn ghost" [disabled]="page === 0" (click)="changePage(false)">Previous</button>
         <span>Page {{ page + 1 }} / {{ totalPages || 1 }}</span>
-        <button class="btn ghost" [disabled]="page + 1 >= totalPages" (click)="changePage(true)">Suivant</button>
+        <button class="btn ghost" [disabled]="page + 1 >= totalPages" (click)="changePage(true)">Next</button>
       </div>
     </div>
   </section>
@@ -77,7 +94,7 @@
     <div class="modal-backdrop" (click)="closeModal()"></div>
     <section class="modal-card" role="dialog" aria-modal="true">
       <header class="modal-head">
-        <h2>{{ editingId ? 'Modifier une activité' : 'Ajouter une activité' }}</h2>
+        <h2>{{ editingId ? 'Edit activity' : 'Add activity' }}</h2>
         <button class="btn ghost" (click)="closeModal()">✕</button>
       </header>
 
@@ -85,13 +102,13 @@
         <div class="alert modal-alert">{{ modalError }}</div>
       }
 
-      <p class="form-intro">Les champs marqués avec * sont obligatoires. Corrigez les champs rouges avant de sauvegarder.</p>
+      <p class="form-intro">Fields marked * are required. Fix any highlighted fields before saving.</p>
 
       <div class="form-grid">
         <label>
-          Ville *
+          City *
           <select [(ngModel)]="form.cityId" (ngModelChange)="clearFieldError('cityId')" [class.input-invalid]="fieldErrors.cityId">
-            <option [ngValue]="null">Sélectionner...</option>
+            <option [ngValue]="null">Select…</option>
             @for (city of cities; track city.cityId) {
               <option [ngValue]="city.cityId">{{ city.name }}</option>
             }
@@ -101,7 +118,7 @@
           }
         </label>
         <label>
-          Nom *
+          Name *
           <input type="text" [(ngModel)]="form.name" (ngModelChange)="clearFieldError('name')" [class.input-invalid]="fieldErrors.name" />
           @if (fieldErrors.name) {
             <small class="field-error">{{ fieldErrors.name }}</small>
@@ -112,18 +129,31 @@
           <input type="text" [(ngModel)]="form.type" />
         </label>
         <label>
-          Prix
+          Price
           <input type="number" step="0.1" min="0" [(ngModel)]="form.price" (ngModelChange)="clearFieldError('price')" [class.input-invalid]="fieldErrors.price" />
           @if (fieldErrors.price) {
             <small class="field-error">{{ fieldErrors.price }}</small>
           }
         </label>
+        <label>
+          Max participants / day (optional)
+          <input type="number" min="1" [(ngModel)]="form.maxParticipantsPerDay" (ngModelChange)="clearFieldError('maxParticipantsPerDay')" [class.input-invalid]="fieldErrors.maxParticipantsPerDay" placeholder="Unlimited if empty" />
+          @if (fieldErrors.maxParticipantsPerDay) {
+            <small class="field-error">{{ fieldErrors.maxParticipantsPerDay }}</small>
+          }
+        </label>
+        @if (editingId) {
+          <label>
+            Max rule valid from
+            <input type="date" [(ngModel)]="form.maxParticipantsStartDate" />
+          </label>
+        }
         <label class="span-2">
           Description
-          <textarea rows="3" [(ngModel)]="form.description" placeholder="Description touristique de l’activité"></textarea>
+          <textarea rows="3" [(ngModel)]="form.description" placeholder="Short description for visitors"></textarea>
         </label>
         <label class="span-2">
-          Adresse
+          Address
           <input type="text" [(ngModel)]="form.address" />
         </label>
         <label>
@@ -143,9 +173,9 @@
       </div>
 
       <div class="geo-actions">
-        <button class="btn" type="button" (click)="geocodeFromName()">Localiser automatiquement</button>
+        <button class="btn" type="button" (click)="geocodeFromName()">Locate automatically</button>
         <button class="btn ghost" type="button" (click)="openDirectionsFromCurrentPosition()" [disabled]="form.latitude == null || form.longitude == null">
-          Itinéraire depuis ma position
+          Directions from my location
         </button>
         @if (geocodeMessage) {
           <span class="geo-status">{{ geocodeMessage }}</span>
@@ -158,21 +188,21 @@
 
       <div class="media-zone">
         <div class="media-title">
-          <h3>Upload média</h3>
-          <span>Ajoutez vos images</span>
+          <h3>Media upload</h3>
+          <span>Add your images</span>
         </div>
         <div class="upload-box modern">
           <input id="activityMediaInput" class="file-native" type="file" multiple accept="image/*" (change)="onFileChange($event)" />
           <label class="file-trigger" for="activityMediaInput">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5-5 5 5"/><path d="M12 5v12"/></svg>
-            Choisir des images
+            Choose images
           </label>
-          <span class="file-count">{{ uploadFiles.length }} sélectionnée(s)</span>
+          <span class="file-count">{{ uploadFiles.length }} selected</span>
           @if (uploadFiles.length > 0) {
-            <button class="btn ghost" type="button" (click)="clearUploadSelection()">Vider</button>
+            <button class="btn ghost" type="button" (click)="clearUploadSelection()">Clear</button>
           }
           @if (editingId) {
-            <button class="btn" [disabled]="uploadFiles.length === 0" (click)="uploadMedia()">Uploader maintenant</button>
+            <button class="btn" [disabled]="uploadFiles.length === 0" (click)="uploadMedia()">Upload now</button>
           }
         </div>
 
@@ -180,10 +210,10 @@
           <div class="media-grid previews">
             @for (url of mediaPreviewUrls; track url; let i = $index) {
               <article class="media-card">
-                <img [src]="url" alt="Aperçu média" />
+                <img [src]="url" alt="Media preview" />
                 <div class="meta compact-meta">
                   <span>{{ uploadFiles[i].name }}</span>
-                  <button class="btn icon-btn icon-delete" type="button" (click)="removeSelectedFile(i)" title="Retirer" aria-label="Retirer">
+                  <button class="btn icon-btn icon-delete" type="button" (click)="removeSelectedFile(i)" title="Remove" aria-label="Remove">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
                   </button>
                 </div>
@@ -199,7 +229,7 @@
                 <img [src]="media.url" [alt]="media.activityName" />
                 <div class="meta">
                   <span>{{ media.mediaType }}</span>
-                  <button class="btn icon-btn icon-delete" (click)="deleteMedia(media)" title="Supprimer" aria-label="Supprimer">
+                  <button class="btn icon-btn icon-delete" (click)="deleteMedia(media)" title="Delete" aria-label="Delete">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
                   </button>
                 </div>
@@ -210,8 +240,8 @@
       </div>
 
       <div class="actions">
-        <button class="btn" (click)="save()">{{ editingId ? 'Mettre à jour' : 'Créer' }}</button>
-        <button class="btn ghost" (click)="closeModal()">Annuler</button>
+        <button class="btn" (click)="save()">{{ editingId ? 'Update' : 'Create' }}</button>
+        <button class="btn ghost" (click)="closeModal()">Cancel</button>
       </div>
     </section>
   }
@@ -220,40 +250,58 @@
     <div class="modal-backdrop" (click)="closeDetailsModal()"></div>
     <section class="modal-card details-card" role="dialog" aria-modal="true">
       <header class="modal-head">
-        <h2>Détails de l’activité</h2>
+        <h2>Activity details</h2>
         <button class="btn ghost" (click)="closeDetailsModal()">✕</button>
       </header>
 
       <div class="details-grid">
         <article class="details-media-main">
           @if (detailsMediaItems.length > 0) {
-            <img [src]="detailsMediaItems[0].url" [alt]="detailsActivity.name" />
+            <div class="details-media-stage">
+              <img [src]="detailsMediaItems[detailsMediaIndex].url" [alt]="detailsActivity.name" />
+              @if (detailsMediaItems.length > 1) {
+                <button class="details-nav prev" type="button" (click)="previousDetailsMedia()" aria-label="Previous image">‹</button>
+                <button class="details-nav next" type="button" (click)="nextDetailsMedia()" aria-label="Next image">›</button>
+                <div class="details-counter">{{ detailsMediaIndex + 1 }} / {{ detailsMediaItems.length }}</div>
+              }
+            </div>
           } @else {
-            <div class="details-empty-media">Aucune image disponible</div>
+            <div class="details-empty-media">No images available</div>
           }
         </article>
 
         <article class="details-info-card">
           <h3>{{ detailsActivity.name }}</h3>
-          <p>{{ detailsActivity.description || 'Aucune description disponible.' }}</p>
+          <p>{{ detailsActivity.description || 'No description available.' }}</p>
+          <div class="rating-line">
+            <div class="stars" aria-label="activity rating stars">
+              @for (state of starStates(detailsRating); track $index) {
+                <span [class.filled]="state === 'full'">★</span>
+              }
+            </div>
+            <strong>{{ detailsRating | number:'1.1-1' }}/5</strong>
+            <small>({{ detailsReviewCount }} reviews)</small>
+          </div>
           <div class="details-meta-grid">
-            <div><strong>Ville:</strong> {{ detailsActivity.cityName }}</div>
+            <div><strong>City:</strong> {{ detailsActivity.cityName }}</div>
             <div><strong>Type:</strong> {{ detailsActivity.type || '—' }}</div>
-            <div><strong>Prix:</strong> {{ detailsActivity.price ?? '—' }}</div>
-            <div><strong>Adresse:</strong> {{ detailsActivity.address || '—' }}</div>
+            <div><strong>Price:</strong> {{ detailsActivity.price ?? '—' }}</div>
+            <div><strong>Address:</strong> {{ detailsActivity.address || '—' }}</div>
             <div><strong>Latitude:</strong> {{ detailsActivity.latitude ?? '—' }}</div>
             <div><strong>Longitude:</strong> {{ detailsActivity.longitude ?? '—' }}</div>
-            <div><strong>Médias:</strong> {{ detailsMediaItems.length }}</div>
+            <div><strong>Max/day:</strong> {{ detailsActivity.maxParticipantsPerDay ?? 'Unlimited' }}</div>
+            <div><strong>Valid from:</strong> {{ detailsActivity.maxParticipantsStartDate || '—' }}</div>
+            <div><strong>Media:</strong> {{ detailsMediaItems.length }}</div>
           </div>
         </article>
       </div>
 
       @if (detailsLoadingMedia) {
-        <p class="empty">Chargement des images...</p>
+        <p class="empty">Loading images…</p>
       } @else if (detailsMediaItems.length > 0) {
-        <div class="details-gallery">
-          @for (media of detailsMediaItems; track media.mediaId) {
-            <img [src]="media.url" [alt]="detailsActivity.name" />
+        <div class="details-dots">
+          @for (media of detailsMediaItems; track media.mediaId; let i = $index) {
+            <button class="details-dot" type="button" [class.active]="i === detailsMediaIndex" (click)="selectDetailsMedia(i)" [attr.aria-label]="'Image ' + (i + 1)"></button>
           }
         </div>
       }

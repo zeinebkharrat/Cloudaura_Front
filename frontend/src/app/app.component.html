@@ -1,10 +1,15 @@
 @if (!isAdminArea()) {
 <nav class="navbar animate-in">
   <div class="logo">
-    <a routerLink="/" class="logo-link" aria-label="YallaTN+ home">
-      <h1>YallaTN<span class="logo-plus" aria-hidden="true">+</span></h1>
+    <a routerLink="/" class="logo-link" aria-label="Yalla TN — home">
+      <img
+        class="logo-img"
+        src="assets/logo/yallatn-logo.png"
+        width="280"
+        height="90"
+        alt="Yalla TN — Your journey to Tunisia"
+      />
     </a>
-    <div class="logo-dot"></div>
     
     @if (selectedCityName()) {
       <div class="city-pill animate-in">
@@ -15,28 +20,45 @@
   </div>
   <ul class="nav-links">
     <li>
-      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Accueil</a>
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Home</a>
     </li>
 
     <li>
-      <a routerLink="/destinations" routerLinkActive="active">Destinations</a>
+      <a routerLink="/destination-map" routerLinkActive="active">Destinations</a>
     </li>
     <li>
-      <a routerLink="/transport" routerLinkActive="active">Transports</a>
+      <a routerLink="/transport" routerLinkActive="active">Transport</a>
     </li>
     <li>
-      <a routerLink="/hebergement" routerLinkActive="active">Hébergement</a>
+      <a routerLink="/hebergement" routerLinkActive="active">Stays</a>
+    </li>
+    <li class="services-menu-wrap" (click)="$event.stopPropagation()">
+      <button
+        type="button"
+        class="services-menu-btn"
+        (click)="toggleServicesMenu($event)"
+        [class.active]="isServicesMenuOpen()"
+        [attr.aria-expanded]="isServicesMenuOpen()"
+      >
+        Our Services
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      @if (isServicesMenuOpen()) {
+        <div class="services-dropdown">
+          <a class="services-dd-item" routerLink="/services/restaurants" routerLinkActive="active" (click)="closeServicesMenu()">Restaurants</a>
+          <a class="services-dd-item" routerLink="/services/activities" routerLinkActive="active" (click)="closeServicesMenu()">Activities</a>
+        </div>
+      }
     </li>
     <li>
-      <a routerLink="/activites" routerLinkActive="active">Activités</a>
-    </li>
-    <li>
-      <a routerLink="/artisanat" routerLinkActive="active">Artisanat</a>
+      <a routerLink="/artisanat" routerLinkActive="active">Crafts</a>
     </li>
     @if (!isArtisan()) {
      <li>
       <a routerLink="/panier" routerLinkActive="active" class="nav-cart">
-        Panier
+        Cart
         @if (shop.cartCount() > 0) {
           <span class="nav-cart__badge">{{ shop.cartCount() }}</span>
         }
@@ -44,14 +66,25 @@
     </li>
     }
     <li>
+      <a routerLink="/communaute" routerLinkActive="active">Community</a>
+    </li>
+    @if (isAuthenticated()) {
+    <li>
+      <a routerLink="/chat" routerLinkActive="active">Chat</a>
+    </li>
+    }
+    <li>
+      <a routerLink="/games" routerLinkActive="active">Games &amp; quizzes</a>
+    </li>
+    <li>
       <a routerLink="/virtual-tour" routerLinkActive="active">360° Tour</a>
     </li>
-    <li><a routerLink="/" fragment="story">Notre histoire</a></li>
+    <li><a routerLink="/" fragment="story">Our story</a></li>
   </ul>
   <div class="nav-actions">
     @if (!isAuthenticated()) {
-      <a class="connexion-btn" routerLink="/signin" routerLinkActive="active-connexion">Connexion</a>
-      <a class="signup-btn" routerLink="/signup" routerLinkActive="active-signup">Créer un compte</a>
+      <a class="connexion-btn" routerLink="/signin" routerLinkActive="active-connexion">Sign in</a>
+      <a class="signup-btn" routerLink="/signup" routerLinkActive="active-signup">Create account</a>
     } @else {
       @if (isAdmin()) {
         <a class="signup-btn" routerLink="/admin/dashboard">Backoffice</a>
@@ -59,11 +92,11 @@
       <div class="user-menu-wrap" (click)="$event.stopPropagation()">
         <button type="button" class="user-chip" (click)="toggleUserMenu($event)">
           @if (currentUser()?.profileImageUrl) {
-            <img class="user-avatar" [src]="currentUser()!.profileImageUrl!" alt="Photo profil" />
+            <img class="user-avatar" [src]="currentUser()!.profileImageUrl!" alt="Profile photo" />
           } @else {
             <span class="user-avatar fallback">{{ (currentUser()?.firstName || currentUser()?.username || 'U').charAt(0).toUpperCase() }}</span>
           }
-          <span class="nav-user">Salut, {{ currentUser()?.firstName || currentUser()?.username }}</span>
+          <span class="nav-user">Hi, {{ currentUser()?.firstName || currentUser()?.username }}</span>
           <svg class="user-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="m6 9 6 6 6-6" />
           </svg>
@@ -72,19 +105,19 @@
         @if (isUserMenuOpen()) {
           <div class="user-dropdown">
             <a class="user-dd-item" [routerLink]="isArtisan() ? '/mes-ordres' : '/mes-commandes'" (click)="closeUserMenu()">
-              @if (isArtisan()) { Mes ordres } @else { Mes commandes }
+              @if (isArtisan()) { Seller orders } @else { My purchases }
             </a>
-            <a class="user-dd-item" routerLink="/profile" (click)="closeUserMenu()">Mon profil</a>
+            <a class="user-dd-item" routerLink="/profile" (click)="closeUserMenu()">My profile</a>
             @if (isAdmin()) {
               <a class="user-dd-item" routerLink="/admin/dashboard" (click)="closeUserMenu()">Backoffice admin</a>
             }
-            <button type="button" class="user-dd-item danger" (click)="logout()">Déconnexion</button>
+            <button type="button" class="user-dd-item danger" (click)="logout()">Sign out</button>
           </div>
         }
       </div>
     }
 
-    <button type="button" class="theme-toggle-btn" (click)="toggleTheme()" aria-label="Basculer le thème" title="Basculer le thème">
+    <button type="button" class="theme-toggle-btn" (click)="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">
       @if (isDarkMode()) {
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -108,24 +141,22 @@
 @if (!isAdminArea()) {
 <footer>
   <div class="footer-content">
-    <div class="footer-logo">YallaTN<span class="logo-plus">+</span></div>
+    <div class="footer-logo">
+      <img
+        class="footer-logo-img"
+        src="assets/logo/yallatn-logo.png"
+        width="200"
+        height="64"
+        alt=""
+      />
+    </div>
     <div class="footer-text">
-      © 2026 Plateforme touristique tunisienne — transports, activités, destinations, artisanat & recommandations.
+      © 2026 YallaTN+ — travel, activities, destinations, crafts & recommendations for Tunisia.
     </div>
   </div>
 </footer>
 }
 
-<button
-  type="button"
-  class="theme-toggle-floating"
-  (click)="toggleTheme()"
-  aria-label="Basculer le thème global"
-  title="Basculer le thème"
->
-  @if (isDarkMode()) {
-    ☀️
-  } @else {
-    🌙
-  }
-</button>
+@if (isAuthenticated()) {
+  <app-chat-bubble></app-chat-bubble>
+}

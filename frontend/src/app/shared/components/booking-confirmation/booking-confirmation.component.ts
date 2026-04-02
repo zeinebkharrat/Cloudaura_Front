@@ -11,22 +11,22 @@ import { TripContextStore } from '../../../core/stores/trip-context.store';
     <div class="page-container">
       <div class="confirmation-card glass-container">
         <div class="success-icon">✅</div>
-        <h1>Félicitations !</h1>
-        <p>Votre réservation a été confirmée avec succès.</p>
+        <h1>Congratulations!</h1>
+        <p>Your booking has been confirmed successfully.</p>
         
         <div class="reservation-box">
-          <div class="id">Numéro de confirmation : <span>#{{ reservationId() }}</span></div>
-          <div class="type">Type : {{ type() === 'transport' ? 'Transport' : 'Hébergement' }}</div>
+          <div class="id">Confirmation number: <span>#{{ reservationId() }}</span></div>
+          <div class="type">Type: {{ type() === 'transport' ? 'Transport' : 'Accommodation' }}</div>
         </div>
 
         <div class="qr-placeholder">
           <div class="qr-code"></div>
-          <p>Scannez ce code lors de votre arrivée</p>
+          <p>Scan this code when you arrive</p>
         </div>
 
         <div class="actions">
-          <button class="btn-primary" routerLink="/">Retour à l'accueil</button>
-          <button class="btn-ghost" onclick="window.print()">Imprimer le reçu</button>
+          <button class="btn-primary" routerLink="/">Back to home</button>
+          <button class="btn-ghost" onclick="window.print()">Print receipt</button>
         </div>
       </div>
     </div>

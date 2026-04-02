@@ -43,22 +43,27 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                    .requestMatchers(
-                        "/api/auth/signin",
-                        "/api/auth/signup",
-                        "/api/auth/verify-email",
-                        "/api/auth/resend-verification",
-                        "/api/auth/forgot-password",
-                        "/api/auth/reset-password",
-                        "/api/auth/social/providers"
-                    ).permitAll()
+                        .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/public/activities/*/reservations").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/public/restaurants/*/reviews").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/public/activities/*/reviews").authenticated()
+                        .requestMatchers("/api/public/my/**").authenticated()
                         .requestMatchers("/api/public/**").permitAll()
+                        .requestMatchers("/public/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/cities/**").permitAll()
-                        .requestMatchers(HttpMethod.GET,  "/api/transports/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/transports/**").permitAll()
                         .requestMatchers("/api/engine/**").permitAll()
                         .requestMatchers("/api/transport-recommendations/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/accommodations/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/geo/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/routes/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/events", "/api/events/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/post/**", "/comment/**", "/like/**", "/media/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/post/**", "/comment/**", "/like/**").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/post/**", "/comment/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/post/**", "/comment/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                         .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
@@ -75,6 +80,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/products/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_ARTISAN")
                         .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasAnyAuthority("ROLE_ADMIN", "ROLE_ARTISAN")
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers("/ws/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2

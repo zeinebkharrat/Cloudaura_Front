@@ -5,7 +5,7 @@
   <p-tabView [(activeIndex)]="activeTabIndex">
 
     <!-- ═══ TRANSPORTS TAB ═══ -->
-    <p-tabPanel header="Transports" leftIcon="pi pi-car">
+    <p-tabPanel header="Transport" leftIcon="pi pi-car">
 
       <!-- Stats Row -->
       <div class="stats-row">
@@ -20,55 +20,55 @@
           <div class="stat-icon green"><i class="pi pi-check-circle"></i></div>
           <div class="stat-body">
             <span class="stat-num">{{ activeTransportCount() }}</span>
-            <span class="stat-lbl">Actifs</span>
+            <span class="stat-lbl">Active</span>
           </div>
         </div>
         <div class="stat-card">
           <div class="stat-icon blue"><i class="pi pi-users"></i></div>
           <div class="stat-body">
             <span class="stat-num">{{ totalAvailableSeats() }}</span>
-            <span class="stat-lbl">Places dispo</span>
+            <span class="stat-lbl">Seats avail.</span>
           </div>
         </div>
         <div class="stat-card">
           <div class="stat-icon amber"><i class="pi pi-truck"></i></div>
           <div class="stat-body">
             <span class="stat-num">{{ totalVehiclesCount() }}</span>
-            <span class="stat-lbl">Véhicules actifs</span>
+            <span class="stat-lbl">Active vehicles</span>
           </div>
         </div>
         <div class="stat-card">
           <div class="stat-icon purple"><i class="pi pi-id-card"></i></div>
           <div class="stat-body">
             <span class="stat-num">{{ totalDriversCount() }}</span>
-            <span class="stat-lbl">Conducteurs actifs</span>
+            <span class="stat-lbl">Active drivers</span>
           </div>
         </div>
         <div class="stat-card">
           <div class="stat-icon teal"><i class="pi pi-calendar-check"></i></div>
           <div class="stat-body">
             <span class="stat-num">{{ todayReservationsCount() }}</span>
-            <span class="stat-lbl">Réservations aujourd'hui</span>
+            <span class="stat-lbl">Today's bookings</span>
           </div>
         </div>
       </div>
 
       <div class="section-header">
-        <h2>Gestion des Transports</h2>
-        <button pButton label="+ Nouveau transport" class="btn-create" (click)="openTransportDialog()"></button>
+        <h2>Transport management</h2>
+        <button pButton label="+ New transport" class="btn-create" (click)="openTransportDialog()"></button>
       </div>
 
       <!-- Search bar -->
       <div class="search-form">
         <input class="search-input" type="text"
                [ngModel]="transportSearch()" (ngModelChange)="onTransportSearch($event)"
-               placeholder="Rechercher type, ville, véhicule, conducteur, compagnie, prix, statut..." />
+               placeholder="Search type, city, vehicle, driver, airline, price, status…" />
         <select class="type-filter" [ngModel]="filterTypeValue()" (ngModelChange)="onTypeFilter($event)">
-          <option value="">Tous les types</option>
+          <option value="">All types</option>
           <option *ngFor="let t of transportTypes" [value]="t.value">{{ t.label }}</option>
         </select>
         <button class="search-btn" (click)="clearTransportSearch()">
-          <i class="pi pi-refresh"></i> Effacer
+          <i class="pi pi-refresh"></i> Clear
         </button>
       </div>
 
@@ -85,20 +85,20 @@
         } @else if (pagedTransports().length === 0) {
           <div class="empty-state">
             <i class="pi pi-car empty-icon"></i>
-            <p>{{ transportSearch() || filterTypeValue() ? 'Aucun transport ne correspond à votre recherche.' : 'Aucun transport trouvé.' }}</p>
+            <p>{{ transportSearch() || filterTypeValue() ? 'No transport matches your search.' : 'No transport found.' }}</p>
           </div>
         } @else {
           <table class="data-table">
             <thead>
               <tr>
                 <th>TYPE</th>
-                <th>TRAJET</th>
-                <th>DÉPART</th>
-                <th>ARRIVÉE</th>
-                <th>PLACES</th>
-                <th>PRIX</th>
-                <th>VÉHICULE / CONDUCTEUR</th>
-                <th>STATUT</th>
+                <th>ROUTE</th>
+                <th>DEPARTURE</th>
+                <th>ARRIVAL</th>
+                <th>SEATS</th>
+                <th>PRICE</th>
+                <th>VEHICLE / DRIVER</th>
+                <th>STATUS</th>
                 <th>ACTIONS</th>
               </tr>
             </thead>
@@ -108,9 +108,9 @@
                   <td><span class="type-badge" [ngClass]="'badge-' + t.type.toLowerCase()">{{ getTypeLabel(t.type) }}</span></td>
                   <td>
                     <div class="cell-main">
-                      {{ t.departureCityName || ('Ville ' + t.departureCityId) }}
+                      {{ t.departureCityName || ('City ' + t.departureCityId) }}
                       <i class="pi pi-arrow-right route-arrow"></i>
-                      {{ t.arrivalCityName || ('Ville ' + t.arrivalCityId) }}
+                      {{ t.arrivalCityName || ('City ' + t.arrivalCityId) }}
                     </div>
                   </td>
                   <td>
@@ -123,7 +123,7 @@
                   </td>
                   <td>
                   @if (t.availableSeats === 0) {
-                    <span class="seats-badge seats-full">COMPLET</span>
+                    <span class="seats-badge seats-full">FULL</span>
                   } @else {
                       <span class="seats-badge" [ngClass]="getSeatClass(t)">
                         {{ t.availableSeats }} / {{ t.capacity }}
@@ -142,33 +142,33 @@
                   </td>
                   <td>
                     <div class="status-stack">
-                      <span class="status-badge" [class.active]="t.isActive" [class.inactive-badge]="!t.isActive">{{ t.isActive ? 'Actif' : 'Inactif' }}</span>
+                      <span class="status-badge" [class.active]="t.isActive" [class.inactive-badge]="!t.isActive">{{ t.isActive ? 'Active' : 'Inactive' }}</span>
                       @if (t.isActive && t.availableSeats === 0) {
-                        <span class="status-badge full-badge">Complet</span>
+                        <span class="status-badge full-badge">Full</span>
                       }
                     </div>
                   </td>
                   <td>
                     <div class="actions">
-                      <button class="action-btn edit" title="Modifier" (click)="openTransportDialog(t)">
+                      <button class="action-btn edit" title="Edit" (click)="openTransportDialog(t)">
                         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                        <span>Modifier</span>
+                        <span>Edit</span>
                       </button>
-                      <button class="action-btn view" title="Réservations" (click)="viewReservations(t)">
+                      <button class="action-btn view" title="Bookings" (click)="viewReservations(t)">
                         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-                        <span>Réservations</span>
+                        <span>Bookings</span>
                       </button>
                       <button class="action-btn" [class.toggle-on]="t.isActive" [class.toggle-off]="!t.isActive"
-                              [title]="t.isActive ? 'Désactiver' : 'Activer'" (click)="toggleTransportStatus(t)">
+                              [title]="t.isActive ? 'Deactivate' : 'Activate'" (click)="toggleTransportStatus(t)">
                         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
                           <circle cx="12" cy="12" r="9"/>
                           @if (t.isActive) { <path d="M5 5l14 14"/> } @else { <path d="M20 6 9 17l-5-5"/> }
                         </svg>
-                        <span>{{ t.isActive ? 'Désactiver' : 'Activer' }}</span>
+                        <span>{{ t.isActive ? 'Deactivate' : 'Activate' }}</span>
                       </button>
-                      <button class="action-btn delete" title="Supprimer" (click)="deleteTransport(t)">
+                      <button class="action-btn delete" title="Delete" (click)="deleteTransport(t)">
                         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
-                        <span>Supprimer</span>
+                        <span>Delete</span>
                       </button>
                     </div>
                   </td>
@@ -182,7 +182,7 @@
         @if (totalTransportPages() > 1) {
           <div class="pagination">
             <span class="pg-info">
-              {{ (transportPage - 1) * PAGE_SIZE + 1 }}–{{ tPageEnd() }} sur {{ filteredTransports().length }}
+              {{ (transportPage - 1) * PAGE_SIZE + 1 }}–{{ tPageEnd() }} of {{ filteredTransports().length }}
             </span>
             <div class="pg-controls">
               <button class="pg-btn" (click)="transportPage = 1" [disabled]="transportPage === 1">«</button>
@@ -203,31 +203,31 @@
     </p-tabPanel>
 
     <!-- ═══ VEHICLES TAB ═══ -->
-    <p-tabPanel header="Véhicules" leftIcon="pi pi-truck">
+    <p-tabPanel header="Vehicles" leftIcon="pi pi-truck">
       <div class="section-header">
-        <h2>Gestion des Véhicules</h2>
-        <button pButton label="+ Nouveau véhicule" class="btn-create" (click)="openVehicleDialog()"></button>
+        <h2>Vehicle management</h2>
+        <button pButton label="+ New vehicle" class="btn-create" (click)="openVehicleDialog()"></button>
       </div>
       <div class="search-form" style="grid-template-columns: 1fr auto;">
         <input class="search-input" type="text"
                [ngModel]="vehicleSearch()" (ngModelChange)="onVehicleSearch($event)"
-               placeholder="Rechercher marque, modèle, immatriculation, type, couleur..." />
-        <button class="search-btn" (click)="clearVehicleSearch()"><i class="pi pi-refresh"></i> Effacer</button>
+               placeholder="Search brand, model, plate, type, color…" />
+        <button class="search-btn" (click)="clearVehicleSearch()"><i class="pi pi-refresh"></i> Clear</button>
       </div>
       <div class="table-wrap">
         @if (pagedVehicles().length === 0) {
-          <div class="empty-state"><i class="pi pi-truck empty-icon"></i><p>Aucun véhicule trouvé.</p></div>
+          <div class="empty-state"><i class="pi pi-truck empty-icon"></i><p>No vehicles found.</p></div>
         } @else {
           <table class="data-table">
             <thead>
               <tr>
-                <th>MARQUE / MODÈLE</th>
+                <th>BRAND / MODEL</th>
                 <th>TYPE</th>
-                <th>IMMATRICULATION</th>
-                <th>CAPACITÉ</th>
-                <th>COULEUR / ANNÉE</th>
-                <th>PRIX / TRAJET</th>
-                <th>STATUT</th>
+                <th>PLATE</th>
+                <th>CAPACITY</th>
+                <th>COLOR / YEAR</th>
+                <th>PRICE / TRIP</th>
+                <th>STATUS</th>
                 <th>ACTIONS</th>
               </tr>
             </thead>
@@ -237,22 +237,22 @@
                   <td><div class="cell-main">{{ v.brand }} {{ v.model }}</div></td>
                   <td><span class="type-badge" [ngClass]="'badge-' + v.type.toLowerCase()">{{ v.type }}</span></td>
                   <td><code>{{ v.plateNumber }}</code></td>
-                  <td>{{ v.capacity }} places</td>
+                  <td>{{ v.capacity }} seats</td>
                   <td>
                     <div class="cell-main">{{ v.color || '—' }}</div>
                     <div class="cell-sub">{{ v.year || '—' }}</div>
                   </td>
                   <td><span class="price-val">{{ v.pricePerTrip | currency:'TND':'symbol':'1.2-2' }}</span></td>
-                  <td><span class="status-badge" [class.active]="v.isActive" [class.inactive-badge]="!v.isActive">{{ v.isActive ? 'Actif' : 'Inactif' }}</span></td>
+                  <td><span class="status-badge" [class.active]="v.isActive" [class.inactive-badge]="!v.isActive">{{ v.isActive ? 'Active' : 'Inactive' }}</span></td>
                   <td>
                     <div class="actions">
                       <button class="action-btn edit" (click)="openVehicleDialog(v)">
                         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                        <span>Modifier</span>
+                        <span>Edit</span>
                       </button>
                       <button class="action-btn delete" (click)="deleteVehicle(v)">
                         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
-                        <span>Supprimer</span>
+                        <span>Delete</span>
                       </button>
                     </div>
                   </td>
@@ -263,7 +263,7 @@
         }
         @if (totalVehiclePages() > 1) {
           <div class="pagination">
-            <span class="pg-info">{{ (vehiclePage - 1) * PAGE_SIZE + 1 }}–{{ vPageEnd() }} sur {{ filteredVehicles().length }}</span>
+            <span class="pg-info">{{ (vehiclePage - 1) * PAGE_SIZE + 1 }}–{{ vPageEnd() }} of {{ filteredVehicles().length }}</span>
             <div class="pg-controls">
               <button class="pg-btn" (click)="vehiclePage = 1" [disabled]="vehiclePage === 1">«</button>
               <button class="pg-btn" (click)="vehiclePage = vehiclePage - 1" [disabled]="vehiclePage === 1">‹</button>
@@ -280,31 +280,31 @@
     </p-tabPanel>
 
     <!-- ═══ DRIVERS TAB ═══ -->
-    <p-tabPanel header="Conducteurs" leftIcon="pi pi-id-card">
+    <p-tabPanel header="Drivers" leftIcon="pi pi-id-card">
       <div class="section-header">
-        <h2>Gestion des Conducteurs</h2>
-        <button pButton label="+ Nouveau conducteur" class="btn-create" (click)="openDriverDialog()"></button>
+        <h2>Driver management</h2>
+        <button pButton label="+ New driver" class="btn-create" (click)="openDriverDialog()"></button>
       </div>
       <div class="search-form" style="grid-template-columns: 1fr auto;">
         <input class="search-input" type="text"
                [ngModel]="driverSearch()" (ngModelChange)="onDriverSearch($event)"
-               placeholder="Rechercher nom, prénom, permis, téléphone, email..." />
-        <button class="search-btn" (click)="clearDriverSearch()"><i class="pi pi-refresh"></i> Effacer</button>
+               placeholder="Search name, license, phone, email…" />
+        <button class="search-btn" (click)="clearDriverSearch()"><i class="pi pi-refresh"></i> Clear</button>
       </div>
       <div class="table-wrap">
         @if (pagedDrivers().length === 0) {
-          <div class="empty-state"><i class="pi pi-id-card empty-icon"></i><p>Aucun conducteur trouvé.</p></div>
+          <div class="empty-state"><i class="pi pi-id-card empty-icon"></i><p>No drivers found.</p></div>
         } @else {
           <table class="data-table">
             <thead>
               <tr>
-                <th>NOM COMPLET</th>
-                <th>N° PERMIS</th>
-                <th>TÉLÉPHONE</th>
+                <th>FULL NAME</th>
+                <th>LICENSE NO.</th>
+                <th>PHONE</th>
                 <th>EMAIL</th>
-                <th>NOTE</th>
-                <th>TRAJETS</th>
-                <th>STATUT</th>
+                <th>RATING</th>
+                <th>TRIPS</th>
+                <th>STATUS</th>
                 <th>ACTIONS</th>
               </tr>
             </thead>
@@ -328,20 +328,20 @@
                     @if (d.rating && d.rating > 0) {
                       <span class="rating-badge"><i class="pi pi-star-fill" style="color:#fbbf24;font-size:0.75rem;"></i> {{ d.rating | number:'1.1-1' }}</span>
                     } @else {
-                      <span style="opacity:0.4;font-size:0.75rem;">Non noté</span>
+                      <span style="opacity:0.4;font-size:0.75rem;">No rating</span>
                     }
                   </td>
-                  <td><span class="trips-badge">{{ d.totalTrips || 0 }} trajet(s)</span></td>
-                  <td><span class="status-badge" [class.active]="d.isActive" [class.inactive-badge]="!d.isActive">{{ d.isActive ? 'Actif' : 'Inactif' }}</span></td>
+                  <td><span class="trips-badge">{{ d.totalTrips || 0 }} trip(s)</span></td>
+                  <td><span class="status-badge" [class.active]="d.isActive" [class.inactive-badge]="!d.isActive">{{ d.isActive ? 'Active' : 'Inactive' }}</span></td>
                   <td>
                     <div class="actions">
                       <button class="action-btn edit" (click)="openDriverDialog(d)">
                         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                        <span>Modifier</span>
+                        <span>Edit</span>
                       </button>
                       <button class="action-btn delete" (click)="deleteDriver(d)">
                         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
-                        <span>Supprimer</span>
+                        <span>Delete</span>
                       </button>
                     </div>
                   </td>
@@ -352,7 +352,7 @@
         }
         @if (totalDriverPages() > 1) {
           <div class="pagination">
-            <span class="pg-info">{{ (driverPage - 1) * PAGE_SIZE + 1 }}–{{ dPageEnd() }} sur {{ filteredDrivers().length }}</span>
+            <span class="pg-info">{{ (driverPage - 1) * PAGE_SIZE + 1 }}–{{ dPageEnd() }} of {{ filteredDrivers().length }}</span>
             <div class="pg-controls">
               <button class="pg-btn" (click)="driverPage = 1" [disabled]="driverPage === 1">«</button>
               <button class="pg-btn" (click)="driverPage = driverPage - 1" [disabled]="driverPage === 1">‹</button>
@@ -371,7 +371,7 @@
 </div>
 
 <!-- ═══ Transport Dialog ═══ -->
-<p-dialog [header]="selectedTransport() ? 'Modifier le transport' : 'Nouveau transport'"
+<p-dialog [header]="selectedTransport() ? 'Edit transport' : 'New transport'"
           [(visible)]="showTransportDialog" [modal]="true" [style]="{width:'720px'}" [closable]="true">
   <form [formGroup]="transportForm" class="dialog-form">
     <div class="form-grid">
@@ -381,86 +381,86 @@
         <label>Type *</label>
         <p-dropdown [options]="transportTypes" formControlName="type"
                     optionLabel="label" optionValue="value"
-                    placeholder="Sélectionner le type"
+                    placeholder="Select type"
                     styleClass="w-full"
                     (onChange)="onTypeChange($event)">
         </p-dropdown>
       </div>
 
-      <!-- PRIX -->
+      <!-- PRICE -->
       <div class="form-field">
-        <label>Prix (TND) *</label>
+        <label>Price (TND) *</label>
         <p-inputNumber formControlName="price" [min]="0" [minFractionDigits]="2" mode="decimal"
                        styleClass="w-full" (onInput)="onPriceChange($event.value ?? 0)">
         </p-inputNumber>
         <small class="hint-warning" *ngIf="priceWarning">⚠ {{ priceWarning }}</small>
       </div>
 
-      <!-- VILLE DÉPART -->
+      <!-- DEPARTURE CITY -->
       <div class="form-field">
-        <label>Ville de départ *</label>
+        <label>Departure city *</label>
         <p-dropdown [options]="cities()" formControlName="departureCityId"
                     optionLabel="name" optionValue="cityId"
-                    placeholder="Sélectionner" [filter]="true" styleClass="w-full">
+                    placeholder="Select" [filter]="true" styleClass="w-full">
         </p-dropdown>
       </div>
 
-      <!-- VILLE ARRIVÉE -->
+      <!-- ARRIVAL CITY -->
       <div class="form-field">
-        <label>Ville d'arrivée *</label>
+        <label>Arrival city *</label>
         <p-dropdown [options]="cities()" formControlName="arrivalCityId"
                     optionLabel="name" optionValue="cityId"
-                    placeholder="Sélectionner" [filter]="true" styleClass="w-full">
+                    placeholder="Select" [filter]="true" styleClass="w-full">
         </p-dropdown>
       </div>
 
-      <!-- HEURE DÉPART -->
+      <!-- DEPARTURE TIME -->
       <div class="form-field">
-        <label>Heure de départ *</label>
+        <label>Departure time *</label>
         <input pInputText type="datetime-local" formControlName="departureTime"
                class="w-full" (change)="onTimeChange()" />
       </div>
 
-      <!-- HEURE ARRIVÉE -->
+      <!-- ARRIVAL TIME -->
       <div class="form-field">
-        <label>Heure d'arrivée *</label>
+        <label>Arrival time *</label>
         <input pInputText type="datetime-local" formControlName="arrivalTime"
                class="w-full" (change)="onTimeChange()" />
-        <small class="hint-success" *ngIf="calculatedDuration">Durée : {{ calculatedDuration }}</small>
+        <small class="hint-success" *ngIf="calculatedDuration">Duration: {{ calculatedDuration }}</small>
         <small class="hint-warning" *ngIf="durationWarning">⚠ {{ durationWarning }}</small>
       </div>
 
-      <!-- VÉHICULE — caché si PLANE -->
+      <!-- VEHICLE — hidden if PLANE -->
       <div class="form-field" *ngIf="showVehicleField">
-        <label>Véhicule *</label>
+        <label>Vehicle *</label>
         <p-dropdown [options]="availableVehicles().length ? availableVehicles() : vehicles()"
                     formControlName="vehicleId"
                     optionLabel="displayLabel" optionValue="vehicleId"
-                    placeholder="Sélectionner un véhicule"
+                    placeholder="Select a vehicle"
                     [showClear]="false" styleClass="w-full"
                     (onChange)="onVehicleChange($event.value)"
-                    emptyMessage="Aucun véhicule compatible disponible">
+                    emptyMessage="No compatible vehicle available">
           <ng-template let-item pTemplate="item">
-            <span>{{ item.brand }} {{ item.model }} — {{ item.capacity }} places — {{ item.plateNumber }}</span>
+            <span>{{ item.brand }} {{ item.model }} — {{ item.capacity }} seats — {{ item.plateNumber }}</span>
           </ng-template>
           <ng-template let-item pTemplate="selectedItem">
             <span *ngIf="item">{{ item.brand }} {{ item.model }} ({{ item.plateNumber }})</span>
           </ng-template>
         </p-dropdown>
         <div class="capacity-inherited" *ngIf="selectedVehicleCapacity">
-          Capacité héritée : <strong>{{ selectedVehicleCapacity }} places</strong>
+          Inherited capacity: <strong>{{ selectedVehicleCapacity }} seats</strong>
         </div>
       </div>
 
-      <!-- CONDUCTEUR — caché si PLANE -->
+      <!-- DRIVER — hidden if PLANE -->
       <div class="form-field" *ngIf="showDriverField">
-        <label>Conducteur *</label>
+        <label>Driver *</label>
         <p-dropdown [options]="availableDrivers().length ? availableDrivers() : drivers()"
                     formControlName="driverId"
                     optionLabel="fullName" optionValue="driverId"
-                    placeholder="Sélectionner un conducteur"
+                    placeholder="Select a driver"
                     [showClear]="false" styleClass="w-full"
-                    emptyMessage="Aucun conducteur disponible sur ce créneau">
+                    emptyMessage="No driver available for this slot">
           <ng-template let-item pTemplate="item">
             <div class="driver-option-item">
               <span>{{ item.firstName }} {{ item.lastName }}</span>
@@ -474,27 +474,27 @@
         </p-dropdown>
       </div>
 
-      <!-- COMPAGNIE AÉRIENNE — affiché si PLANE -->
+      <!-- AIRLINE — shown if PLANE -->
       <div class="form-field" *ngIf="showAirlineField">
-        <label>Compagnie aérienne *</label>
+        <label>Airline *</label>
         <p-dropdown [options]="airlines" formControlName="operatorName"
                     optionLabel="label" optionValue="value"
                     placeholder="Ex: Tunisair" styleClass="w-full">
         </p-dropdown>
       </div>
 
-      <!-- CODE VOL — affiché si PLANE -->
+      <!-- FLIGHT CODE — shown if PLANE -->
       <div class="form-field" *ngIf="showAirlineField">
-        <label>Code vol (optionnel)</label>
+        <label>Flight code (optional)</label>
         <input pInputText formControlName="flightCode" placeholder="Ex: TU-202" class="w-full" />
       </div>
 
-      <!-- CAPACITÉ — éditable si PLANE uniquement -->
+      <!-- CAPACITY — editable for PLANE only -->
       <div class="form-field" *ngIf="showCapacityField">
-        <label>Capacité (places) *</label>
+        <label>Capacity (seats) *</label>
         <p-inputNumber formControlName="capacity" [min]="1" [max]="500"
                        [showButtons]="true" styleClass="w-full"
-                       placeholder="Nombre de places">
+                       placeholder="Number of seats">
         </p-inputNumber>
       </div>
 
@@ -502,102 +502,102 @@
       <div class="form-field full-width">
         <label>Description</label>
         <textarea pInputText formControlName="description" rows="3"
-                  class="w-full" placeholder="Informations supplémentaires..."></textarea>
+                  class="w-full" placeholder="Additional information…"></textarea>
       </div>
     </div>
   </form>
   <ng-template pTemplate="footer">
-    <button pButton label="Annuler" icon="pi pi-times" class="p-button-outlined p-button-secondary"
+    <button pButton label="Cancel" icon="pi pi-times" class="p-button-outlined p-button-secondary"
             (click)="showTransportDialog = false"></button>
-    <button pButton [label]="selectedTransport() ? 'Enregistrer les modifications' : 'Créer le transport'"
+    <button pButton [label]="selectedTransport() ? 'Save changes' : 'Create transport'"
             icon="pi pi-check" class="btn-create"
             (click)="saveTransport()" [disabled]="transportForm.invalid"></button>
   </ng-template>
 </p-dialog>
 
 <!-- ═══ Vehicle Dialog ═══ -->
-<p-dialog [header]="selectedVehicle() ? 'Modifier le véhicule' : 'Nouveau véhicule'"
+<p-dialog [header]="selectedVehicle() ? 'Edit vehicle' : 'New vehicle'"
           [(visible)]="showVehicleDialog" [modal]="true" [style]="{width:'620px'}">
   <form [formGroup]="vehicleForm" class="dialog-form">
     <div class="form-grid">
-      <div class="form-field"><label>Marque *</label><input pInputText formControlName="brand" placeholder="Ex: Toyota" class="w-full" /></div>
-      <div class="form-field"><label>Modèle *</label><input pInputText formControlName="model" placeholder="Ex: Coaster" class="w-full" /></div>
+      <div class="form-field"><label>Brand *</label><input pInputText formControlName="brand" placeholder="e.g. Toyota" class="w-full" /></div>
+      <div class="form-field"><label>Model *</label><input pInputText formControlName="model" placeholder="e.g. Coaster" class="w-full" /></div>
       <div class="form-field">
         <label>Type *</label>
         <p-dropdown [options]="vehicleTypes" formControlName="type" optionLabel="label" optionValue="value" styleClass="w-full"></p-dropdown>
       </div>
-      <div class="form-field"><label>Immatriculation *</label><input pInputText formControlName="plateNumber" placeholder="Ex: 123 TUN 456" class="w-full" /></div>
-      <div class="form-field"><label>Capacité *</label><p-inputNumber formControlName="capacity" [min]="1" [max]="500" [showButtons]="true" styleClass="w-full"></p-inputNumber></div>
-      <div class="form-field"><label>Prix / trajet (TND) *</label><p-inputNumber formControlName="pricePerTrip" [min]="0" [minFractionDigits]="2" mode="decimal" styleClass="w-full"></p-inputNumber></div>
+      <div class="form-field"><label>Plate number *</label><input pInputText formControlName="plateNumber" placeholder="e.g. 123 TUN 456" class="w-full" /></div>
+      <div class="form-field"><label>Capacity *</label><p-inputNumber formControlName="capacity" [min]="1" [max]="500" [showButtons]="true" styleClass="w-full"></p-inputNumber></div>
+      <div class="form-field"><label>Price per trip (TND) *</label><p-inputNumber formControlName="pricePerTrip" [min]="0" [minFractionDigits]="2" mode="decimal" styleClass="w-full"></p-inputNumber></div>
       <div class="form-field">
-        <label>Couleur *</label>
-        <input pInputText formControlName="color" placeholder="Ex: Blanc, Gris métallisé" class="w-full" />
-        <small class="hint-error" *ngIf="vehicleForm.get('color')?.invalid && vehicleForm.get('color')?.touched">La couleur est obligatoire</small>
+        <label>Color *</label>
+        <input pInputText formControlName="color" placeholder="e.g. White, metallic grey" class="w-full" />
+        <small class="hint-error" *ngIf="vehicleForm.get('color')?.invalid && vehicleForm.get('color')?.touched">Color is required</small>
       </div>
       <div class="form-field">
-        <label>Année *</label>
-        <p-inputNumber formControlName="year" [min]="2000" [max]="2030" styleClass="w-full" placeholder="Ex: 2023"></p-inputNumber>
-        <small class="hint-error" *ngIf="vehicleForm.get('year')?.invalid && vehicleForm.get('year')?.touched">Année entre 2000 et 2030</small>
+        <label>Year *</label>
+        <p-inputNumber formControlName="year" [min]="2000" [max]="2030" styleClass="w-full" placeholder="e.g. 2023"></p-inputNumber>
+        <small class="hint-error" *ngIf="vehicleForm.get('year')?.invalid && vehicleForm.get('year')?.touched">Year must be between 2000 and 2030</small>
       </div>
     </div>
   </form>
   <ng-template pTemplate="footer">
-    <button pButton label="Annuler" icon="pi pi-times" class="p-button-outlined p-button-secondary" (click)="showVehicleDialog = false"></button>
-    <button pButton [label]="selectedVehicle() ? 'Enregistrer les modifications' : 'Créer le véhicule'"
+    <button pButton label="Cancel" icon="pi pi-times" class="p-button-outlined p-button-secondary" (click)="showVehicleDialog = false"></button>
+    <button pButton [label]="selectedVehicle() ? 'Save changes' : 'Create vehicle'"
             icon="pi pi-check" class="btn-create"
             (click)="saveVehicle()" [disabled]="vehicleForm.invalid"></button>
   </ng-template>
 </p-dialog>
 
 <!-- ═══ Driver Dialog ═══ -->
-<p-dialog [header]="selectedDriver() ? 'Modifier le conducteur' : 'Nouveau conducteur'"
+<p-dialog [header]="selectedDriver() ? 'Edit driver' : 'New driver'"
           [(visible)]="showDriverDialog" [modal]="true" [style]="{width:'520px'}">
   <form [formGroup]="driverForm" class="dialog-form">
     <div class="form-grid">
-      <div class="form-field"><label>Prénom *</label><input pInputText formControlName="firstName" placeholder="Ex: Mohamed" class="w-full" /></div>
-      <div class="form-field"><label>Nom *</label><input pInputText formControlName="lastName" placeholder="Ex: Ben Salem" class="w-full" /></div>
-      <div class="form-field"><label>N° de permis *</label><input pInputText formControlName="licenseNumber" placeholder="Ex: TN-2024-XXXXX" class="w-full" /></div>
-      <div class="form-field"><label>Téléphone</label><input pInputText formControlName="phone" placeholder="+216 XX XXX XXX" class="w-full" /></div>
+      <div class="form-field"><label>First name *</label><input pInputText formControlName="firstName" placeholder="e.g. Mohamed" class="w-full" /></div>
+      <div class="form-field"><label>Last name *</label><input pInputText formControlName="lastName" placeholder="e.g. Ben Salem" class="w-full" /></div>
+      <div class="form-field"><label>License no. *</label><input pInputText formControlName="licenseNumber" placeholder="e.g. TN-2024-XXXXX" class="w-full" /></div>
+      <div class="form-field"><label>Phone</label><input pInputText formControlName="phone" placeholder="+216 XX XXX XXX" class="w-full" /></div>
       <div class="form-field full-width">
         <label>Email *</label>
-        <input pInputText formControlName="email" placeholder="conducteur@email.com" class="w-full" />
-        <small class="hint-error" *ngIf="driverForm.get('email')?.invalid && driverForm.get('email')?.touched">Email valide requis</small>
+        <input pInputText formControlName="email" placeholder="driver@email.com" class="w-full" />
+        <small class="hint-error" *ngIf="driverForm.get('email')?.invalid && driverForm.get('email')?.touched">A valid email is required</small>
       </div>
     </div>
   </form>
   <ng-template pTemplate="footer">
-    <button pButton label="Annuler" icon="pi pi-times" class="p-button-outlined p-button-secondary" (click)="showDriverDialog = false"></button>
-    <button pButton [label]="selectedDriver() ? 'Enregistrer les modifications' : 'Créer le conducteur'"
+    <button pButton label="Cancel" icon="pi pi-times" class="p-button-outlined p-button-secondary" (click)="showDriverDialog = false"></button>
+    <button pButton [label]="selectedDriver() ? 'Save changes' : 'Create driver'"
             icon="pi pi-check" class="btn-create"
             (click)="saveDriver()" [disabled]="driverForm.invalid"></button>
   </ng-template>
 </p-dialog>
 
 <!-- ═══ Reservations Dialog ═══ -->
-<p-dialog header="Réservations du trajet"
+<p-dialog header="Route bookings"
           [(visible)]="showReservationsDialog" [modal]="true" [style]="{width:'940px'}">
   <div class="res-header" *ngIf="selectedTransport()">
     <span class="type-badge" [ngClass]="'badge-' + selectedTransport()!.type.toLowerCase()">{{ getTypeLabel(selectedTransport()!.type) }}</span>
     <span class="res-route">{{ selectedTransport()!.departureCityName }} → {{ selectedTransport()!.arrivalCityName }}</span>
-    <span class="res-count">{{ reservations().length }} réservation(s)</span>
+    <span class="res-count">{{ reservations().length }} booking(s)</span>
   </div>
   <div class="table-wrap">
     <table class="data-table res-table">
       <thead>
         <tr>
-          <th>RÉFÉRENCE</th>
-          <th>PASSAGER</th>
+          <th>REFERENCE</th>
+          <th>PASSENGER</th>
           <th>DATE</th>
-          <th>PLACES</th>
-          <th>MONTANT</th>
-          <th>STATUT</th>
-          <th>PAIEMENT</th>
+          <th>SEATS</th>
+          <th>AMOUNT</th>
+          <th>STATUS</th>
+          <th>PAYMENT</th>
           <th>ACTIONS</th>
         </tr>
       </thead>
       <tbody>
         @if (reservations().length === 0) {
-          <tr class="empty-row"><td colspan="8">Aucune réservation pour ce trajet</td></tr>
+          <tr class="empty-row"><td colspan="8">No bookings for this route</td></tr>
         }
         @for (r of reservations(); track r.transportReservationId) {
           <tr [class.inactive]="r.status === 'CANCELLED'">
@@ -625,11 +625,11 @@
               <div class="actions">
                 <button *ngIf="r.status === 'PENDING'" class="action-btn toggle-on" (click)="confirmReservation(r)">
                   <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg>
-                  <span>Confirmer</span>
+                  <span>Confirm</span>
                 </button>
                 <button *ngIf="r.status !== 'CANCELLED'" class="action-btn delete" (click)="cancelReservation(r)">
                   <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M5 5l14 14"/></svg>
-                  <span>Annuler</span>
+                  <span>Cancel</span>
                 </button>
               </div>
             </td>

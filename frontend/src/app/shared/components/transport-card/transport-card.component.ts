@@ -118,7 +118,7 @@ export class TransportCardComponent {
 
   formatTime(dateStr: string): string {
     if (!dateStr) return '';
-    return new Date(dateStr).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    return new Date(dateStr).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
   }
 
   formatDuration(minutes: number): string {
