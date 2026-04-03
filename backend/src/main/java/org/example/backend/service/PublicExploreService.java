@@ -68,6 +68,14 @@ public class PublicExploreService {
         return new CityResolveResponse(toCityResponse(best), false);
     }
 
+    /** Liste toutes les villes (catalogue public, ex. {@code GET /api/public/cities/all}). */
+    @Transactional(readOnly = true)
+    public List<CityResponse> listAllCities() {
+        return cityRepository.findAll().stream()
+                .map(this::toCityResponse)
+                .toList();
+    }
+
     @Transactional(readOnly = true)
     public PublicCityDetailsResponse getCityDetails(Integer cityId) {
         City city = cityRepository.findById(cityId)

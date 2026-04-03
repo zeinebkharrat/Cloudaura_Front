@@ -1,0 +1,176 @@
+﻿Application bundle generation failed. [3.345 seconds]
+
+node.exe : [1m[31m[31mX 
+[41;31m[[41;97mERROR[41;
+31m][0m [1mNG9: Property 
+'isUserMenuOpen' does not 
+exist on type 
+'AppComponent'.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+Au caractère Ligne:1 : 1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
+    + CategoryInfo         
+     : NotSpecified: ([1  
+  m[31m[31mX...r-compi   
+ ler][0m:String) [], R    
+emoteException
+    + FullyQualifiedErrorI 
+   d : NativeCommandError
+ 
+
+    src/app/app.component.h
+tml:54:13:
+[37m      54 Ôöé         
+@if ([32misUserMenuOpen[3
+7m()) {
+         ÔòÁ              
+[32m~~~~~~~~~~~~~~[0m
+
+  Error occurs in the 
+template of component 
+AppComponent.
+
+    src/app/app.component.t
+s:12:15:
+[37m      12 Ôöé   
+templateUrl: [32m'./app.co
+mponent.html'[37m,
+         ÔòÁ               
+ [32m~~~~~~~~~~~~~~~~~~~~~
+~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2339: Property 
+'isUserMenuOpen' does not 
+exist on type 
+'AppComponent'.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/app.component.t
+s:69:9:
+[37m      69 Ôöé     this.
+[32misUserMenuOpen[37m.se
+t(false);
+         ÔòÁ          
+[32m~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2339: Property 
+'isUserMenuOpen' does not 
+exist on type 
+'AppComponent'.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/app.component.t
+s:84:9:
+[37m      84 Ôöé     this.
+[32misUserMenuOpen[37m.se
+t(!this.isUserMenuOpen());
+         ÔòÁ          
+[32m~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2339: Property 
+'isUserMenuOpen' does not 
+exist on type 
+'AppComponent'.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/app.component.t
+s:84:34:
+[37m      84 Ôöé     this.
+isUserMenuOpen.set(!this.[
+32misUserMenuOpen[37m());
+         ÔòÁ               
+                    
+[32m~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2339: Property 
+'isUserMenuOpen' does not 
+exist on type 
+'AppComponent'.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/app.component.t
+s:88:9:
+[37m      88 Ôöé     this.
+[32misUserMenuOpen[37m.se
+t(false);
+         ÔòÁ          
+[32m~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2339: Property 
+'isUserMenuOpen' does not 
+exist on type 
+'AppComponent'.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/app.component.t
+s:93:9:
+[37m      93 Ôöé     this.
+[32misUserMenuOpen[37m.se
+t(false);
+         ÔòÁ          
+[32m~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mNG5002: Unexpected 
+closing tag "section". It 
+may happen when the tag 
+has already been closed by 
+another tag. For more info 
+see https://www.w3.org/TR/h
+tml5/syntax.html#closing-el
+ements-that-have-implied-en
+d-tags[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/feature-page.co
+mponent.html:233:2:
+[37m      233 Ôöé   
+[32m</section>[37m
+          ÔòÁ   
+[32m~~~~~~~~~~[0m
+
+  Error occurs in the 
+template of component 
+FeaturePageComponent.
+
+    src/app/feature-page.co
+mponent.ts:57:15:
+[37m      57 Ôöé   
+templateUrl: [32m'./featur
+e-page.component.html'[37m
+,
+         ÔòÁ               
+ [32m~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~[0m
+
+[39m[22m

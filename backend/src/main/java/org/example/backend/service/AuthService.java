@@ -10,7 +10,6 @@ import org.example.backend.dto.ResendVerificationRequest;
 import org.example.backend.dto.ResetPasswordRequest;
 import org.example.backend.dto.SignupRequest;
 import org.example.backend.dto.UserSummaryResponse;
-import org.example.backend.model.Ban;
 import org.example.backend.model.City;
 import org.example.backend.model.Role;
 import org.example.backend.model.User;
@@ -73,6 +72,10 @@ public class AuthService {
 
     @Value("${app.frontend.base-url:http://localhost:4200}")
     private String frontendBaseUrl;
+
+    /** Si {@code false}, connexion possible sans lien de vérification e-mail (pratique en local ; garder {@code true} en prod). */
+    @Value("${app.auth.require-email-verified-for-signin:true}")
+    private boolean requireEmailVerifiedForSignin;
 
     public AuthService(UserRepository userRepository,
                        RoleRepository roleRepository,
@@ -576,6 +579,9 @@ public class AuthService {
     }
 
     private void ensureEmailVerified(User user) {
+        if (!requireEmailVerifiedForSignin) {
+            return;
+        }
         if (!Boolean.TRUE.equals(user.getEmailVerified())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Email non verifie. Verifiez votre boite mail.");
         }

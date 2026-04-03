@@ -41,6 +41,9 @@ import { PuzzlePlayerComponent } from './games/puzzle-player.component';
 import { LudoPlayerComponent } from './games/ludo-player.component';
 import { ServicesRestaurantsComponent } from './explore/services-restaurants.component';
 import { ServicesActivitiesComponent } from './explore/services-activities.component';
+import { MockPaymentComponent } from './shop/mock-payment/mock-payment.component';
+import { ArtisanOrdersComponent } from './artisan/artisan-orders.component';
+import { FavoritesComponent } from './shop/favorites.component';
 
 import { EventManagementComponent } from './admin/event-management/event-management.component';
 import { EventCalendarComponent } from './admin/event-calendar/event-calendar.component';
@@ -62,7 +65,9 @@ export const routes: Routes = [
   { path: 'activities/:activityId', component: ActivityDetailComponent },
   { path: 'panier', component: CartPageComponent, canActivate: [authGuard] },
   { path: 'mes-commandes', component: MyOrdersComponent, canActivate: [authGuard] },
-  { path: 'mes-ordres', component: MyOrdersComponent, canActivate: [authGuard] },
+  { path: 'mes-ordres', component: ArtisanOrdersComponent, canActivate: [authGuard], data: { roles: ['ROLE_ARTISAN', 'ROLE_ADMIN'], title: 'My orders (sales)' } },
+  { path: 'mock-payment', component: MockPaymentComponent, canActivate: [authGuard] },
+  { path: 'favoris', component: FavoritesComponent, canActivate: [authGuard] },
 
   { path: 'virtual-tour', component: VirtualTourPageComponent },
   { path: 'jeux', redirectTo: 'games', pathMatch: 'full' },
@@ -210,10 +215,9 @@ export const routes: Routes = [
       kicker: 'Living heritage',
       accent: 'sand',
       title: 'Crafts & souvenirs',
-      /** Product catalog (GET /api/products) below the hero. */
       catalog: 'products',
       description:
-        'Spotlight artisans and their work: digital storefront, purchase journey, and positive impact on the local economy.',
+        'Spotlight artisans and their work: digital storefront, checkout with secure payment (Stripe or mock), and positive impact on the local economy.',
       blocks: [
         {
           icon: '👤',
@@ -225,17 +229,17 @@ export const routes: Routes = [
         },
         {
           icon: '🛒',
-          title: 'Catalogue & gifts',
+          title: 'Catalog & souvenirs',
           items: [
             'Handmade products, crafts, and souvenirs.',
-            'Checkout flow (front ready; secure payments coming soon).',
+            'Checkout flow with Stripe checkout and mock payment for local testing.',
           ],
         },
         {
           icon: '🌿',
           title: 'Promotion & impact',
           items: [
-            'Highlighting unique goods and short supply chains.',
+            'Highlighting unique products and short supply chains.',
             'Support for local entrepreneurship and sustainable tourism.',
           ],
         },

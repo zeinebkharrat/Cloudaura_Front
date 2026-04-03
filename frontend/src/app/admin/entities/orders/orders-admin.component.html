@@ -23,7 +23,7 @@
           type="text"
           [(ngModel)]="q"
           (ngModelChange)="onSearchInputChange()"
-          placeholder="Search by order no. or customer…"
+          placeholder="Search by order # or customer…"
         />
       </div>
       <select [(ngModel)]="sort" (change)="sortChanged()">
@@ -137,99 +137,115 @@
 </div>
 
 @if (showDetailsModal && detailsOrder) {
-  <div class="modal-backdrop" (click)="onDetailsBackdropClick($event)"></div>
-  <section class="modal-card details-modal" role="dialog" aria-modal="true" aria-labelledby="order-detail-title">
-    <header class="modal-head">
-      <h2 id="order-detail-title">Order #{{ detailsOrder.orderId }}</h2>
-      <button type="button" class="btn ghost" (click)="closeDetailsModal()" aria-label="Close">✕</button>
-    </header>
-
-    <div class="detail-summary">
-      <div class="detail-chip">
-        <span class="label">Customer</span>
-        <strong>{{ detailsOrder.user?.username ?? '—' }}</strong>
+  <div class="modal-backdrop odm-backdrop" (click)="onDetailsBackdropClick($event)"></div>
+  <section
+    class="modal-card order-detail-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="order-detail-title"
+  >
+    <div class="odm-hero">
+      <div class="odm-hero__text">
+        <p class="odm-eyebrow">Order</p>
+        <h2 id="order-detail-title">#{{ detailsOrder.orderId }}</h2>
       </div>
-      <div class="detail-chip">
-        <span class="label">Total</span>
-        <strong>{{ formatPrice(detailsOrder.totalAmount) }}</strong>
-      </div>
-      <div class="detail-chip">
-        <span class="label">Status</span>
-        <span class="status-pill">{{ orderStatusLabel(detailsOrder.status) }}</span>
-      </div>
+      <span class="odm-hero__pill status-pill status-pill--lg">{{ orderStatusLabel(detailsOrder.status) }}</span>
+      <button type="button" class="odm-close" (click)="closeDetailsModal()" aria-label="Close">✕</button>
     </div>
 
-    <div class="status-edit-block">
-      <label class="status-edit-label" for="detail-order-status">Change status</label>
-      <div class="status-edit-row">
-        <select
-          id="detail-order-status"
-          class="status-select"
-          [(ngModel)]="detailsStatusDraft"
-          name="detailStatusDraft"
-        >
-          @for (opt of statusOptions; track opt.value) {
-            <option [value]="opt.value">{{ opt.label }}</option>
-          }
-        </select>
-        <button type="button" class="btn" [disabled]="statusSaving" (click)="saveDetailStatus()">
-          Save
-        </button>
+    <div class="odm-body">
+      <div class="odm-meta-grid">
+        <div class="odm-meta-card">
+          <span class="odm-meta-card__label">Customer</span>
+          <strong class="odm-meta-card__value">{{ detailsOrder.user?.username ?? '—' }}</strong>
+        </div>
+        <div class="odm-meta-card odm-meta-card--accent">
+          <span class="odm-meta-card__label">Order total</span>
+          <strong class="odm-meta-card__value odm-meta-card__value--money">{{ formatPrice(detailsOrder.totalAmount) }}</strong>
+        </div>
+        <div class="odm-meta-card">
+          <span class="odm-meta-card__label">Line items</span>
+          <strong class="odm-meta-card__value">{{ modalLines.length }}</strong>
+        </div>
       </div>
-      @if (statusActionError && showDetailsModal) {
-        <p class="status-action-err">{{ statusActionError }}</p>
+
+      <div class="odm-status-card">
+        <div class="odm-status-card__head">
+          <span class="odm-status-card__title">Update order status</span>
+          <span class="odm-status-card__hint">Applies to the whole order</span>
+        </div>
+        <div class="odm-status-card__row">
+          <select
+            id="detail-order-status"
+            class="odm-select"
+            [(ngModel)]="detailsStatusDraft"
+            name="detailStatusDraft"
+          >
+            @for (opt of statusOptions; track opt.value) {
+              <option [value]="opt.value">{{ opt.label }}</option>
+            }
+          </select>
+          <button type="button" class="btn odm-save-btn" [disabled]="statusSaving" (click)="saveDetailStatus()">
+            Save
+          </button>
+        </div>
+        @if (statusActionError && showDetailsModal) {
+          <p class="status-action-err">{{ statusActionError }}</p>
+        }
+      </div>
+
+      <h3 class="odm-lines-heading">Line items</h3>
+      @if (modalLines.length === 0) {
+        <p class="empty odm-empty">No lines for this order.</p>
+      } @else {
+        <ul class="odm-line-list">
+          @for (it of modalLines; track it.orderItemId) {
+            <li class="odm-line-card">
+              <div class="odm-line-card__main">
+                <span class="odm-line-card__index">{{ $index + 1 }}</span>
+                <div>
+                  <div class="odm-line-card__name">{{ it.product?.name ?? '—' }}</div>
+                  <div class="odm-line-card__sub">Line #{{ it.orderItemId }}</div>
+                </div>
+              </div>
+              <div class="odm-line-card__nums">
+                <div class="odm-kv">
+                  <span class="odm-kv__k">Unit</span>
+                  <span class="odm-kv__v">{{ formatPrice(it.product?.price ?? null) }}</span>
+                </div>
+                <div class="odm-kv">
+                  <span class="odm-kv__k">Qty</span>
+                  <span class="odm-kv__v">{{ it.quantity ?? '—' }}</span>
+                </div>
+                <div class="odm-kv odm-kv--total">
+                  <span class="odm-kv__k">Subtotal</span>
+                  <span class="odm-kv__v">{{ lineTotal(it) }}</span>
+                </div>
+              </div>
+            </li>
+          }
+        </ul>
       }
     </div>
-
-    <h3 class="lines-title">Order lines</h3>
-    @if (modalLines.length === 0) {
-      <p class="empty">No lines for this order.</p>
-    } @else {
-      <div class="lines-table-wrap">
-        <table class="lines-table">
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th class="num">Unit price</th>
-              <th class="num">Qty</th>
-              <th class="num">Subtotal</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (it of modalLines; track it.orderItemId) {
-              <tr>
-                <td>
-                  <div class="title">{{ it.product?.name ?? '—' }}</div>
-                  <div class="sub">Line #{{ it.orderItemId }}</div>
-                </td>
-                <td class="num">{{ formatPrice(it.product?.price ?? null) }}</td>
-                <td class="num">{{ it.quantity ?? '—' }}</td>
-                <td class="num"><strong>{{ lineTotal(it) }}</strong></td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    }
   </section>
 }
 
 @if (showStatusModal && statusModalOrder) {
-  <div class="modal-backdrop" (click)="onStatusBackdropClick($event)"></div>
-  <section class="modal-card status-edit-modal" role="dialog" aria-modal="true" aria-labelledby="status-modal-title">
-    <header class="modal-head">
-      <h2 id="status-modal-title">Status — order #{{ statusModalOrder.orderId }}</h2>
-      <button type="button" class="btn ghost" (click)="closeStatusModal()" aria-label="Close">✕</button>
+  <div class="modal-backdrop odm-backdrop" (click)="onStatusBackdropClick($event)"></div>
+  <section class="modal-card status-edit-modal order-detail-modal order-detail-modal--compact" role="dialog" aria-modal="true" aria-labelledby="status-modal-title">
+    <header class="odm-compact-head">
+      <h2 id="status-modal-title">Status · order #{{ statusModalOrder.orderId }}</h2>
+      <button type="button" class="odm-close" (click)="closeStatusModal()" aria-label="Close">✕</button>
     </header>
 
     @if (statusActionError) {
       <div class="alert modal-alert">{{ statusActionError }}</div>
     }
 
-    <label class="status-edit-label" for="quick-order-status">New status</label>
+    <label class="odm-compact-label" for="quick-order-status">New status</label>
     <select
       id="quick-order-status"
-      class="status-select full-width"
+      class="odm-select odm-select--block"
       [(ngModel)]="statusDraft"
       name="statusDraft"
     >

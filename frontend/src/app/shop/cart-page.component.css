@@ -412,21 +412,155 @@
 
 .cart-footer {
   margin-top: 24px;
-  padding: 24px 28px;
+  padding: 32px;
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  border-radius: 16px;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.04) 0%, rgba(11, 12, 16, 0.25) 100%);
+  flex-direction: column;
+  gap: 32px;
+  border-radius: 24px;
+}
+
+.cart-extra {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.promo-section h3, .payment-section h3 {
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  font-weight: 700;
+}
+
+.promo-input input {
+  width: 100%;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.2);
   border: 1px solid var(--glass-border);
-  position: sticky;
-  bottom: 20px;
-  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  color: var(--text-color);
+  font-size: 1rem;
+}
+
+.promo-input input:focus {
+  outline: none;
+  border-color: var(--tunisia-red);
+  box-shadow: 0 0 0 4px rgba(232, 0, 45, 0.1);
+}
+
+.payment-options {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.payment-option {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.payment-option:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--tunisia-red);
+}
+
+.payment-option.active {
+  background: rgba(232, 0, 45, 0.05);
+  border-color: var(--tunisia-red);
+  box-shadow: 0 4px 20px rgba(232, 0, 45, 0.1);
+}
+
+.payment-option .icon {
+  font-size: 1.5rem;
+}
+
+.payment-option .info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.payment-option .info strong {
+  font-size: 0.95rem;
+  color: var(--text-color);
+}
+
+.payment-option .info span {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.payment-option .radio {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--glass-border);
+  border-radius: 50%;
+  position: relative;
+}
+
+.payment-option.active .radio {
+  border-color: var(--tunisia-red);
+}
+
+.payment-option.active .radio::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 8px;
+  height: 8px;
+  background: var(--tunisia-red);
+  border-radius: 50%;
+}
+
+.cart-summary {
+  width: 100%;
+}
+
+.summary-line {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 1rem;
+}
+
+.discount-line {
+  color: #22c55e;
+}
+
+.discount-amount {
+  color: #22c55e;
+  font-weight: 600;
+}
+
+.w-full { width: 100%; }
+
+@media (max-width: 768px) {
+  .cart-extra {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
 }
 
 .total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-soft);
   font-size: 1.25rem;
   font-weight: 700;
   color: var(--text-color);
@@ -495,4 +629,77 @@
     width: 100%;
     height: 140px;
   }
+}
+/* Variant Badges */
+.line-variant {
+  display: flex;
+  gap: 8px;
+  margin: 4px 0 10px;
+}
+
+.line-variant .badge {
+  display: inline-block;
+  padding: 2px 10px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+.line-variant-info small {
+  display: block;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: 4px;
+}
+
+/* ── Vitrine YallaTN+ : cartes claires, ombre douce, accent rouge ── */
+.cart-page {
+  background: transparent;
+}
+
+.lines .line.glass-panel {
+  background: var(--surface-1);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-soft);
+}
+
+:root[data-theme='dark'] .lines .line.glass-panel {
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.04) 0%, rgba(11, 12, 16, 0.35) 100%);
+}
+
+.cart-footer.glass-panel {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-soft);
+}
+
+.cart-head h1 {
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: -0.03em;
+}
+
+.payment-section h3 {
+  font-family: 'Outfit', sans-serif;
+  letter-spacing: 0.08em;
+}
+
+.payment-option.active {
+  box-shadow: 0 0 0 1px rgba(232, 0, 45, 0.25);
+}
+
+.qty-stepper {
+  background: var(--surface-2);
+  border-color: var(--border-soft);
+}
+
+:root:not([data-theme='dark']) .qty-btn {
+  background: var(--surface-3);
+}
+
+.cart-summary .total {
+  font-family: 'Outfit', sans-serif;
 }

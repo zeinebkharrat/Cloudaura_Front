@@ -5,7 +5,7 @@ import { AuthService } from './core/auth.service';
 import { ShopService } from './core/shop.service';
 import { ChatService } from './chat/chat.service';
 import { ChatBubbleComponent } from './chat/chat-bubble/chat-bubble.component';
-
+import { NotificationService } from './core/notification.service';
 
 @Component({
   selector: 'app-root',
@@ -15,32 +15,48 @@ import { ChatBubbleComponent } from './chat/chat-bubble/chat-bubble.component';
   styleUrl: './app.component.css',
 })
 export class AppComponent implements OnInit {
-
   private readonly router = inject(Router);
   private readonly renderer = inject(Renderer2);
   readonly auth = inject(AuthService);
   readonly shop = inject(ShopService);
   private readonly chatService = inject(ChatService);
+  readonly notifier = inject(NotificationService);
 
   isDarkMode = signal(true);
   isUserMenuOpen = signal(false);
   isServicesMenuOpen = signal(false);
   selectedCityName = signal<string | null>(null);
+  isScrolled = signal(false);
 
   readonly isAdmin = this.auth.isAdmin;
   readonly isArtisan = this.auth.isArtisan;
   readonly isAuthenticated = this.auth.isAuthenticated;
   readonly currentUser = this.auth.currentUser;
 
+  readonly toastMessage = this.notifier.message;
+  readonly toastType = this.notifier.type;
+
   constructor() {
-    effect(() => {
-      if (this.isAuthenticated()) {
-        this.chatService.connect();
-        this.chatService.loadConversations();
-      } else {
-        this.chatService.disconnect();
-      }
-    }, { allowSignalWrites: true });
+    effect(
+      () => {
+        if (this.isAuthenticated()) {
+          this.chatService.connect();
+          this.chatService.loadConversations();
+        } else {
+          this.chatService.disconnect();
+        }
+      },
+      { allowSignalWrites: true }
+    );
+  }
+
+  clearToast(): void {
+    this.notifier.clear();
+  }
+
+  @HostListener('window:scroll', [])
+  onWindowScroll(): void {
+    this.isScrolled.set(window.scrollY > 20);
   }
 
   ngOnInit() {

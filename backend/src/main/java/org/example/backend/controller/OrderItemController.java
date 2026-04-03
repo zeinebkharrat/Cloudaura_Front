@@ -3,6 +3,7 @@ package org.example.backend.controller;
 import java.net.URI;
 import java.util.List;
 import java.util.NoSuchElementException;
+import org.example.backend.dto.admin.AdminOrderItemDto;
 import org.example.backend.model.OrderItem;
 import org.example.backend.service.OrderItemService;
 import org.springframework.http.ResponseEntity;
@@ -25,8 +26,8 @@ public class OrderItemController {
     }
 
     @GetMapping
-    public ResponseEntity<List<OrderItem>> findAll() {
-        return ResponseEntity.ok(orderItemService.findAll());
+    public ResponseEntity<List<AdminOrderItemDto>> findAll() {
+        return ResponseEntity.ok(orderItemService.findAllForAdmin());
     }
 
     @GetMapping("/{id}")

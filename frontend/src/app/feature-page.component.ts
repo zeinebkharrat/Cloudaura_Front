@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { forkJoin } from 'rxjs';
 import { ActivatedRoute, Data, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -9,38 +10,51 @@ import { AuthService } from './core/auth.service';
 import { ShopService } from './core/shop.service';
 import { EventService } from './event.service';
 import { Event as TravelEvent } from './models/event';
+import { NotificationService } from './core/notification.service';
+import { DialogModule } from 'primeng/dialog';
+import { GalleriaModule } from 'primeng/galleria';
+import { ButtonModule } from 'primeng/button';
+import { CarouselModule } from 'primeng/carousel';
+import { TagModule } from 'primeng/tag';
+import { TooltipModule } from 'primeng/tooltip';
 
-/** Rich content block for feature pages (front-only). */
 export interface FeatureBlock {
   title: string;
   items: string[];
   icon?: string;
 }
 
-/** Accent theme for decorative styling. */
-export type FeatureAccent =
-  | 'coral'
-  | 'blue'
-  | 'gold'
-  | 'violet'
-  | 'sand'
-  | 'emerald'
-  | 'rose';
+export type FeatureAccent = 'coral' | 'blue' | 'gold' | 'violet' | 'sand' | 'emerald' | 'rose';
 
-/** Produit affiché sur la vitrine Artisanat (API /api/products). */
 export interface CatalogProduct {
   productId: number;
   name: string;
+  description?: string | null;
+  category?: string | null;
+  status?: 'DRAFT' | 'PENDING' | 'PUBLISHED' | 'REJECTED';
   imageUrl?: string | null;
+  images?: { id: number; url: string; imageUrl?: string }[];
+  variants?: { variantId?: number; id?: number; size: string; color: string; stock: number; priceOverride?: number }[];
   price?: number | null;
   stock?: number | null;
-  user?: { username?: string | null };
+  user?: { username?: string | null; cityName?: string | null };
+  isFavorite?: boolean;
 }
 
 @Component({
   selector: 'app-feature-page',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule],
+  imports: [
+    CommonModule,
+    RouterLink,
+    FormsModule,
+    DialogModule,
+    GalleriaModule,
+    ButtonModule,
+    CarouselModule,
+    TagModule,
+    TooltipModule
+  ],
   templateUrl: './feature-page.component.html',
   styleUrl: './feature-page.component.css',
 })
@@ -50,7 +64,8 @@ export class FeaturePageComponent implements OnInit {
   readonly router = inject(Router);
   readonly auth = inject(AuthService);
   readonly shop = inject(ShopService);
-  private eventService = inject(EventService);
+  private readonly eventService = inject(EventService);
+  private readonly notifier = inject(NotificationService);
 
   kicker = '';
   title = '';
@@ -64,48 +79,245 @@ export class FeaturePageComponent implements OnInit {
   readonly eventJoinLoading = signal(false);
   readonly eventJoinError = signal<string | null>(null);
 
-  /** Si `'products'`, charge et affiche le catalogue sous les blocs informatifs. */
   catalog: 'none' | 'products' = 'none';
   catalogProducts: CatalogProduct[] = [];
   catalogLoading = false;
   catalogError: string | null = null;
-  readonly addingProductId = signal<number | null>(null);
-  readonly cartToast = signal<string | null>(null);
-  /** IDs produit dont l’image a échoué au chargement (affiche le placeholder). */
+
+  searchQuery = signal('');
+  selectedCategory = signal<string | null>(null);
+  selectedCityId = signal<number | null>(null);
+  cities = signal<any[]>([]);
+
   readonly catalogImageFailed = signal<Set<number>>(new Set());
 
-  // Artisan-specific properties
+  readonly filteredCatalogProducts = computed(() => {
+    const query = this.searchQuery().toLowerCase().trim();
+    const cat = this.selectedCategory();
+    return this.catalogProducts.filter(p => {
+      const matchQuery = !query
+        || p.name.toLowerCase().includes(query)
+        || (p.description?.toLowerCase().includes(query) ?? false)
+        || (p.user?.username?.toLowerCase().includes(query) ?? false);
+      const matchCat = !cat || cat === 'null' || p.category === cat;
+      return matchQuery && matchCat;
+    });
+  });
+
+  readonly filteredArtisanProducts = computed(() => {
+    const query = this.searchQuery().toLowerCase().trim();
+    const cat = this.selectedCategory();
+    return this.artisanProducts().filter(p => {
+      const matchQuery = !query
+        || p.name.toLowerCase().includes(query)
+        || (p.description?.toLowerCase().includes(query) ?? false);
+      const matchCat = !cat || cat === 'null' || p.category === cat;
+      return matchQuery && matchCat;
+    });
+  });
+
   readonly isArtisan = computed(() => {
     const user = this.auth.currentUser();
-    const hasRole = this.auth.hasRole('ROLE_ARTISAN');
-    const hasPendingRequest = user?.artisanRequestPending === true;
-    return hasRole || hasPendingRequest;
+    return this.auth.hasRole('ROLE_ARTISAN') || (user?.artisanRequestPending === true);
   });
+
   readonly showProductForm = signal(false);
   readonly artisanProducts = signal<CatalogProduct[]>([]);
   readonly artisanProductsLoading = signal(false);
   readonly artisanProductsError = signal<string | null>(null);
+
   readonly newProduct = signal<Partial<CatalogProduct>>({
     name: '',
+    description: '',
+    category: '',
     price: null,
     stock: null,
-    imageUrl: ''
+    imageUrl: '',
+    status: 'PENDING',
+    variants: [],
+    images: [],
   });
   readonly editingProductId = signal<number | null>(null);
+  readonly addingProductId = signal<number | null>(null);
   readonly submittingProduct = signal<boolean>(false);
-  
-  // Image upload state
-  readonly selectedFile = signal<File | null>(null);
-  readonly previewUrl = signal<string | null>(null);
+
+  readonly selectedVariantId = signal<Record<number, number>>({});
+
+  /** Detail modal: pick color first, then size (TEXTILE). */
+  readonly detailSelectedColor = signal<string | null>(null);
+  readonly detailSelectedSize = signal<string | null>(null);
+
+  /** Stable label for variant color (empty → em dash). */
+  private colorLabel(v: { color?: string | null }): string {
+    return (v.color ?? '').trim() || '—';
+  }
+
+  /** Unique in-stock colors for variant pickers (TEXTILE). */
+  distinctColorsInStock(p: CatalogProduct): string[] {
+    if (!p.variants?.length) return [];
+    const set = new Set<string>();
+    for (const v of p.variants) {
+      if ((v.stock ?? 0) > 0) {
+        set.add(this.colorLabel(v));
+      }
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, 'en'));
+  }
+
+  /** Sizes available for the selected color. */
+  sizesForSelectedColor(p: CatalogProduct): string[] {
+    const color = this.detailSelectedColor();
+    if (!p.variants?.length || color == null) return [];
+    const target = (color ?? '').trim() || '—';
+    const set = new Set<string>();
+    for (const v of p.variants) {
+      if ((v.stock ?? 0) > 0 && this.colorLabel(v) === target) {
+        set.add((v.size ?? '').trim() || '—');
+      }
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, 'en'));
+  }
+
+  /** Read-only lists for artisan detail modal. */
+  distinctSizesInStock(p: CatalogProduct): string[] {
+    if (!p.variants?.length) return [];
+    const set = new Set<string>();
+    for (const v of p.variants) {
+      if ((v.stock ?? 0) > 0) {
+        set.add((v.size ?? '').trim() || '—');
+      }
+    }
+    return [...set].sort((a, b) => a.localeCompare(b, 'en'));
+  }
+
+  onDetailColorSelect(p: CatalogProduct, color: string | null): void {
+    this.detailSelectedColor.set(color);
+    this.detailSelectedSize.set(null);
+    this.selectedVariantId.update((m) => {
+      const c = { ...m };
+      delete c[p.productId];
+      return c;
+    });
+    if (color == null) return;
+    const sizes = this.sizesForSelectedColor(p);
+    if (sizes.length === 1) {
+      this.detailSelectedSize.set(sizes[0]);
+      this.applyVariantFromColorSize(p, color, sizes[0]);
+    }
+  }
+
+  onDetailSizeSelect(p: CatalogProduct, size: string | null): void {
+    this.detailSelectedSize.set(size);
+    const color = this.detailSelectedColor();
+    if (!color || !size) {
+      this.selectedVariantId.update((m) => {
+        const c = { ...m };
+        delete c[p.productId];
+        return c;
+      });
+      return;
+    }
+    this.applyVariantFromColorSize(p, color, size);
+  }
+
+  private applyVariantFromColorSize(p: CatalogProduct, color: string, size: string): void {
+    const colorTarget = (color ?? '').trim() || '—';
+    const sz = (size ?? '').trim() || '—';
+    const match = p.variants!.find(
+      (v) =>
+        (v.stock ?? 0) > 0 &&
+        this.colorLabel(v) === colorTarget &&
+        ((v.size ?? '').trim() || '—') === sz
+    );
+    if (match) {
+      this.onVariantChange(p.productId, this.variantIdOf(match));
+    }
+  }
+
+  onVariantChange(productId: number, variantId: number): void {
+    const vid = Number(variantId);
+    if (Number.isNaN(vid)) return;
+    this.selectedVariantId.update((v) => ({ ...v, [productId]: vid }));
+  }
+
+  /** API envoie `variantId` ; anciennes réponses pouvaient utiliser `id`. */
+  variantIdOf(v: { variantId?: number; id?: number }): number {
+    const n = v.variantId ?? v.id;
+    return Number(n);
+  }
+
+  // Product Details Modal
+  readonly showProductDetails = signal(false);
+  readonly selectedItem = signal<CatalogProduct | null>(null);
+
+  openProductDetails(p: CatalogProduct): void {
+    this.detailSelectedColor.set(null);
+    this.detailSelectedSize.set(null);
+    this.selectedItem.set(p);
+    this.showProductDetails.set(true);
+    this.maybePreselectVariant(p);
+  }
+
+  /** PrimeNG dialog visibility — keep signal + cleanup in sync when the dialog closes. */
+  onDetailVisibleChange(visible: boolean): void {
+    if (visible) {
+      this.showProductDetails.set(true);
+    } else {
+      this.closeProductDetails();
+    }
+  }
+
+  /** If Textile with a single in-stock variant, select it; else auto-fill color/size when unique. */
+  private maybePreselectVariant(p: CatalogProduct): void {
+    if (p.category !== 'TEXTILE' || !p.variants?.length) return;
+    const inStock = p.variants.filter((v) => (v.stock ?? 0) > 0);
+    if (inStock.length === 1) {
+      const v0 = inStock[0];
+      this.detailSelectedColor.set(this.colorLabel(v0));
+      this.detailSelectedSize.set((v0.size ?? '').trim() || '—');
+      this.onVariantChange(p.productId, this.variantIdOf(v0));
+      return;
+    }
+    const colors = this.distinctColorsInStock(p);
+    if (colors.length === 1) {
+      this.detailSelectedColor.set(colors[0]);
+      const sizes = this.sizesForSelectedColor(p);
+      if (sizes.length === 1) {
+        this.detailSelectedSize.set(sizes[0]);
+        this.applyVariantFromColorSize(p, colors[0], sizes[0]);
+      }
+    }
+  }
+
+  closeProductDetails(): void {
+    this.showProductDetails.set(false);
+    this.detailSelectedColor.set(null);
+    this.detailSelectedSize.set(null);
+    const item = this.selectedItem();
+    if (item) {
+      this.selectedVariantId.update(v => {
+        const copy = { ...v };
+        delete copy[item.productId];
+        return copy;
+      });
+    }
+    this.selectedItem.set(null);
+  }
+
+  onCityChange(id: any): void {
+    const val = id === 'null' || id === null ? null : Number(id);
+    this.selectedCityId.set(val);
+    this.loadProducts();
+  }
+
+  // Image upload
+  readonly selectedFiles = signal<File[]>([]);
+  readonly previewUrls = signal<string[]>([]);
   readonly isUploadingImage = signal(false);
-  private readonly maxFileSize = 10 * 1024 * 1024; // 10MB
 
   ngOnInit(): void {
     this.applyData(this.route.snapshot.data);
-
     this.route.data.subscribe((d) => this.applyData(d));
-
-    // Load artisan products if user is artisan
     if (this.isArtisan()) {
       this.loadArtisanProducts();
     }
@@ -116,23 +328,18 @@ export class FeaturePageComponent implements OnInit {
     this.title = String(d['title'] ?? '');
     this.description = String(d['description'] ?? '');
     const a = d['accent'];
-    if (
-      typeof a === 'string' &&
-      ['coral', 'blue', 'gold', 'violet', 'sand', 'emerald', 'rose'].includes(a)
-    ) {
+    if (typeof a === 'string' && ['coral', 'blue', 'gold', 'violet', 'sand', 'emerald', 'rose'].includes(a)) {
       this.accent = a as FeatureAccent;
     } else {
       this.accent = 'coral';
     }
-    const h = d['highlights'];
-    this.highlights = Array.isArray(h) ? (h as string[]) : [];
     const b = d['blocks'];
     this.blocks = Array.isArray(b) ? (b as FeatureBlock[]) : [];
-
     const cat = d['catalog'];
     this.catalog = cat === 'products' ? 'products' : 'none';
     if (this.catalog === 'products') {
-      this.loadCatalogProducts();
+      this.loadProducts();
+      this.loadCities();
     } else {
       this.catalogProducts = [];
       this.catalogError = null;
@@ -147,12 +354,26 @@ export class FeaturePageComponent implements OnInit {
     }
   }
 
-  private loadCatalogProducts(): void {
+  loadCities(): void {
+    this.http.get<any>('/api/public/cities/all').subscribe({
+      next: (res) => {
+        const list = Array.isArray(res) ? res : res?.data ?? res?.content ?? [];
+        this.cities.set(list);
+      },
+      error: () => {
+        this.cities.set([]);
+      },
+    });
+  }
+
+  loadProducts(): void {
     this.catalogLoading = true;
-    this.catalogError = null;
-    const primary = `${API_BASE_URL}/api/products` as string;
-    const fallback = `${API_FALLBACK_ORIGIN}/api/products`;
+    const cityId = this.selectedCityId();
+    let primary = `${API_BASE_URL}/api/products`;
+    if (cityId) primary += `?cityId=${cityId}`;
+    const fallback = `${API_FALLBACK_ORIGIN}/api/products${cityId ? `?cityId=${cityId}` : ''}`;
     const tryFallback = API_BASE_URL === '';
+
     this.http.get<CatalogProduct[]>(primary).subscribe({
       next: (list) => {
         this.catalogProducts = list ?? [];
@@ -182,9 +403,6 @@ export class FeaturePageComponent implements OnInit {
     });
   }
 
-  /**
-   * URL affichable pour &lt;img src&gt; : chemins locaux en absolu par rapport au site (proxy /uploads).
-   */
   catalogImageUrl(url: string | null | undefined): string {
     if (url == null) return '';
     let t = String(url).trim();
@@ -207,53 +425,88 @@ export class FeaturePageComponent implements OnInit {
 
   formatPrice(p: number | null | undefined): string {
     if (p == null || Number.isNaN(Number(p))) return '—';
-    return new Intl.NumberFormat('fr-TN', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'TND',
       minimumFractionDigits: 2,
     }).format(Number(p));
   }
 
+  /** Build the gallery array for p-galleria from a product */
+  getGalleryImages(p: CatalogProduct): { url: string }[] {
+    if (p.images && p.images.length > 0) {
+      return p.images.map(img => ({ url: img.url || img.imageUrl || '' }));
+    }
+    return [{ url: p.imageUrl || '' }];
+  }
+
+  readonly needsVariantChoice = (p: CatalogProduct): boolean =>
+    p.category === 'TEXTILE' && !!(p.variants && p.variants.length > 0);
+
+  /** Carte catalogue : ouvrir la fiche si une variante Textile est requise. */
+  onCatalogCardBuy(p: CatalogProduct, event: Event): void {
+    event.stopPropagation();
+    if (this.needsVariantChoice(p)) {
+      this.openProductDetails(p);
+      return;
+    }
+    this.addToCart(p);
+  }
+
   addToCart(p: CatalogProduct): void {
-    this.cartToast.set(null);
     if (!this.auth.isAuthenticated()) {
       this.router.navigate(['/signin'], { queryParams: { returnUrl: this.router.url } });
       return;
     }
-    const stock = p.stock ?? 0;
-    if (stock <= 0) {
-      this.cartToast.set('This product is unavailable (out of stock).');
+    const varId = this.selectedVariantId()[p.productId];
+    if (this.needsVariantChoice(p) && !varId) {
+      this.notifier.show('Please select a color and size.', 'info');
       return;
     }
+    if (!this.needsVariantChoice(p)) {
+      const stock = p.stock ?? 0;
+      if (stock <= 0) {
+        this.notifier.show('This product is unavailable (out of stock).', 'error');
+        return;
+      }
+    }
     this.addingProductId.set(p.productId);
-    this.shop.addToCart(p.productId, 1).subscribe({
+    this.shop.addToCart(p.productId, 1, varId).subscribe({
       next: () => {
         this.addingProductId.set(null);
         this.shop.refreshCartCount();
-        this.cartToast.set('Added to cart.');
-        setTimeout(() => this.cartToast.set(null), 2500);
+        this.notifier.show(`"${p.name}" added to cart.`, 'success');
       },
       error: () => {
         this.addingProductId.set(null);
-        this.cartToast.set('Could not add to cart (stock or connection issue).');
+        this.notifier.show('Could not add to cart (stock or connection issue).', 'error');
       },
     });
   }
 
-  // Artisan-specific methods
+  toggleFavorite(p: CatalogProduct, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.auth.isAuthenticated()) {
+      this.router.navigate(['/signin'], { queryParams: { returnUrl: this.router.url } });
+      return;
+    }
+    this.http.post<any>(`${API_BASE_URL}/api/favorites/toggle/${p.productId}`, {}).subscribe({
+      next: (res) => { p.isFavorite = res.isFavorite; },
+      error: () => { }
+    });
+  }
+
   private loadArtisanProducts(): void {
     this.artisanProductsLoading.set(true);
     this.artisanProductsError.set(null);
-    const primary = `${API_BASE_URL}/api/products/my-products` as string;
-    const fallback = `${API_FALLBACK_ORIGIN}/api/products/my-products`;
-    const tryFallback = API_BASE_URL === '';
-    
-    this.http.get<CatalogProduct[]>(primary).subscribe({
+    this.http.get<CatalogProduct[]>(`${API_BASE_URL}/api/products/my-products`).subscribe({
       next: (list) => {
         this.artisanProducts.set(list ?? []);
         this.artisanProductsLoading.set(false);
       },
       error: () => {
+        const fallback = `${API_FALLBACK_ORIGIN}/api/products/my-products`;
+        const tryFallback = API_BASE_URL === '';
         if (tryFallback) {
           this.http.get<CatalogProduct[]>(fallback).subscribe({
             next: (list) => {
@@ -277,173 +530,161 @@ export class FeaturePageComponent implements OnInit {
     this.editingProductId.set(null);
     this.showProductForm.set(true);
     this.newProduct.set({
-      name: '',
-      price: null,
-      stock: null,
-      imageUrl: ''
+      productId: 0, name: '', description: '', category: '',
+      price: null, stock: null, imageUrl: '', status: 'PENDING',
+      variants: [], images: []
     });
+    this.clearFilesSelection();
   }
 
-  editProduct(p: CatalogProduct): void {
+  editProduct(p: CatalogProduct, event?: Event): void {
+    event?.stopPropagation();
     this.editingProductId.set(p.productId);
     this.showProductForm.set(true);
     this.newProduct.set({
-      name: p.name,
-      price: p.price,
-      stock: p.stock,
-      imageUrl: p.imageUrl
+      productId: p.productId, name: p.name, description: p.description,
+      category: p.category, price: p.price, stock: p.stock,
+      imageUrl: p.imageUrl, status: p.status,
+      variants: p.variants ? [...p.variants] : [],
+      images: p.images ? [...p.images] : []
     });
-    this.previewUrl.set(this.catalogImageUrl(p.imageUrl));
+    this.previewUrls.set(p.imageUrl ? [this.catalogImageUrl(p.imageUrl)] : []);
   }
 
   closeProductForm(): void {
     this.showProductForm.set(false);
-    this.clearFileSelection();
+    this.clearFilesSelection();
   }
 
-  onFileSelected(event: globalThis.Event): void {
-    const input = event.target as HTMLInputElement;
-    if (input.files && input.files.length > 0) {
-      const file = input.files[0];
-      if (file.size > this.maxFileSize) {
-        this.cartToast.set('File too large (max 10 MB).');
-        return;
-      }
-      this.selectedFile.set(file);
-      const reader = new FileReader();
-      reader.onload = () => {
-        this.previewUrl.set(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+  addVariant(): void {
+    const p = this.newProduct();
+    if (!p.variants) p.variants = [];
+    p.variants.push({ variantId: 0, size: '', color: '', stock: 0 });
+    this.newProduct.set({ ...p });
+  }
+
+  removeVariant(index: number): void {
+    const p = this.newProduct();
+    if (p.variants) {
+      p.variants.splice(index, 1);
+      this.newProduct.set({ ...p });
     }
   }
 
-  clearFileSelection(): void {
-    this.selectedFile.set(null);
-    this.previewUrl.set(null);
+  onFilesSelected(event: any): void {
+    const files = Array.from(event.target.files as FileList);
+    if (files.length) {
+      this.selectedFiles.set(files);
+      const urls: string[] = [];
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e: any) => {
+          urls.push(e.target.result);
+          this.previewUrls.set([...urls]);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  }
+
+  clearFilesSelection(): void {
+    this.selectedFiles.set([]);
+    this.previewUrls.set([]);
   }
 
   submitProduct(): void {
-    const product = this.newProduct();
-    if (!product.name?.trim()) {
-      return;
-    }
+    const p = this.newProduct();
+    if (!p.name?.trim()) return;
+    this.submittingProduct.set(true);
 
-    if (this.selectedFile()) {
+    const files = this.selectedFiles();
+    if (files.length > 0) {
       this.isUploadingImage.set(true);
-      const formData = new FormData();
-      formData.append('file', this.selectedFile()!);
-      
-      this.http.post<{ imageUrl: string }>(`${API_BASE_URL}/api/products/upload-image`, formData).subscribe({
-        next: (res) => {
-          this.isUploadingImage.set(false);
-          this.persistProduct({ ...product, imageUrl: res.imageUrl });
+      const uploads = files.map(file => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return this.http.post<{ imageUrl: string }>(`${API_BASE_URL}/api/products/upload-image`, formData);
+      });
+      forkJoin(uploads).subscribe({
+        next: (results) => {
+          if (results.length > 0) {
+            p.imageUrl = results[0].imageUrl;
+            // Send as imageUrl — backend ProductImage field is "imageUrl"
+            p.images = results.map(r => ({ id: 0, url: r.imageUrl, imageUrl: r.imageUrl }));
+          }
+          this.persistProduct(p);
         },
         error: () => {
+          this.notifier.show('Error uploading images.', 'error');
           this.isUploadingImage.set(false);
-          this.cartToast.set('Error uploading the image.');
+          this.submittingProduct.set(false);
         }
       });
     } else {
-      this.persistProduct(product);
+      this.persistProduct(p);
     }
   }
 
   private persistProduct(product: Partial<CatalogProduct>): void {
-    this.submittingProduct.set(true);
     const editId = this.editingProductId();
-    
-    if (editId) {
-      // MODE EDITION
-      const primary = `${API_BASE_URL}/api/products/${editId}` as string;
-      const fallback = `${API_FALLBACK_ORIGIN}/api/products/${editId}`;
-      const tryFallback = API_BASE_URL === '';
+    const url = editId
+      ? `${API_BASE_URL}/api/products/${editId}`
+      : `${API_BASE_URL}/api/products`;
+    const req = editId
+      ? this.http.put<CatalogProduct>(url, product)
+      : this.http.post<CatalogProduct>(url, product);
 
-      this.http.put<CatalogProduct>(primary, product).subscribe({
-        next: (updated) => this.afterProductSaved(updated, true),
-        error: () => {
-          if (tryFallback) {
-            this.http.put<CatalogProduct>(fallback, product).subscribe({
-              next: (updated) => this.afterProductSaved(updated, true),
-              error: () => this.handleSaveError()
-            });
-          } else {
-            this.handleSaveError();
-          }
-        }
-      });
-    } else {
-      // MODE AJOUT
-      const primary = `${API_BASE_URL}/api/products` as string;
-      const fallback = `${API_FALLBACK_ORIGIN}/api/products`;
-      const tryFallback = API_BASE_URL === '';
-
-      this.http.post<CatalogProduct>(primary, product).subscribe({
-        next: (newProd) => this.afterProductSaved(newProd, false),
-        error: () => {
-          if (tryFallback) {
-            this.http.post<CatalogProduct>(fallback, product).subscribe({
-              next: (newProd) => this.afterProductSaved(newProd, false),
-              error: () => this.handleSaveError()
-            });
-          } else {
-            this.handleSaveError();
-          }
-        },
-      });
-    }
+    req.subscribe({
+      next: (saved) => {
+        this.isUploadingImage.set(false);
+        this.afterProductSaved(saved, !!editId);
+      },
+      error: (err) => {
+        this.isUploadingImage.set(false);
+        this.submittingProduct.set(false);
+        const msg = err?.error?.error ?? 'Could not save the product.';
+        this.notifier.show(`✕ ${msg}`, 'error');
+      }
+    });
   }
 
   private afterProductSaved(prod: CatalogProduct, isEdit: boolean): void {
     if (isEdit) {
       this.artisanProducts.update(list => list.map(p => p.productId === prod.productId ? prod : p));
-      this.cartToast.set('Product updated!');
+      this.notifier.show('Product updated.', 'success');
     } else {
       this.artisanProducts.update(list => [prod, ...list]);
-      this.cartToast.set('Product added!');
+      this.notifier.show('Product added.', 'success');
     }
     this.submittingProduct.set(false);
     this.closeProductForm();
-    setTimeout(() => this.cartToast.set(null), 3000);
   }
 
-  private handleSaveError(): void {
-    this.submittingProduct.set(false);
-    this.cartToast.set('Error adding the product.');
-    setTimeout(() => this.cartToast.set(null), 3000);
-  }
-
-  deleteProduct(productId: number): void {
-    if (!confirm('Are you sure you want to delete this product?')) {
+  deleteProduct(productId: number, event?: Event): void {
+    event?.stopPropagation();
+    if (!confirm('Delete this product?')) {
       return;
     }
 
-    const primary = `${API_BASE_URL}/api/products/${productId}` as string;
+    const primary = `${API_BASE_URL}/api/products/${productId}`;
     const fallback = `${API_FALLBACK_ORIGIN}/api/products/${productId}`;
     const tryFallback = API_BASE_URL === '';
 
+    const onDeleted = () => {
+      this.artisanProducts.update((products) => products.filter((p) => p.productId !== productId));
+      this.notifier.show('Product deleted.', 'success');
+    };
+
     this.http.delete(primary).subscribe({
-      next: () => {
-        this.artisanProducts.update(products => products.filter((p: CatalogProduct) => p.productId !== productId));
-        this.cartToast.set('Product removed successfully!');
-        setTimeout(() => this.cartToast.set(null), 3000);
-      },
+      next: onDeleted,
       error: () => {
         if (tryFallback) {
           this.http.delete(fallback).subscribe({
-            next: () => {
-              this.artisanProducts.update(products => products.filter((p: CatalogProduct) => p.productId !== productId));
-              this.cartToast.set('Product removed successfully!');
-              setTimeout(() => this.cartToast.set(null), 3000);
-            },
-            error: () => {
-              this.cartToast.set('Error removing the product.');
-              setTimeout(() => this.cartToast.set(null), 3000);
-            },
+            next: onDeleted,
+            error: () => this.notifier.show('Could not delete the product.', 'error'),
           });
         } else {
-          this.cartToast.set('Error removing the product.');
-          setTimeout(() => this.cartToast.set(null), 3000);
+          this.notifier.show('Could not delete the product.', 'error');
         }
       },
     });
@@ -562,5 +803,31 @@ export class FeaturePageComponent implements OnInit {
         this.eventJoinError.set(extractApiErrorMessage(err, 'Could not complete registration.'));
       },
     });
+  }
+
+  getStatusLabel(status: string | undefined): string {
+    switch (status) {
+      case 'PUBLISHED':
+        return 'Published';
+      case 'REJECTED':
+        return 'Rejected';
+      case 'DRAFT':
+        return 'Draft';
+      default:
+        return 'Pending';
+    }
+  }
+
+  getStatusSeverity(status: string | undefined): string {
+    switch (status) {
+      case 'PUBLISHED':
+        return 'success';
+      case 'REJECTED':
+        return 'danger';
+      case 'DRAFT':
+        return 'warning';
+      default:
+        return 'info';
+    }
   }
 }

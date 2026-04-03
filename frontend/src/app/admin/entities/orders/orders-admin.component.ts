@@ -99,7 +99,7 @@ export class OrdersAdminComponent implements OnInit, OnDestroy {
       if (key === 'status') {
         const as = (a.status ?? '').toLowerCase();
         const bs = (b.status ?? '').toLowerCase();
-        return mult * as.localeCompare(bs, 'fr');
+        return mult * as.localeCompare(bs, 'en');
       }
       const aid = Number(a.orderId ?? 0);
       const bid = Number(b.orderId ?? 0);
@@ -148,8 +148,11 @@ export class OrdersAdminComponent implements OnInit, OnDestroy {
             this.loading = false;
             this.clampPage();
           },
-          error: () => {
-            this.error = 'Could not load order line items (/api/order-items).';
+          error: (err) => {
+            console.error('Order items load failed', err);
+            this.orderItems = [];
+            this.error =
+              'Orders loaded, but line items failed (/api/order-items). Retry or check the backend.';
             this.loading = false;
           },
         });
@@ -305,7 +308,7 @@ export class OrdersAdminComponent implements OnInit, OnDestroy {
       html: `Order <strong>#${order.orderId}</strong> and its line items will be permanently deleted.`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Yes, delete',
+      confirmButtonText: 'Delete',
       cancelButtonText: 'Cancel',
       confirmButtonColor: '#e63946',
       background: '#181d24',
@@ -346,7 +349,7 @@ export class OrdersAdminComponent implements OnInit, OnDestroy {
 
   formatPrice(p: number | null | undefined): string {
     if (p == null || Number.isNaN(Number(p))) return '—';
-    return new Intl.NumberFormat('en-GB', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'TND',
       minimumFractionDigits: 2,
