@@ -8,7 +8,8 @@ import java.time.LocalDate;
 
 @Data @Builder @NoArgsConstructor @AllArgsConstructor
 public class AccommodationSearchRequest {
-    private int cityId;
+    /** null or zero = all cities */
+    private Integer cityId;
     private String type;
     private Double minPrice;
     private Double maxPrice;

@@ -244,7 +244,8 @@ import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } f
 
                   <div class="conf-btns">
                     <button pButton label="My bookings" icon="pi pi-list"
-                            class="p-button-raised" (click)="router.navigate(['/profile'])"></button>
+                            class="p-button-raised"
+                            (click)="router.navigate(['/mes-reservations'], { queryParams: { tab: 'transport' } })"></button>
                     <button pButton label="New search" icon="pi pi-search"
                             class="p-button-text" (click)="router.navigate(['/transport'])"></button>
                   </div>

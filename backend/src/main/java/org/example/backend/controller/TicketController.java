@@ -10,8 +10,9 @@ import org.example.backend.service.TicketPdfService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.example.backend.service.UserIdentityResolver;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.format.DateTimeFormatter;
@@ -24,13 +25,17 @@ public class TicketController {
     private final TransportReservationRepository reservationRepo;
     private final QrCodeService qrCodeService;
     private final TicketPdfService ticketPdfService;
+    private final UserIdentityResolver userIdentityResolver;
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
     @GetMapping("/{reservationId}/qr")
-    public ResponseEntity<byte[]> getQrCode(@PathVariable int reservationId) {
-        TransportReservation res = reservationRepo.findById(reservationId)
+    public ResponseEntity<byte[]> getQrCode(
+            @PathVariable int reservationId,
+            Authentication authentication) {
+        TransportReservation res = reservationRepo.findByIdWithAssociations(reservationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Réservation non trouvée."));
+        assertReservationOwner(res, authentication);
 
         String content = String.format(
                 "{\"ref\":\"%s\",\"passenger\":\"%s %s\",\"route\":\"%s → %s\",\"date\":\"%s\"}",
@@ -50,9 +55,12 @@ public class TicketController {
     }
 
     @GetMapping("/{reservationId}/pdf")
-    public ResponseEntity<byte[]> getPdfTicket(@PathVariable int reservationId) {
-        TransportReservation res = reservationRepo.findById(reservationId)
+    public ResponseEntity<byte[]> getPdfTicket(
+            @PathVariable int reservationId,
+            Authentication authentication) {
+        TransportReservation res = reservationRepo.findByIdWithAssociations(reservationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Réservation non trouvée."));
+        assertReservationOwner(res, authentication);
 
         TransportReservationResponse dto = mapToResponse(res);
         byte[] pdf = ticketPdfService.generateTicketPdf(dto);
@@ -65,9 +73,20 @@ public class TicketController {
                 .body(pdf);
     }
 
+    private void assertReservationOwner(TransportReservation res, Authentication authentication) {
+        Integer uid = userIdentityResolver.resolveUserId(authentication);
+        if (uid == null) {
+            throw new AccessDeniedException("Authentication required");
+        }
+        if (res.getUser() == null || !uid.equals(res.getUser().getUserId())) {
+            throw new AccessDeniedException("Not your reservation");
+        }
+    }
+
     private TransportReservationResponse mapToResponse(TransportReservation r) {
         return TransportReservationResponse.builder()
                 .transportReservationId(r.getTransportReservationId())
+                .transportId(r.getTransport().getTransportId())
                 .reservationRef(r.getReservationRef())
                 .status(r.getStatus().name())
                 .paymentStatus(r.getPaymentStatus().name())

@@ -6,6 +6,7 @@ import {
   City, Accommodation, Transport, Reservation,
   TransportRecommendation, TransportRecommendationRequest,
   TransportReservationInput, TransportReservation,
+  AccommodationReservation,
   EngineRecommendationRequest, EngineRecommendationResponse
 } from '../models/travel.models';
 
@@ -30,7 +31,7 @@ export class MockJsonDataSource implements DataSourceAdapter {
     );
   }
 
-  getAccommodationDetails(id: number): Observable<Accommodation> {
+  getAccommodationDetails(id: number, _opts?: { checkIn?: string; checkOut?: string }): Observable<Accommodation> {
     return this.http.get<{ accommodations: Accommodation[] }>('/assets/data/accommodations.json').pipe(
       map(res => {
         const acc = res.accommodations.find(a => a.id === id);
@@ -81,20 +82,38 @@ export class MockJsonDataSource implements DataSourceAdapter {
     }).pipe(delay(1500));
   }
 
-  getMyTransportReservations(): Observable<TransportReservation[]> {
+  getMyTransportReservations(_userId: number): Observable<TransportReservation[]> {
     return of([]).pipe(delay(500));
   }
 
-  cancelTransportReservation(_id: number): Observable<void> {
+  cancelTransportReservation(_reservationId: number, _userId: number): Observable<void> {
     return of(undefined).pipe(delay(500));
   }
 
-  createReservation(reservation: Partial<Reservation>): Observable<Reservation> {
+  getMyAccommodationReservations(_userId: number): Observable<AccommodationReservation[]> {
+    return of([]).pipe(delay(400));
+  }
+
+  cancelAccommodationReservation(_reservationId: number, _userId: number): Observable<void> {
+    return of(undefined).pipe(delay(400));
+  }
+
+  createReservation(reservation: Partial<Reservation> & Record<string, unknown>): Observable<Reservation> {
+    const r = reservation as Record<string, unknown>;
+    if (r['roomId'] != null && Number(r['roomId']) > 0) {
+      return of({
+        id: Math.floor(Math.random() * 10000),
+        status: 'CONFIRMED' as const,
+        totalPrice: 0,
+        roomId: Number(r['roomId']),
+        userId: Number(r['userId']),
+      } as Reservation).pipe(delay(1500));
+    }
     return of({
       id: Math.floor(Math.random() * 10000),
       status: 'CONFIRMED' as const,
-      totalPrice: reservation.totalPrice || 0,
-      ...reservation
+      totalPrice: (reservation as Reservation).totalPrice || 0,
+      ...reservation,
     } as Reservation).pipe(delay(1500));
   }
 

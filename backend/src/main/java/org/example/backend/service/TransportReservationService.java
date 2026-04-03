@@ -12,8 +12,11 @@ import org.example.backend.repository.TransportRepository;
 import org.example.backend.repository.TransportReservationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -82,10 +85,14 @@ public class TransportReservationService {
 
     @Transactional
     public TransportReservationResponse cancelReservation(int id, int userId) {
-        TransportReservation res = reservationRepository.findById(id)
+        TransportReservation res = reservationRepository.findByIdWithAssociations(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Réservation non trouvée."));
-        if (!res.getUser().getUserId().equals(userId)) throw new RuntimeException("Non autorisé.");
-        if (res.getStatus() == TransportReservation.ReservationStatus.CANCELLED) throw new RuntimeException("Déjà annulée.");
+        if (res.getUser() == null || !res.getUser().getUserId().equals(userId)) {
+            throw new AccessDeniedException("Not your reservation");
+        }
+        if (res.getStatus() == TransportReservation.ReservationStatus.CANCELLED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Déjà annulée.");
+        }
 
         res.setStatus(TransportReservation.ReservationStatus.CANCELLED);
         if (res.getPaymentStatus() == TransportReservation.PaymentStatus.PAID) {
@@ -106,6 +113,7 @@ public class TransportReservationService {
     private TransportReservationResponse mapToResponse(TransportReservation r) {
         return TransportReservationResponse.builder()
                 .transportReservationId(r.getTransportReservationId())
+                .transportId(r.getTransport().getTransportId())
                 .reservationRef(r.getReservationRef())
                 .status(r.getStatus().name())
                 .paymentStatus(r.getPaymentStatus().name())

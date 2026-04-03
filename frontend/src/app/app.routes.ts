@@ -19,6 +19,7 @@ import { AdminUsersComponent } from './admin-users.component';
 import { AdminLayoutComponent } from './admin/layout/admin-layout.component';
 import { AdminDashboardComponent } from './admin/dashboard/admin-dashboard.component';
 import { ProfileComponent } from './profile.component';
+import { MesReservationsComponent } from './mes-reservations.component';
 import { AuditLogsComponent } from './audit-logs.component';
 import { AdminCitiesComponent } from './admin/cities/admin-cities.component';
 import { AdminRestaurantsComponent } from './admin/restaurants/admin-restaurants.component';
@@ -111,6 +112,12 @@ export const routes: Routes = [
     ],
   },
   { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },
+  {
+    path: 'mes-reservations',
+    component: MesReservationsComponent,
+    canActivate: [authGuard],
+  },
+  { path: 'my-bookings', redirectTo: 'mes-reservations', pathMatch: 'full' },
   {
     path: 'destinations',
     component: FeaturePageComponent,

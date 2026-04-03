@@ -18,7 +18,7 @@ public class AccommodationController {
 
     @GetMapping("/search")
     public ApiResponse<List<AccommodationSearchResponse>> search(
-            @RequestParam int cityId,
+            @RequestParam(required = false) Integer cityId,
             @RequestParam(required = false) String type,
             @RequestParam(required = false) Double minPrice,
             @RequestParam(required = false) Double maxPrice,

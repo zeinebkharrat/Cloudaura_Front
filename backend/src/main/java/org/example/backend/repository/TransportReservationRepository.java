@@ -38,4 +38,12 @@ public interface TransportReservationRepository extends JpaRepository<TransportR
            "WHERE r.status = org.example.backend.model.TransportReservation.ReservationStatus.CONFIRMED " +
            "AND FUNCTION('DATE', r.travelDate) = FUNCTION('CURDATE')")
     long countTodayConfirmed();
+
+    @Query("SELECT DISTINCT r FROM TransportReservation r " +
+           "LEFT JOIN FETCH r.user " +
+           "LEFT JOIN FETCH r.transport t " +
+           "LEFT JOIN FETCH t.departureCity " +
+           "LEFT JOIN FETCH t.arrivalCity " +
+           "WHERE r.transportReservationId = :id")
+    Optional<TransportReservation> findByIdWithAssociations(@Param("id") Integer id);
 }

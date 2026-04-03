@@ -6,6 +6,7 @@ import { TripContextStore } from '../../../core/stores/trip-context.store';
 import { DATA_SOURCE_TOKEN } from '../../../core/adapters/data-source.adapter';
 import { AuthService } from '../../../core/auth.service';
 import { AppAlertsService } from '../../../core/services/app-alerts.service';
+import { Accommodation } from '../../../core/models/travel.models';
 
 @Component({
   standalone: true,
@@ -398,10 +399,13 @@ export class AccommodationBookingPageComponent implements OnInit {
 
   ngOnInit() {
     const id = Number(this.route.snapshot.paramMap.get('id'));
-    if (id && !this.store.selectedAccommodation()) {
-      this.dataSource.getAccommodationDetails(id).subscribe(data => {
-        this.store.selectedAccommodation.set(data);
-      });
+    if (id) {
+      this.dataSource
+        .getAccommodationDetails(id, {
+          checkIn: this.store.dates().checkIn ?? undefined,
+          checkOut: this.store.dates().checkOut ?? undefined,
+        })
+        .subscribe((data) => this.store.selectedAccommodation.set(data));
     }
 
     const user = this.auth.currentUser();
@@ -466,36 +470,53 @@ export class AccommodationBookingPageComponent implements OnInit {
       return;
     }
 
+    const roomPick = this.pickRoom(acc, guests);
+    if (!roomPick) {
+      void this.alerts.error(
+        'No room available',
+        'This listing has no room that fits your dates or guest count. Try other dates or another property.'
+      );
+      return;
+    }
+
     this.loading.set(true);
-    const guest = this.guestForm.getRawValue();
 
-    const payload = {
-      accommodationId: acc.id,
-      checkIn: ci,
-      checkOut: co,
-      guestFirstName: guest.firstName?.trim(),
-      guestLastName: guest.lastName?.trim(),
-      guestEmail: guest.email?.trim(),
-      guestPhone: guest.phone?.trim() || undefined,
-      numberOfGuests: guests,
-      totalPrice: this.grandTotal(),
-      specialRequests: guest.notes?.trim() || undefined,
-    };
+    this.dataSource
+      .createReservation({
+        roomId: roomPick.id,
+        userId: user.id,
+        checkIn: ci,
+        checkOut: co,
+      })
+      .subscribe({
+        next: (res) => {
+          this.loading.set(false);
+          this.reservationId.set(
+            res?.id?.toString() || 'YTN-' + Math.floor(Math.random() * 90000 + 10000)
+          );
+          this.step.set(3);
+        },
+        error: (err) => {
+          this.loading.set(false);
+          void this.alerts.error(
+            'Booking failed',
+            err.error?.message ??
+              'We could not complete the reservation. The room may no longer be free for these dates — try other dates or refresh the page.'
+          );
+        },
+      });
+  }
 
-    this.dataSource.createReservation(payload).subscribe({
-      next: (res: any) => {
-        this.loading.set(false);
-        this.reservationId.set(res?.id?.toString() || 'YTN-' + Math.floor(Math.random() * 90000 + 10000));
-        this.step.set(3);
-      },
-      error: (err) => {
-        this.loading.set(false);
-        void this.alerts.error(
-          'Booking failed',
-          err.error?.message ?? 'We could not complete the reservation. Please try again.'
-        );
-      },
-    });
+  /** Picks a bookable room for the API (requires real roomId from backend). */
+  private pickRoom(acc: Accommodation, guestCount: number): { id: number } | null {
+    const rooms = acc.rooms ?? [];
+    if (rooms.length === 0) return null;
+    const fits = rooms.filter((r) => r.available !== false && (r.capacity ?? 0) >= guestCount);
+    const pool = fits.length > 0 ? fits : rooms.filter((r) => r.available !== false);
+    const candidates = pool.length > 0 ? pool : rooms;
+    const sorted = [...candidates].sort((a, b) => (a.price ?? acc.pricePerNight) - (b.price ?? acc.pricePerNight));
+    const chosen = sorted[0];
+    return chosen?.id != null ? { id: chosen.id } : null;
   }
 
   formatType(type?: string): string {

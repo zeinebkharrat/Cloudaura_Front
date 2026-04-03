@@ -9,6 +9,8 @@ import java.time.LocalDateTime;
 @Data @Builder @NoArgsConstructor @AllArgsConstructor
 public class TransportReservationResponse {
     private int transportReservationId;
+    /** Same trip id as in /api/transports/{id} — used to reopen booking flow. */
+    private Integer transportId;
     private String reservationRef;
     private String status;
     private String paymentStatus;

@@ -26,8 +26,12 @@ public class AccommodationService {
         Accommodation.AccommodationType type = request.getType() != null ?
                 Accommodation.AccommodationType.valueOf(request.getType()) : null;
 
+        Integer cityFilter = request.getCityId();
+        if (cityFilter != null && cityFilter <= 0) {
+            cityFilter = null;
+        }
         List<Accommodation> accommodations = accommodationRepository.searchAccommodations(
-                request.getCityId(), Accommodation.AccommodationStatus.AVAILABLE, type, request.getMinPrice(), request.getMaxPrice());
+                cityFilter, Accommodation.AccommodationStatus.AVAILABLE, type, request.getMinPrice(), request.getMaxPrice());
 
         LocalDateTime checkIn = request.getCheckIn() != null ? request.getCheckIn().atStartOfDay() : LocalDateTime.now();
         LocalDateTime checkOut = request.getCheckOut() != null ? request.getCheckOut().atStartOfDay() : LocalDateTime.now().plusDays(1);

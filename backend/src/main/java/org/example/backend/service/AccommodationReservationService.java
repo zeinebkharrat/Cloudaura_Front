@@ -15,8 +15,11 @@ import org.example.backend.repository.RoomRepository;
 import org.example.backend.repository.SpecialOfferRepository;
 import org.example.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -79,9 +82,17 @@ public class AccommodationReservationService {
     public AccommodationReservationResponse cancelReservation(int id, int userId) {
         Reservation res = reservationRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Réservation introuvable."));
-        if (!res.getUser().getUserId().equals(userId)) throw new RuntimeException("Accès refusé.");
-        if (res.getCheckInDate().isBefore(LocalDateTime.now().plusHours(24))) {
-            throw new CancellationNotAllowedException("Annulation impossible moins de 24h avant l'arrivée.");
+        if (res.getUser() == null || !res.getUser().getUserId().equals(userId)) {
+            throw new AccessDeniedException("Not your reservation");
+        }
+        if (res.getStatus() == ReservationStatus.CANCELLED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Déjà annulée.");
+        }
+        if (res.getStatus() == ReservationStatus.CONFIRMED) {
+            long hoursUntilCheckIn = ChronoUnit.HOURS.between(LocalDateTime.now(), res.getCheckInDate());
+            if (hoursUntilCheckIn < 24) {
+                throw new CancellationNotAllowedException("Annulation impossible moins de 24h avant l'arrivée.");
+            }
         }
 
         res.setStatus(ReservationStatus.CANCELLED);

@@ -4,6 +4,7 @@ import {
   City, Accommodation, Transport, Reservation,
   TransportRecommendation, TransportRecommendationRequest,
   TransportReservationInput, TransportReservation,
+  AccommodationReservation,
   EngineRecommendationRequest, EngineRecommendationResponse
 } from '../models/travel.models';
 
@@ -23,7 +24,7 @@ export interface DataSourceAdapter {
     minRating?: number; checkIn?: string; checkOut?: string;
   }): Observable<Accommodation[]>;
 
-  getAccommodationDetails(id: number): Observable<Accommodation>;
+  getAccommodationDetails(id: number, opts?: { checkIn?: string; checkOut?: string }): Observable<Accommodation>;
 
   getTransports(params: TransportSearchParams): Observable<Transport[]>;
 
@@ -31,11 +32,15 @@ export interface DataSourceAdapter {
 
   createTransportReservation(input: TransportReservationInput): Observable<TransportReservation>;
 
-  getMyTransportReservations(): Observable<TransportReservation[]>;
+  getMyTransportReservations(userId: number): Observable<TransportReservation[]>;
 
-  cancelTransportReservation(id: number): Observable<void>;
+  cancelTransportReservation(reservationId: number, userId: number): Observable<void>;
 
-  createReservation(reservation: Partial<Reservation>): Observable<Reservation>;
+  getMyAccommodationReservations(userId: number): Observable<AccommodationReservation[]>;
+
+  cancelAccommodationReservation(reservationId: number, userId: number): Observable<void>;
+
+  createReservation(reservation: Partial<Reservation> & Record<string, unknown>): Observable<Reservation>;
 
   getTransportRecommendations(request: TransportRecommendationRequest): Observable<TransportRecommendation>;
 

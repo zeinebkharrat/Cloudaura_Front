@@ -94,6 +94,8 @@ export interface TransportReservationInput {
 
 export interface TransportReservation {
   transportReservationId: number;
+  /** Backend trip id — open /transport/:id/book to change seats or see trip. */
+  transportId?: number;
   reservationRef: string;
   status: ReservationStatus;
   paymentStatus: PaymentStatus;
@@ -113,12 +115,43 @@ export interface TransportReservation {
   departureTime?: string;
 }
 
+/** Stay reservation list item (maps API accommodation reservation DTO). */
+export interface AccommodationReservation {
+  id: number;
+  status: ReservationStatus;
+  totalPrice: number;
+  accommodationName?: string;
+  accommodationCity?: string;
+  reservationRef?: string;
+  checkInDate?: string;
+  checkOutDate?: string;
+  nights?: number;
+  roomType?: string;
+  paymentMethod?: string;
+  guestFirstName?: string;
+  guestLastName?: string;
+  guestEmail?: string;
+}
+
+/** WebSocket payload for live transport tracking. */
+export interface TrackingUpdate {
+  status?: 'IN_TRANSIT' | 'ARRIVED';
+  progress?: number;
+  totalSteps?: number;
+  step?: number;
+  lat?: number;
+  lng?: number;
+}
+
 export interface Reservation {
   id: number;
   status: ReservationStatus;
   totalPrice: number;
   checkInDate?: string;
   checkOutDate?: string;
+  /** API body for accommodation booking (LocalDate strings). */
+  checkIn?: string;
+  checkOut?: string;
   roomId?: number;
   userId?: number;
   transportId?: number;

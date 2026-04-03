@@ -17,14 +17,15 @@ public interface AccommodationRepository extends JpaRepository<Accommodation, In
 
     List<Accommodation> findByRatingGreaterThanEqual(double rating);
 
-    @Query("SELECT a FROM Accommodation a WHERE a.city.cityId = :cityId " +
+    @Query("SELECT a FROM Accommodation a WHERE " +
+           "(:cityId IS NULL OR a.city.cityId = :cityId) " +
            "AND a.status = :status " +
            "AND (:type IS NULL OR a.type = :type) " +
            "AND (:minPrice IS NULL OR a.pricePerNight >= :minPrice) " +
            "AND (:maxPrice IS NULL OR a.pricePerNight <= :maxPrice) " +
            "ORDER BY a.rating DESC")
     List<Accommodation> searchAccommodations(
-            @Param("cityId") int cityId,
+            @Param("cityId") Integer cityId,
             @Param("status") Accommodation.AccommodationStatus status,
             @Param("type") Accommodation.AccommodationType type,
             @Param("minPrice") Double minPrice,

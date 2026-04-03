@@ -1,4 +1,14 @@
-import { Component, OnInit, inject, signal, ChangeDetectionStrategy, computed } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  inject,
+  signal,
+  ChangeDetectionStrategy,
+  computed,
+  HostListener,
+  viewChild,
+  ElementRef,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { TripContextStore } from '../../../core/stores/trip-context.store';
@@ -48,10 +58,25 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
             <!-- City Selector -->
             <div class="filter-block">
               <label class="filter-label"><img src="/icones/city.png" alt="" class="filter-label-icon" /> City</label>
-              <select formControlName="cityId" class="filter-select" (change)="onCityChange()">
-                <option [value]="0">All cities</option>
-                <option *ngFor="let city of cities()" [value]="city.id">{{ city.name }}</option>
-              </select>
+              <div class="city-picker-root" #cityPickerRoot>
+                <button type="button" class="city-picker-trigger" [class.open]="cityOpen()"
+                        (click)="toggleCityMenu($event)" [attr.aria-expanded]="cityOpen()">
+                  <span class="city-picker-label">{{ cityLabel() }}</span>
+                  <span class="city-picker-chevron" [class.up]="cityOpen()" aria-hidden="true"></span>
+                </button>
+                @if (cityOpen()) {
+                  <div class="city-picker-panel" role="listbox" aria-label="Cities">
+                    <button type="button" role="option" class="city-picker-option"
+                            [class.active]="cityFilterId() === 0"
+                            (click)="selectCity(0, $event)">All cities</button>
+                    @for (city of cities(); track city.id) {
+                      <button type="button" role="option" class="city-picker-option"
+                              [class.active]="cityFilterId() === city.id"
+                              (click)="selectCity(city.id, $event)">{{ city.name }}</button>
+                    }
+                  </div>
+                }
+              </div>
             </div>
 
             <!-- Type -->
@@ -269,6 +294,102 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
     .filter-select:focus { border-color: #f12545; }
     .filter-select option { background: #161922; }
 
+    /* City picker — custom list + styled scroll */
+    .city-picker-root { position: relative; width: 100%; }
+    .city-picker-trigger {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: #0d0f18;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 10px 12px;
+      color: #fff;
+      font-size: 0.9rem;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .city-picker-trigger:hover { border-color: rgba(241,37,69,0.35); }
+    .city-picker-trigger.open {
+      border-color: #f12545;
+      box-shadow: 0 0 0 3px rgba(241,37,69,0.15);
+    }
+    .city-picker-label { text-align: left; flex: 1; }
+    .city-picker-chevron {
+      width: 0; height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 6px solid rgba(255,255,255,0.45);
+      transition: transform 0.2s;
+      flex-shrink: 0;
+    }
+    .city-picker-chevron.up { transform: rotate(180deg); border-top-color: #f12545; }
+    .city-picker-panel {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: calc(100% + 6px);
+      z-index: 40;
+      max-height: min(280px, 55vh);
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: thin;
+      scrollbar-color: #f12545 rgba(0,0,0,0.25);
+      background: linear-gradient(180deg, #1c1f2e 0%, #141824 100%);
+      border: 1px solid rgba(241,37,69,0.25);
+      border-radius: 12px;
+      padding: 6px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04);
+      animation: cityPanelIn 0.2s ease-out;
+    }
+    @keyframes cityPanelIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .city-picker-panel::-webkit-scrollbar { width: 8px; }
+    .city-picker-panel::-webkit-scrollbar-track {
+      background: rgba(0,0,0,0.25);
+      border-radius: 10px;
+      margin: 4px 0;
+    }
+    .city-picker-panel::-webkit-scrollbar-thumb {
+      background: linear-gradient(180deg, #f12545, #a81830);
+      border-radius: 10px;
+      border: 2px solid transparent;
+      background-clip: padding-box;
+    }
+    .city-picker-panel::-webkit-scrollbar-thumb:hover {
+      background: linear-gradient(180deg, #ff3d5c, #f12545);
+      background-clip: padding-box;
+    }
+    .city-picker-option {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 10px 12px;
+      margin: 2px 0;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: rgba(255,255,255,0.88);
+      font-size: 0.88rem;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, transform 0.12s;
+    }
+    .city-picker-option:hover {
+      background: rgba(241,37,69,0.12);
+      color: #fff;
+      transform: translateX(2px);
+    }
+    .city-picker-option.active {
+      background: rgba(241,37,69,0.2);
+      color: #f12545;
+      font-weight: 600;
+    }
+
     /* Type Chips */
     .type-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
     .chip {
@@ -452,10 +573,15 @@ export class AccommodationListPageComponent implements OnInit {
   dataSource = inject(DATA_SOURCE_TOKEN);
   router = inject(Router);
 
+  cityPickerRoot = viewChild<ElementRef<HTMLElement>>('cityPickerRoot');
+
   loading = signal(true);
   cities = signal<City[]>([]);
   accommodations = signal<Accommodation[]>([]);
   activeCityId = signal<number>(0);
+  cityOpen = signal(false);
+  /** Synced with filter cityId for template bindings (computed + OnPush). */
+  cityFilterId = signal(0);
 
   filterForm = new FormGroup({
     cityId: new FormControl(0),
@@ -469,6 +595,32 @@ export class AccommodationListPageComponent implements OnInit {
     return this.cities().find(c => c.id === Number(id));
   });
 
+  cityLabel = computed(() => {
+    const n = this.cityFilterId();
+    if (!n) return 'All cities';
+    return this.cities().find((c) => c.id === n)?.name ?? 'All cities';
+  });
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(ev: MouseEvent): void {
+    const root = this.cityPickerRoot()?.nativeElement;
+    if (!this.cityOpen() || !root) return;
+    if (!root.contains(ev.target as Node)) {
+      this.cityOpen.set(false);
+    }
+  }
+
+  toggleCityMenu(ev: MouseEvent): void {
+    ev.stopPropagation();
+    this.cityOpen.update((o) => !o);
+  }
+
+  selectCity(id: number, ev: MouseEvent): void {
+    ev.stopPropagation();
+    this.filterForm.patchValue({ cityId: id });
+    this.cityOpen.set(false);
+  }
+
   ngOnInit() {
     this.loadCities();
 
@@ -476,12 +628,22 @@ export class AccommodationListPageComponent implements OnInit {
     if (storeCity) {
       this.filterForm.patchValue({ cityId: storeCity });
       this.activeCityId.set(storeCity);
+      this.cityFilterId.set(storeCity);
+    } else {
+      this.cityFilterId.set(Number(this.filterForm.get('cityId')?.value) || 0);
     }
 
     this.loadData();
 
-    this.filterForm.get('cityId')!.valueChanges.subscribe(v => {
-      this.activeCityId.set(Number(v) || 0);
+    this.filterForm.get('cityId')!.valueChanges.subscribe((v) => {
+      const n = Number(v) || 0;
+      this.activeCityId.set(n);
+      this.cityFilterId.set(n);
+      if (n > 0) {
+        this.store.setSelectedCity(n);
+      } else {
+        this.store.setSelectedCity(null);
+      }
     });
 
     this.filterForm.valueChanges.pipe(
@@ -494,20 +656,14 @@ export class AccommodationListPageComponent implements OnInit {
     this.dataSource.getCities().subscribe(data => this.cities.set(data));
   }
 
-  onCityChange() {
-    const cityId = Number(this.filterForm.value.cityId);
-    if (cityId > 0) {
-      this.store.setSelectedCity(cityId);
-    }
-    this.loadData();
-  }
-
   loadData() {
     this.loading.set(true);
     const f = this.filterForm.value;
-    const cityId = Number(f.cityId) || this.store.selectedCityId();
+    const raw = f.cityId;
+    const n = raw !== null && raw !== undefined ? Number(raw) : 0;
+    const cityIdForApi = n > 0 ? n : null;
 
-    this.dataSource.getAccommodations(cityId || null, {
+    this.dataSource.getAccommodations(cityIdForApi, {
       type: f.type || undefined,
       maxPrice: f.maxPrice ?? undefined,
       minRating: (f.minRating && f.minRating > 0) ? f.minRating : undefined
@@ -524,6 +680,7 @@ export class AccommodationListPageComponent implements OnInit {
   }
 
   resetFilters() {
+    this.cityOpen.set(false);
     this.filterForm.reset({ cityId: 0, type: '', maxPrice: 800, minRating: 0 });
   }
 
