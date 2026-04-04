@@ -1,6 +1,7 @@
 import { Component, inject, signal, OnInit, Renderer2, effect, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { NavigationEnd, Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { filter } from 'rxjs';
 import { AuthService } from './core/auth.service';
 import { ShopService } from './core/shop.service';
 import { ChatService } from './chat/chat.service';
@@ -27,6 +28,7 @@ export class AppComponent implements OnInit {
   isServicesMenuOpen = signal(false);
   selectedCityName = signal<string | null>(null);
   isScrolled = signal(false);
+  isHomeRoute = signal(false);
 
   readonly isAdmin = this.auth.isAdmin;
   readonly isArtisan = this.auth.isArtisan;
@@ -48,6 +50,10 @@ export class AppComponent implements OnInit {
       },
       { allowSignalWrites: true }
     );
+
+    this.router.events
+      .pipe(filter((event) => event instanceof NavigationEnd))
+      .subscribe(() => this.syncRouteState());
   }
 
   clearToast(): void {
@@ -56,7 +62,8 @@ export class AppComponent implements OnInit {
 
   @HostListener('window:scroll', [])
   onWindowScroll(): void {
-    this.isScrolled.set(window.scrollY > 20);
+    const threshold = this.isHomeRoute() ? 110 : 20;
+    this.isScrolled.set(window.scrollY > threshold);
   }
 
   ngOnInit() {
@@ -70,6 +77,14 @@ export class AppComponent implements OnInit {
     } else {
       this.renderer.setAttribute(document.documentElement, 'data-theme', 'dark');
     }
+
+    this.syncRouteState();
+  }
+
+  private syncRouteState(): void {
+    const path = this.router.url.split('?')[0].split('#')[0];
+    this.isHomeRoute.set(path === '' || path === '/');
+    this.onWindowScroll();
   }
 
   isAdminArea(): boolean {

@@ -207,6 +207,7 @@ export const routes: Routes = [
       kicker: 'Agenda',
       accent: 'rose',
       title: 'Events',
+      eventFeed: true,
       description: "Experience Tunisia's heartbeat with YallaTN+.\nDiscover authentic festivals, sports, and tech events.",
      },
   },

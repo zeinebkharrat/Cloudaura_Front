@@ -1,5 +1,6 @@
 import {
   Component,
+  OnInit,
   AfterViewInit,
   OnDestroy,
   ViewChild,
@@ -8,14 +9,37 @@ import {
   PLATFORM_ID,
   signal,
   ChangeDetectorRef,
-  HostListener,
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { catchError, forkJoin, map, of } from 'rxjs';
 import * as echarts from 'echarts';
 import { tunisiaGeoJson } from './tunisia-map';
 import { GOVERNORATE_LABEL_EN, GOVERNORATE_LABEL_FR } from './tunisia-governorate-labels';
 import { ExploreService } from './explore/explore.service';
+import { API_BASE_URL, API_FALLBACK_ORIGIN } from './core/api-url';
+
+interface HomeImageCard {
+  title: string;
+  subtitle: string;
+  image: string;
+  route: string;
+  tags?: string[];
+  priceTag?: string;
+  badge?: string;
+  rating?: number;
+  reviewsCount?: number;
+}
+
+interface HomeTransportModeCard {
+  type: string;
+  label: string;
+  icon: string;
+  image: string;
+  description: string;
+  cta: string;
+}
 
 const TUNISIA_MAP_NAME_PROP = '_echartsRegionId';
 const HOME_MAP_RETURN_CONTEXT_KEY = 'homeMapReturnContext';
@@ -68,15 +92,24 @@ function normalizeRegionToken(value: unknown): string {
   templateUrl: './home.component.html',
   styleUrl: './home.component.css',
 })
-export class HomeComponent implements AfterViewInit, OnDestroy {
+export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('mapContainer', { static: false }) mapContainer!: ElementRef;
-  @ViewChild('heroVideoPlayer') heroVideoPlayer?: ElementRef<HTMLVideoElement>;
+  @ViewChild('heroVideoRef', { static: false }) heroVideoRef?: ElementRef<HTMLVideoElement>;
 
-  /** Place the file at `src/assets/video.mp4` (bundled as `/assets/video.mp4`). */
-  readonly heroVideoSrc = 'assets/video.mp4';
+  readonly heroVideoSrc = '/assets/video.mp4';
   readonly heroVideoPoster = 'assets/sidi_bou.png';
+  readonly heroVideoError = signal(false);
+  readonly skeletonCards = Array.from({ length: 4 }, (_, i) => i);
 
-  videoModalOpen = signal(false);
+  readonly activityCards = signal<HomeImageCard[]>([]);
+  readonly restaurantCards = signal<HomeImageCard[]>([]);
+  readonly transportModes = signal<HomeTransportModeCard[]>([]);
+  readonly artisanCards = signal<HomeImageCard[]>([]);
+
+  readonly loadingActivities = signal(true);
+  readonly loadingTransportModes = signal(true);
+  readonly loadingRestaurants = signal(true);
+  readonly loadingArtisans = signal(true);
 
   mapViewMode = signal<'local' | 'highlights'>('local');
   selectedRegion = signal<{
@@ -99,47 +132,36 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
   constructor(
     @Inject(PLATFORM_ID) private platformId: Object,
     private cdr: ChangeDetectorRef,
+    private readonly http: HttpClient,
     private readonly exploreService: ExploreService,
     private readonly router: Router,
     private readonly route: ActivatedRoute
   ) {}
 
-  @HostListener('document:keydown.escape')
-  onEscapeCloseVideo(): void {
-    if (this.videoModalOpen()) {
-      this.closeHeroVideoModal();
-    }
+  ngOnInit(): void {
+    this.loadHomeSections();
   }
 
-  openHeroVideoModal(): void {
+  scrollSlider(containerId: string, direction: 1 | -1): void {
     if (!isPlatformBrowser(this.platformId)) {
       return;
     }
-    this.videoModalOpen.set(true);
-    this.cdr.detectChanges();
-    setTimeout(() => {
-      const el = this.heroVideoPlayer?.nativeElement;
-      if (el) {
-        void el.play().catch(() => {
-          /* autoplay may be blocked until user interacts — controls still work */
-        });
-      }
-    }, 0);
-  }
 
-  closeHeroVideoModal(): void {
-    const el = this.heroVideoPlayer?.nativeElement;
-    el?.pause();
-    this.videoModalOpen.set(false);
-  }
-
-  onHeroVideoBackdrop(event: MouseEvent): void {
-    if ((event.target as HTMLElement).classList.contains('hero-video-backdrop')) {
-      this.closeHeroVideoModal();
+    const container = document.getElementById(containerId);
+    if (!container) {
+      return;
     }
+
+    const distance = Math.max(280, Math.floor(container.clientWidth * 0.8));
+    container.scrollBy({ left: direction * distance, behavior: 'smooth' });
+  }
+
+  onHeroVideoError(): void {
+    this.heroVideoError.set(true);
   }
 
   ngAfterViewInit(): void {
+    this.ensureVideoMutedAutoplay();
     if (isPlatformBrowser(this.platformId)) {
       this.initMap();
       this.startThemeObserver();
@@ -152,6 +174,188 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
       window.removeEventListener('resize', this.handleWindowResize);
     }
     this.themeObserver?.disconnect();
+  }
+
+  private ensureVideoMutedAutoplay(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    setTimeout(() => {
+      const video = this.heroVideoRef?.nativeElement;
+      if (!video) {
+        return;
+      }
+      video.defaultMuted = true;
+      video.muted = true;
+      video.volume = 0;
+      void video.play().catch(() => {
+        this.heroVideoError.set(true);
+      });
+    }, 0);
+  }
+
+  private loadHomeSections(): void {
+    this.loadActivityCards();
+    this.loadTransportCards();
+    this.loadRestaurantCards();
+    this.loadArtisanCards();
+  }
+
+  private loadActivityCards(): void {
+    this.exploreService
+      .listActivities({
+        q: '',
+        cityId: null,
+        minPrice: null,
+        maxPrice: null,
+        date: null,
+        participants: 1,
+        page: 0,
+        size: 18,
+        sort: 'activityId,desc',
+      })
+      .pipe(catchError(() => of({ content: [] })))
+      .subscribe((res: any) => {
+        const content = Array.isArray(res?.content) ? res.content : [];
+        const dbImageActivities = content.filter((item: any) => !!item?.imageUrl).slice(0, 12);
+        const activitySource = dbImageActivities.length ? dbImageActivities : content.slice(0, 12);
+
+        if (!activitySource.length) {
+          this.activityCards.set([]);
+          this.loadingActivities.set(false);
+          return;
+        }
+
+        forkJoin(
+          activitySource.map((item: any) =>
+            this.exploreService.getActivityReviewSummary(item.activityId).pipe(
+              map((summary) => ({ item, summary })),
+              catchError(() => of({ item, summary: { averageStars: 0, totalReviews: 0 } }))
+            )
+          )
+        )
+          .pipe(map((items: any) => items as Array<{ item: any; summary: any }>))
+          .subscribe((itemsWithSummary) => {
+          const mapped: HomeImageCard[] = itemsWithSummary.map(({ item, summary }: { item: any; summary: any }) => ({
+            title: item.name,
+            subtitle: item.description || item.cityName || 'Book this activity now.',
+            image: item.imageUrl || '',
+            route: `/activities/${item.activityId}`,
+            tags: [item.cityName || 'Tunisia', item.type || 'Experience'],
+            priceTag: item.price != null ? `From ${Math.round(item.price)} TND` : undefined,
+            badge: 'Activity',
+            rating: Number(summary?.averageStars) || 0,
+            reviewsCount: Number(summary?.totalReviews) || 0,
+          }));
+          this.activityCards.set(mapped);
+          this.loadingActivities.set(false);
+        });
+      });
+  }
+
+  private loadRestaurantCards(): void {
+    const fallback = ['assets/sahara.png', 'assets/el_jem.png', 'assets/sidi_bou.png'];
+    this.exploreService
+      .listRestaurants({
+        q: '',
+        cityId: null,
+        cuisineType: null,
+        page: 0,
+        size: 24,
+        sort: 'restaurantId,desc',
+      })
+      .pipe(catchError(() => of({ content: [] })))
+      .subscribe((res: any) => {
+        const mapped: HomeImageCard[] = (res.content ?? []).map((item: any, index: number) => ({
+          title: item.name,
+          subtitle: item.description || item.cityName || 'Taste local and international flavors.',
+          image: item.imageUrl || fallback[index % fallback.length],
+          route: `/restaurants/${item.restaurantId}`,
+          tags: [item.cityName || 'Tunisia', item.cuisineType || 'Cuisine'],
+          badge: 'Restaurant',
+        }));
+        this.restaurantCards.set(mapped);
+        this.loadingRestaurants.set(false);
+      });
+  }
+
+  private loadTransportCards(): void {
+    this.transportModes.set([
+      {
+        type: 'BUS',
+        label: 'Bus',
+        icon: 'BUS',
+        image: '/assets/transport/bus.jpg',
+        description: 'Intercity and local lines across major destinations.',
+        cta: 'Find Bus Trips',
+      },
+      {
+        type: 'TAXI',
+        label: 'Taxi',
+        icon: 'TAXI',
+        image: '/assets/transport/taxi.jpg',
+        description: 'Fast point-to-point rides for city and airport transfer.',
+        cta: 'Book a Taxi',
+      },
+      {
+        type: 'CAR',
+        label: 'Rent Car',
+        icon: 'CAR',
+        image: '/assets/transport/car.jfif',
+        description: 'Flexible car rental plans for road trips around Tunisia.',
+        cta: 'Rent a Car',
+      },
+      {
+        type: 'PLANE',
+        label: 'Avion',
+        icon: 'FLIGHT',
+        image: '/assets/transport/avion.jpg',
+        description: 'Domestic and international flights to key airports.',
+        cta: 'Browse Flights',
+      },
+    ]);
+    this.loadingTransportModes.set(false);
+  }
+
+  private loadArtisanCards(): void {
+    const fallbackImages = ['assets/el_jem.png', 'assets/sidi_bou.png', 'assets/sahara.png'];
+    const primary = `${API_BASE_URL}/api/products`;
+    const fallback = `${API_FALLBACK_ORIGIN}/api/products`;
+    const canTryFallback = API_BASE_URL === '';
+
+    this.http
+      .get<any>(primary)
+      .pipe(
+        catchError(() => {
+          if (!canTryFallback) {
+            return of([]);
+          }
+          return this.http.get<any>(fallback).pipe(catchError(() => of([])));
+        })
+      )
+      .subscribe((res) => {
+        const list = Array.isArray(res) ? res : res?.data ?? res?.content ?? [];
+        const mapped: HomeImageCard[] = (Array.isArray(list) ? list : [])
+          .slice(0, 10)
+          .map((item: any, index: number) => ({
+            title: item.name || 'Artisan Product',
+            subtitle: item.description || item.category || 'Authentic Tunisian craftsmanship.',
+            image: item.imageUrl || fallbackImages[index % fallbackImages.length],
+            route: '/artisanat',
+            tags: [item.category || 'Artisan', item.user?.cityName || 'Tunisia'],
+            priceTag: item.price != null ? `${Math.round(item.price)} TND` : undefined,
+            badge: 'Artisan',
+          }));
+
+        this.artisanCards.set(mapped);
+        this.loadingArtisans.set(false);
+      });
+  }
+
+  activityStars(rating?: number): Array<'full' | 'empty'> {
+    const safeRating = Math.max(0, Math.min(5, Math.round(rating ?? 0)));
+    return Array.from({ length: 5 }, (_, index) => (index < safeRating ? 'full' : 'empty'));
   }
 
   setMapView(mode: 'local' | 'highlights'): void {

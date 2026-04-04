@@ -74,7 +74,9 @@ export class FeaturePageComponent implements OnInit {
   highlights: string[] = [];
   blocks: FeatureBlock[] = [];
   events: TravelEvent[] = [];
+  isEventFeed = false;
   isLoadingEvents = false;
+  eventsLoadError: string | null = null;
   selectedEvent: TravelEvent | null = null;
   readonly eventJoinLoading = signal(false);
   readonly eventJoinError = signal<string | null>(null);
@@ -345,11 +347,14 @@ export class FeaturePageComponent implements OnInit {
       this.catalogError = null;
     }
 
-    if (this.title === 'Events') {
+    const shouldLoadEvents = d['eventFeed'] === true || this.title === 'Events';
+    this.isEventFeed = shouldLoadEvents;
+    if (shouldLoadEvents) {
       this.loadEvents();
     } else {
       this.events = [];
       this.isLoadingEvents = false;
+      this.eventsLoadError = null;
       this.selectedEvent = null;
     }
   }
@@ -692,16 +697,38 @@ export class FeaturePageComponent implements OnInit {
 
   private loadEvents(): void {
     this.isLoadingEvents = true;
+    this.eventsLoadError = null;
     this.eventService.getEvents().subscribe({
       next: (events) => {
-        this.events = events;
+        this.events = events.map((event) => ({
+          ...event,
+          imageUrl: this.normalizeEventImageUrl(event.imageUrl),
+        }));
         this.isLoadingEvents = false;
       },
       error: (err) => {
         console.error('Error loading events:', err);
+        this.eventsLoadError = 'Could not load events right now.';
         this.isLoadingEvents = false;
       }
     });
+  }
+
+  private normalizeEventImageUrl(url: string | undefined): string | undefined {
+    if (!url) {
+      return undefined;
+    }
+    const value = String(url).trim();
+    if (!value) {
+      return undefined;
+    }
+    if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('/')) {
+      return value;
+    }
+    if (value.startsWith('uploads/')) {
+      return `/${value}`;
+    }
+    return `/${value}`;
   }
 
   selectEvent(event: TravelEvent): void {

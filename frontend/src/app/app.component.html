@@ -1,5 +1,5 @@
 @if (!isAdminArea()) {
-<nav class="navbar animate-in" [class.navbar--scrolled]="isScrolled()">
+<nav class="navbar animate-in" [class.navbar--scrolled]="isScrolled()" [class.navbar--hidden]="isHomeRoute() && !isScrolled()">
   <div class="logo">
     <a routerLink="/" class="logo-link" aria-label="Yalla TN — home">
       <img
