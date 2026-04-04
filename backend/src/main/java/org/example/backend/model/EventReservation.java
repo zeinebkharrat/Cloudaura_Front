@@ -1,15 +1,54 @@
 package org.example.backend.model;
+
 import jakarta.persistence.*;
-import lombok.Data;
-@Data @Entity @Table(name="event_reservations")
+import org.example.backend.model.Event;
+import org.example.backend.model.ReservationStatus;
+import org.example.backend.model.User;
+
+@Entity
+@Table(name="event_reservations")
 public class EventReservation {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer eventReservationId;
-    @ManyToOne @JoinColumn(name="user_id")
+
+    @ManyToOne
+    @JoinColumn(name="user_id")
     private User user;
-    @ManyToOne @JoinColumn(name="event_id")
+
+    @ManyToOne
+    @JoinColumn(name="event_id")
     private Event event;
+
     private Double totalAmount;
+
     @Enumerated(EnumType.STRING)
     private ReservationStatus status;
+
+    // --- GETTERS ---
+    public Integer getEventReservationId() {
+        return eventReservationId;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public Event getEvent() {
+        return event;
+    }
+
+    public Double getTotalAmount() {
+        return totalAmount;
+    }
+
+    public ReservationStatus getStatus() {
+        return status;
+    }
+
+    // --- SETTERS ---
+    public void setEvent(Event event) { this.event = event; }
+    public void setUser(User user) { this.user = user; }
+    public void setTotalAmount(Double totalAmount) { this.totalAmount = totalAmount; }
+    public void setStatus(ReservationStatus status) { this.status = status; }
 }

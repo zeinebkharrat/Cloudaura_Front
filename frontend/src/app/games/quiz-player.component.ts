@@ -2,7 +2,7 @@ import { Component, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { LudificationService, Quiz, QuizQuestion } from '../core/ludification.service';
-import { AuthService } from '../auth.service';
+import { AuthService } from '../core/auth.service';
 
 @Component({
   selector: 'app-quiz-player',
@@ -60,7 +60,7 @@ export class QuizPlayerComponent implements OnInit {
         error: () => {
           this.quiz.set(null);
           this.questions.set([]);
-          this.loadError.set('Erreur de chargement du quiz.');
+          this.loadError.set('Could not load the quiz.');
           this.isLoading.set(false);
         }
       });

@@ -8,6 +8,7 @@ import {
   PLATFORM_ID,
   signal,
   ChangeDetectorRef,
+  HostListener,
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -69,6 +70,13 @@ function normalizeRegionToken(value: unknown): string {
 })
 export class HomeComponent implements AfterViewInit, OnDestroy {
   @ViewChild('mapContainer', { static: false }) mapContainer!: ElementRef;
+  @ViewChild('heroVideoPlayer') heroVideoPlayer?: ElementRef<HTMLVideoElement>;
+
+  /** Place the file at `src/assets/video.mp4` (bundled as `/assets/video.mp4`). */
+  readonly heroVideoSrc = 'assets/video.mp4';
+  readonly heroVideoPoster = 'assets/sidi_bou.png';
+
+  videoModalOpen = signal(false);
 
   mapViewMode = signal<'local' | 'highlights'>('local');
   selectedRegion = signal<{
@@ -95,6 +103,41 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
     private readonly router: Router,
     private readonly route: ActivatedRoute
   ) {}
+
+  @HostListener('document:keydown.escape')
+  onEscapeCloseVideo(): void {
+    if (this.videoModalOpen()) {
+      this.closeHeroVideoModal();
+    }
+  }
+
+  openHeroVideoModal(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+    this.videoModalOpen.set(true);
+    this.cdr.detectChanges();
+    setTimeout(() => {
+      const el = this.heroVideoPlayer?.nativeElement;
+      if (el) {
+        void el.play().catch(() => {
+          /* autoplay may be blocked until user interacts — controls still work */
+        });
+      }
+    }, 0);
+  }
+
+  closeHeroVideoModal(): void {
+    const el = this.heroVideoPlayer?.nativeElement;
+    el?.pause();
+    this.videoModalOpen.set(false);
+  }
+
+  onHeroVideoBackdrop(event: MouseEvent): void {
+    if ((event.target as HTMLElement).classList.contains('hero-video-backdrop')) {
+      this.closeHeroVideoModal();
+    }
+  }
 
   ngAfterViewInit(): void {
     if (isPlatformBrowser(this.platformId)) {

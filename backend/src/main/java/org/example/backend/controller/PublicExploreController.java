@@ -3,6 +3,7 @@ package org.example.backend.controller;
 import jakarta.validation.Valid;
 import org.example.backend.dto.ActivityReservationListItemResponse;
 import lombok.RequiredArgsConstructor;
+import org.example.backend.dto.CityResponse;
 import org.example.backend.dto.ActivityResponse;
 import org.example.backend.dto.ActivityMediaResponse;
 import org.example.backend.dto.PageResponse;
@@ -46,6 +47,11 @@ public class PublicExploreController {
     @GetMapping("/cities/resolve")
     public CityResolveResponse resolveCityByName(@RequestParam String name) {
         return publicExploreService.resolveCityByName(name);
+    }
+
+    @GetMapping("/cities/all")
+    public List<CityResponse> listAllCities() {
+        return publicExploreService.listAllCities();
     }
 
     @GetMapping("/cities/{cityId}/details")

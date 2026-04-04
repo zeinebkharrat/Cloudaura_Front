@@ -1,2 +1,7 @@
 package org.example.backend.model;
-public enum ReservationStatus { PENDING, CONFIRMED, CANCELLED }
+ 
+public enum ReservationStatus {
+    PENDING,
+    CONFIRMED,
+    CANCELLED
+}

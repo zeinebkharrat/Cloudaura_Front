@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import {
   Activity,
   ActivityAvailabilityDay,
@@ -35,7 +36,9 @@ export class ExploreService {
   }
 
   listPublicCities(): Observable<City[]> {
-    return this.http.get<City[]>('/api/cities');
+    return this.http.get<{ data?: City[] } | City[]>('/api/cities').pipe(
+      map((res) => (Array.isArray(res) ? res : res?.data) ?? [])
+    );
   }
 
   getRestaurantDetails(restaurantId: number): Observable<Restaurant> {

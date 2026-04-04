@@ -4,8 +4,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AdminUserService } from './admin-user.service';
-import { AuthService } from './auth.service';
-import { AdminUser, CityOption } from './auth.types';
+import { AuthService } from './core/auth.service';
+import { AdminUser, CityOption } from './core/auth.types';
 import { extractApiErrorMessage } from './api-error.util';
 import Swal from 'sweetalert2';
 import type { SweetAlertOptions } from 'sweetalert2';
@@ -90,7 +90,7 @@ export class AdminUsersComponent {
         const currentUserId = this.authService.currentUser()?.id;
         this.users.set(currentUserId ? users.filter((user) => user.id !== currentUserId) : users);
       },
-      error: () => this.actionError.set('Impossible de charger les utilisateurs.'),
+      error: () => this.actionError.set('Could not load users.'),
       complete: () => this.isLoading.set(false),
     });
   }
@@ -110,34 +110,34 @@ export class AdminUsersComponent {
     let uploadedImageUrl: string | null = user.profileImageUrl ?? null;
 
     const result = await this.popup({
-      title: `Modifier ${user.username}`,
+      title: `Edit ${user.username}`,
       width: 760,
       showCancelButton: true,
-      confirmButtonText: 'Enregistrer',
-      cancelButtonText: 'Annuler',
+      confirmButtonText: 'Save',
+      cancelButtonText: 'Cancel',
       html: `
         <div class="sw-grid">
           <div class="sw-avatar-top">
-            <div class="sw-chip">Profil utilisateur</div>
+            <div class="sw-chip">User profile</div>
             <div class="sw-avatar-frame">
               <img id="sw-avatar-preview" class="sw-avatar-preview" src="${user.profileImageUrl ?? ''}" alt="avatar" />
               <div id="sw-avatar-placeholder" class="sw-avatar-placeholder ${user.profileImageUrl ? 'hidden' : ''}">${user.username.charAt(0).toUpperCase()}</div>
             </div>
-            <label class="sw-upload-btn" for="sw-avatar-file">Choisir une photo</label>
+            <label class="sw-upload-btn" for="sw-avatar-file">Choose a photo</label>
             <input id="sw-avatar-file" class="sw-avatar-file" type="file" accept="image/*" />
-            <p class="sw-upload-hint">PNG/JPG conseille, image nette de profil.</p>
+            <p class="sw-upload-hint">PNG or JPG recommended; clear face-forward photo works best.</p>
           </div>
-          <label class="sw-field">Prenom<input id="sw-firstName" class="sw-input" placeholder="Prenom" value="${user.firstName}" /></label>
-          <label class="sw-field">Nom<input id="sw-lastName" class="sw-input" placeholder="Nom" value="${user.lastName}" /></label>
+          <label class="sw-field">First name<input id="sw-firstName" class="sw-input" placeholder="First name" value="${user.firstName}" /></label>
+          <label class="sw-field">Last name<input id="sw-lastName" class="sw-input" placeholder="Last name" value="${user.lastName}" /></label>
           <label class="sw-field">Email<input id="sw-email" class="sw-input" placeholder="Email" value="${user.email}" /></label>
-          <label class="sw-field">Telephone<input id="sw-phone" class="sw-input" placeholder="Telephone" value="${user.phone ?? ''}" /></label>
-          <label class="sw-field">Statut<select id="sw-status" class="sw-input">
+          <label class="sw-field">Phone<input id="sw-phone" class="sw-input" placeholder="Phone" value="${user.phone ?? ''}" /></label>
+          <label class="sw-field">Status<select id="sw-status" class="sw-input">
             <option value="ACTIVE" ${user.status === 'ACTIVE' ? 'selected' : ''}>ACTIVE</option>
             <option value="INACTIVE" ${user.status === 'INACTIVE' ? 'selected' : ''}>INACTIVE</option>
           </select></label>
-          <label class="sw-field">Nationalite<input id="sw-nationality" class="sw-input" placeholder="Nationality" value="${user.nationality ?? ''}" /></label>
-          <label class="sw-field">Ville<select id="sw-city" class="sw-input">
-            <option value="">Choisir une ville (si tunisian)</option>
+          <label class="sw-field">Nationality<input id="sw-nationality" class="sw-input" placeholder="Nationality" value="${user.nationality ?? ''}" /></label>
+          <label class="sw-field">City<select id="sw-city" class="sw-input">
+            <option value="">Choose a city (if Tunisian)</option>
             ${cityOptions}
           </select></label>
         </div>
@@ -175,7 +175,7 @@ export class AdminUsersComponent {
               avatarPlaceholderEl?.classList.add('hidden');
             },
             error: (error: HttpErrorResponse) => {
-              Swal.showValidationMessage(extractApiErrorMessage(error, 'Upload image impossible.'));
+              Swal.showValidationMessage(extractApiErrorMessage(error, 'Image upload failed.'));
             },
           });
         });
@@ -191,15 +191,15 @@ export class AdminUsersComponent {
         const cityId = cityIdRaw ? Number(cityIdRaw) : null;
 
         if (!firstName || !lastName || !email) {
-          Swal.showValidationMessage('Prenom, nom et email sont obligatoires.');
+          Swal.showValidationMessage('First name, last name, and email are required.');
           return null;
         }
         if (phone && !this.isValidPhone(phone)) {
-          Swal.showValidationMessage('Numéro téléphone invalide (8 à 20 chiffres, espaces ou tirets autorisés).');
+          Swal.showValidationMessage('Invalid phone number (8–20 digits; spaces or hyphens allowed).');
           return null;
         }
         if (this.isTunisiaNationality(nationality) && !cityId) {
-          Swal.showValidationMessage('Selectionnez une ville si la nationalite est Tunisia.');
+          Swal.showValidationMessage('Select a city if nationality is Tunisia.');
           return null;
         }
 
@@ -224,10 +224,10 @@ export class AdminUsersComponent {
     this.adminUserService.updateUser(user.id, result.value).subscribe({
       next: (updatedUser) => {
         this.syncUpdatedUser(updatedUser);
-        void this.popup({ icon: 'success', title: 'Utilisateur modifie', timer: 1300, showConfirmButton: false });
+        void this.popup({ icon: 'success', title: 'User updated', timer: 1300, showConfirmButton: false });
       },
       error: (error: HttpErrorResponse) => {
-        void this.popup({ icon: 'error', title: 'Echec', text: extractApiErrorMessage(error, 'Mise a jour impossible.') });
+        void this.popup({ icon: 'error', title: 'Failed', text: extractApiErrorMessage(error, 'Update failed.') });
       },
       complete: () => this.isSaving.set(false),
     });
@@ -239,13 +239,13 @@ export class AdminUsersComponent {
     }
 
     const result = await this.popup({
-      title: `Demande artisan de ${user.username}`,
-      text: 'Accepter ou refuser cette demande ?',
+      title: `Artisan request from ${user.username}`,
+      text: 'Accept or reject this request?',
       showDenyButton: true,
       showCancelButton: true,
-      confirmButtonText: 'Accepter',
-      denyButtonText: 'Refuser',
-      cancelButtonText: 'Annuler',
+      confirmButtonText: 'Accept',
+      denyButtonText: 'Reject',
+      cancelButtonText: 'Cancel',
     });
 
     if (!result.isConfirmed && !result.isDenied) {
@@ -258,13 +258,13 @@ export class AdminUsersComponent {
         this.syncUpdatedUser(updatedUser);
         void this.popup({
           icon: 'success',
-          title: result.isConfirmed ? 'Demande acceptee' : 'Demande refusee',
+          title: result.isConfirmed ? 'Request accepted' : 'Request rejected',
           timer: 1200,
           showConfirmButton: false,
         });
       },
       error: (error: HttpErrorResponse) => {
-        void this.popup({ icon: 'error', title: 'Echec', text: extractApiErrorMessage(error, 'Action impossible.') });
+        void this.popup({ icon: 'error', title: 'Failed', text: extractApiErrorMessage(error, 'Action failed.') });
       },
       complete: () => this.isSaving.set(false),
     });
@@ -277,11 +277,11 @@ export class AdminUsersComponent {
 
     const result = await this.popup({
       icon: 'warning',
-      title: `Supprimer ${user.username} ?`,
-      text: 'Cette action est definitive.',
+      title: `Delete ${user.username}?`,
+      text: 'This action is permanent.',
       showCancelButton: true,
-      confirmButtonText: 'Supprimer',
-      cancelButtonText: 'Annuler',
+      confirmButtonText: 'Delete',
+      cancelButtonText: 'Cancel',
       confirmButtonColor: '#d33',
     });
     if (!result.isConfirmed) {
@@ -292,10 +292,10 @@ export class AdminUsersComponent {
     this.adminUserService.deleteUser(user.id).subscribe({
       next: () => {
         this.users.set(this.users().filter((item) => item.id !== user.id));
-        void this.popup({ icon: 'success', title: 'Utilisateur supprime', timer: 1200, showConfirmButton: false });
+        void this.popup({ icon: 'success', title: 'User deleted', timer: 1200, showConfirmButton: false });
       },
       error: (error: HttpErrorResponse) => {
-        void this.popup({ icon: 'error', title: 'Echec', text: extractApiErrorMessage(error, 'Suppression impossible.') });
+        void this.popup({ icon: 'error', title: 'Failed', text: extractApiErrorMessage(error, 'Could not delete.') });
       },
       complete: () => this.isSaving.set(false),
     });
@@ -311,22 +311,22 @@ export class AdminUsersComponent {
     }
 
     const result = await this.popup({
-      title: `Bannir ${user.username}`,
+      title: `Ban ${user.username}`,
       showCancelButton: true,
-      confirmButtonText: 'Bannir',
-      cancelButtonText: 'Annuler',
+      confirmButtonText: 'Ban',
+      cancelButtonText: 'Cancel',
       html: `
         <div class="ban-dialog">
           <div class="ban-head">
-            <strong>Action sensible</strong>
-            <span>Ce compte sera bloque immediatement et la trace sera enregistree dans les logs d'audit.</span>
+            <strong>Sensitive action</strong>
+            <span>This account will be blocked immediately and the action will be recorded in audit logs.</span>
           </div>
           <div class="ban-grid">
-            <label class="sw-field">Raison du ban
-              <textarea id="sw-ban-reason" class="sw-textarea" placeholder="Expliquez la raison du ban"></textarea>
+            <label class="sw-field">Ban reason
+              <textarea id="sw-ban-reason" class="sw-textarea" placeholder="Explain the reason for this ban"></textarea>
             </label>
-            <label class="sw-switch"><input type="checkbox" id="sw-ban-permanent" checked /> Ban permanent</label>
-            <label class="sw-field">Expiration (si temporaire)
+            <label class="sw-switch"><input type="checkbox" id="sw-ban-permanent" checked /> Permanent ban</label>
+            <label class="sw-field">Expiry (if temporary)
               <input id="sw-ban-expires" class="sw-input" type="datetime-local" />
             </label>
           </div>
@@ -351,7 +351,7 @@ export class AdminUsersComponent {
         const permanent = !!(document.getElementById('sw-ban-permanent') as HTMLInputElement | null)?.checked;
         const expiresRaw = (document.getElementById('sw-ban-expires') as HTMLInputElement | null)?.value ?? '';
         if (!reason) {
-          Swal.showValidationMessage('Ajoutez une raison pour ce ban.');
+          Swal.showValidationMessage('Add a reason for this ban.');
           return null;
         }
         if (!permanent && !expiresRaw) {
@@ -374,10 +374,10 @@ export class AdminUsersComponent {
     this.adminUserService.banUser(user.id, result.value).subscribe({
         next: (updatedUser) => {
           this.syncUpdatedUser(updatedUser);
-          void this.popup({ icon: 'success', title: 'Utilisateur banni', timer: 1200, showConfirmButton: false });
+          void this.popup({ icon: 'success', title: 'User banned', timer: 1200, showConfirmButton: false });
         },
         error: (error: HttpErrorResponse) => {
-          void this.popup({ icon: 'error', title: 'Echec', text: extractApiErrorMessage(error, 'Action de ban impossible.') });
+          void this.popup({ icon: 'error', title: 'Failed', text: extractApiErrorMessage(error, 'Could not ban user.') });
         },
         complete: () => this.isSaving.set(false),
       });
@@ -389,18 +389,18 @@ export class AdminUsersComponent {
     }
 
     const res = await this.popup({
-      title: `Debannir ${user.username} ?`,
+      title: `Unban ${user.username}?`,
       html: `
         <div class="ban-dialog">
           <div class="ban-head">
-            <strong>Confirmation de deban</strong>
-            <span>Le compte pourra se reconnecter immediatement apres confirmation.</span>
+            <strong>Confirm unban</strong>
+            <span>The account will be able to sign in again after you confirm.</span>
           </div>
         </div>
       `,
       showCancelButton: true,
-      confirmButtonText: 'Debannir',
-      cancelButtonText: 'Annuler',
+      confirmButtonText: 'Unban',
+      cancelButtonText: 'Cancel',
     });
     if (!res.isConfirmed) {
       return;
@@ -410,10 +410,10 @@ export class AdminUsersComponent {
     this.adminUserService.unbanUser(user.id).subscribe({
       next: (updatedUser) => {
         this.syncUpdatedUser(updatedUser);
-        void this.popup({ icon: 'success', title: 'Utilisateur debanni', timer: 1200, showConfirmButton: false });
+        void this.popup({ icon: 'success', title: 'User unbanned', timer: 1200, showConfirmButton: false });
       },
       error: (error: HttpErrorResponse) => {
-        void this.popup({ icon: 'error', title: 'Echec', text: extractApiErrorMessage(error, 'Action de deban impossible.') });
+        void this.popup({ icon: 'error', title: 'Failed', text: extractApiErrorMessage(error, 'Could not unban user.') });
       },
       complete: () => this.isSaving.set(false),
     });

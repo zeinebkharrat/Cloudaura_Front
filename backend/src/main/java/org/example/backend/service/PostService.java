@@ -5,7 +5,6 @@ import org.example.backend.model.User;
 import org.example.backend.repository.PostRepository;
 import org.example.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,13 +30,9 @@ public class PostService implements IPostService {
     JdbcTemplate jdbcTemplate;
 
     @Override
+    @Transactional(readOnly = true)
     public List<Post> retrievePosts() {
-        return postRepo.findAll(
-            Sort.by(
-                Sort.Order.desc("createdAt"),
-                Sort.Order.desc("postId")
-            )
-        );
+        return postRepo.findAllWithAuthorGraph();
     }
 
     @Override

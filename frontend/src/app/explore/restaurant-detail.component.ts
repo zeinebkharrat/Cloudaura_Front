@@ -183,8 +183,8 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
         if (err?.status === 401) {
           Swal.fire({
             icon: 'warning',
-            title: 'Connexion requise',
-            text: 'Veuillez vous connecter pour publier un commentaire.',
+            title: 'Sign in required',
+            text: 'Please sign in to post a comment.',
             confirmButtonColor: '#e63946',
           });
           return;
@@ -192,8 +192,8 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
 
         Swal.fire({
           icon: 'error',
-          title: 'Erreur',
-          text: err?.error?.message || 'Impossible d’envoyer votre commentaire.',
+          title: 'Error',
+          text: err?.error?.message || 'Could not send your comment.',
           confirmButtonColor: '#e63946',
         });
       },

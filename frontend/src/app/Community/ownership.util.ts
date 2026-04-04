@@ -1,4 +1,4 @@
-import { AuthService } from '../auth.service';
+import { AuthService } from '../core/auth.service';
 import { Post, Comment, UserRef } from './community.types';
 
 /**

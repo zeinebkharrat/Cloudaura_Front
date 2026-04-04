@@ -1,0 +1,102 @@
+# Smart Travel System - Full Specification
+
+## Objective
+
+Build an intelligent travel booking system integrating:
+
+* Geolocation
+* Dynamic routing
+* Multi-transport logic
+* QR-based ticketing
+* AI recommendation
+
+---
+
+## Features
+
+### 1. Geolocation
+
+* Detect user location (lat/lng)
+* Convert to city
+* Autofill departure
+
+### 2. Routing
+
+* Map integration
+* Real-time route rendering
+
+### 3. Transport Logic
+
+* Multi-mode support
+* Dynamic recalculation
+
+### 4. Booking
+
+* Unified reservation system
+
+### 5. QR Code
+
+* Unique ticket per booking
+
+### 6. PDF Export
+
+* Downloadable ticket
+
+### 7. Notifications
+
+* Reminder system
+
+### 8. Tracking
+
+* Simulated real-time movement
+
+### 9. AI Recommendation
+
+* Suggest optimal transport
+
+---
+
+## Architecture
+
+### Frontend
+
+* Angular
+* Map API integration
+
+### Backend
+
+* Spring Boot
+* REST APIs
+
+### Database
+
+* MySQL
+
+---
+
+## Key APIs
+
+* GET /location
+* POST /route
+* POST /booking
+* GET /qr/{id}
+* GET /ticket/{id}
+
+---
+
+## Constraints
+
+* Scalable
+* Modular
+* Secure
+
+---
+
+## Expected Output
+
+* Functional UI
+* Smart routing
+* Downloadable ticket
+* Intelligent suggestions
+
+---

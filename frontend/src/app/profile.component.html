@@ -3,8 +3,8 @@
   <div class="auth-bg-orb auth-bg-orb-right"></div>
 
   <article class="profile-card glass-panel">
-    <h1>Mon profil</h1>
-    <p class="subtitle">Mettez a jour vos informations personnelles et votre mot de passe.</p>
+    <h1>My profile</h1>
+    <p class="subtitle">Update your personal information and password.</p>
 
     @if (actionError()) {
       <div class="msg error">{{ actionError() }}</div>
@@ -14,18 +14,18 @@
     }
 
     <section class="avatar-card">
-      <h2>Photo de profil</h2>
+      <h2>Profile photo</h2>
       <div class="avatar-row">
         @if (profileForm.controls.profileImageUrl.value) {
-          <img [src]="profileForm.controls.profileImageUrl.value" alt="Photo de profil" class="avatar-preview" />
+          <img [src]="profileForm.controls.profileImageUrl.value" alt="Profile photo" class="avatar-preview" />
         } @else {
-          <div class="avatar-placeholder">Aucun visuel</div>
+          <div class="avatar-placeholder">No image</div>
         }
 
         <div class="upload-row">
-          <label class="upload-btn" for="profile-upload">{{ uploadBusy() ? 'Upload...' : 'Uploader une photo' }}</label>
+          <label class="upload-btn" for="profile-upload">{{ uploadBusy() ? 'Upload...' : 'Upload a photo' }}</label>
           <input id="profile-upload" type="file" accept="image/*" (change)="uploadImage($event)" [disabled]="uploadBusy()" />
-          <span class="muted">{{ uploadBusy() ? 'Upload...' : 'Ajoutez une image claire pour votre profil.' }}</span>
+          <span class="muted">{{ uploadBusy() ? 'Upload...' : 'Add a clear image for your profile.' }}</span>
         </div>
       </div>
     </section>
@@ -33,17 +33,17 @@
     <form [formGroup]="profileForm" (ngSubmit)="saveProfile()" class="profile-form">
       <div class="grid-two">
         <label>
-          Prenom
+          First name
           <input type="text" formControlName="firstName" [class.input-invalid]="controlInvalid('firstName')" />
           @if (controlInvalid('firstName')) {
-            <small class="field-error">Le prénom est obligatoire (min. 2 caractères).</small>
+            <small class="field-error">First name is required (min. 2 characters).</small>
           }
         </label>
         <label>
-          Nom
+          Last name
           <input type="text" formControlName="lastName" [class.input-invalid]="controlInvalid('lastName')" />
           @if (controlInvalid('lastName')) {
-            <small class="field-error">Le nom est obligatoire (min. 2 caractères).</small>
+            <small class="field-error">Last name is required (min. 2 characters).</small>
           }
         </label>
       </div>
@@ -53,11 +53,11 @@
           Email
           <input type="email" formControlName="email" [class.input-invalid]="controlInvalid('email')" />
           @if (controlInvalid('email')) {
-            <small class="field-error">Veuillez saisir un email valide.</small>
+            <small class="field-error">Please enter a valid email address.</small>
           }
         </label>
         <label>
-          Telephone
+          Phone
           <input type="text" formControlName="phone" [class.input-invalid]="controlInvalid('phone')" />
           @if (controlInvalid('phone')) {
             <small class="field-error">{{ phoneErrorMessage() }}</small>
@@ -67,9 +67,9 @@
 
       <div class="grid-two">
         <label>
-          Nationalite
+          Nationality
           <select formControlName="nationality">
-            <option value="">Choisir une nationalite</option>
+            <option value="">Choose a nationality</option>
             @for (nationality of nationalities(); track nationality) {
               <option [value]="nationality">{{ nationality }}</option>
             }
@@ -77,15 +77,15 @@
         </label>
         @if (showCityField()) {
           <label>
-            Ville
+            City
             <select formControlName="cityId" [class.input-invalid]="cityErrorVisible()">
-              <option [ngValue]="null">Selectionnez une ville</option>
+              <option [ngValue]="null">Select a city</option>
               @for (city of cities(); track city.id) {
                 <option [ngValue]="city.id">{{ city.name }} ({{ city.region }})</option>
               }
             </select>
             @if (cityErrorVisible()) {
-              <small class="field-error">La ville est obligatoire pour la nationalité tunisienne.</small>
+              <small class="field-error">City is required for Tunisian nationality.</small>
             }
           </label>
         }
@@ -93,17 +93,17 @@
 
       <div class="profile-actions">
         <button class="btn-primary" type="submit" [disabled]="isSavingProfile()">
-          {{ isSavingProfile() ? 'Sauvegarde...' : 'Sauvegarder le profil' }}
+          {{ isSavingProfile() ? 'Saving…' : 'Save profile' }}
         </button>
         <button class="btn-outline profile-password-btn" type="button" (click)="openChangePasswordPopup()" [disabled]="isChangingPassword()">
-          {{ isChangingPassword() ? 'Mise a jour...' : 'Changer mot de passe' }}
+          {{ isChangingPassword() ? 'Updating…' : 'Change password' }}
         </button>
       </div>
     </form>
 
     <section class="password-form compact-note">
-      <h2>Securite</h2>
-      <p class="muted">Le changement de mot de passe se fait via un popup securise pour eviter l'affichage permanent des champs sensibles.</p>
+      <h2>Security</h2>
+      <p class="muted">Password changes use a secure popup so sensitive fields are not always visible on the page.</p>
     </section>
   </article>
 </section>

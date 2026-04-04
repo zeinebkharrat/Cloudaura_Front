@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal, ElementRef, QueryList, ViewChildren } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Crossword, LudificationService } from '../core/ludification.service';
-import { AuthService } from '../auth.service';
+import { AuthService } from '../core/auth.service';
 
 type CrosswordWord = {
   word?: string;
@@ -78,7 +78,7 @@ export class CrosswordPlayerComponent implements OnInit {
 
     const id = Number(this.route.snapshot.paramMap.get('id'));
     if (!id) {
-      this.loadError.set('Identifiant mots croisés invalide.');
+      this.loadError.set('Invalid crossword id.');
       this.isLoading.set(false);
       return;
     }
@@ -243,17 +243,17 @@ export class CrosswordPlayerComponent implements OnInit {
     }
 
     if (total === 0) {
-      this.validationMessage.set({ text: 'Aucune case jouable détectée.', success: false });
+      this.validationMessage.set({ text: 'No playable cells detected.', success: false });
       return;
     }
 
     if (correct === total) {
-      this.validationMessage.set({ text: 'Toutes les réponses sont correctes ! Félicitations 🎉', success: true });
+      this.validationMessage.set({ text: 'All answers correct! Well done 🎉', success: true });
       this.recordRoadmapProgress(correct, total);
     } else if (isComplete) {
       this.validationMessage.set({ text: `Certaines lettres sont incorrectes (${correct}/${total}).`, success: false });
     } else {
-      this.validationMessage.set({ text: `Progression : ${correct}/${total} lettres correctes. Continuez !`, success: false });
+      this.validationMessage.set({ text: `Progress: ${correct}/${total} letters correct. Keep going!`, success: false });
     }
   }
 
@@ -272,7 +272,7 @@ export class CrosswordPlayerComponent implements OnInit {
 
   private buildCrosswordBoard(grid: ParsedGrid): void {
     if (grid.rows <= 0 || grid.cols <= 0) {
-      this.loadError.set('Grille invalide.');
+      this.loadError.set('Invalid grid.');
       this.gridCells.set([]);
       return;
     }

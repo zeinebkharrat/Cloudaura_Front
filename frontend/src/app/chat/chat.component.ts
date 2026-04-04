@@ -14,7 +14,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subject, Subscription, debounceTime, distinctUntilChanged } from 'rxjs';
 import { ChatService } from './chat.service';
-import { AuthService } from '../auth.service';
+import { AuthService } from '../core/auth.service';
 import {
   ConversationResponse,
   MessageResponse,
@@ -303,16 +303,16 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
 
-    if (minutes < 1) return 'à l\'instant';
-    if (minutes < 60) return `il y a ${minutes}m`;
-    if (hours < 24) return `il y a ${hours}h`;
-    if (days < 7) return `il y a ${days}j`;
-    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    if (minutes < 1) return 'just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 7) return `${days}d ago`;
+    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
   }
 
   formatMessageTime(dateStr: string): string {
     const date = new Date(dateStr);
-    return date.toLocaleTimeString('fr-FR', {
+    return date.toLocaleTimeString('en-GB', {
       hour: '2-digit',
       minute: '2-digit',
     });
@@ -321,8 +321,8 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   getTypingText(): string {
     const users = Array.from(this.typingUsers().values());
     if (users.length === 0) return '';
-    if (users.length === 1) return `${users[0].username} est en train d'écrire...`;
-    return `${users.length} personnes écrivent...`;
+    if (users.length === 1) return `${users[0].username} is typing…`;
+    return `${users.length} people are typing…`;
   }
 
   backToList(): void {

@@ -1,12 +1,16 @@
 package org.example.backend.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
-
 import java.util.Date;
+import java.util.HashSet;
 import java.util.Set;
 
 @Entity
 @Table(name = "users")
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -21,11 +25,12 @@ public class User {
     @Column(unique = true)
     private String email;
 
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String passwordHash;
     private String phone;
     private Integer points;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "level_id")
     private Level level;
 
@@ -34,21 +39,33 @@ public class User {
     private Boolean artisanRequestPending;
     private Date artisanRequestedAt;
     private String authProvider;
+    @Column(columnDefinition = "TEXT")
     private String profileImageUrl;
     private String nationality;
     private Boolean emailVerified;
     private Integer failedLoginAttempts;
     private Date lockedUntil;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "city_id")
     private City city;
 
     @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "user_roles",
+    @JoinTable(
+            name = "user_roles",
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id"))
-    private Set<Role> roles;
+    private Set<Role> roles = new HashSet<>();
+
+    @JsonIgnore
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "user_favorites",
+            joinColumns = @JoinColumn(name = "user_id"),
+            inverseJoinColumns = @JoinColumn(name = "product_id"))
+    private Set<Product> favorites = new HashSet<>();
+
+    public User() {}
 
     public Integer getUserId() {
         return userId;
@@ -114,6 +131,7 @@ public class User {
         this.points = points;
     }
 
+    @JsonIgnore
     public Level getLevel() {
         return level;
     }
@@ -202,6 +220,7 @@ public class User {
         this.lockedUntil = lockedUntil;
     }
 
+    @JsonIgnore
     public City getCity() {
         return city;
     }
@@ -216,5 +235,22 @@ public class User {
 
     public void setRoles(Set<Role> roles) {
         this.roles = roles;
+    }
+
+    public Set<Product> getFavorites() {
+        return favorites;
+    }
+
+    public void setFavorites(Set<Product> favorites) {
+        this.favorites = favorites;
+    }
+
+    /** Alias for serializers / legacy code expecting {@code id}. */
+    public Integer getId() {
+        return userId;
+    }
+
+    public void setId(Integer id) {
+        this.userId = id;
     }
 }

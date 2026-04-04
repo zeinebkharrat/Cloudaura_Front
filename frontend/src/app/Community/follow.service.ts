@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { API_BASE_URL, API_FALLBACK_ORIGIN } from '../core/api-url';
+import { API_BASE_URL } from '../core/api-url';
 
 export interface ToggleFollowResponse {
   following: boolean;
@@ -20,7 +20,8 @@ export interface FollowUserSummary {
 @Injectable({ providedIn: 'root' })
 export class FollowService {
   private readonly http = inject(HttpClient);
-  private readonly base = API_BASE_URL || API_FALLBACK_ORIGIN;
+  /** Must stay same-origin (empty) so `ng serve` proxies `/follow` and the auth interceptor attaches JWT. */
+  private readonly base = API_BASE_URL.length > 0 ? API_BASE_URL : '';
 
   toggleFollow(targetUserId: number): Observable<ToggleFollowResponse> {
     return this.http.post<ToggleFollowResponse>(`${this.base}/follow/toggle/${targetUserId}`, {});

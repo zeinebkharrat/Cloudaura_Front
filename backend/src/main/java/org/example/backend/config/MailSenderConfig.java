@@ -3,6 +3,7 @@ package org.example.backend.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
 
@@ -14,7 +15,9 @@ import java.util.Properties;
 @Configuration
 public class MailSenderConfig {
 
+    /** Primary: user module (auth, verification, password reset). Honors {@code mailer.dsn} when set. */
     @Bean
+    @Primary
     public JavaMailSender javaMailSender(
             @Value("${mailer.dsn:${MAILER_DSN:}}") String mailerDsn,
             @Value("${spring.mail.host:smtp.gmail.com}") String defaultHost,
@@ -37,6 +40,28 @@ public class MailSenderConfig {
             sender.setPassword(defaultPassword);
         }
 
+        applySmtpProps(sender);
+        return sender;
+    }
+
+    /** Shop / artisan emails only — always uses {@code app.shop.mail.*} (ignores global {@code mailer.dsn}). */
+    @Bean(name = "shopMailSender")
+    public JavaMailSender shopMailSender(
+            @Value("${app.shop.mail.host:smtp.gmail.com}") String host,
+            @Value("${app.shop.mail.port:587}") int port,
+            @Value("${app.shop.mail.username:}") String username,
+            @Value("${app.shop.mail.password:}") String password) {
+
+        JavaMailSenderImpl sender = new JavaMailSenderImpl();
+        sender.setHost(host);
+        sender.setPort(port);
+        sender.setUsername(username);
+        sender.setPassword(password);
+        applySmtpProps(sender);
+        return sender;
+    }
+
+    private static void applySmtpProps(JavaMailSenderImpl sender) {
         Properties props = sender.getJavaMailProperties();
         props.put("mail.transport.protocol", "smtp");
         props.put("mail.smtp.auth", "true");
@@ -46,7 +71,6 @@ public class MailSenderConfig {
         props.put("mail.smtp.connectiontimeout", "8000");
         props.put("mail.smtp.timeout", "8000");
         props.put("mail.smtp.writetimeout", "8000");
-        return sender;
     }
 
     private MailDsnConfig parseMailerDsn(String dsn) {

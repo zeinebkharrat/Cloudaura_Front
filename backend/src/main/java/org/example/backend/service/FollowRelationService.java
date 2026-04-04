@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 public class FollowRelationService {
@@ -26,7 +27,10 @@ public class FollowRelationService {
 
     @Transactional
     public Map<String, Object> toggleFollow(Integer followerId, Integer followedId) {
-        if (followerId.equals(followedId)) {
+        if (followerId == null || followedId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid user id");
+        }
+        if (Objects.equals(followerId, followedId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You cannot follow yourself");
         }
 

@@ -6,6 +6,7 @@ import java.util.List;
 import org.example.backend.dto.shop.CheckoutOrderDto;
 import org.example.backend.dto.shop.MyOrderSummaryDto;
 import org.example.backend.dto.shop.ShopCartDto;
+import org.example.backend.model.OrderStatus;
 import org.example.backend.service.ShopService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -62,8 +64,11 @@ public class ShopController {
     }
 
     @PostMapping("/checkout")
-    public ResponseEntity<CheckoutOrderDto> checkout(Authentication authentication) {
-        return ResponseEntity.ok(shopService.checkout(requireUsername(authentication)));
+    public ResponseEntity<CheckoutOrderDto> checkout(
+        Authentication authentication,
+        @RequestParam(required = false) String paymentMethod
+    ) {
+        return ResponseEntity.ok(shopService.checkout(requireUsername(authentication), paymentMethod));
     }
 
     @GetMapping("/orders")
@@ -82,6 +87,16 @@ public class ShopController {
     @GetMapping("/artisan-orders")
     public ResponseEntity<List<MyOrderSummaryDto>> getArtisanOrders(Authentication authentication) {
         return ResponseEntity.ok(shopService.listArtisanOrders(requireUsername(authentication)));
+    }
+
+    @PutMapping("/order-items/{orderItemId}/status")
+    public ResponseEntity<Void> updateOrderItemStatus(
+        Authentication authentication,
+        @PathVariable Integer orderItemId,
+        @RequestParam OrderStatus status
+    ) {
+        shopService.updateOrderItemStatus(orderItemId, status, requireUsername(authentication));
+        return ResponseEntity.ok().build();
     }
 
     /**

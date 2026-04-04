@@ -29,8 +29,9 @@ public class CommentService implements ICommentService {
     JdbcTemplate jdbcTemplate;
 
     @Override
+    @Transactional(readOnly = true)
     public List<Comment> retrieveAllComments() {
-        return commentRepo.findAll();
+        return commentRepo.findAllWithGraph();
     }
 
     @Override
@@ -103,10 +104,9 @@ public class CommentService implements ICommentService {
     
     // New JWT-authenticated method
     @Override
+    @Transactional(readOnly = true)
     public List<Comment> retrieveCommentsByPost(Integer postId) {
-        Post post = postRepo.findById(postId)
-                .orElseThrow(() -> new RuntimeException("Post not found"));
-        return commentRepo.findByPost(post);
+        return commentRepo.findByPostIdWithGraph(postId);
     }
 
     private void refreshPostCommentsCount(Integer postId) {

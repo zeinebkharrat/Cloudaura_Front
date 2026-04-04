@@ -1,17 +1,17 @@
 <div class="ludo-page">
   <div class="ludo-card">
     <header class="ludo-header">
-      <button class="btn ghost" (click)="back()">⟵ Retour</button>
+      <button class="btn ghost" (click)="back()">⟵ Back</button>
       <h2>Tunisian Ludo Tour</h2>
-      <button class="btn" (click)="reset()">Réinitialiser</button>
+      <button class="btn" (click)="reset()">Reset</button>
     </header>
 
     <div class="hud">
       <div class="player-info">
-        <span>Tour: <strong [style.color]="players[turn()].color">{{ players[turn()].name }}</strong></span>
+        <span>Turn: <strong [style.color]="players[turn()].color">{{ players[turn()].name }}</strong></span>
       </div>
       <div class="dice-info">
-        <span>Dé: <strong>{{ dice() }}</strong></span>
+        <span>Dice: <strong>{{ dice() }}</strong></span>
       </div>
     </div>
 
@@ -51,11 +51,11 @@
     <div class="controls">
       @if (!finished()) {
         <button class="btn roll" [disabled]="turn() !== 0 || rolling() || canMove()" (click)="$event.stopPropagation(); roll()">
-          Lancer le dé
+          Roll dice
         </button>
       } @else {
         <div class="win-banner">
-          <p class="win">🏆 {{ finished() }} a gagné le Grand Tour !</p>
+          <p class="win">🏆 {{ finished() }} won the Grand Tour!</p>
           <button class="btn" (click)="reset()">Rejouer</button>
         </div>
       }

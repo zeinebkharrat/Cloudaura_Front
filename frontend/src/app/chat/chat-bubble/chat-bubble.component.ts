@@ -13,7 +13,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { ChatService } from '../chat.service';
-import { AuthService } from '../../auth.service';
+import { AuthService } from '../../core/auth.service';
 import { ConversationResponse, MessageResponse, TypingEvent } from '../chat.types';
 import { Router } from '@angular/router';
 

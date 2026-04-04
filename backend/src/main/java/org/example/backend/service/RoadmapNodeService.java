@@ -5,6 +5,7 @@ import org.example.backend.model.RoadmapNode;
 import org.example.backend.repository.CrosswordRepository;
 import org.example.backend.repository.QuizRepository;
 import org.example.backend.repository.RoadmapNodeRepository;
+import org.example.backend.repository.UserRoadmapCompletionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,14 +17,17 @@ public class RoadmapNodeService {
     private final RoadmapNodeRepository roadRepo;
     private final QuizRepository quizRepo;
     private final CrosswordRepository crossRepo;
+    private final UserRoadmapCompletionRepository roadmapCompletionRepo;
 
     public RoadmapNodeService(
             RoadmapNodeRepository roadRepo,
             QuizRepository quizRepo,
-            CrosswordRepository crossRepo) {
+            CrosswordRepository crossRepo,
+            UserRoadmapCompletionRepository roadmapCompletionRepo) {
         this.roadRepo = roadRepo;
         this.quizRepo = quizRepo;
         this.crossRepo = crossRepo;
+        this.roadmapCompletionRepo = roadmapCompletionRepo;
     }
 
     public List<RoadmapNode> findAllOrdered() {
@@ -45,10 +49,13 @@ public class RoadmapNodeService {
         return roadRepo.save(r);
     }
 
+    @Transactional
     public boolean delete(Integer id) {
         if (!roadRepo.existsById(id)) {
             return false;
         }
+        // FK from user_roadmap_completions.node_id — must remove completions first
+        roadmapCompletionRepo.deleteAllByRoadmapNode_NodeId(id);
         roadRepo.deleteById(id);
         return true;
     }

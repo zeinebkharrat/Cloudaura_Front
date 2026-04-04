@@ -106,6 +106,73 @@
   right: -10%;
 }
 
+/* Hero video modal */
+.hero-video-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(5, 8, 14, 0.82);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: hero-video-fade-in 0.25s ease-out;
+}
+
+@keyframes hero-video-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.hero-video-dialog {
+  position: relative;
+  width: min(960px, 100%);
+  max-height: min(85vh, 100%);
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  background: var(--glass-bg, rgba(15, 23, 42, 0.94));
+}
+
+.hero-video-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  color: #e2e8f0;
+  background: rgba(0, 0, 0, 0.45);
+  transition: background 0.2s, transform 0.15s;
+}
+
+.hero-video-close:hover {
+  background: rgba(232, 0, 45, 0.55);
+  transform: scale(1.05);
+}
+
+.hero-video-player {
+  display: block;
+  width: 100%;
+  max-height: min(78vh, 720px);
+  vertical-align: middle;
+  background: #000;
+}
+
 /* Bandeau manifeste (touches artistiques) */
 .home-manifesto {
   position: relative;
