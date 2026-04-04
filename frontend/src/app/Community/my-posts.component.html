@@ -56,9 +56,6 @@
               <span class="post-time">{{ formatDate(post.createdAt) }}</span>
             </div>
           </div>
-          <div class="post-badge" *ngIf="post.visibility === 'private'">
-            <span><i class="pi pi-lock badge-pi" aria-hidden="true"></i> Private</span>
-          </div>
         </header>
 
         <!-- Normal View -->
@@ -66,7 +63,7 @@
           <div class="post-body">
             <p class="post-text">{{ post.content }}</p>
             <div class="post-location" *ngIf="post.location">
-              <img src="icones/city.png" alt="" class="location-icon-img" width="16" height="16" />
+              <img src="icones/location-pin.svg" alt="" class="location-icon-img" width="16" height="16" />
               <span>{{ post.location }}</span>
             </div>
           </div>
@@ -135,7 +132,7 @@
 
             <div class="edit-form__row">
               <label class="field-label">
-                <span><img src="icones/city.png" alt="" class="field-ico" width="14" height="14" /> Place</span>
+                <span><img src="icones/location-pin.svg" alt="" class="field-ico" width="14" height="14" /> Place</span>
                 <input
                   type="text"
                   [value]="editPostLocation()"

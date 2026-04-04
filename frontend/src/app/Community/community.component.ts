@@ -929,11 +929,45 @@ export class CommunityComponent {
       this.router.navigate(['/signin']);
       return;
     }
+
+    const dialog = await Swal.fire({
+      title: 'Add a caption to your repost',
+      input: 'textarea',
+      inputPlaceholder: 'Write your own caption (optional)',
+      inputAttributes: {
+        'aria-label': 'Repost caption',
+      },
+      inputValue: '',
+      showCancelButton: true,
+      confirmButtonText: 'Repost',
+      cancelButtonText: 'Cancel',
+      ...this.swalTheme(),
+    });
+
+    if (!dialog.isConfirmed) {
+      return;
+    }
+
+    const caption = typeof dialog.value === 'string' ? dialog.value.trim() : '';
+
     try {
-      await firstValueFrom(this.postService.repost(postId));
+      await firstValueFrom(this.postService.repost(postId, caption));
       this.loadFeed();
+      await Swal.fire({
+        icon: 'success',
+        title: 'Reposted',
+        timer: 1200,
+        showConfirmButton: false,
+        ...this.swalTheme(),
+      });
     } catch (error) {
       console.error('Error reposting:', error);
+      await Swal.fire({
+        icon: 'error',
+        title: 'Could not repost',
+        text: 'Please try again.',
+        ...this.swalTheme(),
+      });
     }
   }
 

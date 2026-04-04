@@ -32,5 +32,5 @@ build/
 ### VS Code ###
 .vscode/
 
-# Local backend secrets/config
+# Local backend config (contains environment-specific values)
 src/main/resources/application.properties

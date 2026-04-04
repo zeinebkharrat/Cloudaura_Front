@@ -24,7 +24,7 @@
         </label>
 
         <label class="composer-chip location-chip">
-          <img src="icones/city.png" alt="" class="composer-loc-icon" width="18" height="18" />
+          <img src="icones/location-pin.svg" alt="" class="composer-loc-icon" width="18" height="18" />
           <select
             class="composer-location-select"
             [value]="newPostLocation()"
@@ -164,7 +164,7 @@
                 <div class="author-info">
                   <button type="button" class="author-name author-link" (click)="goToUserProfile(post.author?.userId)">{{ displayName(post.author) }}</button>
                   <span class="post-time">{{ formatDate(post.createdAt) }}</span>
-                  <span class="post-location-inline" *ngIf="post.location"><img src="icones/city.png" alt="" class="post-loc-ico" width="14" height="14" /> {{ post.location }}</span>
+                  <span class="post-location-inline" *ngIf="post.location"><img src="icones/location-pin.svg" alt="" class="post-loc-ico" width="14" height="14" /> {{ post.location }}</span>
                 </div>
                 <button
                   type="button"
@@ -281,12 +281,6 @@
 
                 <p class="post-caption">{{ post.content }}</p>
 
-                <div class="post-meta-row" *ngIf="post.visibility">
-                  <div class="post-visibility" *ngIf="post.visibility">
-                    <ng-container *ngIf="post.visibility === 'private'"><i class="pi pi-lock vis-ico" aria-hidden="true"></i> Private</ng-container>
-                    <ng-container *ngIf="post.visibility !== 'private'"><i class="pi pi-globe vis-ico" aria-hidden="true"></i> Public</ng-container>
-                  </div>
-                </div>
               </ng-container>
 
               <ng-template #editPostForm>
