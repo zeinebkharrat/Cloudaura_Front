@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { ShopService, ShopCart, ShopCartLine, CheckoutOrder, CheckoutBuyer } from '../core/shop.service';
 
 @Component({
@@ -12,6 +12,7 @@ import { ShopService, ShopCart, ShopCartLine, CheckoutOrder, CheckoutBuyer } fro
 })
 export class CartPageComponent implements OnInit {
   private readonly shop = inject(ShopService);
+  private readonly router = inject(Router);
 
   readonly cart = signal<ShopCart | null>(null);
   readonly loading = signal(true);
@@ -20,6 +21,29 @@ export class CartPageComponent implements OnInit {
   readonly orderDone = signal<CheckoutOrder | null>(null);
   /** Ligne en cours de mise à jour quantité (cartItemId). */
   readonly qtyUpdatingId = signal<number | null>(null);
+
+  readonly paymentMethod = signal<'CARD' | 'COD'>('CARD');
+
+  /** Remise automatique 5 % si le sous-total dépasse 200 TND (aligné sur le backend) */
+  hasDiscount(): boolean {
+    if (!this.cart()) return false;
+    return Number(this.cart()!.total) > 200;
+  }
+
+  /** Calculate discount amount */
+  discountAmount(): number {
+    if (!this.hasDiscount()) return 0;
+    return Math.round(this.cart()!.total * 0.05 * 100) / 100; // Round to 2 decimal places
+  }
+
+  /** Calculate final total with discount and delivery */
+  finalTotal(): number {
+    if (!this.cart()) return 0;
+    const subtotal = this.cart()!.total;
+    const discount = this.discountAmount();
+    const delivery = 7;
+    return Math.round((subtotal - discount + delivery) * 100) / 100;
+  }
 
   ngOnInit(): void {
     this.load();
@@ -34,7 +58,7 @@ export class CartPageComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
-        this.error.set('Impossible de charger le panier.');
+        this.error.set('Could not load the cart.');
         this.loading.set(false);
       },
     });
@@ -45,7 +69,7 @@ export class CartPageComponent implements OnInit {
       next: (c) => {
         this.cart.set(c);
       },
-      error: () => this.error.set('Suppression impossible.'),
+      error: () => this.error.set('Could not remove the item.'),
     });
   }
 
@@ -61,7 +85,7 @@ export class CartPageComponent implements OnInit {
     const next = line.quantity + delta;
     const max = this.maxStock(line);
     if (delta > 0 && next > max) {
-      this.error.set('Stock maximum atteint pour ce produit.');
+      this.error.set('Maximum stock reached for this product.');
       return;
     }
     if (next < 0) {
@@ -76,29 +100,35 @@ export class CartPageComponent implements OnInit {
       },
       error: () => {
         this.qtyUpdatingId.set(null);
-        this.error.set('Impossible de modifier la quantité.');
+        this.error.set('Could not update quantity.');
       },
     });
   }
 
   clearReceipt(): void {
     this.orderDone.set(null);
+    this.router.navigate(['/mes-commandes']);
   }
 
   checkout(): void {
     this.checkoutLoading.set(true);
     this.error.set(null);
-    this.shop.checkout().subscribe({
+    this.shop.checkout(this.paymentMethod()).subscribe({
       next: (o) => {
-        this.orderDone.set(o);
         this.cart.set({ cartId: null, items: [], total: 0 });
-        this.checkoutLoading.set(false);
         this.shop.refreshCartCount();
+        
+        if (o.paymentUrl) {
+          window.location.href = o.paymentUrl;
+        } else {
+          this.orderDone.set(o);
+          this.checkoutLoading.set(false);
+        }
       },
       error: (e) => {
         this.checkoutLoading.set(false);
-        const msg = e?.error?.message ?? e?.message ?? 'Commande impossible (stock ou panier vide).';
-        this.error.set(typeof msg === 'string' ? msg : 'Commande impossible.');
+        const msg = e?.error?.message ?? e?.message ?? 'Checkout failed (stock or empty cart).';
+        this.error.set(typeof msg === 'string' ? msg : 'Checkout failed.');
       },
     });
   }
@@ -111,18 +141,18 @@ export class CartPageComponent implements OnInit {
 
   formatPrice(p: number | null | undefined): string {
     if (p == null || Number.isNaN(Number(p))) return '—';
-    return new Intl.NumberFormat('fr-TN', { style: 'currency', currency: 'TND', minimumFractionDigits: 2 }).format(
+    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'TND', minimumFractionDigits: 2 }).format(
       Number(p)
     );
   }
 
   orderStatusLabel(status: string | null | undefined): string {
     const s = (status ?? '').toUpperCase();
-    if (s === 'PENDING') return 'En attente de traitement';
-    if (s === 'CONFIRMED' || s === 'CONFIRMÉE') return 'Confirmée';
-    if (s === 'SHIPPED') return 'Expédiée';
-    if (s === 'DELIVERED') return 'Livrée';
-    if (s === 'CANCELLED') return 'Annulée';
+    if (s === 'PENDING') return 'Pending';
+    if (s === 'CONFIRMED' || s === 'CONFIRMÉE') return 'Confirmed';
+    if (s === 'SHIPPED') return 'Shipped';
+    if (s === 'DELIVERED') return 'Delivered';
+    if (s === 'CANCELLED') return 'Cancelled';
     return status ?? '—';
   }
 
@@ -130,7 +160,7 @@ export class CartPageComponent implements OnInit {
     if (!iso) return '—';
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
-    return new Intl.DateTimeFormat('fr-FR', {
+    return new Intl.DateTimeFormat('en-GB', {
       dateStyle: 'long',
       timeStyle: 'short',
     }).format(d);

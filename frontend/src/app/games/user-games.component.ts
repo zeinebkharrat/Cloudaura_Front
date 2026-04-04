@@ -2,7 +2,7 @@ import { Component, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { LudificationService, PuzzleImage, RoadmapNode, LudoCard } from '../core/ludification.service';
-import { AuthService } from '../auth.service';
+import { AuthService } from '../core/auth.service';
 
 @Component({
   selector: 'app-user-games',
@@ -153,7 +153,7 @@ export class UserGamesComponent implements OnInit {
 
   playNode(node: RoadmapNode, index: number) {
     if (!this.isUnlocked(index)) {
-      this.roadmapNotice.set("Cette étape est verrouillée. Terminez d'abord l'étape précédente.");
+      this.roadmapNotice.set('This step is locked. Complete the previous step first.');
       return;
     }
 
@@ -194,17 +194,17 @@ export class UserGamesComponent implements OnInit {
       const fallbackPuzzleId = firstRoadmapPlayable.puzzleId;
 
       if (fallbackQuizId) {
-        this.roadmapNotice.set("Cette étape n'est pas encore configurée. Redirection vers une étape jouable.");
+        this.roadmapNotice.set('This step is not set up yet. Redirecting to a playable step.');
         this.router.navigate(['/games/quiz', fallbackQuizId], { queryParams: rq });
         return;
       }
       if (fallbackCrosswordId) {
-        this.roadmapNotice.set("Cette étape n'est pas encore configurée. Redirection vers une étape jouable.");
+        this.roadmapNotice.set('This step is not set up yet. Redirecting to a playable step.');
         this.router.navigate(['/games/crossword', fallbackCrosswordId], { queryParams: rq });
         return;
       }
       if (fallbackPuzzleId) {
-        this.roadmapNotice.set("Cette étape n'est pas encore configurée. Redirection vers une étape jouable.");
+        this.roadmapNotice.set('This step is not set up yet. Redirecting to a playable step.');
         this.router.navigate(['/games/puzzle', fallbackPuzzleId], { queryParams: rq });
         return;
       }
@@ -219,19 +219,19 @@ export class UserGamesComponent implements OnInit {
 
     const firstCrossword = this.crosswords()[0]?.crosswordId;
     if (firstCrossword) {
-      this.roadmapNotice.set("Aucune liaison directe sur cette étape. Ouverture d'un mots croises disponible.");
+      this.roadmapNotice.set('No direct link on this step. Opening an available crossword.');
       this.router.navigate(['/games/crossword', firstCrossword]);
       return;
     }
 
     const firstPuzzle = this.puzzles()[0]?.puzzleId;
     if (firstPuzzle) {
-      this.roadmapNotice.set("Aucune liaison directe sur cette étape. Ouverture d'un puzzle disponible.");
+      this.roadmapNotice.set('No direct link on this step. Opening an available puzzle.');
       this.router.navigate(['/games/puzzle', firstPuzzle]);
       return;
     }
 
-    this.roadmapNotice.set('Cette étape ne contient pas encore de jeu configure.');
+    this.roadmapNotice.set('This step has no game configured yet.');
   }
 
   playPuzzle(puzzleId: number): void {

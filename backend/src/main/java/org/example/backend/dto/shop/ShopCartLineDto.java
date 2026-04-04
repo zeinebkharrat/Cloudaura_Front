@@ -3,8 +3,11 @@ package org.example.backend.dto.shop;
 public class ShopCartLineDto {
     private Integer cartItemId;
     private Integer productId;
+    private Integer variantId;
     private String name;
     private String imageUrl;
+    private String size;
+    private String color;
     private Double unitPrice;
     private Integer quantity;
     private Double lineTotal;
@@ -42,6 +45,14 @@ public class ShopCartLineDto {
         this.productId = productId;
     }
 
+    public Integer getVariantId() {
+        return variantId;
+    }
+
+    public void setVariantId(Integer variantId) {
+        this.variantId = variantId;
+    }
+
     public String getName() {
         return name;
     }
@@ -56,6 +67,22 @@ public class ShopCartLineDto {
 
     public void setImageUrl(String imageUrl) {
         this.imageUrl = imageUrl;
+    }
+
+    public String getSize() {
+        return size;
+    }
+
+    public void setSize(String size) {
+        this.size = size;
+    }
+
+    public String getColor() {
+        return color;
+    }
+
+    public void setColor(String color) {
+        this.color = color;
     }
 
     public Double getUnitPrice() {

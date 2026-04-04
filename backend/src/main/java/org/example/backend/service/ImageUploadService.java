@@ -25,7 +25,7 @@ public class ImageUploadService {
     private final HttpClient httpClient = HttpClient.newHttpClient();
     private final ObjectMapper objectMapper;
 
-    @Value("${app.imgbb.api-key:}")
+    @Value("${app.imgbb.api-key:${imgbb.api.key:}}")
     private String apiKey;
 
     @Value("${app.upload.max-image-bytes:5242880}")
@@ -40,7 +40,14 @@ public class ImageUploadService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image file is required");
         }
         if (apiKey == null || apiKey.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "ImgBB API key is not configured");
+            try {
+                String contentType = file.getContentType();
+                byte[] bytes = file.getBytes();
+                String base64 = java.util.Base64.getEncoder().encodeToString(bytes);
+                return "data:" + contentType + ";base64," + base64;
+            } catch (java.io.IOException e) {
+                return "/assets/guide-mascot.png";
+            }
         }
         if (file.getSize() > maxImageBytes) {
             throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Image exceeds allowed size");

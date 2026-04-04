@@ -6,7 +6,7 @@
 
       <div class="sidebar-header">
         <h2>Messages</h2>
-        <button class="icon-btn" (click)="toggleSearch()" title="Nouvelle conversation">
+        <button class="icon-btn" (click)="toggleSearch()" title="New conversation">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -26,7 +26,7 @@
               <line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
             <input type="text"
-              placeholder="Chercher un utilisateur..."
+              placeholder="Search for a user…"
               [ngModel]="searchQuery()"
               (ngModelChange)="onSearchInput($event)"
               class="search-input"
@@ -65,7 +65,7 @@
           }
 
           @if (!searchLoading() && searchQuery().length >= 2 && searchResults().length === 0) {
-            <div class="search-empty">Aucun utilisateur trouvé</div>
+            <div class="search-empty">No users found</div>
           }
         </div>
       }

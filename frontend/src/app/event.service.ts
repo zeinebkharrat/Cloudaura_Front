@@ -41,6 +41,18 @@ export class EventService {
     );
   }
 
+  finalizeCheckout(sessionId: string): Observable<{
+    message?: string;
+    eventReservationId?: number;
+    eventId?: number;
+  }> {
+    return this.http.post<{
+      message?: string;
+      eventReservationId?: number;
+      eventId?: number;
+    }>(`${this.apiUrl}/finalize-checkout`, { sessionId });
+  }
+
   createReservation(data: any): Observable<any> {
     return this.http.post(`${this.apiUrl}/reservations`, data);
   }

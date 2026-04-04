@@ -3,12 +3,24 @@ package org.example.backend.dto.shop;
 public class OrderLineDto {
     private Integer orderItemId;
     private Integer productId;
+    private Integer variantId;
     private String name;
+    private String size;
+    private String color;
     private Integer quantity;
     private Double unitPrice;
     private Double lineTotal;
+    private String status;
 
     public OrderLineDto() {
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public OrderLineDto(Integer orderItemId, Integer productId, String name, Integer quantity,
@@ -37,12 +49,36 @@ public class OrderLineDto {
         this.productId = productId;
     }
 
+    public Integer getVariantId() {
+        return variantId;
+    }
+
+    public void setVariantId(Integer variantId) {
+        this.variantId = variantId;
+    }
+
     public String getName() {
         return name;
     }
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getSize() {
+        return size;
+    }
+
+    public void setSize(String size) {
+        this.size = size;
+    }
+
+    public String getColor() {
+        return color;
+    }
+
+    public void setColor(String color) {
+        this.color = color;
     }
 
     public Integer getQuantity() {

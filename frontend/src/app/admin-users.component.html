@@ -2,16 +2,16 @@
   <header class="admin-header">
     <div>
       <p class="admin-kicker">Backoffice</p>
-      <h1>Gestion des utilisateurs</h1>
-      <p>Administration des comptes, rôles et demandes artisan.</p>
+      <h1>User management</h1>
+      <p>Manage accounts, roles, and artisan requests.</p>
     </div>
-    <a routerLink="/" class="back-link">Retour au site</a>
+    <a routerLink="/" class="back-link">Back to site</a>
   </header>
 
   <article class="users-panel glass-panel">
     <form [formGroup]="searchForm" (ngSubmit)="loadUsers()" class="search-form">
-      <input type="text" formControlName="q" placeholder="Rechercher nom, email, nationalite... (dynamique)" />
-      <button type="submit" [disabled]="isLoading()">Rechercher</button>
+      <input type="text" formControlName="q" placeholder="Search name, email, nationality…" />
+      <button type="submit" [disabled]="isLoading()">Search</button>
     </form>
 
     @if (actionError()) {
@@ -23,19 +23,19 @@
 
     <div class="table-wrap">
       @if (isLoading()) {
-        <p class="muted">Chargement...</p>
+        <p class="muted">Loading…</p>
       } @else if (users().length === 0) {
-        <p class="muted">Aucun utilisateur trouvé.</p>
+        <p class="muted">No users found.</p>
       } @else {
         <table class="users-table">
           <thead>
             <tr>
-              <th>Utilisateur</th>
+              <th>User</th>
               <th>Email</th>
-              <th>Nationalite</th>
-              <th>Ville</th>
+              <th>Nationality</th>
+              <th>City</th>
               <th>Roles</th>
-              <th>Etat</th>
+              <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -56,25 +56,25 @@
                 </td>
                 <td>
                   @if (user.banned) {
-                    <span class="status banned">Banni</span>
+                    <span class="status banned">Banned</span>
                   } @else {
-                    <span class="status active">Actif</span>
+                    <span class="status active">Active</span>
                   }
                   @if (user.artisanRequestPending) {
-                    <span class="status pending">Demande artisan</span>
+                    <span class="status pending">Artisan request</span>
                   }
                 </td>
                 <td>
                   <div class="actions">
-                    <button type="button" class="action-btn edit" title="Modifier" (click)="openEditPopup(user)" [disabled]="isSaving()">
+                    <button type="button" class="action-btn edit" title="Edit" (click)="openEditPopup(user)" [disabled]="isSaving()">
                       <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M12 20h9" />
                         <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" />
                       </svg>
-                      <span>Modifier</span>
+                      <span>Edit</span>
                     </button>
                     @if (user.artisanRequestPending) {
-                      <button type="button" class="action-btn artisan" title="Demande artisan" (click)="openArtisanPopup(user)" [disabled]="isSaving()">
+                      <button type="button" class="action-btn artisan" title="Artisan request" (click)="openArtisanPopup(user)" [disabled]="isSaving()">
                         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                           <path d="M14 5c2.5 0 4 1.5 4 4v8H6V9c0-2.5 1.5-4 4-4" />
                           <path d="M9 5a3 3 0 0 1 6 0" />
@@ -83,28 +83,28 @@
                       </button>
                     }
                     @if (user.banned) {
-                      <button type="button" class="action-btn unban" title="Debannir" (click)="openUnbanPopup(user)" [disabled]="isSaving()">
+                      <button type="button" class="action-btn unban" title="Unban" (click)="openUnbanPopup(user)" [disabled]="isSaving()">
                         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                           <path d="M20 6 9 17l-5-5" />
                         </svg>
-                        <span>Debannir</span>
+                        <span>Unban</span>
                       </button>
                     } @else {
-                      <button type="button" class="action-btn ban" title="Bannir" (click)="openBanPopup(user)" [disabled]="isSaving()">
+                      <button type="button" class="action-btn ban" title="Ban" (click)="openBanPopup(user)" [disabled]="isSaving()">
                         <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                           <circle cx="12" cy="12" r="9" />
                           <path d="M5 5l14 14" />
                         </svg>
-                        <span>Bannir</span>
+                        <span>Ban</span>
                       </button>
                     }
-                    <button type="button" class="action-btn delete" title="Supprimer" (click)="deleteUser(user)" [disabled]="isSaving()">
+                    <button type="button" class="action-btn delete" title="Delete" (click)="deleteUser(user)" [disabled]="isSaving()">
                       <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M3 6h18" />
                         <path d="M8 6V4h8v2" />
                         <path d="M19 6l-1 14H6L5 6" />
                       </svg>
-                      <span>Supprimer</span>
+                      <span>Delete</span>
                     </button>
                   </div>
                 </td>

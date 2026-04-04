@@ -4,9 +4,9 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import Swal from 'sweetalert2';
 import { firstValueFrom } from 'rxjs';
-import { AuthService } from './auth.service';
+import { AuthService } from './core/auth.service';
 import { extractApiErrorMessage } from './api-error.util';
-import { CityOption } from './auth.types';
+import { CityOption } from './core/auth.types';
 
 @Component({
   selector: 'app-profile',
@@ -67,7 +67,7 @@ export class ProfileComponent {
         });
       },
       error: () => {
-        this.actionError.set('Impossible de charger votre profil.');
+        this.actionError.set('Could not load your profile.');
       },
     });
 
@@ -85,7 +85,7 @@ export class ProfileComponent {
   }
 
   phoneErrorMessage(): string {
-    return 'Numéro téléphone invalide (8 à 20 chiffres, espaces ou tirets autorisés).';
+    return 'Invalid phone number (8–20 digits; spaces or hyphens allowed).';
   }
 
   private normalizePhone(value: string): string | null {
@@ -116,7 +116,7 @@ export class ProfileComponent {
         this.profileForm.patchValue({ profileImageUrl: response.url });
       },
       error: (error: HttpErrorResponse) => {
-        this.actionError.set(extractApiErrorMessage(error, 'Upload image impossible.'));
+        this.actionError.set(extractApiErrorMessage(error, 'Image upload failed.'));
       },
       complete: () => this.uploadBusy.set(false),
     });
@@ -138,7 +138,7 @@ export class ProfileComponent {
     if (isTunisia && (cityId == null || Number.isNaN(cityId))) {
       this.profileForm.controls.cityId.setErrors({ required: true });
       this.profileForm.controls.cityId.markAsTouched();
-      this.actionError.set('Veuillez selectionner une ville si vous choisissez Tunisie.');
+      this.actionError.set('Please select a city if you choose Tunisia.');
       this.isSavingProfile.set(false);
       return;
     }
@@ -164,7 +164,7 @@ export class ProfileComponent {
             cityId: user.cityId ?? null,
             profileImageUrl: user.profileImageUrl ?? '',
           });
-          this.actionSuccess.set('Profil mis a jour avec succes.');
+          this.actionSuccess.set('Profile updated successfully.');
         },
         error: (error: HttpErrorResponse) => {
           this.actionError.set(extractApiErrorMessage(error, 'Mise a jour impossible.'));
@@ -179,7 +179,7 @@ export class ProfileComponent {
     }
 
     const result = await Swal.fire({
-      title: 'Changer mot de passe',
+      title: 'Change password',
       background: 'var(--surface-1)',
       color: 'var(--text-color)',
       customClass: {
@@ -190,15 +190,15 @@ export class ProfileComponent {
       },
       buttonsStyling: false,
       showCancelButton: true,
-      confirmButtonText: 'Valider',
-      cancelButtonText: 'Annuler',
+      confirmButtonText: 'Confirm',
+      cancelButtonText: 'Cancel',
       focusConfirm: false,
       html: `
         <div class="profile-swal-form">
-          <p class="profile-swal-note">Mettez a jour votre mot de passe avec une valeur forte et unique.</p>
-          <input id="sw-current-password" class="swal2-input profile-swal-input" type="password" placeholder="Mot de passe actuel" />
-          <input id="sw-new-password" class="swal2-input profile-swal-input" type="password" placeholder="Nouveau mot de passe" />
-          <input id="sw-confirm-password" class="swal2-input profile-swal-input" type="password" placeholder="Confirmer le nouveau mot de passe" />
+          <p class="profile-swal-note">Use a strong, unique password.</p>
+          <input id="sw-current-password" class="swal2-input profile-swal-input" type="password" placeholder="Current password" />
+          <input id="sw-new-password" class="swal2-input profile-swal-input" type="password" placeholder="New password" />
+          <input id="sw-confirm-password" class="swal2-input profile-swal-input" type="password" placeholder="Confirm new password" />
         </div>
       `,
       preConfirm: () => {
@@ -207,15 +207,15 @@ export class ProfileComponent {
         const confirmPassword = (document.getElementById('sw-confirm-password') as HTMLInputElement | null)?.value?.trim() ?? '';
 
         if (!currentPassword || !newPassword || !confirmPassword) {
-          Swal.showValidationMessage('Veuillez remplir tous les champs.');
+          Swal.showValidationMessage('Please fill in all fields.');
           return null;
         }
         if (newPassword.length < 8) {
-          Swal.showValidationMessage('Le nouveau mot de passe doit contenir au moins 8 caracteres.');
+          Swal.showValidationMessage('The new password must be at least 8 characters.');
           return null;
         }
         if (newPassword !== confirmPassword) {
-          Swal.showValidationMessage('La confirmation du mot de passe est invalide.');
+          Swal.showValidationMessage('Password confirmation does not match.');
           return null;
         }
         return { currentPassword, newPassword };
@@ -234,8 +234,8 @@ export class ProfileComponent {
       await firstValueFrom(this.authService.changePassword(result.value));
       await Swal.fire({
         icon: 'success',
-        title: 'Mot de passe modifie',
-        text: 'Votre mot de passe a ete mis a jour avec succes.',
+        title: 'Password updated',
+        text: 'Your password has been updated successfully.',
         background: 'var(--surface-1)',
         color: 'var(--text-color)',
         customClass: {
@@ -245,14 +245,14 @@ export class ProfileComponent {
         buttonsStyling: false,
         confirmButtonText: 'OK',
       });
-      this.actionSuccess.set('Mot de passe modifie avec succes.');
+      this.actionSuccess.set('Password updated successfully.');
     } catch (error) {
       const apiError = error as HttpErrorResponse;
-      const message = extractApiErrorMessage(apiError, 'Changement de mot de passe impossible.');
+      const message = extractApiErrorMessage(apiError, 'Could not change password.');
       this.actionError.set(message);
       await Swal.fire({
         icon: 'error',
-        title: 'Echec',
+        title: 'Failed',
         text: message,
         background: 'var(--surface-1)',
         color: 'var(--text-color)',
@@ -261,7 +261,7 @@ export class ProfileComponent {
           confirmButton: 'profile-swal-confirm',
         },
         buttonsStyling: false,
-        confirmButtonText: 'Fermer',
+        confirmButtonText: 'Close',
       });
     } finally {
       this.isChangingPassword.set(false);

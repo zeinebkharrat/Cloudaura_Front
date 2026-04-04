@@ -51,7 +51,7 @@ export class AdminActivityReservationsComponent implements OnInit {
           this.loading = false;
         },
         error: (err) => {
-          this.error = err?.error?.message ?? 'Erreur lors du chargement des réservations';
+          this.error = err?.error?.message ?? 'Error loading reservations';
           this.loading = false;
         },
       });

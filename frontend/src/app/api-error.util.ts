@@ -8,6 +8,10 @@ interface ApiErrorShape {
 }
 
 export function extractApiErrorMessage(error: HttpErrorResponse, fallback: string): string {
+  if (typeof error.error === 'string' && error.error.trim().length > 0) {
+    return error.error.trim();
+  }
+
   const payload = error.error as ApiErrorShape | undefined;
 
   if (payload?.fieldErrors && Object.keys(payload.fieldErrors).length > 0) {
@@ -20,13 +24,16 @@ export function extractApiErrorMessage(error: HttpErrorResponse, fallback: strin
 
   switch (error.status) {
     case 401:
-      return 'Session invalide ou identifiants incorrects.';
+      return 'Invalid session or incorrect credentials.';
     case 403:
-      return 'Accès refusé pour cette action.';
+      return 'Access denied for this action.';
     case 409:
-      return 'Conflit de données. Vérifiez les informations saisies.';
+      return 'Data conflict. Please check the information you entered.';
     case 422:
-      return 'Données invalides. Merci de corriger le formulaire.';
+      return 'Invalid data. Please correct the form.';
+    case 502:
+    case 503:
+      return 'Service temporarily unavailable. Please try again shortly.';
     default:
       return fallback;
   }

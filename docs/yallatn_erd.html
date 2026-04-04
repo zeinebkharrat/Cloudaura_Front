@@ -1,0 +1,191 @@
+
+<style>
+#erd svg { width: 100%; }
+#erd svg.erDiagram .divider path { stroke-opacity: 0.4; }
+#erd svg.erDiagram .row-rect-odd path,
+#erd svg.erDiagram .row-rect-odd rect,
+#erd svg.erDiagram .row-rect-even path,
+#erd svg.erDiagram .row-rect-even rect { stroke: none !important; }
+</style>
+<div id="erd"></div>
+<script type="module">
+import mermaid from 'https://esm.sh/mermaid@11/dist/mermaid.esm.min.mjs';
+const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+await document.fonts.ready;
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'base',
+  fontFamily: '"Anthropic Sans", sans-serif',
+  themeVariables: {
+    darkMode: dark,
+    fontSize: '12px',
+    fontFamily: '"Anthropic Sans", sans-serif',
+    lineColor: dark ? '#9c9a92' : '#73726c',
+    textColor: dark ? '#c2c0b6' : '#3d3d3a',
+    primaryColor: dark ? '#1a3a2e' : '#e8f8f3',
+    primaryBorderColor: dark ? '#1D9E75' : '#1D9E75',
+  },
+});
+const diagram = `erDiagram
+  cities {
+    int city_id PK
+    string name
+    string region
+    double latitude
+    double longitude
+    boolean has_airport
+    boolean has_bus_station
+    boolean has_port
+    boolean has_train_station
+    text description
+  }
+
+  drivers {
+    int driver_id PK
+    string first_name
+    string last_name
+    string email
+    string phone
+    string license_number
+    double rating
+    int total_trips
+    boolean is_active
+    string photo_url
+  }
+
+  vehicles {
+    int vehicle_id PK
+    string brand
+    string model
+    int year
+    string color
+    string plate_number
+    enum type
+    int capacity
+    double price_per_trip
+    boolean is_active
+    string photo_url
+  }
+
+  transports {
+    int transport_id PK
+    int departure_city_id FK
+    int arrival_city_id FK
+    int vehicle_id FK
+    int driver_id FK
+    enum type
+    datetime departure_time
+    datetime arrival_time
+    double price
+    int capacity
+    boolean is_active
+    text description
+  }
+
+  transport_reservations {
+    int transport_reservation_id PK
+    int transport_id FK
+    int user_id FK
+    string reservation_ref
+    string idempotency_key
+    string passenger_first_name
+    string passenger_last_name
+    string passenger_email
+    string passenger_phone
+    int number_of_seats
+    double total_price
+    datetime travel_date
+    enum status
+    enum payment_status
+    enum payment_method
+    string qr_code_token
+    datetime created_at
+  }
+
+  accommodations {
+    int accommodation_id PK
+    int city_id FK
+    string name
+    enum type
+    enum status
+    double price_per_night
+    double rating
+    text description
+    string address
+    string main_photo_url
+  }
+
+  rooms {
+    int room_id PK
+    int accommodation_id FK
+    enum room_type
+    int capacity
+    double price
+  }
+
+  reservations {
+    int reservation_id PK
+    int room_id FK
+    int user_id FK
+    datetime check_in_date
+    datetime check_out_date
+    int guests
+    double total_price
+    enum status
+    enum payment_method
+    enum payment_status
+    string reservation_ref
+    string qr_code_token
+    datetime created_at
+  }
+
+  users {
+    int user_id PK
+    string first_name
+    string last_name
+    string email
+    string password_hash
+    string phone
+    int points
+    int level_id FK
+    boolean email_verified
+    string status
+    datetime created_at
+  }
+
+  cities ||--o{ transports : "departure"
+  cities ||--o{ transports : "arrival"
+  cities ||--o{ accommodations : "located in"
+  vehicles ||--o{ transports : "used by"
+  drivers ||--o{ transports : "drives"
+  transports ||--o{ transport_reservations : "booked via"
+  users ||--o{ transport_reservations : "makes"
+  accommodations ||--o{ rooms : "contains"
+  rooms ||--o{ reservations : "booked via"
+  users ||--o{ reservations : "makes"
+`;
+const { svg } = await mermaid.render('erd-svg', diagram);
+document.getElementById('erd').innerHTML = svg;
+document.querySelectorAll('#erd svg.erDiagram .node').forEach(node => {
+  const firstPath = node.querySelector('path[d]');
+  if (!firstPath) return;
+  const d = firstPath.getAttribute('d');
+  const nums = d.match(/-?[\d.]+/g)?.map(Number);
+  if (!nums || nums.length < 8) return;
+  const xs = [nums[0],nums[2],nums[4],nums[6]];
+  const ys = [nums[1],nums[3],nums[5],nums[7]];
+  const x = Math.min(...xs), y = Math.min(...ys);
+  const w = Math.max(...xs)-x, h = Math.max(...ys)-y;
+  const rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+  rect.setAttribute('x',x); rect.setAttribute('y',y);
+  rect.setAttribute('width',w); rect.setAttribute('height',h);
+  rect.setAttribute('rx','8');
+  for (const a of ['fill','stroke','stroke-width','class','style']) {
+    if (firstPath.hasAttribute(a)) rect.setAttribute(a, firstPath.getAttribute(a));
+  }
+  firstPath.replaceWith(rect);
+});
+document.querySelectorAll('#erd svg.erDiagram .row-rect-odd path, #erd svg.erDiagram .row-rect-even path').forEach(p => {
+  p.setAttribute('stroke','none');
+});
+</script>

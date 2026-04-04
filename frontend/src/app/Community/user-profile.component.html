@@ -3,7 +3,7 @@
     <div class="error-box" *ngIf="error()">{{ error() }}</div>
 
     <header class="profile-head" *ngIf="!error()">
-      <button type="button" class="back-btn" (click)="backToCommunity()">Retour</button>
+      <button type="button" class="back-btn" (click)="backToCommunity()">Back</button>
 
       <div class="profile-avatar-wrap">
         <img *ngIf="profileImageUrl()" [src]="profileImageUrl()!" [alt]="profileName()" class="profile-avatar-img" />
@@ -101,6 +101,6 @@
   </div>
 
   <ng-template #loadingTpl>
-    <div class="loading-box">Chargement du profil...</div>
+    <div class="loading-box">Loading profile…</div>
   </ng-template>
 </section>

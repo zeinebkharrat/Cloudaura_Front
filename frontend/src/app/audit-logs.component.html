@@ -9,7 +9,7 @@
 
   <article class="users-panel glass-panel">
     <form [formGroup]="filterForm" class="search-form">
-      <input type="text" formControlName="q" placeholder="Rechercher acteur, email cible, IP, details..." />
+      <input type="text" formControlName="q" placeholder="Search actor, target email, IP, details..." />
       <select formControlName="action">
         <option value="">Toutes les actions</option>
         @for (action of actions; track action) {
@@ -39,7 +39,7 @@
 
     <div class="table-wrap">
       @if (isLoading()) {
-        <p class="muted">Chargement...</p>
+        <p class="muted">Loading…</p>
       } @else if (logs().length === 0) {
         <p class="muted">Aucun log trouve.</p>
       } @else {

@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-import { AuthService } from './auth.service';
+import { AuthService } from './core/auth.service';
 import { extractApiErrorMessage } from './api-error.util';
 
 @Component({
@@ -23,7 +23,7 @@ export class VerifyEmailComponent implements OnInit {
   ngOnInit(): void {
     const token = this.route.snapshot.queryParamMap.get('token') ?? '';
     if (!token) {
-      this.errorMessage.set('Token de verification manquant.');
+      this.errorMessage.set('Missing verification token.');
       this.isLoading.set(false);
       return;
     }
@@ -31,7 +31,7 @@ export class VerifyEmailComponent implements OnInit {
     this.authService.verifyEmail(token).subscribe({
       next: (response) => this.successMessage.set(response.message),
       error: (error: HttpErrorResponse) => {
-        this.errorMessage.set(extractApiErrorMessage(error, 'Verification impossible.'));
+        this.errorMessage.set(extractApiErrorMessage(error, 'Verification failed.'));
       },
       complete: () => this.isLoading.set(false),
     });

@@ -340,8 +340,8 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
         if (err?.status === 401) {
           Swal.fire({
             icon: 'warning',
-            title: 'Connexion requise',
-            text: 'Veuillez vous connecter pour publier un commentaire.',
+            title: 'Sign in required',
+            text: 'Please sign in to post a comment.',
             confirmButtonColor: '#e63946',
           });
           return;
@@ -482,7 +482,7 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   }
 
   monthLabel(): string {
-    return this.calendarMonth.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    return this.calendarMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
   }
 
   totalPrice(): number {
@@ -496,7 +496,7 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
       return '—';
     }
     if (availability.remainingParticipants == null) {
-      return 'Illimité';
+      return 'Unlimited';
     }
     return String(availability.remainingParticipants);
   }

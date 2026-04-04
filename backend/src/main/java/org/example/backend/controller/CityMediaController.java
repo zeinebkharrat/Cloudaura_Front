@@ -70,6 +70,6 @@ public class CityMediaController {
         Sort.Direction direction = (sortParts.length > 1 && "desc".equalsIgnoreCase(sortParts[1]))
             ? Sort.Direction.DESC
             : Sort.Direction.ASC;
-        return PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100), Sort.by(direction, sortBy));
+        return PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 250), Sort.by(direction, sortBy));
     }
 }

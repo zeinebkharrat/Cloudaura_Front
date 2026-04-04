@@ -1,7 +1,7 @@
 import { Component, computed, OnInit, ElementRef, ViewChild, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { AuthService } from '../../auth.service';
+import { AuthService } from '../../core/auth.service';
 import Chart from 'chart.js/auto';
 
 @Component({
@@ -37,9 +37,9 @@ export class AdminDashboardComponent implements OnInit, AfterViewInit {
     new Chart(ctx, {
       type: 'line',
       data: {
-        labels: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin'],
+        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
         datasets: [{
-          label: 'Réservations Mensuelles',
+          label: 'Monthly bookings',
           data: [120, 190, 300, 250, 420, 500],
           borderColor: '#e63946',
           backgroundColor: gradient,
@@ -89,7 +89,7 @@ export class AdminDashboardComponent implements OnInit, AfterViewInit {
     new Chart(ctx, {
       type: 'doughnut',
       data: {
-        labels: ['Hébergements', 'Transports', 'Activités', 'Événements'],
+        labels: ['Accommodations', 'Transport', 'Activities', 'Events'],
         datasets: [{
           data: [45, 25, 20, 10],
           backgroundColor: [

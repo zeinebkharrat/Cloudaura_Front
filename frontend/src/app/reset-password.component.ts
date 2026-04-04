@@ -3,7 +3,7 @@ import { Component, inject, signal } from '@angular/core';
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-import { AuthService } from './auth.service';
+import { AuthService } from './core/auth.service';
 import { extractApiErrorMessage } from './api-error.util';
 
 function passwordsMatch(group: AbstractControl): ValidationErrors | null {
@@ -51,9 +51,9 @@ export class ResetPasswordComponent {
 
   newPasswordErrorMessage(): string {
     if (this.form.controls.newPassword.hasError('required')) {
-      return 'Le nouveau mot de passe est obligatoire.';
+      return 'New password is required.';
     }
-    return 'Le nouveau mot de passe doit contenir au moins 8 caractères.';
+    return 'New password must be at least 8 characters.';
   }
 
   submit() {
@@ -80,7 +80,7 @@ export class ResetPasswordComponent {
         setTimeout(() => this.router.navigateByUrl('/signin'), 1200);
       },
       error: (error: HttpErrorResponse) => {
-        this.formError.set(extractApiErrorMessage(error, 'Reinitialisation impossible.'));
+        this.formError.set(extractApiErrorMessage(error, 'Password reset failed.'));
       },
       complete: () => this.isLoading.set(false),
     });
