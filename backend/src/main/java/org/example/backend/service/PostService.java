@@ -12,11 +12,14 @@ import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class PostService implements IPostService {
@@ -127,16 +130,8 @@ public class PostService implements IPostService {
     @Transactional
     public void removePost(Integer postId) {
         // Delete the selected post plus every repost that descends from it.
-        List<Integer> targetPostIds = jdbcTemplate.queryForList(
-                "WITH RECURSIVE repost_tree AS ("
-                        + " SELECT post_id FROM posts WHERE post_id = ?"
-                        + " UNION ALL"
-                        + " SELECT p.post_id FROM posts p"
-                        + " INNER JOIN repost_tree rt ON p.repost_of_post_id = rt.post_id"
-                        + ") SELECT post_id FROM repost_tree",
-                Integer.class,
-                postId
-        );
+        // Build the repost tree in Java to stay compatible with older MySQL versions.
+        List<Integer> targetPostIds = collectDescendantPostIds(postId);
 
         if (targetPostIds.isEmpty()) {
             return;
@@ -146,11 +141,48 @@ public class PostService implements IPostService {
         Object[] args = targetPostIds.toArray();
 
         // Execute explicit SQL deletes to guarantee FK-safe ordering.
+        jdbcTemplate.update(
+                "UPDATE posts SET repost_of_post_id = NULL "
+                        + "WHERE post_id IN (" + placeholders + ") "
+                        + "AND repost_of_post_id IN (" + placeholders + ")",
+                concat(args, args)
+        );
         jdbcTemplate.update("DELETE FROM saved_posts WHERE post_id IN (" + placeholders + ")", args);
         jdbcTemplate.update("DELETE FROM likes WHERE post_id IN (" + placeholders + ")", args);
+        jdbcTemplate.update("UPDATE comments SET parent_id = NULL WHERE post_id IN (" + placeholders + ")", args);
         jdbcTemplate.update("DELETE FROM comments WHERE post_id IN (" + placeholders + ")", args);
         jdbcTemplate.update("DELETE FROM post_media WHERE post_id IN (" + placeholders + ")", args);
         jdbcTemplate.update("DELETE FROM posts WHERE post_id IN (" + placeholders + ")", args);
+    }
+
+    private List<Integer> collectDescendantPostIds(Integer rootPostId) {
+        Set<Integer> visited = new LinkedHashSet<>();
+        ArrayDeque<Integer> queue = new ArrayDeque<>();
+        queue.add(rootPostId);
+
+        while (!queue.isEmpty()) {
+            Integer current = queue.poll();
+            if (current == null || !visited.add(current)) {
+                continue;
+            }
+
+            List<Integer> children = jdbcTemplate.queryForList(
+                    "SELECT post_id FROM posts WHERE repost_of_post_id = ?",
+                    Integer.class,
+                    current
+            );
+
+            queue.addAll(children);
+        }
+
+        return List.copyOf(visited);
+    }
+
+    private Object[] concat(Object[] first, Object[] second) {
+        Object[] merged = new Object[first.length + second.length];
+        System.arraycopy(first, 0, merged, 0, first.length);
+        System.arraycopy(second, 0, merged, first.length, second.length);
+        return merged;
     }
     
     @Override

@@ -25,6 +25,7 @@ import { AdminCitiesComponent } from './admin/cities/admin-cities.component';
 import { AdminRestaurantsComponent } from './admin/restaurants/admin-restaurants.component';
 import { AdminActivitiesComponent } from './admin/activities/admin-activities.component';
 import { AdminActivityReservationsComponent } from './admin/activity-reservations/admin-activity-reservations.component';
+import { AdminPostsComponent } from './admin/posts/admin-posts.component';
 import { CityExploreComponent } from './explore/city-explore.component';
 import { RestaurantDetailComponent } from './explore/restaurant-detail.component';
 import { ActivityDetailComponent } from './explore/activity-detail.component';
@@ -105,6 +106,7 @@ export const routes: Routes = [
       { path: 'cities', component: AdminCitiesComponent },
       { path: 'restaurants', component: AdminRestaurantsComponent },
       { path: 'activities', component: AdminActivitiesComponent },
+      { path: 'posts', component: AdminPostsComponent },
       { path: 'events', component: EventManagementComponent },
       { path: 'events/dashboard', component: EventManagementComponent },
       { path: 'events/calendar', component: EventCalendarComponent },

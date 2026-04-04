@@ -30,6 +30,7 @@ export class AdminLayoutComponent {
     { label: 'Cities', route: '/admin/cities', iconImg: 'icones/city.png' },
     { label: 'Restaurants', route: '/admin/restaurants', iconImg: 'icones/restaurant.png' },
     { label: 'Activities', route: '/admin/activities', iconImg: 'icones/actitvity.png' },
+    { label: 'Posts', route: '/admin/posts', iconClass: 'pi pi-comments' },
     { label: 'Activity bookings', route: '/admin/activity-reservations', iconClass: 'pi pi-calendar' },
     { label: 'Accommodations', route: '/admin/accommodations', iconImg: 'icones/hotel.png' },
     { label: 'Transport', route: '/admin/transports', iconImg: 'icones/bus.png' },
