@@ -99,12 +99,15 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly heroVideoSrc = '/assets/video.mp4';
   readonly heroVideoPoster = 'assets/sidi_bou.png';
   readonly heroVideoError = signal(false);
+  readonly videoMuted = signal(false);
   readonly skeletonCards = Array.from({ length: 4 }, (_, i) => i);
 
   readonly activityCards = signal<HomeImageCard[]>([]);
   readonly restaurantCards = signal<HomeImageCard[]>([]);
   readonly transportModes = signal<HomeTransportModeCard[]>([]);
   readonly artisanCards = signal<HomeImageCard[]>([]);
+  readonly currentActivityPage = signal(0);
+  readonly activityPageCount = signal(1);
 
   readonly loadingActivities = signal(true);
   readonly loadingTransportModes = signal(true);
@@ -125,8 +128,10 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private mapGeoData?: any;
   private regionIdToLabelMap?: Map<string, string>;
   private themeObserver?: MutationObserver;
+  private autoSlideIntervals: number[] = [];
   private readonly handleWindowResize = () => {
     this.tunisiaMapChart?.resize();
+    this.recalculateActivityPagination();
   };
 
   constructor(
@@ -156,8 +161,76 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     container.scrollBy({ left: direction * distance, behavior: 'smooth' });
   }
 
+  scrollActivities(direction: 1 | -1): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const totalPages = this.activityPageCount();
+    if (totalPages <= 1) {
+      return;
+    }
+
+    const next = (this.currentActivityPage() + direction + totalPages) % totalPages;
+    this.goToActivityPage(next);
+  }
+
+  goToActivityPage(page: number): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const slider = document.getElementById('activities-slider');
+    if (!slider) {
+      return;
+    }
+
+    const boundedPage = Math.max(0, Math.min(page, this.activityPageCount() - 1));
+    slider.scrollTo({ left: boundedPage * slider.clientWidth, behavior: 'smooth' });
+    this.currentActivityPage.set(boundedPage);
+  }
+
+  onActivitiesSliderScroll(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const slider = document.getElementById('activities-slider');
+    if (!slider || !slider.clientWidth) {
+      return;
+    }
+
+    const page = Math.round(slider.scrollLeft / slider.clientWidth);
+    this.currentActivityPage.set(Math.max(0, Math.min(page, this.activityPageCount() - 1)));
+  }
+
+  activityPages(): number[] {
+    return Array.from({ length: this.activityPageCount() }, (_, i) => i);
+  }
+
   onHeroVideoError(): void {
     this.heroVideoError.set(true);
+  }
+
+  toggleHeroVideoMute(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const video = this.heroVideoRef?.nativeElement;
+    if (!video) {
+      return;
+    }
+
+    const nextMuted = !video.muted;
+    video.muted = nextMuted;
+    this.videoMuted.set(nextMuted);
+
+    if (video.paused) {
+      void video.play().catch(() => {
+        this.heroVideoError.set(true);
+      });
+    }
   }
 
   ngAfterViewInit(): void {
@@ -166,14 +239,67 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.initMap();
       this.startThemeObserver();
       this.playReturnZoomOutIfRequested();
+      this.startAutoSliders();
+      setTimeout(() => this.recalculateActivityPagination(), 120);
     }
   }
 
   ngOnDestroy(): void {
     if (isPlatformBrowser(this.platformId)) {
       window.removeEventListener('resize', this.handleWindowResize);
+      this.stopAutoSliders();
     }
     this.themeObserver?.disconnect();
+  }
+
+  private startAutoSliders(): void {
+    this.stopAutoSliders();
+    const setup = (containerId: string, intervalMs: number) => {
+      const id = window.setInterval(() => {
+        if (containerId === 'activities-slider') {
+          this.advanceActivitiesPage();
+          return;
+        }
+        this.scrollSlider(containerId, 1);
+      }, intervalMs);
+      this.autoSlideIntervals.push(id);
+    };
+
+    setup('activities-slider', 3600);
+    setup('artisan-slider', 4200);
+  }
+
+  private stopAutoSliders(): void {
+    for (const id of this.autoSlideIntervals) {
+      window.clearInterval(id);
+    }
+    this.autoSlideIntervals = [];
+  }
+
+  private advanceActivitiesPage(): void {
+    const totalPages = this.activityPageCount();
+    if (totalPages <= 1) {
+      return;
+    }
+
+    const next = (this.currentActivityPage() + 1) % totalPages;
+    this.goToActivityPage(next);
+  }
+
+  private recalculateActivityPagination(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const slider = document.getElementById('activities-slider');
+    if (!slider || !slider.clientWidth) {
+      return;
+    }
+
+    const pages = Math.max(1, Math.ceil(slider.scrollWidth / slider.clientWidth));
+    this.activityPageCount.set(pages);
+    const safePage = Math.min(this.currentActivityPage(), pages - 1);
+    this.currentActivityPage.set(safePage);
   }
 
   private ensureVideoMutedAutoplay(): void {
@@ -186,11 +312,20 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       if (!video) {
         return;
       }
-      video.defaultMuted = true;
-      video.muted = true;
-      video.volume = 0;
+
+      video.defaultMuted = false;
+      video.muted = false;
+      video.volume = 1;
+      this.videoMuted.set(false);
+
       void video.play().catch(() => {
-        this.heroVideoError.set(true);
+        // Autoplay with sound can be blocked by browsers; fallback to muted autoplay.
+        video.defaultMuted = true;
+        video.muted = true;
+        this.videoMuted.set(true);
+        void video.play().catch(() => {
+          this.heroVideoError.set(true);
+        });
       });
     }, 0);
   }
@@ -224,6 +359,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
         if (!activitySource.length) {
           this.activityCards.set([]);
           this.loadingActivities.set(false);
+          setTimeout(() => this.recalculateActivityPagination(), 30);
           return;
         }
 
@@ -250,6 +386,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
           }));
           this.activityCards.set(mapped);
           this.loadingActivities.set(false);
+          setTimeout(() => this.recalculateActivityPagination(), 30);
         });
       });
   }
