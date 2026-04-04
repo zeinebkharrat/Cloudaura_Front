@@ -57,6 +57,19 @@ export class ChatService implements OnDestroy {
     );
   }
 
+  sendVoiceMessage(chatRoomId: number, file: File, durationSec?: number): Observable<MessageResponse> {
+    const formData = new FormData();
+    formData.set('file', file);
+    if (durationSec != null && Number.isFinite(durationSec) && durationSec > 0) {
+      formData.set('durationSec', String(Math.floor(durationSec)));
+    }
+
+    return this.http.post<MessageResponse>(
+      `${this.baseUrl}/chatroom/${chatRoomId}/voice`,
+      formData
+    );
+  }
+
   markAsSeen(chatRoomId: number): Observable<any> {
     return this.http.post(`${this.baseUrl}/chatroom/${chatRoomId}/seen`, {});
   }
@@ -326,7 +339,7 @@ export class ChatService implements OnDestroy {
       const conv = current[idx];
       current[idx] = {
         ...conv,
-        lastMessage: msg.content,
+        lastMessage: this.previewText(msg),
         lastMessageTime: msg.sentAt,
         unreadCount: conv.unreadCount + 1,
       };
@@ -356,5 +369,12 @@ export class ChatService implements OnDestroy {
 
   ngOnDestroy(): void {
     this.disconnect();
+  }
+
+  private previewText(msg: MessageResponse): string {
+    if (msg.messageType === 'VOICE') {
+      return 'Voice message';
+    }
+    return msg.content;
   }
 }

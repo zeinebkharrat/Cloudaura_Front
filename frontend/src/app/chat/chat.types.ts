@@ -15,6 +15,9 @@ export interface MessageResponse {
   senderUsername: string;
   senderImage: string | null;
   content: string;
+  messageType?: string | null;
+  voiceUrl?: string | null;
+  voiceDurationSec?: number | null;
   sentAt: string;
 }
 

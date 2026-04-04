@@ -7,12 +7,15 @@ import org.example.backend.model.User;
 import org.example.backend.repository.UserRepository;
 import org.example.backend.service.IChatRoomService;
 import org.example.backend.service.IMessageService;
+import org.example.backend.service.StreamChatService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
@@ -32,6 +35,12 @@ public class ChatRoomController {
 
     @Autowired
     UserRepository userRepository;
+
+    @Autowired
+    StreamChatService streamChatService;
+
+    @Autowired
+    SimpMessageSendingOperations messagingTemplate;
 
     // ──────────────────────────────────────────────
     // Legacy CRUD endpoints (kept for backward compatibility)
@@ -122,6 +131,30 @@ public class ChatRoomController {
 
         List<MessageResponse> messages = messageService.getMessagesByChatRoomOrdered(chatRoomId);
         return ResponseEntity.ok(messages);
+    }
+
+    @PostMapping(value = "/{chatRoomId}/voice", consumes = { "multipart/form-data" })
+    public ResponseEntity<MessageResponse> sendVoiceMessage(
+            @PathVariable Integer chatRoomId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "durationSec", required = false) Integer durationSec
+    ) {
+        User currentUser = getCurrentUser();
+
+        if (!chatRoomService.isUserInChatRoom(chatRoomId, currentUser.getUserId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not a participant of this chat room");
+        }
+
+        String voiceUrl = streamChatService.uploadVoiceFile(file, currentUser.getUserId());
+        MessageResponse response = messageService.sendVoiceMessage(
+                chatRoomId,
+                currentUser.getUserId(),
+                voiceUrl,
+                durationSec
+        );
+
+        messagingTemplate.convertAndSend("/topic/chat/" + chatRoomId, response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping("/users/search")

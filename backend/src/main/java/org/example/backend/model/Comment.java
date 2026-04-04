@@ -15,6 +15,7 @@ public class Comment {
     // Using plain TEXT instead of @Lob to avoid MySQL/Hibernate LOB binding issues
     @Column(columnDefinition="TEXT")
     private String content;
+    private String gifs;
     private Date createdAt;
     private Date updatedAt;
 }

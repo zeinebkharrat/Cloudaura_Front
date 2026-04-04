@@ -2,7 +2,10 @@
   <div class="community-header social-shell">
     <div class="create-post-inline" *ngIf="authService.isAuthenticated()">
       <div class="composer-row-top">
-        <div class="avatar composer-avatar">{{ authService.currentUser()?.username?.charAt(0)?.toUpperCase() || 'U' }}</div>
+        <div class="avatar composer-avatar">
+          <img *ngIf="currentUserAvatarUrl(); else composerFallback" [src]="currentUserAvatarUrl()!" alt="Your profile photo" class="avatar-img" />
+          <ng-template #composerFallback>{{ authService.currentUser()?.username?.charAt(0)?.toUpperCase() || 'U' }}</ng-template>
+        </div>
         <input
           type="text"
           class="composer-main-input"
@@ -160,7 +163,10 @@
           <article class="post-card glass-panel">
             <header class="post-header">
               <div class="post-author">
-                <div class="avatar">{{ displayName(post.author).charAt(0).toUpperCase() || 'U' }}</div>
+                <div class="avatar">
+                  <img *ngIf="userAvatarUrl(post.author); else postAuthorFallback" [src]="userAvatarUrl(post.author)!" [alt]="displayName(post.author)" class="avatar-img" />
+                  <ng-template #postAuthorFallback>{{ displayName(post.author).charAt(0).toUpperCase() || 'U' }}</ng-template>
+                </div>
                 <div class="author-info">
                   <button type="button" class="author-name author-link" (click)="goToUserProfile(post.author?.userId)">{{ displayName(post.author) }}</button>
                   <span class="post-time">{{ formatDate(post.createdAt) }}</span>
@@ -212,7 +218,10 @@
                   <p class="repost-credit"><i class="pi pi-replay repost-ico" aria-hidden="true"></i> Repost from {{ displayName(post.repostOf.author) }}</p>
                   <article class="repost-card">
                     <header class="repost-head">
-                      <div class="avatar small">{{ displayName(post.repostOf.author).charAt(0).toUpperCase() || 'U' }}</div>
+                      <div class="avatar small">
+                        <img *ngIf="userAvatarUrl(post.repostOf.author); else repostAuthorFallback" [src]="userAvatarUrl(post.repostOf.author)!" [alt]="displayName(post.repostOf.author)" class="avatar-img" />
+                        <ng-template #repostAuthorFallback>{{ displayName(post.repostOf.author).charAt(0).toUpperCase() || 'U' }}</ng-template>
+                      </div>
                       <div>
                         <button type="button" class="author-link repost-author" (click)="goToUserProfile(post.repostOf.author?.userId)">{{ displayName(post.repostOf.author) }}</button>
                         <small>{{ formatDate(post.repostOf.createdAt) }}</small>
@@ -408,7 +417,10 @@
 
               <!-- Inline quick comment input (Facebook-style) -->
               <div class="inline-comment-input" *ngIf="isCommentsExpanded(post.postId!)">
-                <div class="avatar comment-avatar">{{ authService.currentUser()?.username?.charAt(0)?.toUpperCase() || 'U' }}</div>
+                <div class="avatar comment-avatar">
+                  <img *ngIf="currentUserAvatarUrl(); else commentComposerFallback" [src]="currentUserAvatarUrl()!" alt="Your profile photo" class="avatar-img" />
+                  <ng-template #commentComposerFallback>{{ authService.currentUser()?.username?.charAt(0)?.toUpperCase() || 'U' }}</ng-template>
+                </div>
                 <input
                   type="text"
                   class="quick-comment-input"
@@ -417,6 +429,12 @@
                   (keydown.enter)="addComment(post.postId!)"
                   placeholder="Write a comment…"
                 />
+                <button type="button" class="reply-btn giphy-btn" (click)="openGiphyPickerForPost(post.postId!)">GIF</button>
+              </div>
+
+              <div class="selected-giphy" *ngIf="getSelectedGiphyForPost(post.postId!) as selected">
+                <img [src]="selected.previewUrl || selected.fullUrl" alt="Selected GIF" />
+                <button type="button" class="reply-btn reply-btn--danger" (click)="clearSelectedGiphyForPost(post.postId!)">Remove</button>
               </div>
             </div>
           </article>
@@ -429,13 +447,20 @@
       <div class="comment-item" [style.marginLeft.px]="depth * 18">
         <div class="comment-header">
           <div style="display: flex; align-items: center; gap: 8px;">
-            <div class="avatar comment-avatar">{{ displayName(comment.author).charAt(0).toUpperCase() || 'U' }}</div>
+            <div class="avatar comment-avatar">
+              <img *ngIf="userAvatarUrl(comment.author); else commentAuthorFallback" [src]="userAvatarUrl(comment.author)!" [alt]="displayName(comment.author)" class="avatar-img" />
+              <ng-template #commentAuthorFallback>{{ displayName(comment.author).charAt(0).toUpperCase() || 'U' }}</ng-template>
+            </div>
             <span class="comment-author">{{ displayName(comment.author) }}</span>
           </div>
           <span class="comment-date">{{ formatDate(comment.createdAt) }}</span>
         </div>
         
-        <p class="comment-content">{{ comment.content }}</p>
+        <ng-container *ngIf="getCommentGiphy(comment) as commentGiphy">
+          <img class="comment-giphy" [src]="commentGiphy.fullUrl" [alt]="commentGiphy.title || 'GIF'" />
+        </ng-container>
+
+        <p class="comment-content" *ngIf="getCommentDisplayText(comment)">{{ getCommentDisplayText(comment) }}</p>
 
         <div class="comment-actions">
           <button
@@ -466,12 +491,25 @@
             (input)="setReplyDraft(comment.commentId!, $any($event.target).value)"
             placeholder="Your reply…"
           ></textarea>
+
+          <div class="selected-giphy" *ngIf="getSelectedGiphyForReply(comment.commentId!) as selected">
+            <img [src]="selected.previewUrl || selected.fullUrl" alt="Selected GIF" />
+            <button type="button" class="reply-btn reply-btn--danger" (click)="clearSelectedGiphyForReply(comment.commentId!)">Remove</button>
+          </div>
+
           <div class="reply-actions">
+            <button
+              type="button"
+              class="btn-outline btn-outline--small"
+              (click)="openGiphyPickerForReply(comment.commentId!)"
+            >
+              GIF
+            </button>
             <button
               type="button"
               class="btn-primary btn-primary--small"
               (click)="addComment(postId, comment.commentId!)"
-              [disabled]="getReplyDraft(comment.commentId!).trim().length === 0"
+              [disabled]="getReplyDraft(comment.commentId!).trim().length === 0 && !getSelectedGiphyForReply(comment.commentId!)"
             >
               Reply
             </button>
@@ -506,5 +544,54 @@
         </ng-container>
       </div>
     </ng-template>
+
+    <div class="giphy-modal-backdrop" *ngIf="showGiphyPicker()" (click)="closeGiphyPicker()">
+      <section class="giphy-modal-card" (click)="$event.stopPropagation()">
+        <header class="giphy-modal-head">
+          <h3>Add GIF / Sticker</h3>
+          <button type="button" class="btn-close" (click)="closeGiphyPicker()">✕</button>
+        </header>
+
+        <div class="giphy-toolbar">
+          <input
+            type="text"
+            class="quick-comment-input"
+            [value]="giphyQuery()"
+            (input)="onGiphyQueryInput($any($event.target).value)"
+            placeholder="Search GIPHY..."
+          />
+          <button
+            type="button"
+            class="reply-btn giphy-type-btn"
+            [class.active]="giphyType() === 'gif'"
+            (click)="setGiphyType('gif')"
+          >
+            GIF
+          </button>
+          <button
+            type="button"
+            class="reply-btn giphy-type-btn"
+            [class.active]="giphyType() === 'sticker'"
+            (click)="setGiphyType('sticker')"
+          >
+            Sticker
+          </button>
+        </div>
+
+        <p class="empty-thread" *ngIf="giphyLoading()">Searching...</p>
+        <p class="empty-thread" *ngIf="!giphyLoading() && giphyError()">{{ giphyError() }}</p>
+
+        <div class="giphy-grid" *ngIf="!giphyLoading() && giphyResults().length > 0">
+          <button
+            type="button"
+            class="giphy-tile"
+            *ngFor="let item of giphyResults(); trackBy: trackByGiphy"
+            (click)="selectGiphy(item)"
+          >
+            <img [src]="item.previewUrl || item.fullUrl" [alt]="item.title || 'GIF result'" loading="lazy" />
+          </button>
+        </div>
+      </section>
+    </div>
   </section>
 </section>

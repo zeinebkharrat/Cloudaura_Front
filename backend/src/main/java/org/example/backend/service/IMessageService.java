@@ -17,5 +17,6 @@ public interface IMessageService {
 
     // DM messaging methods
     MessageResponse sendMessage(Integer chatRoomId, Integer senderId, String content);
+    MessageResponse sendVoiceMessage(Integer chatRoomId, Integer senderId, String voiceUrl, Integer durationSec);
     List<MessageResponse> getMessagesByChatRoomOrdered(Integer chatRoomId);
 }

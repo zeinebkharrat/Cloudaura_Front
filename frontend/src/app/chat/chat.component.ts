@@ -44,9 +44,13 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   activeChatRoomId = signal<number | null>(null);
   activeConversation = signal<ConversationResponse | null>(null);
   messages = signal<MessageResponse[]>([]);
+  messagesError = signal<string | null>(null);
   newMessage = signal('');
   loading = signal(false);
   messagesLoading = signal(false);
+  uploadingVoice = signal(false);
+  isRecording = signal(false);
+  recordingSeconds = signal(0);
 
   // User search
   searchQuery = signal('');
@@ -65,6 +69,12 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   private typingSub: Subscription | null = null;
   private searchSubject = new Subject<string>();
   private shouldScrollToBottom = false;
+  private mediaRecorder: MediaRecorder | null = null;
+  private mediaStream: MediaStream | null = null;
+  private voiceChunks: BlobPart[] = [];
+  private recordingTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly audioElements = new Map<number, HTMLAudioElement>();
+  playingVoiceMessageId = signal<number | null>(null);
 
   // Mobile view
   showConversationList = signal(true);
@@ -117,6 +127,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.chatSub?.unsubscribe();
     this.typingSub?.unsubscribe();
     if (this.typingTimeout) clearTimeout(this.typingTimeout);
+    this.cleanupRecorder();
   }
 
   // ──── Conversations ────
@@ -127,6 +138,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.activeChatRoomId.set(conv.chatRoomId);
     this.activeConversation.set(conv);
     this.messages.set([]);
+    this.messagesError.set(null);
     this.typingUsers.set(new Map());
     this.showConversationList.set(false);
 
@@ -139,10 +151,15 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.chatService.getMessages(conv.chatRoomId).subscribe({
       next: (msgs) => {
         this.messages.set(msgs);
+        this.messagesError.set(null);
         this.messagesLoading.set(false);
         this.shouldScrollToBottom = true;
       },
-      error: () => this.messagesLoading.set(false),
+      error: (err) => {
+        console.error('Failed to load chat history:', err);
+        this.messagesError.set('Unable to load previous messages right now.');
+        this.messagesLoading.set(false);
+      },
     });
 
     // Mark as seen
@@ -208,6 +225,19 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     // Stop typing indicator
     this.chatService.sendTyping(chatRoomId, false);
+  }
+
+  async toggleVoiceRecording(): Promise<void> {
+    if (this.isRecording()) {
+      await this.stopVoiceRecording(true);
+      return;
+    }
+
+    await this.startVoiceRecording();
+  }
+
+  async cancelVoiceRecording(): Promise<void> {
+    await this.stopVoiceRecording(false);
   }
 
   onMessageKeydown(event: KeyboardEvent): void {
@@ -325,6 +355,54 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     return `${users.length} people are typing…`;
   }
 
+  isVoiceMessage(msg: MessageResponse): boolean {
+    return !!msg.voiceUrl || msg.messageType === 'VOICE';
+  }
+
+  registerVoiceAudio(messageId: number, event: Event): void {
+    const audio = event.target as HTMLAudioElement;
+    this.audioElements.set(messageId, audio);
+    audio.onended = () => {
+      if (this.playingVoiceMessageId() === messageId) {
+        this.playingVoiceMessageId.set(null);
+      }
+    };
+  }
+
+  toggleVoicePlayback(messageId: number): void {
+    const currentPlaying = this.playingVoiceMessageId();
+    if (currentPlaying != null && currentPlaying !== messageId) {
+      const prev = this.audioElements.get(currentPlaying);
+      prev?.pause();
+    }
+
+    const audio = this.audioElements.get(messageId);
+    if (!audio) {
+      return;
+    }
+
+    if (!audio.paused) {
+      audio.pause();
+      this.playingVoiceMessageId.set(null);
+      return;
+    }
+
+    audio.play().then(() => {
+      this.playingVoiceMessageId.set(messageId);
+    }).catch(() => {
+      this.playingVoiceMessageId.set(null);
+    });
+  }
+
+  formatVoiceDuration(sec?: number | null): string {
+    if (!sec || sec <= 0) {
+      return '';
+    }
+    const minutes = Math.floor(sec / 60);
+    const seconds = sec % 60;
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+  }
+
   backToList(): void {
     this.showConversationList.set(true);
     this.activeChatRoomId.set(null);
@@ -346,5 +424,120 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
         el.scrollTop = el.scrollHeight;
       }
     } catch (_) {}
+  }
+
+  private async startVoiceRecording(): Promise<void> {
+    const chatRoomId = this.activeChatRoomId();
+    if (!chatRoomId || this.uploadingVoice()) {
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      alert('Voice recording is not supported on this browser.');
+      return;
+    }
+
+    try {
+      this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      const mimeType = this.resolveRecordingMimeType();
+      this.mediaRecorder = mimeType
+        ? new MediaRecorder(this.mediaStream, { mimeType })
+        : new MediaRecorder(this.mediaStream);
+
+      this.voiceChunks = [];
+      this.recordingSeconds.set(0);
+
+      this.mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          this.voiceChunks.push(event.data);
+        }
+      };
+
+      this.mediaRecorder.start();
+      this.isRecording.set(true);
+      this.recordingTimer = setInterval(() => {
+        this.recordingSeconds.update((v) => v + 1);
+      }, 1000);
+    } catch (error) {
+      console.error('Could not start recording:', error);
+      this.cleanupRecorder();
+    }
+  }
+
+  private async stopVoiceRecording(send: boolean): Promise<void> {
+    if (!this.mediaRecorder || this.mediaRecorder.state === 'inactive') {
+      this.cleanupRecorder();
+      return;
+    }
+
+    const recorder = this.mediaRecorder;
+
+    await new Promise<void>((resolve) => {
+      recorder.onstop = () => resolve();
+      recorder.stop();
+    });
+
+    const duration = this.recordingSeconds();
+    const blobType = recorder.mimeType || 'audio/webm';
+    const blob = new Blob(this.voiceChunks, { type: blobType });
+
+    this.cleanupRecorder();
+
+    if (!send || blob.size === 0) {
+      return;
+    }
+
+    const chatRoomId = this.activeChatRoomId();
+    if (!chatRoomId) {
+      return;
+    }
+
+    const extension = blobType.includes('ogg') ? 'ogg' : 'webm';
+    const file = new File([blob], `voice-${Date.now()}.${extension}`, { type: blobType });
+
+    this.uploadingVoice.set(true);
+    this.chatService.sendVoiceMessage(chatRoomId, file, duration).subscribe({
+      next: (msg) => {
+        const current = this.messages();
+        if (!current.find((m) => m.messageId === msg.messageId)) {
+          this.messages.set([...current, msg]);
+          this.shouldScrollToBottom = true;
+        }
+        this.chatService.updateConversationWithNewMessage(msg);
+        this.uploadingVoice.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to send voice message:', err);
+        this.uploadingVoice.set(false);
+      },
+    });
+  }
+
+  private cleanupRecorder(): void {
+    if (this.recordingTimer) {
+      clearInterval(this.recordingTimer);
+      this.recordingTimer = null;
+    }
+
+    if (this.mediaStream) {
+      this.mediaStream.getTracks().forEach((t) => t.stop());
+      this.mediaStream = null;
+    }
+
+    this.mediaRecorder = null;
+    this.voiceChunks = [];
+    this.isRecording.set(false);
+    this.recordingSeconds.set(0);
+  }
+
+  private resolveRecordingMimeType(): string | null {
+    const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'];
+    for (const type of candidates) {
+      if (MediaRecorder.isTypeSupported(type)) {
+        return type;
+      }
+    }
+    return null;
   }
 }

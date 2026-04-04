@@ -9,6 +9,7 @@ import org.example.backend.repository.MessageRepository;
 import org.example.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
 import java.util.List;
@@ -75,6 +76,9 @@ public class MessageService implements IMessageService {
         message.setChatRoom(chatRoom);
         message.setSender(sender);
         message.setContent(content);
+        message.setMessageType("TEXT");
+        message.setVoiceUrl(null);
+        message.setVoiceDurationSec(null);
         message.setSentAt(new Date());
 
         message = messageRepo.save(message);
@@ -83,24 +87,48 @@ public class MessageService implements IMessageService {
     }
 
     @Override
-    public List<MessageResponse> getMessagesByChatRoomOrdered(Integer chatRoomId) {
+    public MessageResponse sendVoiceMessage(Integer chatRoomId, Integer senderId, String voiceUrl, Integer durationSec) {
         ChatRoom chatRoom = chatRoomRepo.findById(chatRoomId)
                 .orElseThrow(() -> new RuntimeException("Chat room not found"));
+        User sender = userRepo.findById(senderId)
+                .orElseThrow(() -> new RuntimeException("Sender not found"));
 
-        return messageRepo.findByChatRoomOrderBySentAtAsc(chatRoom).stream()
+        Message message = new Message();
+        message.setChatRoom(chatRoom);
+        message.setSender(sender);
+        message.setContent("Voice message");
+        message.setMessageType("VOICE");
+        message.setVoiceUrl(voiceUrl);
+        message.setVoiceDurationSec(durationSec != null && durationSec > 0 ? durationSec : null);
+        message.setSentAt(new Date());
+
+        message = messageRepo.save(message);
+        return toMessageResponse(message);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MessageResponse> getMessagesByChatRoomOrdered(Integer chatRoomId) {
+        return messageRepo.findByChatRoomIdOrderBySentAtAscWithRelations(chatRoomId).stream()
                 .map(this::toMessageResponse)
                 .collect(Collectors.toList());
     }
 
     private MessageResponse toMessageResponse(Message message) {
         User sender = message.getSender();
+        Integer senderId = sender != null ? sender.getUserId() : null;
+        String senderUsername = sender != null ? sender.getUsername() : "Unknown user";
+        String senderImage = sender != null ? sender.getProfileImageUrl() : null;
         return new MessageResponse(
                 message.getMessageId(),
                 message.getChatRoom().getChatRoomId(),
-                sender.getUserId(),
-                sender.getUsername(),
-                sender.getProfileImageUrl(),
+                senderId,
+                senderUsername,
+                senderImage,
                 message.getContent(),
+            message.getMessageType(),
+            message.getVoiceUrl(),
+            message.getVoiceDurationSec(),
                 message.getSentAt()
         );
     }

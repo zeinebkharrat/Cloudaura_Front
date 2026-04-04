@@ -26,6 +26,14 @@ public class Message {
     @Column(columnDefinition = "TEXT")
     private String content;
 
+    @Column(length = 20)
+    private String messageType;
+
+    @Column(length = 1024)
+    private String voiceUrl;
+
+    private Integer voiceDurationSec;
+
     @Temporal(TemporalType.TIMESTAMP)
     private Date sentAt;
 }

@@ -9,6 +9,9 @@ public record MessageResponse(
         String senderUsername,
         String senderImage,
         String content,
+        String messageType,
+        String voiceUrl,
+        Integer voiceDurationSec,
         Date sentAt
 ) {
 }

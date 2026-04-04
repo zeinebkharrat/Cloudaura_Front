@@ -31,6 +31,33 @@ public class SchemaRepairRunner implements CommandLineRunner {
     public void run(String... args) {
         fixStatusColumn("orders");
         fixStatusColumn("order_items");
+        ensureMessageVoiceColumns();
+    }
+
+    private void ensureMessageVoiceColumns() {
+        ensureColumnExists("messages", "message_type", "VARCHAR(20) NULL");
+        ensureColumnExists("messages", "voice_url", "VARCHAR(1024) NULL");
+        ensureColumnExists("messages", "voice_duration_sec", "INT NULL");
+    }
+
+    private void ensureColumnExists(String tableName, String columnName, String columnDefinition) {
+        try {
+            String sql = "SELECT COUNT(*) FROM information_schema.COLUMNS "
+                    + "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?";
+
+            Integer count = jdbcTemplate.queryForObject(sql, Integer.class, tableName, columnName);
+            if (count != null && count > 0) {
+                return;
+            }
+
+            log.warn("Adding missing column `{}.{}`", tableName, columnName);
+            jdbcTemplate.execute(
+                    "ALTER TABLE `" + tableName + "` ADD COLUMN `" + columnName + "` " + columnDefinition
+            );
+            log.info("Added column `{}.{}`", tableName, columnName);
+        } catch (Exception e) {
+            log.error("SchemaRepairRunner: failed to ensure column `{}.{}` – {}", tableName, columnName, e.getMessage());
+        }
     }
 
     private void fixStatusColumn(String tableName) {

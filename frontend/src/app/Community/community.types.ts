@@ -29,6 +29,7 @@ export interface Comment {
   author?: UserRef;
   parent?: { commentId?: number } | null;
   content?: string;
+  gifs?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
 }

@@ -1,4 +1,4 @@
-import { Component, HostListener, inject, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { forkJoin, firstValueFrom, of } from 'rxjs';
@@ -22,6 +22,7 @@ import { SavedPostService } from './saved-post.service';
 import { AuthService } from '../core/auth.service';
 import { OwnershipUtil } from './ownership.util';
 import Swal from 'sweetalert2';
+import { GiphyItem, GiphyMediaType, GiphyService } from './giphy.service';
 
 @Component({
   selector: 'app-community',
@@ -38,6 +39,7 @@ export class CommunityComponent {
   private readonly cityService = inject(CityService);
   private readonly followService = inject(FollowService);
   private readonly savedPostService = inject(SavedPostService);
+  private readonly giphyService = inject(GiphyService);
   public readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
@@ -93,6 +95,19 @@ export class CommunityComponent {
   readonly postCommentDrafts = signal<Record<number, string>>({});
   readonly replyDrafts = signal<Record<number, string>>({});
   readonly activeReplyCommentId = signal<number | null>(null);
+  readonly postCommentGiphy = signal<Record<number, GiphyItem | null>>({});
+  readonly replyCommentGiphy = signal<Record<number, GiphyItem | null>>({});
+
+  // GIPHY picker
+  readonly showGiphyPicker = signal<boolean>(false);
+  readonly giphyContext = signal<{ kind: 'post' | 'reply'; id: number } | null>(null);
+  readonly giphyQuery = signal<string>('');
+  readonly giphyType = signal<GiphyMediaType>('gif');
+  readonly giphyResults = signal<GiphyItem[]>([]);
+  readonly giphyLoading = signal<boolean>(false);
+  readonly giphyError = signal<string | null>(null);
+
+  private giphySearchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Media uploads
   readonly uploadingPostId = signal<number | null>(null);
@@ -111,6 +126,13 @@ export class CommunityComponent {
   ngOnInit(): void {
     this.loadCities();
     this.loadFeed();
+  }
+
+  ngOnDestroy(): void {
+    if (this.giphySearchDebounceTimer) {
+      clearTimeout(this.giphySearchDebounceTimer);
+      this.giphySearchDebounceTimer = null;
+    }
   }
 
   private loadCities(): void {
@@ -798,6 +820,10 @@ export class CommunityComponent {
     return nickname;
   }
 
+  trackByGiphy(index: number, item: GiphyItem): string {
+    return item.id || `${item.mediaType}-${index}`;
+  }
+
   trackByCity(index: number, city: CityOption): number {
     return city.cityId;
   }
@@ -850,12 +876,19 @@ export class CommunityComponent {
       ? this.getReplyDraft(parentCommentId)
       : this.getCommentDraft(postId);
     const content = draft.trim();
-    if (!content) return;
+    const selectedGiphy = isReply
+      ? this.getSelectedGiphyForReply(parentCommentId)
+      : this.getSelectedGiphyForPost(postId);
+
+    if (!content && !selectedGiphy) {
+      return;
+    }
 
     try {
       const newComment: Omit<Comment, 'commentId' | 'author' | 'createdAt' | 'updatedAt'> = {
         post: { postId },
         content,
+        gifs: selectedGiphy?.fullUrl ?? null,
         parent: isReply ? { commentId: parentCommentId } : null,
       };
 
@@ -869,12 +902,218 @@ export class CommunityComponent {
       // Clear draft and reload feed
       if (isReply) {
         this.setReplyDraft(parentCommentId, '');
+        this.setReplyGiphy(parentCommentId, null);
         this.activeReplyCommentId.set(null);
       } else {
         this.setCommentDraft(postId, '');
+        this.setPostCommentGiphy(postId, null);
       }
     } catch (error) {
       console.error('Error adding comment:', error);
+    }
+  }
+
+  openGiphyPickerForPost(postId: number): void {
+    this.giphyContext.set({ kind: 'post', id: postId });
+    this.openGiphyPicker();
+  }
+
+  openGiphyPickerForReply(commentId: number): void {
+    this.giphyContext.set({ kind: 'reply', id: commentId });
+    this.openGiphyPicker();
+  }
+
+  onGiphyQueryInput(value: string): void {
+    this.giphyQuery.set(value);
+    this.scheduleGiphySearch();
+  }
+
+  setGiphyType(type: GiphyMediaType): void {
+    this.giphyType.set(type);
+    this.scheduleGiphySearch();
+  }
+
+  selectGiphy(item: GiphyItem): void {
+    const context = this.giphyContext();
+    if (!context) {
+      return;
+    }
+
+    if (context.kind === 'post') {
+      this.setPostCommentGiphy(context.id, item);
+    } else {
+      this.setReplyGiphy(context.id, item);
+    }
+
+    this.closeGiphyPicker();
+  }
+
+  closeGiphyPicker(): void {
+    this.showGiphyPicker.set(false);
+    this.giphyContext.set(null);
+    this.giphyQuery.set('');
+    this.giphyResults.set([]);
+    this.giphyError.set(null);
+    this.giphyLoading.set(false);
+    if (this.giphySearchDebounceTimer) {
+      clearTimeout(this.giphySearchDebounceTimer);
+      this.giphySearchDebounceTimer = null;
+    }
+  }
+
+  clearSelectedGiphyForPost(postId: number): void {
+    this.setPostCommentGiphy(postId, null);
+  }
+
+  clearSelectedGiphyForReply(commentId: number): void {
+    this.setReplyGiphy(commentId, null);
+  }
+
+  getSelectedGiphyForPost(postId: number): GiphyItem | null {
+    return this.postCommentGiphy()[postId] || null;
+  }
+
+  getSelectedGiphyForReply(commentId: number): GiphyItem | null {
+    return this.replyCommentGiphy()[commentId] || null;
+  }
+
+  getCommentDisplayText(comment: Comment): string {
+    return this.parseCommentPayload(comment.content, comment.gifs).text;
+  }
+
+  getCommentGiphy(comment: Comment): GiphyItem | null {
+    return this.parseCommentPayload(comment.content, comment.gifs).giphy;
+  }
+
+  private openGiphyPicker(): void {
+    this.showGiphyPicker.set(true);
+    this.giphyError.set(null);
+    this.giphyResults.set([]);
+  }
+
+  private scheduleGiphySearch(): void {
+    if (!this.showGiphyPicker()) {
+      return;
+    }
+
+    if (this.giphySearchDebounceTimer) {
+      clearTimeout(this.giphySearchDebounceTimer);
+    }
+
+    const q = this.giphyQuery().trim();
+    if (!q) {
+      this.giphyResults.set([]);
+      this.giphyError.set(null);
+      return;
+    }
+
+    this.giphySearchDebounceTimer = setTimeout(() => {
+      this.searchGiphy();
+    }, 280);
+  }
+
+  private async searchGiphy(): Promise<void> {
+    const q = this.giphyQuery().trim();
+    if (!q) {
+      this.giphyResults.set([]);
+      this.giphyError.set(null);
+      return;
+    }
+
+    this.giphyLoading.set(true);
+    this.giphyError.set(null);
+
+    try {
+      const results = await firstValueFrom(this.giphyService.search(q, this.giphyType(), 24));
+      this.giphyResults.set(results);
+      if (!results.length) {
+        this.giphyError.set('No result found. Try another keyword.');
+      }
+    } catch (error) {
+      console.error('Error searching GIPHY:', error);
+      this.giphyError.set('GIPHY search failed. Check API key configuration.');
+      this.giphyResults.set([]);
+    } finally {
+      this.giphyLoading.set(false);
+    }
+  }
+
+  private setPostCommentGiphy(postId: number, item: GiphyItem | null): void {
+    const next = { ...this.postCommentGiphy() };
+    if (item) {
+      next[postId] = item;
+    } else {
+      delete next[postId];
+    }
+    this.postCommentGiphy.set(next);
+  }
+
+  private setReplyGiphy(commentId: number, item: GiphyItem | null): void {
+    const next = { ...this.replyCommentGiphy() };
+    if (item) {
+      next[commentId] = item;
+    } else {
+      delete next[commentId];
+    }
+    this.replyCommentGiphy.set(next);
+  }
+
+  private parseCommentPayload(content?: string, gifs?: string | null): { text: string; giphy: GiphyItem | null } {
+    const rawText = (content ?? '').trim();
+    const directGifs = (gifs ?? '').trim();
+
+    if (directGifs && this.isAllowedGiphyUrl(directGifs)) {
+      return {
+        text: rawText,
+        giphy: {
+          id: directGifs,
+          title: 'giphy',
+          mediaType: 'gif',
+          previewUrl: directGifs,
+          fullUrl: directGifs,
+        },
+      };
+    }
+
+    // Backward compatibility for old comments that stored GIPHY marker inside content.
+    if (!rawText) {
+      return { text: '', giphy: null };
+    }
+
+    const match = rawText.match(/^\[\[GIPHY\|(gif|sticker)\|([^\]]+)\]\]\s*/i);
+    if (!match) {
+      return { text: rawText, giphy: null };
+    }
+
+    const mediaType = (match[1].toLowerCase() === 'sticker' ? 'sticker' : 'gif') as GiphyMediaType;
+    const fullUrl = match[2].trim();
+
+    if (!this.isAllowedGiphyUrl(fullUrl)) {
+      return { text: rawText, giphy: null };
+    }
+
+    const text = rawText.slice(match[0].length).trim();
+    return {
+      text,
+      giphy: {
+        id: fullUrl,
+        title: mediaType,
+        mediaType,
+        previewUrl: fullUrl,
+        fullUrl,
+      },
+    };
+  }
+
+  private isAllowedGiphyUrl(url: string): boolean {
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== 'https:') {
+        return false;
+      }
+      return parsed.hostname.endsWith('giphy.com') || parsed.hostname.endsWith('giphyusercontent.com');
+    } catch {
+      return false;
     }
   }
 
@@ -1027,6 +1266,31 @@ export class CommunityComponent {
       [user?.firstName, user?.lastName].filter(Boolean).join(' ') ??
       'User'
     );
+  }
+
+  userAvatarUrl(user?: UserRef): string | null {
+    return this.normalizeProfileImageUrl(user?.profileImageUrl);
+  }
+
+  currentUserAvatarUrl(): string | null {
+    return this.normalizeProfileImageUrl(this.authService.currentUser()?.profileImageUrl ?? null);
+  }
+
+  private normalizeProfileImageUrl(url?: string | null): string | null {
+    const raw = (url ?? '').trim();
+    if (!raw) {
+      return null;
+    }
+    if (/^https?:\/\//i.test(raw)) {
+      return raw;
+    }
+    if (raw.startsWith('/')) {
+      return raw;
+    }
+    if (raw.startsWith('uploads/')) {
+      return `/${raw}`;
+    }
+    return `/${raw.replace(/^\/+/, '')}`;
   }
 
   private parseDate(date?: string | null): number {
