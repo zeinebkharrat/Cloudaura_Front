@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class LikeService implements ILikeService {
@@ -35,8 +36,9 @@ public class LikeService implements ILikeService {
     JdbcTemplate jdbcTemplate;
 
     @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public List<LikeEntity> retrieveAllLikes() {
-        return likeRepo.findAll();
+        return likeRepo.findAllWithUserAndPostGraph();
     }
 
     @Override
@@ -127,10 +129,27 @@ public class LikeService implements ILikeService {
     }
     
     @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public List<LikeEntity> getLikesByPost(Integer postId) {
-        Post post = postRepo.findById(postId)
-                .orElseThrow(() -> new RuntimeException("Post not found"));
-        return likeRepo.findByPost(post);
+        return likeRepo.findByPostIdWithGraph(postId);
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public Map<String, Object> getLikesByPostApiPayload(Integer postId, Integer currentUserIdOrNull) {
+        List<LikeEntity> likes = likeRepo.findByPostIdWithGraph(postId);
+        List<String> userNicknames = likes.stream()
+                .map(like -> like.getUser() != null && like.getUser().getUsername() != null
+                        ? like.getUser().getUsername()
+                        : "User")
+                .collect(Collectors.toList());
+        boolean isLiked = currentUserIdOrNull != null && isPostLikedByUser(postId, currentUserIdOrNull);
+        Map<String, Object> response = new HashMap<>();
+        response.put("likes", likes);
+        response.put("count", likes.size());
+        response.put("isLikedByCurrentUser", isLiked);
+        response.put("userNicknames", userNicknames);
+        return response;
     }
     
     @Override

@@ -19,7 +19,7 @@ public record AdminUserUpdateRequest(
         @Size(max = 100)
         String nationality,
         Integer cityId,
-        @Size(max = 1000)
+        @Size(max = 100000)
         String profileImageUrl,
         @NotBlank(message = "Status is required")
         String status

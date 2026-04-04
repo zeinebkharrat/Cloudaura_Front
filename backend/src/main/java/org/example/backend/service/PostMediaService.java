@@ -15,8 +15,9 @@ public class PostMediaService implements IPostMediaService {
     PostMediaRepository postMediaRepo;
 
     @Override
+    @Transactional(readOnly = true)
     public List<PostMedia> retrieveAllMedia() {
-        return postMediaRepo.findAll();
+        return postMediaRepo.findAllWithPostGraph();
     }
 
     @Override

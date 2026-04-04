@@ -1,7 +1,7 @@
 <section class="follow-list-page">
   <div class="follow-shell">
     <header class="follow-head">
-      <button type="button" class="back-btn" (click)="backToProfile()">← Retour profil</button>
+      <button type="button" class="back-btn" (click)="backToProfile()">← Back to profile</button>
       <h2>Réseau</h2>
     </header>
 
@@ -14,7 +14,7 @@
       </button>
     </div>
 
-    <div class="state-box" *ngIf="loading()">Chargement...</div>
+        <div class="state-box" *ngIf="loading()">Loading…</div>
     <div class="state-box state-box--error" *ngIf="!loading() && error()">{{ error() }}</div>
 
     <div class="users-list" *ngIf="!loading() && !error()">
@@ -39,7 +39,7 @@
       </button>
 
       <div class="state-box" *ngIf="visibleUsers().length === 0">
-        Aucun utilisateur dans cette liste.
+        No users in this list.
       </div>
     </div>
   </div>

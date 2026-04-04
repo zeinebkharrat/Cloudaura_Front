@@ -1,14 +1,16 @@
 import { CommonModule, Location } from '@angular/common';
 import { AfterViewInit, Component, OnDestroy, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import * as L from 'leaflet';
 import { ExploreService } from './explore.service';
-import { Restaurant } from './explore.models';
+import { PublicReview, ReviewSummary, Restaurant } from './explore.models';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-restaurant-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './restaurant-detail.component.html',
   styleUrl: './restaurant-detail.component.css',
 })
@@ -21,6 +23,15 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
   loading = true;
   error = '';
   heroImage = 'assets/sidi_bou.png';
+  reviewSummary: ReviewSummary = { averageStars: 0, totalReviews: 0 };
+  reviews: PublicReview[] = [];
+  reviewPage = 0;
+  readonly reviewSize = 6;
+  reviewSubmitting = false;
+  reviewForm = {
+    stars: 5,
+    commentText: '',
+  };
 
   private map?: L.Map;
   private cityMarker?: L.CircleMarker;
@@ -41,6 +52,8 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
         if (res.imageUrl) {
           this.heroImage = res.imageUrl;
         }
+        this.loadReviewSummary();
+        this.loadReviews();
         this.loadCityHeroImage(res.cityId);
         this.loading = false;
         setTimeout(() => this.tryInitMap(), 80);
@@ -132,6 +145,88 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
 
   goBack(): void {
     this.location.back();
+  }
+
+  ratingValue(): number {
+    if (this.reviewSummary.totalReviews > 0) {
+      return this.reviewSummary.averageStars;
+    }
+    return this.restaurant?.rating ?? 0;
+  }
+
+  starStates(value: number): Array<'full' | 'empty'> {
+    return Array.from({ length: 5 }, (_, index) => (value >= index + 1 ? 'full' : 'empty'));
+  }
+
+  setReviewStars(stars: number): void {
+    this.reviewForm.stars = stars;
+  }
+
+  submitReview(): void {
+    if (!this.restaurant || !this.reviewForm.commentText.trim()) {
+      return;
+    }
+
+    this.reviewSubmitting = true;
+    this.exploreService.createOrUpdateRestaurantReview(this.restaurant.restaurantId, {
+      stars: this.reviewForm.stars,
+      commentText: this.reviewForm.commentText.trim(),
+    }).subscribe({
+      next: () => {
+        this.reviewSubmitting = false;
+        this.reviewForm = { stars: 5, commentText: '' };
+        this.loadReviewSummary();
+        this.loadReviews();
+      },
+      error: (err) => {
+        this.reviewSubmitting = false;
+        if (err?.status === 401) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Sign in required',
+            text: 'Please sign in to post a comment.',
+            confirmButtonColor: '#e63946',
+          });
+          return;
+        }
+
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: err?.error?.message || 'Could not send your comment.',
+          confirmButtonColor: '#e63946',
+        });
+      },
+    });
+  }
+
+  private loadReviewSummary(): void {
+    if (!this.restaurant) {
+      return;
+    }
+    this.exploreService.getRestaurantReviewSummary(this.restaurant.restaurantId).subscribe({
+      next: (summary) => {
+        this.reviewSummary = summary;
+      },
+      error: () => {
+        this.reviewSummary = { averageStars: 0, totalReviews: 0 };
+      },
+    });
+  }
+
+  private loadReviews(): void {
+    if (!this.restaurant) {
+      return;
+    }
+    this.exploreService.listRestaurantReviews(this.restaurant.restaurantId, this.reviewPage, this.reviewSize).subscribe({
+      next: (payload) => {
+        this.reviewSummary = payload.summary;
+        this.reviews = payload.reviews.content;
+      },
+      error: () => {
+        this.reviews = [];
+      },
+    });
   }
 
   openDirectionsFromCurrentPosition(): void {

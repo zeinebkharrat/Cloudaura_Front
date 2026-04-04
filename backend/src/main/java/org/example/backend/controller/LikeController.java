@@ -6,6 +6,7 @@ import org.example.backend.service.ILikeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -60,22 +61,9 @@ public class LikeController {
 
     @GetMapping("/byPost/{postId}")
     public ResponseEntity<Map<String, Object>> getLikesByPost(@PathVariable Integer postId) {
-        List<LikeEntity> likes = likeService.getLikesByPost(postId);
-        User currentUser = getCurrentUser();
-        boolean isLikedByCurrentUser = likeService.isPostLikedByUser(postId, currentUser.getUserId());
-        
-        // Extract user nicknames
-        List<String> userNicknames = likes.stream()
-                .map(like -> like.getUser().getUsername())
-                .collect(java.util.stream.Collectors.toList());
-        
-        Map<String, Object> response = new HashMap<>();
-        response.put("likes", likes);
-        response.put("count", likes.size());
-        response.put("isLikedByCurrentUser", isLikedByCurrentUser);
-        response.put("userNicknames", userNicknames);
-        
-        return ResponseEntity.ok(response);
+        User current = resolveCurrentUserOrNull();
+        Integer uid = current != null ? current.getUserId() : null;
+        return ResponseEntity.ok(likeService.getLikesByPostApiPayload(postId, uid));
     }
 
     @DeleteMapping("/unlike/{postId}")
@@ -94,18 +82,30 @@ public class LikeController {
     }
     
     private User getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
+        User u = resolveCurrentUserOrNull();
+        if (u == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
         }
-        
-        // Extract User entity from CustomUserDetails
-        Object principal = authentication.getPrincipal();
-        if (principal instanceof org.example.backend.service.CustomUserDetailsService.CustomUserDetails) {
-            return ((org.example.backend.service.CustomUserDetailsService.CustomUserDetails) principal).getUser();
+        return u;
+    }
+
+    /** Null when anonymous or not logged in — used for public GET endpoints. */
+    private User resolveCurrentUserOrNull() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return null;
         }
-        
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid authentication principal");
+        if (authentication instanceof AnonymousAuthenticationToken) {
+            return null;
+        }
+        Object principal = authentication.getPrincipal();
+        if ("anonymousUser".equals(principal)) {
+            return null;
+        }
+        if (principal instanceof org.example.backend.service.CustomUserDetailsService.CustomUserDetails details) {
+            return details.getUser();
+        }
+        return null;
     }
 }
 

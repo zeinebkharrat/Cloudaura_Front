@@ -1,13 +1,13 @@
 <div class="puzzle-page">
   <div class="puzzle-card">
     @if (isLoading()) {
-      <p>Chargement du puzzle...</p>
+      <p>Loading puzzle…</p>
     } @else if (loadError()) {
       <p>{{ loadError() }}</p>
-      <button type="button" class="btn" (click)="backToHub()">Retour</button>
+      <button type="button" class="btn" (click)="backToHub()">Back</button>
     } @else {
       <header class="puzzle-head">
-        <button type="button" class="btn ghost" (click)="backToHub()">⟵ Quitter</button>
+        <button type="button" class="btn ghost" (click)="backToHub()">⟵ Leave</button>
         <div class="meta">
           <h2>{{ puzzle()?.title }}</h2>
           <p>Pièces placées : {{ moves() }} / {{ gridSize * gridSize }}</p>
@@ -15,7 +15,7 @@
             Les fragments sont sur les côtés — glissez chaque pièce vers son emplacement sur l’image (la bonne case uniquement).
           </p>
         </div>
-        <button type="button" class="btn" (click)="resetBoard()">Nouvelle partie</button>
+        <button type="button" class="btn" (click)="resetBoard()">New game</button>
       </header>
 
       @if (roadmapStageHint()) {
@@ -30,7 +30,7 @@
         class="puzzle-workspace"
         [class.puzzle-workspace--dragging]="draggingPieceId() !== null"
       >
-        <aside class="piece-bank piece-bank--left" aria-label="Fragments à placer">
+        <aside class="piece-bank piece-bank--left" aria-label="Pieces to place">
           @for (pieceId of bankLeft(); track pieceId) {
             <div
               class="bank-piece"
@@ -39,7 +39,7 @@
               [draggable]="!won()"
               (dragstart)="onBankDragStart($event, pieceId)"
               (dragend)="onDragEnd()"
-              [attr.aria-label]="'Fragment ' + (pieceId + 1) + ', à placer sur le plateau'"
+              [attr.aria-label]="'Piece ' + (pieceId + 1) + ', place on the board'"
             ></div>
           }
         </aside>
@@ -59,8 +59,8 @@
                 (drop)="onSlotDrop($event, i)"
                 [attr.aria-label]="
                   slots()[i] !== null
-                    ? 'Case ' + (i + 1) + ', fragment posé'
-                    : 'Emplacement ' + (i + 1) + ', vide'
+                    ? 'Cell ' + (i + 1) + ', piece placed'
+                    : 'Cell ' + (i + 1) + ', empty'
                 "
               >
                 @if (slots()[i] !== null) {
@@ -82,7 +82,7 @@
               [draggable]="!won()"
               (dragstart)="onBankDragStart($event, pieceId)"
               (dragend)="onDragEnd()"
-              [attr.aria-label]="'Fragment ' + (pieceId + 1) + ', à placer sur le plateau'"
+              [attr.aria-label]="'Piece ' + (pieceId + 1) + ', place on the board'"
             ></div>
           }
         </aside>
@@ -90,21 +90,21 @@
 
       @if (won()) {
         <div class="win">
-          ✅ Image reconstituée à 100 % — vous pouvez valider et continuer.
+          ✅ Image complete — you can confirm and continue.
           @if (hasLinkedRoadmap() && isLoggedIn() && !roadmapStageSaved() && !roadmapSaveFailed()) {
-            <p class="win-pending">Enregistrement de l’étape du parcours…</p>
+            <p class="win-pending">Saving roadmap step…</p>
           }
           @if (roadmapStageSaved()) {
-            <p class="roadmap-saved">Étape du parcours enregistrée.</p>
+            <p class="roadmap-saved">Roadmap step saved.</p>
           }
           <div class="win-actions">
             @if (canProceedToNextStage()) {
               <button type="button" class="btn btn-next-stage" (click)="goToNextStage()">
-                Valider et passer au stage suivant →
+                Confirm and go to next step →
               </button>
             }
             <button type="button" class="btn btn-secondary-light" (click)="backToHub()">
-              Retour au hub Jeux
+              Back to games hub
             </button>
           </div>
         </div>

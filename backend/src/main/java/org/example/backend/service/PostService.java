@@ -5,7 +5,6 @@ import org.example.backend.model.User;
 import org.example.backend.repository.PostRepository;
 import org.example.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,6 +12,7 @@ import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -31,13 +31,9 @@ public class PostService implements IPostService {
     JdbcTemplate jdbcTemplate;
 
     @Override
+    @Transactional(readOnly = true)
     public List<Post> retrievePosts() {
-        return postRepo.findAll(
-            Sort.by(
-                Sort.Order.desc("createdAt"),
-                Sort.Order.desc("postId")
-            )
-        );
+        return postRepo.findAllWithAuthorGraph();
     }
 
     @Override
@@ -103,16 +99,18 @@ public class PostService implements IPostService {
 
     @Override
     @Transactional
-    public Post repost(Integer originalPostId, Integer authorId) {
+    public Post repost(Integer originalPostId, Integer authorId, String caption) {
         Post original = postRepo.findById(originalPostId).orElse(null);
         User author = userRepository.findById(authorId).orElse(null);
         if (original == null || author == null) {
             return null;
         }
 
+        String normalizedCaption = caption == null ? "" : caption.trim();
+
         Post repost = new Post();
         repost.setAuthor(author);
-        repost.setContent(original.getContent());
+        repost.setContent(normalizedCaption);
         repost.setHashtags(original.getHashtags());
         repost.setLocation(original.getLocation());
         repost.setVisibility(original.getVisibility() != null ? original.getVisibility() : "public");
@@ -128,13 +126,31 @@ public class PostService implements IPostService {
     @Override
     @Transactional
     public void removePost(Integer postId) {
+        // Delete the selected post plus every repost that descends from it.
+        List<Integer> targetPostIds = jdbcTemplate.queryForList(
+                "WITH RECURSIVE repost_tree AS ("
+                        + " SELECT post_id FROM posts WHERE post_id = ?"
+                        + " UNION ALL"
+                        + " SELECT p.post_id FROM posts p"
+                        + " INNER JOIN repost_tree rt ON p.repost_of_post_id = rt.post_id"
+                        + ") SELECT post_id FROM repost_tree",
+                Integer.class,
+                postId
+        );
+
+        if (targetPostIds.isEmpty()) {
+            return;
+        }
+
+        String placeholders = String.join(",", Collections.nCopies(targetPostIds.size(), "?"));
+        Object[] args = targetPostIds.toArray();
+
         // Execute explicit SQL deletes to guarantee FK-safe ordering.
-        jdbcTemplate.update("DELETE FROM saved_posts WHERE post_id = ?", postId);
-        jdbcTemplate.update("UPDATE posts SET repost_of_post_id = NULL WHERE repost_of_post_id = ?", postId);
-        jdbcTemplate.update("DELETE FROM likes WHERE post_id = ?", postId);
-        jdbcTemplate.update("DELETE FROM comments WHERE post_id = ?", postId);
-        jdbcTemplate.update("DELETE FROM post_media WHERE post_id = ?", postId);
-        jdbcTemplate.update("DELETE FROM posts WHERE post_id = ?", postId);
+        jdbcTemplate.update("DELETE FROM saved_posts WHERE post_id IN (" + placeholders + ")", args);
+        jdbcTemplate.update("DELETE FROM likes WHERE post_id IN (" + placeholders + ")", args);
+        jdbcTemplate.update("DELETE FROM comments WHERE post_id IN (" + placeholders + ")", args);
+        jdbcTemplate.update("DELETE FROM post_media WHERE post_id IN (" + placeholders + ")", args);
+        jdbcTemplate.update("DELETE FROM posts WHERE post_id IN (" + placeholders + ")", args);
     }
     
     @Override

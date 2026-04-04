@@ -4,10 +4,10 @@
 
   <article class="auth-card animate-in">
     <p class="auth-kicker">YallaTN Security</p>
-    <h1>Verification email</h1>
+    <h1>Email verification</h1>
 
     @if (isLoading()) {
-      <p class="auth-subtitle">Verification en cours...</p>
+      <p class="auth-subtitle">Verifying…</p>
     } @else {
       @if (successMessage()) {
         <div class="auth-success">{{ successMessage() }}</div>
@@ -18,7 +18,7 @@
     }
 
     <p class="auth-switch">
-      Continuer vers <a routerLink="/signin">Se connecter</a>
+      Continue to <a routerLink="/signin">Sign in</a>
     </p>
   </article>
 </section>

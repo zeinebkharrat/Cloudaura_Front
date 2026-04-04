@@ -6,11 +6,14 @@ import { API_BASE_URL, API_FALLBACK_ORIGIN } from './api-url';
 export interface ShopCartLine {
   cartItemId: number;
   productId: number;
+  variantId?: number | null;
   name: string;
+  size?: string | null;
+  color?: string | null;
   imageUrl?: string | null;
-  unitPrice: number | null;
+  unitPrice: number;
   quantity: number;
-  lineTotal: number | null;
+  lineTotal: number;
   /** Stock produit (plafond quantité). */
   stock?: number | null;
 }
@@ -32,17 +35,23 @@ export interface CheckoutBuyer {
 export interface CheckoutOrder {
   orderId: number;
   status: string;
-  totalAmount: number | null;
+  totalAmount: number;
   /** ISO-8601 renvoyé par le backend */
   orderedAt?: string | null;
   buyer?: CheckoutBuyer | null;
+  paymentUrl?: string | null;
+  paymentMethod?: string | null;
   lines: Array<{
     orderItemId: number;
     productId: number;
+    variantId?: number | null;
     name: string;
+    size?: string | null;
+    color?: string | null;
     quantity: number;
-    unitPrice: number | null;
-    lineTotal: number | null;
+    unitPrice: number;
+    lineTotal: number;
+    status: string;
   }>;
 }
 
@@ -69,9 +78,9 @@ export class ShopService {
     return this.http.get<ShopCart>(`${this.shopBase()}/cart`).pipe(tap((c) => this.setCountFromCart(c)));
   }
 
-  addToCart(productId: number, quantity: number): Observable<ShopCart> {
+  addToCart(productId: number, quantity: number, variantId?: number | null): Observable<ShopCart> {
     return this.http
-      .post<ShopCart>(`${this.shopBase()}/cart/items`, { productId, quantity })
+      .post<ShopCart>(`${this.shopBase()}/cart/items`, { productId, quantity, variantId })
       .pipe(tap((c) => this.setCountFromCart(c)));
   }
 
@@ -88,8 +97,10 @@ export class ShopService {
       .pipe(tap((c) => this.setCountFromCart(c)));
   }
 
-  checkout(): Observable<CheckoutOrder> {
-    return this.http.post<CheckoutOrder>(`${this.shopBase()}/checkout`, {}).pipe(tap(() => this.cartCount.set(0)));
+  checkout(paymentMethod?: string): Observable<CheckoutOrder> {
+    const params: Record<string, string> = {};
+    if (paymentMethod) params['paymentMethod'] = paymentMethod;
+    return this.http.post<CheckoutOrder>(`${this.shopBase()}/checkout`, {}, { params }).pipe(tap(() => this.cartCount.set(0)));
   }
 
   getMyOrders(): Observable<MyOrderSummary[]> {
@@ -102,6 +113,12 @@ export class ShopService {
 
   getArtisanOrders(): Observable<MyOrderSummary[]> {
     return this.http.get<MyOrderSummary[]>(`${this.shopBase()}/artisan-orders`);
+  }
+
+  updateOrderItemStatus(orderItemId: number, status: string): Observable<void> {
+    return this.http.put<void>(`${this.shopBase()}/order-items/${orderItemId}/status`, null, {
+      params: { status }
+    });
   }
 
   refreshCartCount(): void {

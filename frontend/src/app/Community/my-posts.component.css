@@ -136,7 +136,9 @@
 }
 
 .error-icon {
-  font-size: 1.4rem;
+  font-size: 1.35rem;
+  color: #f87171;
+  flex-shrink: 0;
 }
 
 /* ─── Empty State ─── */
@@ -155,9 +157,13 @@
 }
 
 .empty-icon {
-  font-size: 4rem;
-  opacity: 0.6;
+  font-size: 2.75rem;
+  color: var(--text-muted);
+  opacity: 0.75;
   animation: float 3s ease-in-out infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 @keyframes float {
@@ -298,8 +304,9 @@
   font-size: 0.88rem;
 }
 
-.location-icon {
-  font-size: 0.9rem;
+.location-icon-img {
+  object-fit: contain;
+  flex-shrink: 0;
 }
 
 /* ─── Media Grid ─── */
@@ -352,8 +359,14 @@
   font-weight: 500;
 }
 
-.stat-icon {
-  font-size: 0.95rem;
+.stat-ico {
+  object-fit: contain;
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+.stat-ico--muted {
+  opacity: 0.48;
+  filter: grayscale(0.35);
 }
 
 /* ─── Action Buttons Row ─── */
@@ -398,7 +411,7 @@
   color: #ef4444;
 }
 
-.action-icon {
+.action-pi {
   font-size: 1rem;
   line-height: 1;
 }
@@ -479,6 +492,9 @@
 
 /* ─── Buttons ─── */
 .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: linear-gradient(135deg, var(--mediterranean-blue), #00b4d8);
   color: #fff;
   border: none;
@@ -521,6 +537,9 @@
 }
 
 .btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: linear-gradient(135deg, #ef4444, #dc2626);
   color: #fff;
   border: none;
@@ -567,8 +586,11 @@
 }
 
 .delete-modal__icon {
-  font-size: 3rem;
+  font-size: 2.5rem;
   margin-bottom: 12px;
+  color: #f12545;
+  display: flex;
+  justify-content: center;
 }
 
 .delete-modal h3 {

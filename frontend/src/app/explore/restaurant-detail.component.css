@@ -128,6 +128,92 @@ h1 {
   line-height: 1.7;
 }
 
+.rating-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--text-color);
+}
+
+.rating-row small {
+  color: var(--text-muted);
+}
+
+.stars {
+  display: inline-flex;
+  gap: 4px;
+  font-size: 1rem;
+  color: #d4d4d8;
+}
+
+.stars span.filled,
+.star-btn.filled {
+  color: #f59e0b;
+}
+
+.review-card {
+  display: grid;
+  gap: 16px;
+}
+
+.reviews-list {
+  display: grid;
+  gap: 10px;
+}
+
+.review-item {
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.review-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.review-item p {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+}
+
+.review-form {
+  display: grid;
+  gap: 10px;
+}
+
+.review-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--text-color);
+}
+
+.review-form textarea {
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  color: var(--text-color);
+  padding: 10px 12px;
+}
+
+.stars.selectable {
+  gap: 6px;
+}
+
+.star-btn {
+  background: transparent;
+  border: 0;
+  color: #d4d4d8;
+  cursor: pointer;
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 0;
+}
+
 .chips-row {
   display: flex;
   flex-wrap: wrap;

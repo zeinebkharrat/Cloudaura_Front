@@ -2,12 +2,12 @@
   <div class="qp-container animate-up">
     @if (isLoading()) {
       <div class="qp-loading">
-        <p>Chargement du quiz...</p>
+        <p>Loading quiz…</p>
       </div>
     } @else if (quiz() && loadError()) {
       <div class="qp-loading">
         <p>{{ loadError() }}</p>
-        <button class="btn-primary" (click)="backToHub()">Retour au Hub Ludique</button>
+        <button class="btn-primary" (click)="backToHub()">Back to games hub</button>
       </div>
     } @else if (quiz()) {
       <header class="qp-header">
@@ -41,8 +41,8 @@
         </div>
       } @else if (!isFinished() && questions().length === 0) {
         <div class="qp-loading">
-          <p>{{ loadError() || 'Ce quiz ne contient pas encore de questions valides.' }}</p>
-          <button class="btn-primary" (click)="backToHub()">Retour au Hub Ludique</button>
+          <p>{{ loadError() || 'This quiz has no valid questions yet.' }}</p>
+          <button class="btn-primary" (click)="backToHub()">Back to games hub</button>
         </div>
       } @else {
         <div class="qp-result">
@@ -51,19 +51,19 @@
             <span class="sr-tot">/ {{ questions().length }}</span>
           </div>
           <h2 class="qr-title">
-            @if (score() === questions().length) { Parfait ! 🏆 }
-            @else if (score() > 0) { Bien joué ! 👍 }
-            @else { Aïe... 😅 }
+            @if (score() === questions().length) { Perfect! 🏆 }
+            @else if (score() > 0) { Well done! 👍 }
+            @else { Oops… 😅 }
           </h2>
-          <p class="qr-desc">Vous avez terminé le quiz <strong>{{ quiz()?.title }}</strong>.</p>
-          <button class="btn-primary" (click)="backToHub()">Retour au Hub Ludique</button>
+          <p class="qr-desc">You finished the quiz <strong>{{ quiz()?.title }}</strong>.</p>
+          <button class="btn-primary" (click)="backToHub()">Back to games hub</button>
         </div>
       }
 
     } @else {
       <div class="qp-loading">
-        <p>{{ loadError() || 'Quiz introuvable.' }}</p>
-        <button class="btn-primary" (click)="backToHub()">Retour au Hub Ludique</button>
+        <p>{{ loadError() || 'Quiz not found.' }}</p>
+        <button class="btn-primary" (click)="backToHub()">Back to games hub</button>
       </div>
     }
   </div>

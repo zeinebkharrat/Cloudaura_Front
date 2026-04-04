@@ -1,0 +1,44 @@
+{
+  "accommodations": [
+    {
+      "id": 101,
+      "name": "The Residence Tunis",
+      "cityId": 1,
+      "type": "5-STARS",
+      "rating": 4.8,
+      "basePrice": 450,
+      "imageUrl": "https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=60",
+      "amenities": ["WiFi", "Pool", "Spa", "Restaurant"]
+    },
+    {
+      "id": 102,
+      "name": "Mövenpick Resort & Marine Spa Sousse",
+      "cityId": 4,
+      "type": "5-STARS",
+      "rating": 4.6,
+      "basePrice": 380,
+      "imageUrl": "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=60",
+      "amenities": ["WiFi", "Beach", "Pool", "Gym"]
+    },
+    {
+      "id": 103,
+      "name": "Dar El Jeld Hotel & Spa",
+      "cityId": 1,
+      "type": "5-STARS",
+      "rating": 4.9,
+      "basePrice": 520,
+      "imageUrl": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=60",
+      "amenities": ["WiFi", "Spa", "Historical", "Terrace"]
+    },
+    {
+      "id": 104,
+      "name": "Hasdrubal Prestige Thalassa & Spa Djerba",
+      "cityId": 9,
+      "type": "5-STARS",
+      "rating": 4.7,
+      "basePrice": 420,
+      "imageUrl": "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=60",
+      "amenities": ["WiFi", "Pool", "Spa", "Private Beach"]
+    }
+  ]
+}

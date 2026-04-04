@@ -19,7 +19,7 @@ import { PostService } from './post.service';
 import { CityOption, CityService } from './city.service';
 import { FollowService } from './follow.service';
 import { SavedPostService } from './saved-post.service';
-import { AuthService } from '../auth.service';
+import { AuthService } from '../core/auth.service';
 import { OwnershipUtil } from './ownership.util';
 import Swal from 'sweetalert2';
 
@@ -57,13 +57,14 @@ export class CommunityComponent {
 
   readonly loadError = signal<string | null>(null);
   readonly feedLoaded = signal(false);
+  /** Placeholder discovery chips — use asset paths instead of emoji */
   readonly cityDiscovery = signal<Array<{ label: string; icon: string }>>([
-    { label: 'Kairouan', icon: '🕌' },
-    { label: 'Djerba', icon: '🏖️' },
-    { label: 'Sidi Bou', icon: '🌅' },
-    { label: 'Douz', icon: '🐪' },
-    { label: 'El Jem', icon: '🏛️' },
-    { label: 'Nabeul', icon: '🏺' },
+    { label: 'Kairouan', icon: 'icones/city.png' },
+    { label: 'Djerba', icon: 'icones/city.png' },
+    { label: 'Sidi Bou', icon: 'icones/city.png' },
+    { label: 'Douz', icon: 'icones/city.png' },
+    { label: 'El Jem', icon: 'icones/city.png' },
+    { label: 'Nabeul', icon: 'icones/city.png' },
   ]);
 
   // Create post form
@@ -120,7 +121,7 @@ export class CommunityComponent {
         return of([]);
       })
     ).subscribe((cities) => {
-      this.cities.set(cities ?? []);
+      this.cities.set(Array.isArray(cities) ? cities : []);
       this.loadingCities.set(false);
     });
   }
@@ -281,8 +282,8 @@ export class CommunityComponent {
     if (!location) {
       await Swal.fire({
         icon: 'warning',
-        title: 'Lieu requis',
-        text: 'Veuillez choisir un lieu avant de publier.',
+        title: 'Location required',
+        text: 'Please choose a place before publishing.',
         ...this.swalTheme(),
       });
       return;
@@ -514,8 +515,8 @@ export class CommunityComponent {
     if (!post || !OwnershipUtil.canEditPost(post, this.authService)) {
       await Swal.fire({
         icon: 'error',
-        title: 'Action refusée',
-        text: 'Seul le proprietaire du post peut ajouter un media.',
+        title: 'Action denied',
+        text: 'Only the post owner can add media.',
         ...this.swalTheme(),
       });
       return;
@@ -539,8 +540,8 @@ export class CommunityComponent {
       console.error('Error uploading media:', error);
       await Swal.fire({
         icon: 'error',
-        title: 'Upload impossible',
-        text: 'Le media n\'a pas pu etre ajoute.',
+        title: 'Upload failed',
+        text: 'The media could not be added.',
         ...this.swalTheme(),
       });
     } finally {
@@ -551,12 +552,12 @@ export class CommunityComponent {
   // Delete post
   async deletePost(postId: number): Promise<void> {
     const confirmation = await Swal.fire({
-      title: 'Supprimer ce post ?',
-      text: 'Cette action est irreversible.',
+      title: 'Delete this post?',
+      text: 'This cannot be undone.',
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Oui, supprimer',
-      cancelButtonText: 'Annuler',
+      confirmButtonText: 'Yes, delete',
+      cancelButtonText: 'Cancel',
       confirmButtonColor: '#e63946',
       ...this.swalTheme(),
     });
@@ -571,7 +572,7 @@ export class CommunityComponent {
       this.loadFeed();
       await Swal.fire({
         icon: 'success',
-        title: 'Post supprime',
+        title: 'Post deleted',
         timer: 1200,
         showConfirmButton: false,
         ...this.swalTheme(),
@@ -580,8 +581,8 @@ export class CommunityComponent {
       console.error('Error deleting post:', error);
       await Swal.fire({
         icon: 'error',
-        title: 'Suppression impossible',
-        text: 'Le post n\'a pas pu etre supprime.',
+        title: 'Could not delete',
+        text: 'The post could not be deleted.',
         ...this.swalTheme(),
       });
     }
@@ -590,12 +591,12 @@ export class CommunityComponent {
   // Delete comment
   async deleteComment(commentId: number): Promise<void> {
     const confirmation = await Swal.fire({
-      title: 'Supprimer ce commentaire ?',
-      text: 'Cette action est irreversible.',
+      title: 'Delete this comment?',
+      text: 'This cannot be undone.',
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Oui, supprimer',
-      cancelButtonText: 'Annuler',
+      confirmButtonText: 'Yes, delete',
+      cancelButtonText: 'Cancel',
       confirmButtonColor: '#e63946',
       ...this.swalTheme(),
     });
@@ -618,8 +619,8 @@ export class CommunityComponent {
       console.error('Error deleting comment:', error);
       await Swal.fire({
         icon: 'error',
-        title: 'Suppression impossible',
-        text: 'Le commentaire n\'a pas pu etre supprime.',
+        title: 'Could not delete',
+        text: 'The comment could not be deleted.',
         ...this.swalTheme(),
       });
     }
@@ -680,7 +681,7 @@ export class CommunityComponent {
       this.loadFeed();
       await Swal.fire({
         icon: 'success',
-        title: 'Post modifie',
+        title: 'Post updated',
         timer: 1200,
         showConfirmButton: false,
         ...this.swalTheme(),
@@ -689,8 +690,8 @@ export class CommunityComponent {
       console.error('Error updating post:', error);
       await Swal.fire({
         icon: 'error',
-        title: 'Modification impossible',
-        text: 'Le post n\'a pas pu etre mis a jour.',
+        title: 'Could not update',
+        text: 'The post could not be updated.',
         ...this.swalTheme(),
       });
       this.isSavingEdit.set(false);
@@ -928,11 +929,45 @@ export class CommunityComponent {
       this.router.navigate(['/signin']);
       return;
     }
+
+    const dialog = await Swal.fire({
+      title: 'Add a caption to your repost',
+      input: 'textarea',
+      inputPlaceholder: 'Write your own caption (optional)',
+      inputAttributes: {
+        'aria-label': 'Repost caption',
+      },
+      inputValue: '',
+      showCancelButton: true,
+      confirmButtonText: 'Repost',
+      cancelButtonText: 'Cancel',
+      ...this.swalTheme(),
+    });
+
+    if (!dialog.isConfirmed) {
+      return;
+    }
+
+    const caption = typeof dialog.value === 'string' ? dialog.value.trim() : '';
+
     try {
-      await firstValueFrom(this.postService.repost(postId));
+      await firstValueFrom(this.postService.repost(postId, caption));
       this.loadFeed();
+      await Swal.fire({
+        icon: 'success',
+        title: 'Reposted',
+        timer: 1200,
+        showConfirmButton: false,
+        ...this.swalTheme(),
+      });
     } catch (error) {
       console.error('Error reposting:', error);
+      await Swal.fire({
+        icon: 'error',
+        title: 'Could not repost',
+        text: 'Please try again.',
+        ...this.swalTheme(),
+      });
     }
   }
 
@@ -990,7 +1025,7 @@ export class CommunityComponent {
     return (
       user?.username ??
       [user?.firstName, user?.lastName].filter(Boolean).join(' ') ??
-      'Utilisateur'
+      'User'
     );
   }
 

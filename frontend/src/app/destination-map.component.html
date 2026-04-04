@@ -1,0 +1,53 @@
+<section id="map-section" class="destination-map-page">
+  <div class="map-page-header">
+    <h1>Destination Map</h1>
+    <p>Explore all Tunisian regions with the same interactive map experience.</p>
+  </div>
+
+  <div class="map-wrapper" [class.map-wrapper--zooming]="isMapNavigating()">
+    <div class="map-view-tabs" role="tablist" aria-label="Map display mode">
+      <button
+        type="button"
+        class="map-view-tab"
+        [class.map-view-tab--active]="mapViewMode() === 'local'"
+        (click)="setMapView('local')"
+        role="tab"
+        [attr.aria-selected]="mapViewMode() === 'local'"
+      >
+        Local View
+      </button>
+      <button
+        type="button"
+        class="map-view-tab"
+        [class.map-view-tab--active]="mapViewMode() === 'highlights'"
+        (click)="setMapView('highlights')"
+        role="tab"
+        [attr.aria-selected]="mapViewMode() === 'highlights'"
+      >
+        Highlights View
+      </button>
+    </div>
+
+    <div #mapContainer class="echarts-map"></div>
+
+    @if (selectedRegion()) {
+      <div class="region-info-panel slide-up">
+        <button class="close-btn" (click)="selectedRegion.set(null)">&times;</button>
+        <div class="region-badges">
+          <span class="region-chip">Tunisia</span>
+          <span class="region-chip">Interactive</span>
+        </div>
+        <h3>{{ selectedRegion()?.name }}</h3>
+        <p>{{ selectedRegion()?.description }}</p>
+        <button
+          class="btn-primary"
+          style="margin-top: 15px;"
+          (click)="goToSelectedCity()"
+          [disabled]="selectedRegion()?.resolving || !selectedRegion()?.cityId"
+        >
+          {{ selectedRegion()?.resolving ? 'Loading...' : ('Explore ' + selectedRegion()?.name) }}
+        </button>
+      </div>
+    }
+  </div>
+</section>

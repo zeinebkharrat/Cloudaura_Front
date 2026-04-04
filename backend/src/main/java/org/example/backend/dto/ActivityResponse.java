@@ -1,5 +1,7 @@
 package org.example.backend.dto;
 
+import java.time.LocalDate;
+
 public record ActivityResponse(
     Integer activityId,
     Integer cityId,
@@ -11,6 +13,8 @@ public record ActivityResponse(
     String address,
     Double latitude,
     Double longitude,
-    String imageUrl
+    String imageUrl,
+    Integer maxParticipantsPerDay,
+    LocalDate maxParticipantsStartDate
 ) {
 }

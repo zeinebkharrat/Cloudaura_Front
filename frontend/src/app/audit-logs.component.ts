@@ -5,7 +5,7 @@ import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { AuditLogService } from './audit-log.service';
-import { AuditLogEntry } from './auth.types';
+import { AuditLogEntry } from './core/auth.types';
 import { extractApiErrorMessage } from './api-error.util';
 
 @Component({

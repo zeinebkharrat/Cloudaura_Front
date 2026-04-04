@@ -4,9 +4,15 @@ import jakarta.persistence.Id;
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.NoSuchElementException;
+import org.example.backend.dto.admin.AdminOrderItemDto;
+import org.example.backend.model.OrderEntity;
 import org.example.backend.model.OrderItem;
+import org.example.backend.model.Product;
+import org.example.backend.model.ProductVariant;
+import org.example.backend.model.User;
 import org.example.backend.repository.OrderItemRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class OrderItemService {
@@ -16,8 +22,64 @@ public class OrderItemService {
         this.orderItemRepository = orderItemRepository;
     }
 
+    /**
+     * Liste admin : DTO JSON sans entités Product (collections lazy / cycles).
+     */
+    @Transactional(readOnly = true)
+    public List<AdminOrderItemDto> findAllForAdmin() {
+        return orderItemRepository.findAllWithDetails().stream().map(this::toAdminDto).toList();
+    }
+
     public List<OrderItem> findAll() {
         return orderItemRepository.findAllWithDetails();
+    }
+
+    private AdminOrderItemDto toAdminDto(OrderItem oi) {
+        AdminOrderItemDto dto = new AdminOrderItemDto();
+        dto.setOrderItemId(oi.getOrderItemId());
+        dto.setQuantity(oi.getQuantity());
+        dto.setStatus(oi.getStatus() != null ? oi.getStatus().name() : null);
+
+        Product p = oi.getProduct();
+        ProductVariant v = oi.getVariant();
+        double unit = effectiveUnitPrice(p, v);
+        AdminOrderItemDto.ProductRef pr = new AdminOrderItemDto.ProductRef();
+        if (p != null) {
+            pr.setProductId(p.getProductId());
+            pr.setName(p.getName());
+            pr.setPrice(unit);
+        }
+        dto.setProduct(pr);
+
+        AdminOrderItemDto.OrderRef or = new AdminOrderItemDto.OrderRef();
+        OrderEntity ord = oi.getOrder();
+        if (ord != null) {
+            or.setOrderId(ord.getOrderId());
+            or.setTotalAmount(ord.getTotalAmount());
+            or.setStatus(ord.getStatus() != null ? ord.getStatus().name() : null);
+            User u = ord.getUser();
+            if (u != null) {
+                AdminOrderItemDto.UserRef ur = new AdminOrderItemDto.UserRef();
+                ur.setUsername(u.getUsername());
+                or.setUser(ur);
+            }
+        }
+        dto.setOrder(or);
+        return dto;
+    }
+
+    /** Même logique que le panier : override &gt; 0 uniquement, sinon prix produit. */
+    private static double effectiveUnitPrice(Product p, ProductVariant v) {
+        if (p == null) {
+            return 0;
+        }
+        if (v != null) {
+            Double po = v.getPriceOverride();
+            if (po != null && po > 0) {
+                return po;
+            }
+        }
+        return p.getPrice() != null ? p.getPrice() : 0;
     }
 
     public OrderItem findById(Integer id) {

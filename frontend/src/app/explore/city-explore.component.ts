@@ -2,7 +2,7 @@ import { Component, HostListener, OnDestroy, OnInit, computed, signal } from '@a
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ExploreService } from './explore.service';
-import { Activity, PublicCityDetailsResponse } from './explore.models';
+import { Activity, PublicCityDetailsResponse, Restaurant } from './explore.models';
 
 const HOME_MAP_RETURN_CONTEXT_KEY = 'homeMapReturnContext';
 
@@ -18,8 +18,12 @@ export class CityExploreComponent implements OnInit, OnDestroy {
   error = signal('');
   details = signal<PublicCityDetailsResponse | null>(null);
   activityImageById = signal<Record<number, string>>({});
+  restaurantRatingById = signal<Record<number, number>>({});
+  activityRatingById = signal<Record<number, number>>({});
+  activityReviewCountById = signal<Record<number, number>>({});
   currentImageIndex = signal(0);
   activitiesPerPage = signal(2);
+  restaurantPageIndex = signal(0);
   activityPageIndex = signal(0);
 
   media = computed(() => this.details()?.media ?? []);
@@ -59,9 +63,22 @@ export class CityExploreComponent implements OnInit, OnDestroy {
 
     return pages;
   });
+  restaurantPages = computed(() => {
+    const restaurants = this.details()?.restaurants ?? [];
+    const perPage = Math.max(1, this.activitiesPerPage());
+    const pages: Restaurant[][] = [];
+
+    for (let index = 0; index < restaurants.length; index += perPage) {
+      pages.push(restaurants.slice(index, index + perPage));
+    }
+
+    return pages;
+  });
+  hasRestaurantCarouselControls = computed(() => this.restaurantPages().length > 1);
   hasActivityCarouselControls = computed(() => this.activityPages().length > 1);
 
   private sliderTimer: ReturnType<typeof setInterval> | null = null;
+  private restaurantSliderTimer: ReturnType<typeof setInterval> | null = null;
   private activitySliderTimer: ReturnType<typeof setInterval> | null = null;
   private returnRegionId: string | null = null;
 
@@ -86,10 +103,17 @@ export class CityExploreComponent implements OnInit, OnDestroy {
       next: (details) => {
         this.details.set(details);
         this.activityImageById.set({});
+        this.restaurantRatingById.set({});
+        this.activityRatingById.set({});
+        this.activityReviewCountById.set({});
+        this.restaurantPageIndex.set(0);
         this.activityPageIndex.set(0);
+        this.loadRestaurantRatings(details.restaurants);
         this.loadActivityImages(details.activities);
+        this.loadActivityRatings(details.activities);
         this.currentImageIndex.set(0);
         this.startAutoSlide();
+        this.startRestaurantsAutoSlide();
         this.startActivitiesAutoSlide();
         this.loading.set(false);
       },
@@ -102,6 +126,7 @@ export class CityExploreComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.stopAutoSlide();
+    this.stopRestaurantsAutoSlide();
     this.stopActivitiesAutoSlide();
   }
 
@@ -176,6 +201,36 @@ export class CityExploreComponent implements OnInit, OnDestroy {
     this.startAutoSlide();
   }
 
+  nextRestaurantPage(): void {
+    const pages = this.restaurantPages();
+    if (pages.length <= 1) {
+      return;
+    }
+
+    this.restaurantPageIndex.set((this.restaurantPageIndex() + 1) % pages.length);
+    this.restartRestaurantsAutoSlide();
+  }
+
+  previousRestaurantPage(): void {
+    const pages = this.restaurantPages();
+    if (pages.length <= 1) {
+      return;
+    }
+
+    this.restaurantPageIndex.set((this.restaurantPageIndex() - 1 + pages.length) % pages.length);
+    this.restartRestaurantsAutoSlide();
+  }
+
+  goToRestaurantPage(index: number): void {
+    const pages = this.restaurantPages();
+    if (index < 0 || index >= pages.length) {
+      return;
+    }
+
+    this.restaurantPageIndex.set(index);
+    this.restartRestaurantsAutoSlide();
+  }
+
   nextActivityPage(): void {
     const pages = this.activityPages();
     if (pages.length <= 1) {
@@ -229,7 +284,7 @@ export class CityExploreComponent implements OnInit, OnDestroy {
       );
     }
 
-    this.router.navigate(['/'], {
+    this.router.navigate(['/destination-map'], {
       fragment: 'map-section',
       queryParams: {
         zoomOut: 1,
@@ -252,6 +307,23 @@ export class CityExploreComponent implements OnInit, OnDestroy {
       activity.imageUrl ||
       'assets/sidi_bou.png'
     );
+  }
+
+  starStates(value: number | null): Array<'full' | 'empty'> {
+    const safe = value ?? 0;
+    return Array.from({ length: 5 }, (_, index) => (safe >= index + 1 ? 'full' : 'empty'));
+  }
+
+  activityRating(activityId: number): number {
+    return this.activityRatingById()[activityId] ?? 0;
+  }
+
+  restaurantRating(restaurantId: number): number {
+    return this.restaurantRatingById()[restaurantId] ?? 0;
+  }
+
+  activityReviewCount(activityId: number): number {
+    return this.activityReviewCountById()[activityId] ?? 0;
   }
 
   scrollToSection(sectionId: 'restaurants' | 'activities'): void {
@@ -282,6 +354,54 @@ export class CityExploreComponent implements OnInit, OnDestroy {
     }
   }
 
+  private loadRestaurantRatings(restaurants: Restaurant[]): void {
+    for (const restaurant of restaurants) {
+      this.exploreService.getRestaurantReviewSummary(restaurant.restaurantId).subscribe({
+        next: (summary) => {
+          this.restaurantRatingById.update((current) => ({
+            ...current,
+            [restaurant.restaurantId]: summary?.averageStars ?? 0,
+          }));
+        },
+        error: () => {
+          this.restaurantRatingById.update((current) => ({
+            ...current,
+            [restaurant.restaurantId]: 0,
+          }));
+        },
+      });
+    }
+  }
+
+  private loadActivityRatings(activities: Activity[]): void {
+    for (const activity of activities) {
+      this.exploreService.getActivityReviewSummary(activity.activityId).subscribe({
+        next: (summary) => {
+          this.activityRatingById.update((current) => ({
+            ...current,
+            [activity.activityId]: summary?.averageStars ?? 0,
+          }));
+
+          this.activityReviewCountById.update((current) => ({
+            ...current,
+            [activity.activityId]: summary?.totalReviews ?? 0,
+          }));
+        },
+        error: () => {
+          this.activityRatingById.update((current) => ({
+            ...current,
+            [activity.activityId]: 0,
+          }));
+
+          this.activityReviewCountById.update((current) => ({
+            ...current,
+            [activity.activityId]: 0,
+          }));
+        },
+      });
+    }
+  }
+
   private updateActivitiesPerPage(): void {
     const nextPerPage = this.getActivitiesPerPage();
     if (this.activitiesPerPage() === nextPerPage) {
@@ -289,10 +409,15 @@ export class CityExploreComponent implements OnInit, OnDestroy {
     }
 
     this.activitiesPerPage.set(nextPerPage);
+    const maxRestaurantPageIndex = Math.max(0, this.restaurantPages().length - 1);
+    if (this.restaurantPageIndex() > maxRestaurantPageIndex) {
+      this.restaurantPageIndex.set(maxRestaurantPageIndex);
+    }
     const maxPageIndex = Math.max(0, this.activityPages().length - 1);
     if (this.activityPageIndex() > maxPageIndex) {
       this.activityPageIndex.set(maxPageIndex);
     }
+    this.restartRestaurantsAutoSlide();
     this.restartActivitiesAutoSlide();
   }
 
@@ -325,6 +450,32 @@ export class CityExploreComponent implements OnInit, OnDestroy {
       }
       this.activityPageIndex.set((this.activityPageIndex() + 1) % pages.length);
     }, 5200);
+  }
+
+  private startRestaurantsAutoSlide(): void {
+    this.stopRestaurantsAutoSlide();
+    if (!this.hasRestaurantCarouselControls()) {
+      return;
+    }
+
+    this.restaurantSliderTimer = setInterval(() => {
+      const pages = this.restaurantPages();
+      if (pages.length <= 1) {
+        return;
+      }
+      this.restaurantPageIndex.set((this.restaurantPageIndex() + 1) % pages.length);
+    }, 4800);
+  }
+
+  private stopRestaurantsAutoSlide(): void {
+    if (this.restaurantSliderTimer) {
+      clearInterval(this.restaurantSliderTimer);
+      this.restaurantSliderTimer = null;
+    }
+  }
+
+  private restartRestaurantsAutoSlide(): void {
+    this.startRestaurantsAutoSlide();
   }
 
   private stopActivitiesAutoSlide(): void {

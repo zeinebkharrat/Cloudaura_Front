@@ -1,0 +1,33 @@
+package org.example.backend.model;
+
+import jakarta.persistence.*;
+import org.example.backend.model.Event;
+import org.example.backend.model.ReservationStatus;
+import org.example.backend.model.User;
+
+@Entity
+@Table(name="event_reservations")
+public class EventReservation {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Integer eventReservationId;
+
+    @ManyToOne @JoinColumn(name="user_id")
+    private User user;
+
+    @ManyToOne @JoinColumn(name="event_id")
+    private Event event;
+
+    private Double totalAmount;
+
+    @Enumerated(EnumType.STRING)
+    private ReservationStatus status;
+
+    // Ajoute ces setters manuellement pour arrêter l'erreur
+    public void setEvent(Event event) { this.event = event; }
+    public void setUser(User user) { this.user = user; }
+    public void setTotalAmount(Double totalAmount) { this.totalAmount = totalAmount; }
+    public void setStatus(ReservationStatus status) { this.status = status; }
+
+    // Ajoute aussi les getters si nécessaire
+}

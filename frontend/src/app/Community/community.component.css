@@ -439,8 +439,12 @@
 }
 
 .empty-icon {
-  font-size: 4rem;
-  opacity: 0.6;
+  font-size: 2.75rem;
+  color: var(--text-muted);
+  opacity: 0.75;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .empty-state h3 {
@@ -641,11 +645,15 @@
 }
 
 .repost-credit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin: 0 0 8px;
   font-size: 0.82rem;
   color: var(--text-muted);
   font-weight: 600;
 }
+.repost-ico { font-size: 0.85rem; opacity: 0.85; }
 
 .repost-card {
   border: 1px solid var(--glass-border);
@@ -936,6 +944,22 @@
   color: var(--tunisia-red);
 }
 
+.stat-item--like-busy {
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.like-heart-emoji {
+  font-size: 1.15rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.35rem;
+  user-select: none;
+  flex-shrink: 0;
+}
+
 .stat-count {
   cursor: pointer;
   text-decoration: none;
@@ -950,6 +974,32 @@
 .stat-icon {
   font-size: 1rem;
   line-height: 1;
+}
+
+.stat-ico {
+  display: inline-block;
+  vertical-align: middle;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.stat-ico--muted {
+  opacity: 0.48;
+  filter: grayscale(0.35);
+}
+
+.composer-loc-icon {
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.post-loc-ico {
+  object-fit: contain;
+  vertical-align: middle;
+}
+.post-location-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
 }
 
 /* Media Upload */
@@ -1503,12 +1553,17 @@
 .feed-error,
 .feed-loading {
   padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .feed-error {
   border-color: rgba(255, 0, 60, 0.25);
   color: #ff9aa8;
 }
+.feed-err-ico { font-size: 1.1rem; flex-shrink: 0; }
+.feed-load-ico { font-size: 1.1rem; color: var(--mediterranean-blue, #38bdf8); flex-shrink: 0; }
 
 .clickable {
   cursor: pointer;

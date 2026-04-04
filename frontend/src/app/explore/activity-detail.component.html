@@ -39,6 +39,16 @@
         <h1>{{ activity.name }}</h1>
         <p class="description">{{ activity.description || 'Enjoy an immersive local activity.' }}</p>
 
+        <div class="rating-row">
+          <div class="stars" aria-label="activity rating">
+            @for (state of starStates(ratingValue()); track $index) {
+              <span [class.filled]="state === 'full'">★</span>
+            }
+          </div>
+          <strong>{{ ratingValue() | number:'1.1-1' }}/5</strong>
+          <small>({{ reviewSummary.totalReviews }} reviews)</small>
+        </div>
+
         <div class="chips-row">
           <span class="chip">{{ activity.type || 'Tourist activity' }}</span>
           <span class="chip">{{ activity.cityName }}</span>
@@ -58,7 +68,7 @@
 
         <a class="city-link" [routerLink]="['/city', activity.cityId]">Back to city</a>
         <p class="success" *ngIf="created">
-          Booking #{{ created.reservationId }} created, status: {{ created.status }}.
+          Booking created, status: {{ created.status }}.
         </p>
       </div>
     </article>
@@ -84,6 +94,51 @@
       </button>
     </article>
 
+    <article class="map-card animate-in delay-1 review-card">
+      <div class="card-head">
+        <h2>User reviews</h2>
+        <p>Read users' comments for this activity.</p>
+      </div>
+
+      <div class="reviews-list">
+        @if (reviews.length === 0) {
+          <p class="empty">No comments yet.</p>
+        } @else {
+          @for (review of reviews; track review.reviewId) {
+            <article class="review-item">
+              <div class="review-top">
+                <strong>{{ review.username }}</strong>
+                <div class="stars compact" aria-label="review stars">
+                  @for (state of starStates(review.stars); track $index) {
+                    <span [class.filled]="state === 'full'">★</span>
+                  }
+                </div>
+              </div>
+              <p>{{ review.commentText }}</p>
+            </article>
+          }
+        }
+      </div>
+
+      <form class="review-form" (ngSubmit)="submitReview()">
+        <label>
+          Your rating
+          <div class="stars selectable">
+            @for (star of [1,2,3,4,5]; track star) {
+              <button type="button" class="star-btn" [class.filled]="reviewForm.stars >= star" (click)="setReviewStars(star)">★</button>
+            }
+          </div>
+        </label>
+        <label>
+          Your comment
+          <textarea rows="4" [(ngModel)]="reviewForm.commentText" name="activityReviewComment" placeholder="Share your experience..."></textarea>
+        </label>
+        <button class="primary-btn" type="submit" [disabled]="reviewSubmitting || !reviewForm.commentText.trim()">
+          {{ reviewSubmitting ? 'Sending...' : 'Post comment' }}
+        </button>
+      </form>
+    </article>
+
     <div class="booking-modal-backdrop" *ngIf="showBookingModal" (click)="closeBookingModal()"></div>
     <section class="booking-modal" *ngIf="showBookingModal" role="dialog" aria-modal="true" aria-label="Book this activity">
       <header class="booking-modal-head">
@@ -92,22 +147,67 @@
       </header>
 
       <form (ngSubmit)="submitReservation()" #reservationForm="ngForm" class="form">
-        <label>
-          Number of participants
-          <input type="number" name="numberOfPeople" required min="1" [(ngModel)]="form.numberOfPeople" />
-        </label>
+        <div class="booking-grid">
+          <label>
+            Nombre de participants
+            <input type="number" name="numberOfPeople" required min="1" [(ngModel)]="form.numberOfPeople" (ngModelChange)="onParticipantsChanged()" />
+          </label>
 
-        <label>
-          Reservation date
-          <input type="date" name="reservationDate" required [(ngModel)]="form.reservationDate" />
-        </label>
+          <label class="toggle-row">
+            <input type="checkbox" name="showOnlyAvailable" [(ngModel)]="showOnlyAvailable" (ngModelChange)="buildCalendar()" />
+            Afficher seulement les dates disponibles
+          </label>
+        </div>
 
-        <label>
-          User ID (optional)
-          <input type="number" name="userId" min="1" [(ngModel)]="form.userId" />
-        </label>
+        <div class="calendar-wrap">
+          <header class="calendar-head">
+            <button type="button" class="calendar-nav" (click)="previousMonth()">‹</button>
+            <strong>{{ monthLabel() }}</strong>
+            <button type="button" class="calendar-nav" (click)="nextMonth()">›</button>
+          </header>
 
-        <button class="primary-btn" [disabled]="reservationForm.invalid || submitting" type="submit">
+          <div class="calendar-weekdays">
+            <span *ngFor="let weekday of weekdays">{{ weekday }}</span>
+          </div>
+
+          <div class="calendar-grid" [class.loading]="loadingAvailability">
+            <ng-container *ngFor="let cell of calendarDays">
+              <button
+                type="button"
+                class="calendar-cell"
+                *ngIf="!showOnlyAvailable || !cell.inCurrentMonth || cell.available"
+                [class.outside]="!cell.inCurrentMonth"
+                [class.unavailable]="cell.inCurrentMonth && !cell.available"
+                [class.available]="cell.inCurrentMonth && cell.available"
+                [class.selected]="isSelectedDate(cell.dateIso)"
+                [disabled]="!cell.selectable"
+                (click)="selectDate(cell)">
+                <span class="day">{{ cell.dayNumber }}</span>
+                <small *ngIf="cell.inCurrentMonth">
+                  <ng-container *ngIf="cell.remainingParticipants == null; else limitedPlaces">∞</ng-container>
+                  <ng-template #limitedPlaces>{{ cell.remainingParticipants }} pl.</ng-template>
+                </small>
+              </button>
+            </ng-container>
+          </div>
+        </div>
+
+        <div class="booking-summary">
+          <div>
+            <span>Date sélectionnée</span>
+            <strong>{{ form.reservationDate }}</strong>
+          </div>
+          <div>
+            <span>Places restantes</span>
+            <strong>{{ selectedRemainingPlaces() }}</strong>
+          </div>
+          <div>
+            <span>Prix total</span>
+            <strong>{{ totalPrice() | number: '1.2-2' }} TND</strong>
+          </div>
+        </div>
+
+        <button class="primary-btn" [disabled]="reservationForm.invalid || submitting || loadingAvailability" type="submit">
           {{ submitting ? 'Sending...' : 'Confirm booking' }}
         </button>
       </form>

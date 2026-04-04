@@ -415,3 +415,10 @@
 .lines-table .num {
   text-align: right;
 }
+.line-variant-info small {
+  display: block;
+  color: var(--text-muted);
+  font-style: italic;
+  margin-top: 2px;
+  font-size: 0.8rem;
+}

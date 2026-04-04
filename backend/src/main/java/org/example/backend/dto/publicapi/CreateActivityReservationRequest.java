@@ -7,8 +7,6 @@ import lombok.Data;
 
 @Data
 public class CreateActivityReservationRequest {
-    private Integer userId;
-
     @NotBlank(message = "reservationDate est obligatoire (format ISO)")
     private String reservationDate;
 

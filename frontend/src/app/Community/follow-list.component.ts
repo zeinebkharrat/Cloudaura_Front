@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import { AuthService } from '../auth.service';
+import { AuthService } from '../core/auth.service';
 import { FollowService, FollowUserSummary } from './follow.service';
 
 @Component({
@@ -72,7 +72,7 @@ export class FollowListComponent {
   }
 
   displayName(user: FollowUserSummary): string {
-    return user.username || [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Utilisateur';
+    return user.username || [user.firstName, user.lastName].filter(Boolean).join(' ') || 'User';
   }
 
   userInitial(user: FollowUserSummary): string {
