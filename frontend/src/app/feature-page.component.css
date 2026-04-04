@@ -1386,7 +1386,7 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: linear-gradient(160deg, rgba(255, 255, 255, 0.05) 0%, rgba(11, 12, 16, 0.4) 100%);
   transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.35s, box-shadow 0.35s;
-  animation: featureBlockIn 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeSlideUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   opacity: 0;
   display: flex;
   flex-direction: column;
