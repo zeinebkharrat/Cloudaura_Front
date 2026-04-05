@@ -1,7 +1,7 @@
 import { CommonModule, Location } from '@angular/common';
 import { AfterViewInit, Component, OnDestroy, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import * as L from 'leaflet';
 import Swal from 'sweetalert2';
 import {
@@ -14,6 +14,7 @@ import {
   CreateActivityReservationRequest,
 } from './explore.models';
 import { ExploreService } from './explore.service';
+import { LoginRequiredPromptService } from '../core/login-required-prompt.service';
 
 interface CalendarDayCell {
   dateIso: string;
@@ -33,8 +34,10 @@ interface CalendarDayCell {
 })
 export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly exploreService = inject(ExploreService);
   private readonly location = inject(Location);
+  private readonly loginPrompt = inject(LoginRequiredPromptService);
 
   activity?: Activity;
   activityMedia: ActivityMedia[] = [];
@@ -292,6 +295,16 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   }
 
   openBookingModal(): void {
+    const token = localStorage.getItem('token') || localStorage.getItem('access_token');
+    if (!token) {
+      this.loginPrompt.show({
+        title: 'Sign in to reserve this activity',
+        message: 'Please sign in or create an account to complete your activity reservation.',
+        returnUrl: this.router.url,
+      });
+      return;
+    }
+
     this.showBookingModal = true;
     this.loadAvailability();
   }

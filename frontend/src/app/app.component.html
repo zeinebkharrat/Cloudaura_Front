@@ -1,5 +1,5 @@
 @if (!isAdminArea()) {
-<nav class="navbar animate-in" [class.navbar--scrolled]="isScrolled()" [class.navbar--hidden]="isHomeRoute() && !isScrolled()">
+<nav class="navbar animate-in" [class.navbar--scrolled]="isScrolled()" [class.navbar--overlay]="isHeroRoute() && !isScrolled()">
   <div class="logo">
     <a routerLink="/" class="logo-link" aria-label="Yalla TN — home">
       <img
@@ -162,6 +162,41 @@
     <i class="pi" [class.pi-check-circle]="toastType() === 'success'" [class.pi-times-circle]="toastType() === 'error'" [class.pi-info-circle]="toastType() === 'info'"></i>
     <span>{{ toastMessage() }}</span>
     <button class="toast-close" (click)="clearToast()"><i class="pi pi-times"></i></button>
+  </div>
+}
+
+@if (loginPrompt.open()) {
+  <div class="login-gate" (click)="closeLoginPrompt()">
+    <div class="login-gate__panel" (click)="$event.stopPropagation()">
+      <button type="button" class="login-gate__close" (click)="closeLoginPrompt()" aria-label="Close">×</button>
+      <div class="login-gate__head">
+        <h3>{{ loginPrompt.title() }}</h3>
+        <p>{{ loginPrompt.message() }}</p>
+      </div>
+
+      <div class="auth-switch" [class.auth-switch--signup]="authModalMode() === 'signup'">
+        <span class="auth-switch__thumb" aria-hidden="true"></span>
+        <button type="button" class="auth-switch__btn" [class.active]="authModalMode() === 'signin'" (click)="goToSignInFromPrompt()">Sign in</button>
+        <button type="button" class="auth-switch__btn" [class.active]="authModalMode() === 'signup'" (click)="goToSignUpFromPrompt()">Create account</button>
+      </div>
+
+      <div class="auth-stage" [class.auth-stage--signup]="authModalMode() === 'signup'">
+        @if (authModalMode() === 'signin') {
+          <app-sign-in
+            [embedded]="true"
+            [returnUrlOverride]="loginPrompt.returnUrl()"
+            (switchMode)="goToSignUpFromPrompt()"
+            (authenticated)="handlePopupAuthSuccess()"
+          ></app-sign-in>
+        } @else {
+          <app-sign-up
+            [embedded]="true"
+            (switchMode)="goToSignInFromPrompt()"
+            (signupCompleted)="handlePopupSignupDone()"
+          ></app-sign-up>
+        }
+      </div>
+    </div>
   </div>
 }
 

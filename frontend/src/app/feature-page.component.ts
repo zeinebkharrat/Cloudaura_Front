@@ -11,6 +11,7 @@ import { ShopService } from './core/shop.service';
 import { EventService } from './event.service';
 import { Event as TravelEvent } from './models/event';
 import { NotificationService } from './core/notification.service';
+import { LoginRequiredPromptService } from './core/login-required-prompt.service';
 import { DialogModule } from 'primeng/dialog';
 import { GalleriaModule } from 'primeng/galleria';
 import { ButtonModule } from 'primeng/button';
@@ -66,6 +67,7 @@ export class FeaturePageComponent implements OnInit {
   readonly shop = inject(ShopService);
   private readonly eventService = inject(EventService);
   private readonly notifier = inject(NotificationService);
+  private readonly loginPrompt = inject(LoginRequiredPromptService);
 
   kicker = '';
   title = '';
@@ -775,7 +777,11 @@ export class FeaturePageComponent implements OnInit {
     this.eventJoinError.set(null);
 
     if (!this.auth.isAuthenticated()) {
-      this.router.navigate(['/signin'], { queryParams: { returnUrl: this.router.url } });
+      this.loginPrompt.show({
+        title: 'Sign in to reserve this event',
+        message: 'Create an account or sign in to continue with your event reservation.',
+        returnUrl: this.router.url,
+      });
       return;
     }
 

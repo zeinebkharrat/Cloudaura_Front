@@ -9,17 +9,15 @@
   top: 0;
   left: 0;
   width: 100%;
-  z-index: 1000;
-  background: rgba(255, 255, 255, 0.01);
+  z-index: 2200;
+  background: color-mix(in srgb, var(--surface-1) 78%, transparent);
   backdrop-filter: blur(0px);
   -webkit-backdrop-filter: blur(0px);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   border-bottom: 1px solid transparent;
-  max-height: 140px;
-  overflow: hidden;
+  overflow: visible;
 }
 
-.navbar:hover,
 .navbar--scrolled {
   background: color-mix(in srgb, var(--surface-1) 80%, transparent);
   backdrop-filter: blur(12px);
@@ -29,13 +27,42 @@
   padding: 12px 6%;
 }
 
-.navbar--hidden {
-  opacity: 0;
-  pointer-events: none;
-  max-height: 0;
-  padding-top: 0;
-  padding-bottom: 0;
+.navbar--overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  background: transparent;
+  backdrop-filter: blur(0);
+  -webkit-backdrop-filter: blur(0);
   border-bottom-color: transparent;
+  box-shadow: none;
+  opacity: 0.18;
+}
+
+.navbar--overlay .logo-img {
+  opacity: 0.35;
+}
+
+.navbar--overlay .nav-links a,
+.navbar--overlay .services-menu-btn,
+.navbar--overlay .nav-user,
+.navbar--overlay .signup-btn,
+.navbar--overlay .connexion-btn,
+.navbar--overlay .nav-icon-btn,
+.navbar--overlay .nav-cart-btn,
+.navbar--overlay .theme-toggle-btn,
+.navbar--overlay .user-chip {
+  opacity: 0.3;
+}
+
+.navbar--overlay .user-chip,
+.navbar--overlay .services-menu-btn,
+.navbar--overlay .nav-icon-btn,
+.navbar--overlay .nav-cart-btn,
+.navbar--overlay .theme-toggle-btn,
+.navbar--overlay .signup-btn {
+  background: transparent;
+  border-color: transparent;
   box-shadow: none;
 }
 
@@ -165,7 +192,7 @@
   padding: 8px;
   display: grid;
   gap: 6px;
-  z-index: 140;
+  z-index: 2400;
   animation: menuReveal .18s ease-out;
 }
 
@@ -285,6 +312,7 @@
 
 .user-menu-wrap {
   position: relative;
+  z-index: 2300;
 }
 
 .user-chip {
@@ -340,7 +368,7 @@
   padding: 8px;
   display: grid;
   gap: 6px;
-  z-index: 120;
+  z-index: 2400;
 }
 
 .user-dd-item {
@@ -612,6 +640,216 @@ footer {
   flex-shrink: 0;
 }
 .toast-close:hover { color: #fff; }
+
+.login-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 120000;
+  background: rgba(2, 6, 23, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.login-gate__panel {
+  width: min(920px, 100%);
+  max-height: min(92vh, 960px);
+  border-radius: 18px;
+  border: 1px solid var(--glass-border);
+  background:
+    radial-gradient(circle at 90% -10%, rgba(232, 0, 45, 0.18), transparent 42%),
+    radial-gradient(circle at 0% 100%, rgba(0, 119, 182, 0.18), transparent 40%),
+    color-mix(in srgb, var(--surface-1) 94%, transparent);
+  box-shadow: 0 24px 56px rgba(15, 23, 42, 0.35);
+  padding: 18px;
+  position: relative;
+  overflow: auto;
+  animation: authPopupIn 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.login-gate__close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-color);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.login-gate__head h3 {
+  margin: 0 0 8px;
+  font-size: 1.2rem;
+}
+
+.login-gate__head p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.auth-switch {
+  margin-top: 16px;
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  padding: 4px;
+  overflow: hidden;
+}
+
+.auth-switch__thumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  border-radius: 999px;
+  background: linear-gradient(135deg, #e8002d, #9b1c40);
+  transition: transform 0.28s ease;
+}
+
+.auth-switch--signup .auth-switch__thumb {
+  transform: translateX(100%);
+}
+
+.auth-switch__btn {
+  position: relative;
+  z-index: 1;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.74);
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.auth-switch__btn.active {
+  color: #fff;
+}
+
+.auth-stage {
+  margin-top: 14px;
+  min-height: 320px;
+}
+
+.auth-stage app-sign-in,
+.auth-stage app-sign-up {
+  display: block;
+  animation: authFormIn 0.28s ease;
+}
+
+.auth-form {
+  display: grid;
+  gap: 8px;
+  animation: authFormIn 0.28s ease;
+}
+
+.auth-form label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.auth-form input {
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-color);
+  padding: 10px 12px;
+  outline: none;
+}
+
+.auth-form input:focus {
+  border-color: rgba(232, 0, 45, 0.5);
+  box-shadow: 0 0 0 3px rgba(232, 0, 45, 0.15);
+}
+
+.auth-form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.auth-popup-message {
+  margin: 10px 0 0;
+  font-size: 0.82rem;
+  color: #fda4af;
+}
+
+:root[data-theme='light'] .login-gate {
+  background: rgba(15, 23, 42, 0.35);
+}
+
+:root[data-theme='light'] .login-gate__panel {
+  border-color: rgba(148, 163, 184, 0.45);
+  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.22);
+}
+
+.login-gate__actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.login-gate__btn {
+  border-radius: 10px;
+  padding: 9px 14px;
+  font-weight: 700;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.login-gate__btn--primary {
+  border: 1px solid transparent;
+  background: linear-gradient(135deg, #ff4b4b, var(--tunisia-red));
+  color: #fff;
+}
+
+.login-gate__btn--ghost {
+  border: 1px solid var(--glass-border);
+  background: transparent;
+  color: var(--text-color);
+}
+
+@media (max-width: 520px) {
+  .auth-form__row {
+    grid-template-columns: 1fr;
+  }
+}
+
+@keyframes authPopupIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes authFormIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
 @keyframes toastSlideIn {
   from { opacity: 0; transform: translateX(30px) translateY(10px); }

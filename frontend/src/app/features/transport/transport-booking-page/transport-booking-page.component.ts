@@ -14,6 +14,7 @@ import { TripContextStore } from '../../../core/stores/trip-context.store';
 import { AppAlertsService } from '../../../core/services/app-alerts.service';
 import { DATA_SOURCE_TOKEN } from '../../../core/adapters/data-source.adapter';
 import { AuthService } from '../../../core/auth.service';
+import { LoginRequiredPromptService } from '../../../core/login-required-prompt.service';
 import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } from '../../../core/models/travel.models';
 
 @Component({
@@ -494,6 +495,7 @@ export class TransportBookingPageComponent implements OnInit {
   private route = inject(ActivatedRoute);
   private alerts = inject(AppAlertsService);
   authService = inject(AuthService);
+  private loginPrompt = inject(LoginRequiredPromptService);
   private dataSource = inject(DATA_SOURCE_TOKEN);
 
   router = inject(Router);
@@ -561,8 +563,11 @@ export class TransportBookingPageComponent implements OnInit {
   confirmBooking(nextCallback: any) {
     const user = this.authService.currentUser();
     if (!user) {
-      void this.alerts.warning('Sign in required', 'Please sign in to complete your booking.');
-      this.router.navigate(['/signin']);
+      this.loginPrompt.show({
+        title: 'Sign in to reserve transport',
+        message: 'Please sign in or create an account to confirm this transport booking.',
+        returnUrl: this.router.url,
+      });
       return;
     }
 

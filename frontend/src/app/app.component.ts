@@ -7,11 +7,14 @@ import { ShopService } from './core/shop.service';
 import { ChatService } from './chat/chat.service';
 import { ChatBubbleComponent } from './chat/chat-bubble/chat-bubble.component';
 import { NotificationService } from './core/notification.service';
+import { LoginRequiredPromptService } from './core/login-required-prompt.service';
+import { SignInComponent } from './sign-in.component';
+import { SignUpComponent } from './sign-up.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, ChatBubbleComponent],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, ChatBubbleComponent, SignInComponent, SignUpComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
 })
@@ -22,6 +25,7 @@ export class AppComponent implements OnInit {
   readonly shop = inject(ShopService);
   private readonly chatService = inject(ChatService);
   readonly notifier = inject(NotificationService);
+  readonly loginPrompt = inject(LoginRequiredPromptService);
 
   isDarkMode = signal(true);
   isUserMenuOpen = signal(false);
@@ -29,6 +33,7 @@ export class AppComponent implements OnInit {
   selectedCityName = signal<string | null>(null);
   isScrolled = signal(false);
   isHomeRoute = signal(false);
+  isCityRoute = signal(false);
 
   readonly isAdmin = this.auth.isAdmin;
   readonly isArtisan = this.auth.isArtisan;
@@ -37,6 +42,8 @@ export class AppComponent implements OnInit {
 
   readonly toastMessage = this.notifier.message;
   readonly toastType = this.notifier.type;
+
+  readonly authModalMode = signal<'signin' | 'signup'>('signin');
 
   constructor() {
     effect(
@@ -62,7 +69,7 @@ export class AppComponent implements OnInit {
 
   @HostListener('window:scroll', [])
   onWindowScroll(): void {
-    const threshold = this.isHomeRoute() ? 110 : 20;
+    const threshold = this.isHeroRoute() ? 110 : 20;
     this.isScrolled.set(window.scrollY > threshold);
   }
 
@@ -84,7 +91,12 @@ export class AppComponent implements OnInit {
   private syncRouteState(): void {
     const path = this.router.url.split('?')[0].split('#')[0];
     this.isHomeRoute.set(path === '' || path === '/');
+    this.isCityRoute.set(path.startsWith('/city/'));
     this.onWindowScroll();
+  }
+
+  isHeroRoute(): boolean {
+    return this.isHomeRoute() || this.isCityRoute();
   }
 
   isAdminArea(): boolean {
@@ -126,5 +138,31 @@ export class AppComponent implements OnInit {
     this.auth.logout();
     this.isUserMenuOpen.set(false);
     this.router.navigate(['/signin']);
+  }
+
+  closeLoginPrompt(): void {
+    this.loginPrompt.hide();
+  }
+
+  goToSignInFromPrompt(): void {
+    this.authModalMode.set('signin');
+  }
+
+  goToSignUpFromPrompt(): void {
+    this.authModalMode.set('signup');
+  }
+
+  handlePopupAuthSuccess(): void {
+    const returnUrl = this.loginPrompt.returnUrl();
+    this.closeLoginPrompt();
+    if (this.auth.hasRole('ROLE_ADMIN')) {
+      this.router.navigateByUrl('/admin/dashboard');
+      return;
+    }
+    this.router.navigateByUrl(returnUrl || '/');
+  }
+
+  handlePopupSignupDone(): void {
+    this.authModalMode.set('signin');
   }
 }

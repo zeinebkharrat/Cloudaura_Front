@@ -7,6 +7,7 @@ import { DATA_SOURCE_TOKEN } from '../../../core/adapters/data-source.adapter';
 import { AuthService } from '../../../core/auth.service';
 import { AppAlertsService } from '../../../core/services/app-alerts.service';
 import { Accommodation } from '../../../core/models/travel.models';
+import { LoginRequiredPromptService } from '../../../core/login-required-prompt.service';
 
 @Component({
   standalone: true,
@@ -363,6 +364,7 @@ export class AccommodationBookingPageComponent implements OnInit {
   router = inject(Router);
   route = inject(ActivatedRoute);
   auth = inject(AuthService);
+  private loginPrompt = inject(LoginRequiredPromptService);
   private alerts = inject(AppAlertsService);
 
   step = signal(1);
@@ -446,8 +448,11 @@ export class AccommodationBookingPageComponent implements OnInit {
   confirmBooking() {
     const user = this.auth.currentUser();
     if (!user) {
-      void this.alerts.warning('Sign in required', 'Please sign in to complete your stay booking.');
-      this.router.navigate(['/signin']);
+      this.loginPrompt.show({
+        title: 'Sign in to reserve accommodation',
+        message: 'Please sign in or create an account to confirm this accommodation booking.',
+        returnUrl: this.router.url,
+      });
       return;
     }
 
