@@ -8,22 +8,32 @@ import { AuthService } from '../../auth.service';
   standalone: true,
   imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
   templateUrl: './admin-layout.component.html',
-  styleUrl:    './admin-layout.component.css',
+  styleUrl: './admin-layout.component.css',
 })
 export class AdminLayoutComponent {
   open = signal(true);
   user = computed(() => this.auth.currentUser());
   
+<<<<<<< HEAD
   // 1. AJOUT : État pour le menu déroulant des événements
+=======
+  // État pour le menu déroulant des événements
+>>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
   isEventsMenuOpen = false;
 
   nav = [
     { label: 'Tableau de bord', icon: '📊', route: '/admin/dashboard' },
+<<<<<<< HEAD
     { label: 'Ludification',    icon: '🎮', route: '/admin/games' },
     { label: 'Villes',         icon: '🏙️', route: '/admin/cities' },
     { label: 'Restaurants',    icon: '🍽️', route: '/admin/restaurants' },
     { label: 'Activités',      icon: '📍', route: '/admin/activities' },
     { label: 'Réservations activités', icon: '🗓️', route: '/admin/activity-reservations' },
+=======
+    { label: 'Villes',          icon: '🏙️', route: '/admin/cities' },
+    { label: 'Restaurants',     icon: '🍽️', route: '/admin/restaurants' },
+    { label: 'Activités',       icon: '📍', route: '/admin/activities' }, // Gardé une seule fois
+>>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
     { label: 'Hébergements',    icon: '🏨', route: '/admin/accommodations' },
     { label: 'Transports',      icon: '🚌', route: '/admin/transports' },
     { label: 'Événements',      icon: '📅', route: '/admin/events' },
@@ -37,6 +47,7 @@ export class AdminLayoutComponent {
 
   constructor(public auth: AuthService, private router: Router) {}
 
+<<<<<<< HEAD
   toggle() {
     this.open.set(!this.open());
     if (!this.open()) this.isEventsMenuOpen = false;
@@ -44,14 +55,26 @@ export class AdminLayoutComponent {
 
   toggleEventsMenu() {
     this.isEventsMenuOpen = !this.isEventsMenuOpen;
+=======
+  toggle() { 
+    this.open.set(!this.open()); 
+    // Optionnel : fermer le sous-menu si on réduit la sidebar
+    if (!this.open()) this.isEventsMenuOpen = false;
+  }
+
+  logout() { 
+    this.auth.logout(); 
+    this.router.navigate(['/login']);
+  }
+
+  // CORRECTION : Ajout de la logique de bascule
+  toggleEventsMenu() {
+    this.isEventsMenuOpen = !this.isEventsMenuOpen;
+    console.log('Menu événements ouvert :', this.isEventsMenuOpen);
+>>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
   }
 
   openProfile() {
-    this.router.navigateByUrl('/profile');
-  }
-
-  logout() {
-    this.auth.logout();
-    this.router.navigateByUrl('/signin');
+    this.router.navigate(['/admin/profile']);
   }
 }

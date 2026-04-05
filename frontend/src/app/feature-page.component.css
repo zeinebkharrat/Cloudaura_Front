@@ -312,6 +312,7 @@
   background-clip: text;
 }
 
+<<<<<<< HEAD
 /* ——— Catalogue produits (aligné feature-block + glass-panel) ——— */
 .product-catalog {
   padding: 28px 32px 32px;
@@ -1088,6 +1089,8 @@
   }
 }
 
+=======
+>>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
 .events-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));

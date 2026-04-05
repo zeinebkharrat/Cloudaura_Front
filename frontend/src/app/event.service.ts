@@ -2,13 +2,20 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Event } from './models/event';
+<<<<<<< HEAD
 import { API_BASE_URL } from './core/api-url';
+=======
+>>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
 
 @Injectable({
   providedIn: 'root'
 })
 export class EventService {
+<<<<<<< HEAD
   private apiUrl = `${API_BASE_URL}/api/events`;
+=======
+  private apiUrl = 'http://localhost:9091/api/events'; // Vérifie ton URL backend
+>>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
 
   constructor(private http: HttpClient) { }
 
@@ -29,6 +36,7 @@ export class EventService {
   deleteEvent(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}`);
   }
+<<<<<<< HEAD
 
   createCheckoutSession(data: {
     event_id: number | undefined;
@@ -44,4 +52,9 @@ export class EventService {
   createReservation(data: any): Observable<any> {
     return this.http.post(`${this.apiUrl}/reservations`, data);
   }
+=======
+  createReservation(data: any): Observable<any> {
+  return this.http.post(`${this.apiUrl}/reservations`, data);
+}
+>>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
 }

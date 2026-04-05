@@ -129,7 +129,13 @@
     </article>
   </div>
 
+<<<<<<< HEAD
   <section class="events-section" *ngIf="title === 'Events' && events.length > 0" [class.events-section--blurred]="selectedEvent">
+=======
+
+  <!-- Dynamically loaded events section -->
+<section class="events-section" *ngIf="title === 'Events' && events.length > 0" [class.events-section--blurred]="selectedEvent">
+>>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
     <h2 class="events-title">Our Events</h2>
     <div class="events-grid">
       <article 
@@ -174,7 +180,11 @@
            <p class="detail-price">
             <strong>💰 Price:</strong> 
             <span class="price-amount">
+<<<<<<< HEAD
               {{ (selectedEvent.price ?? 0) > 0 ? (selectedEvent.price | number:'1.2-2') + ' TND' : 'Free' }}
+=======
+                {{ (selectedEvent?.price ?? 0) > 0 ? (selectedEvent?.price | number:'1.2-2') + ' TND' : 'Free' }}
+>>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
             </span>
         </p>
            <p><strong>Status:</strong> <span class="status-badge">{{ selectedEvent.status }}</span></p>
@@ -195,7 +205,11 @@
     Loading events...
   </p>
 
+<<<<<<< HEAD
   <p class="feature-page__empty" *ngIf="title === 'Events' && !isLoadingEvents && events.length === 0">
+=======
+  <p class="feature-page__empty" *ngIf="!isLoadingEvents && events.length === 0">
+>>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
     No events created yet.
   </p>
 

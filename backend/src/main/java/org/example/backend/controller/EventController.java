@@ -1,6 +1,7 @@
 package org.example.backend.controller;
 
 import com.stripe.Stripe;
+<<<<<<< HEAD
 import com.stripe.model.checkout.Session;
 import com.stripe.param.checkout.SessionCreateParams;
 import org.example.backend.model.*;
@@ -14,6 +15,17 @@ import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
+=======
+import com.stripe.model.billingportal.Session;
+import com.stripe.param.checkout.SessionCreateParams;
+import org.example.backend.model.*;
+import org.example.backend.service.EventService;
+import org.example.backend.repository.EventReservationRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+>>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
 
 import java.util.List;
 import java.util.Map;
@@ -22,6 +34,7 @@ import java.util.Map;
 @RequestMapping("/api/events")
 @CrossOrigin(origins = "http://localhost:4200")
 public class EventController {
+<<<<<<< HEAD
     private final EventService eventService;
     private final EventReservationRepository reservationRepository;
     private final UserRepository userRepository;
@@ -35,6 +48,14 @@ public class EventController {
         this.reservationRepository = reservationRepository;
         this.userRepository = userRepository;
     }
+=======
+
+    @Autowired
+    private EventService eventService;
+
+    @Autowired
+    private EventReservationRepository reservationRepository;
+>>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
 
 
     // --- GET ---
@@ -95,6 +116,7 @@ public class EventController {
 
     // --- RESERVATION ---
     @PostMapping("/reservations")
+<<<<<<< HEAD
     @Transactional
     public ResponseEntity<?> createReservation(@RequestBody Map<String, Object> data, Authentication authentication) {
         try {
@@ -123,25 +145,49 @@ public class EventController {
 
             res.setEvent(event);
                 res.setUser(userRef);
+=======
+    public ResponseEntity<?> createReservation(@RequestBody Map<String, Object> data) {
+        try {
+            EventReservation res = new EventReservation();
+
+            Integer eventId = (Integer) data.get("event_id");
+            Integer userId = (Integer) data.get("user_id");
+            Double amount = Double.valueOf(data.get("total_amount").toString());
+
+            Event event = new Event(); event.setId(eventId);
+            User user = new User(); user.setId(userId);
+
+            res.setEvent(event);
+            res.setUser(user);
+>>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
             res.setTotalAmount(amount);
             res.setStatus(ReservationStatus.CONFIRMED);
 
             reservationRepository.save(res);
 
+<<<<<<< HEAD
             return ResponseEntity.ok(Map.of(
                     "message", "Réservation liée avec succès !",
                     "event_reservation_id", res.getEventReservationId()
             ));
+=======
+            return ResponseEntity.ok(Map.of("message", "Réservation liée avec succès !"));
+>>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Erreur : " + e.getMessage());
         }
     }
 
+<<<<<<< HEAD
     @Value("${stripe.api.key:${STRIPE_SECRET_KEY:}}")
+=======
+    @Value("${STRIPE_SECRET_KEY}")
+>>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
     private String stripeApiKey;
 
 
     @PostMapping("/create-checkout-session")
+<<<<<<< HEAD
     @Transactional
     public ResponseEntity<?> createSession(@RequestBody Map<String, Object> data, Authentication authentication) {
         try {
@@ -177,6 +223,26 @@ public class EventController {
 
             res.setEvent(e);
             res.setUser(uRef);
+=======
+    public ResponseEntity<?> createSession(@RequestBody Map<String, Object> data) {
+        try {
+            // Utilise ta clé test
+            Stripe.apiKey = stripeApiKey;
+
+            EventReservation res = new EventReservation();
+            res.setStatus(ReservationStatus.PENDING);
+            res.setTotalAmount(Double.parseDouble(data.get("amount").toString()));
+
+            // Attention : utilise setEventId car c'est le nom dans ton entité Event
+            Event e = new Event();
+            e.setEventId((Integer) data.get("event_id"));
+
+            User u = new User();
+            u.setId(1); // À dynamiser plus tard
+
+            res.setEvent(e);
+            res.setUser(u);
+>>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
 
             reservationRepository.save(res);
 
@@ -198,16 +264,24 @@ public class EventController {
                             .build())
                     .build();
 
+<<<<<<< HEAD
             Session session = Session.create(params);
 
             return ResponseEntity.ok(Map.of(
                     "sessionId", session.getId(),
                     "sessionUrl", session.getUrl()
             ));
+=======
+            // CORRECTION ICI : Pas de cast en Map
+            Session session = Session.create((Map<String, Object>) params);
+
+            return ResponseEntity.ok(Map.of("sessionId", session.getId()));
+>>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Erreur Stripe : " + e.getMessage());
         }
     }
+<<<<<<< HEAD
 
     private User resolveAuthenticatedUser(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -254,4 +328,6 @@ public class EventController {
         }
         return null;
     }
+=======
+>>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
 }
