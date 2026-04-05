@@ -66,16 +66,39 @@ public class MessageService implements IMessageService {
     // ──────────────────────────────────────────────
 
     @Override
-    public MessageResponse sendMessage(Integer chatRoomId, Integer senderId, String content) {
+    public MessageResponse sendMessage(Integer chatRoomId,
+                                       Integer senderId,
+                                       Integer receiverId,
+                                       String encryptedMessage,
+                                       String encryptedKey,
+                                       String iv,
+                                       String legacyContent) {
         ChatRoom chatRoom = chatRoomRepo.findById(chatRoomId)
                 .orElseThrow(() -> new RuntimeException("Chat room not found"));
         User sender = userRepo.findById(senderId)
                 .orElseThrow(() -> new RuntimeException("Sender not found"));
 
+        if (receiverId != null) {
+            userRepo.findById(receiverId)
+                    .orElseThrow(() -> new RuntimeException("Receiver not found"));
+        }
+
         Message message = new Message();
         message.setChatRoom(chatRoom);
         message.setSender(sender);
-        message.setContent(content);
+        boolean hasV2Payload = encryptedMessage != null && !encryptedMessage.isBlank()
+                && encryptedKey != null && !encryptedKey.isBlank()
+                && iv != null && !iv.isBlank();
+
+        if (hasV2Payload) {
+            message.setContent(encryptedMessage);
+            message.setEncryptedKey(encryptedKey);
+            message.setEncryptionIv(iv);
+        } else {
+            message.setContent(legacyContent);
+            message.setEncryptedKey(null);
+            message.setEncryptionIv(null);
+        }
         message.setMessageType("TEXT");
         message.setVoiceUrl(null);
         message.setVoiceDurationSec(null);
@@ -99,6 +122,8 @@ public class MessageService implements IMessageService {
         message.setContent("Voice message");
         message.setMessageType("VOICE");
         message.setVoiceUrl(voiceUrl);
+        message.setEncryptedKey(null);
+        message.setEncryptionIv(null);
         message.setVoiceDurationSec(durationSec != null && durationSec > 0 ? durationSec : null);
         message.setSentAt(new Date());
 
@@ -114,6 +139,27 @@ public class MessageService implements IMessageService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional
+    public void deleteOwnMessage(Integer chatRoomId, Integer messageId, Integer userId) {
+        Message message = messageRepo.findByMessageIdAndChatRoomChatRoomId(messageId, chatRoomId)
+                .orElseThrow(() -> new RuntimeException("Message not found"));
+
+        User sender = message.getSender();
+        if (sender == null || !sender.getUserId().equals(userId)) {
+            throw new RuntimeException("You can only delete your own messages");
+        }
+
+        messageRepo.delete(message);
+    }
+
+    @Override
+    @Transactional
+    public int purgeMessagesOlderThanHours(int hours) {
+        long cutoffMillis = System.currentTimeMillis() - (hours * 3600_000L);
+        return messageRepo.deleteAllOlderThan(new Date(cutoffMillis));
+    }
+
     private MessageResponse toMessageResponse(Message message) {
         User sender = message.getSender();
         Integer senderId = sender != null ? sender.getUserId() : null;
@@ -126,9 +172,11 @@ public class MessageService implements IMessageService {
                 senderUsername,
                 senderImage,
                 message.getContent(),
-            message.getMessageType(),
-            message.getVoiceUrl(),
-            message.getVoiceDurationSec(),
+                message.getEncryptedKey(),
+                message.getEncryptionIv(),
+                message.getMessageType(),
+                message.getVoiceUrl(),
+                message.getVoiceDurationSec(),
                 message.getSentAt()
         );
     }

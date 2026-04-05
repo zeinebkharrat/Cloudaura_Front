@@ -1,6 +1,8 @@
 package org.example.backend.controller;
 
 import org.example.backend.dto.ConversationResponse;
+import org.example.backend.dto.E2eePublicKeyResponse;
+import org.example.backend.dto.E2eePublicKeyUpsertRequest;
 import org.example.backend.dto.MessageResponse;
 import org.example.backend.model.ChatRoom;
 import org.example.backend.model.User;
@@ -22,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/chatroom")
@@ -133,6 +136,32 @@ public class ChatRoomController {
         return ResponseEntity.ok(messages);
     }
 
+    @DeleteMapping("/{chatRoomId}/messages/{messageId}")
+    public ResponseEntity<Map<String, String>> deleteOwnMessage(
+            @PathVariable Integer chatRoomId,
+            @PathVariable Integer messageId
+    ) {
+        User currentUser = getCurrentUser();
+
+        if (!chatRoomService.isUserInChatRoom(chatRoomId, currentUser.getUserId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not a participant of this chat room");
+        }
+
+        try {
+            messageService.deleteOwnMessage(chatRoomId, messageId, currentUser.getUserId());
+        } catch (RuntimeException ex) {
+            String msg = ex.getMessage() == null ? "Cannot delete message" : ex.getMessage();
+            if (msg.toLowerCase().contains("not found")) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, msg);
+            }
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, msg);
+        }
+
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Message deleted");
+        return ResponseEntity.ok(response);
+    }
+
     @PostMapping(value = "/{chatRoomId}/voice", consumes = { "multipart/form-data" })
     public ResponseEntity<MessageResponse> sendVoiceMessage(
             @PathVariable Integer chatRoomId,
@@ -180,6 +209,34 @@ public class ChatRoomController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(results);
+    }
+
+    @PutMapping("/keys/me")
+    public ResponseEntity<Map<String, String>> upsertMyE2eePublicKey(@Valid @RequestBody E2eePublicKeyUpsertRequest request) {
+        User currentUser = getCurrentUser();
+        currentUser.setE2eePublicKey(request.publicKey());
+        userRepository.save(currentUser);
+
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "E2EE public key saved");
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/keys/{userId}")
+    public ResponseEntity<E2eePublicKeyResponse> getUserE2eePublicKey(@PathVariable Integer userId) {
+        User currentUser = getCurrentUser();
+
+        if (currentUser.getUserId().equals(userId)) {
+            return ResponseEntity.ok(new E2eePublicKeyResponse(
+                    currentUser.getUserId(),
+                    currentUser.getE2eePublicKey()
+            ));
+        }
+
+        User target = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        return ResponseEntity.ok(new E2eePublicKeyResponse(target.getUserId(), target.getE2eePublicKey()));
     }
 
     private User getCurrentUser() {

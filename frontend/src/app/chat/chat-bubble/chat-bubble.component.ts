@@ -16,6 +16,7 @@ import { ChatService } from '../chat.service';
 import { AuthService } from '../../core/auth.service';
 import { ConversationResponse, MessageResponse, TypingEvent } from '../chat.types';
 import { Router } from '@angular/router';
+import { AppAlertsService } from '../../core/services/app-alerts.service';
 
 @Component({
   selector: 'app-chat-bubble',
@@ -28,6 +29,7 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
   private readonly chatService = inject(ChatService);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly alerts = inject(AppAlertsService);
 
   @ViewChild('messagesContainer') messagesContainer!: ElementRef;
   @ViewChild('messageInput') messageInput!: ElementRef;
@@ -42,8 +44,15 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
   readonly currentUser = this.authService.currentUser;
   
   messages = signal<MessageResponse[]>([]);
+  rawMessages = signal<MessageResponse[]>([]);
   newMessage = signal('');
   messagesLoading = signal(false);
+  uploadingVoice = signal(false);
+  isRecording = signal(false);
+  recordingSeconds = signal(0);
+  playingVoiceMessageId = signal<number | null>(null);
+  deletingMessageId = signal<number | null>(null);
+  openedMessageMenuId = signal<number | null>(null);
 
   // Computed
   unreadTotal = computed(() => {
@@ -58,9 +67,16 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
   private chatSub: Subscription | null = null;
   private typingSub: Subscription | null = null;
   private shouldScrollToBottom = false;
+  private mediaRecorder: MediaRecorder | null = null;
+  private mediaStream: MediaStream | null = null;
+  private voiceChunks: BlobPart[] = [];
+  private recordingTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly audioElements = new Map<number, HTMLAudioElement>();
 
   ngOnInit() {
-     // Intentionally empty. Connection logic moved to appComponent
+      this.chatService.ensureE2eeReadyForCurrentUser().catch((err) => {
+       console.error('Failed to initialize E2EE keys:', err);
+      });
   }
 
   ngAfterViewChecked(): void {
@@ -74,6 +90,7 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
     this.chatSub?.unsubscribe();
     this.typingSub?.unsubscribe();
     if (this.typingTimeout) clearTimeout(this.typingTimeout);
+    this.cleanupRecorder();
   }
 
   toggleBubble() {
@@ -89,6 +106,7 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
     this.activeChatRoomId.set(conv.chatRoomId);
     this.activeConversation.set(conv);
     this.messages.set([]);
+    this.rawMessages.set([]);
     this.typingUsers.set(new Map());
 
     // Unsubscribe previous
@@ -98,8 +116,9 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
     // Load messages
     this.messagesLoading.set(true);
     this.chatService.getMessages(conv.chatRoomId).subscribe({
-      next: (msgs) => {
-        this.messages.set(msgs);
+      next: async (msgs) => {
+        this.rawMessages.set(msgs);
+        await this.hydrateDisplayedMessagesFromRaw();
         this.messagesLoading.set(false);
         this.shouldScrollToBottom = true;
       },
@@ -113,11 +132,13 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
     // Subscribe to new messages
     this.chatSub = this.chatService
       .subscribeToChatRoom(conv.chatRoomId)
-      .subscribe((msg) => {
-        const current = this.messages();
+      .subscribe(async (msg) => {
+        const currentRaw = this.rawMessages();
         // Avoid duplicates
-        if (!current.find((m) => m.messageId === msg.messageId)) {
-          this.messages.set([...current, msg]);
+        if (!currentRaw.find((m) => m.messageId === msg.messageId)) {
+          this.rawMessages.set([...currentRaw, msg]);
+          const decoded = await this.decodeMessage(msg);
+          this.messages.set([...this.messages(), decoded]);
           this.shouldScrollToBottom = true;
         }
 
@@ -154,14 +175,68 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
     setTimeout(() => this.messageInput?.nativeElement?.focus(), 100);
   }
 
-  sendMessage(): void {
+  async sendMessage(): Promise<void> {
     const content = this.newMessage().trim();
     const chatRoomId = this.activeChatRoomId();
-    if (!content || !chatRoomId) return;
+    const receiverId = this.activeConversation()?.otherUserId;
+    if (!content || !chatRoomId || !receiverId) return;
 
-    this.chatService.sendMessage(chatRoomId, content);
+    await this.chatService.sendMessage(chatRoomId, receiverId, content);
     this.newMessage.set('');
     this.chatService.sendTyping(chatRoomId, false);
+  }
+
+  toggleMessageMenu(messageId: number): void {
+    this.openedMessageMenuId.update((current) =>
+      current === messageId ? null : messageId
+    );
+  }
+
+  async deleteOwnMessage(msg: MessageResponse): Promise<void> {
+    const chatRoomId = this.activeChatRoomId();
+    if (!chatRoomId || !msg?.messageId || !this.isOwnMessage(msg)) {
+      return;
+    }
+
+    const confirm = await this.alerts.confirm({
+      title: 'Delete this message?',
+      text: 'This will permanently remove it for everyone in this conversation.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      icon: 'warning',
+    });
+
+    if (!confirm.isConfirmed) {
+      return;
+    }
+
+    this.openedMessageMenuId.set(null);
+    this.deletingMessageId.set(msg.messageId);
+    this.chatService.deleteOwnMessage(chatRoomId, msg.messageId).subscribe({
+      next: () => {
+        this.rawMessages.set(this.rawMessages().filter((m) => m.messageId !== msg.messageId));
+        this.messages.set(this.messages().filter((m) => m.messageId !== msg.messageId));
+        this.deletingMessageId.set(null);
+      },
+      error: (err) => {
+        console.error('Failed to delete message:', err);
+        this.deletingMessageId.set(null);
+        this.alerts.error('Delete failed', 'Unable to delete this message. Please try again.');
+      },
+    });
+  }
+
+  async toggleVoiceRecording(): Promise<void> {
+    if (this.isRecording()) {
+      await this.stopVoiceRecording(true);
+      return;
+    }
+
+    await this.startVoiceRecording();
+  }
+
+  async cancelVoiceRecording(): Promise<void> {
+    await this.stopVoiceRecording(false);
   }
 
   onMessageKeydown(event: KeyboardEvent): void {
@@ -191,6 +266,45 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
     return msg.senderId === this.currentUser()?.id;
   }
 
+  isVoiceMessage(msg: MessageResponse): boolean {
+    return !!msg.voiceUrl || msg.messageType === 'VOICE';
+  }
+
+  registerVoiceAudio(messageId: number, event: Event): void {
+    const audio = event.target as HTMLAudioElement;
+    this.audioElements.set(messageId, audio);
+    audio.onended = () => {
+      if (this.playingVoiceMessageId() === messageId) {
+        this.playingVoiceMessageId.set(null);
+      }
+    };
+  }
+
+  toggleVoicePlayback(messageId: number): void {
+    const currentPlaying = this.playingVoiceMessageId();
+    if (currentPlaying != null && currentPlaying !== messageId) {
+      const prev = this.audioElements.get(currentPlaying);
+      prev?.pause();
+    }
+
+    const audio = this.audioElements.get(messageId);
+    if (!audio) {
+      return;
+    }
+
+    if (!audio.paused) {
+      audio.pause();
+      this.playingVoiceMessageId.set(null);
+      return;
+    }
+
+    audio.play().then(() => {
+      this.playingVoiceMessageId.set(messageId);
+    }).catch(() => {
+      this.playingVoiceMessageId.set(null);
+    });
+  }
+
   isUserOnline(userId: number): boolean {
     return this.chatService.isUserOnline(userId);
   }
@@ -213,6 +327,25 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
+  conversationPreview(conv: ConversationResponse): string {
+    if (conv.unreadCount === 1) {
+      return 'Sent you one message';
+    }
+    if (conv.unreadCount > 1) {
+      return `Sent you ${conv.unreadCount} messages`;
+    }
+    return 'No new messages';
+  }
+
+  formatVoiceDuration(sec?: number | null): string {
+    if (!sec || sec <= 0) {
+      return '0:00';
+    }
+    const minutes = Math.floor(sec / 60);
+    const seconds = sec % 60;
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+  }
+
   backToList(): void {
     this.activeChatRoomId.set(null);
     this.activeConversation.set(null);
@@ -233,5 +366,134 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
         el.scrollTop = el.scrollHeight;
       }
     } catch (_) {}
+  }
+
+  private async startVoiceRecording(): Promise<void> {
+    const chatRoomId = this.activeChatRoomId();
+    if (!chatRoomId || this.uploadingVoice()) {
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+      alert('Voice recording is not supported on this browser.');
+      return;
+    }
+
+    try {
+      this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      const mimeType = this.resolveRecordingMimeType();
+      this.mediaRecorder = mimeType
+        ? new MediaRecorder(this.mediaStream, { mimeType })
+        : new MediaRecorder(this.mediaStream);
+
+      this.voiceChunks = [];
+      this.recordingSeconds.set(0);
+
+      this.mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size > 0) {
+          this.voiceChunks.push(event.data);
+        }
+      };
+
+      this.mediaRecorder.start();
+      this.isRecording.set(true);
+      this.recordingTimer = setInterval(() => {
+        this.recordingSeconds.update((v) => v + 1);
+      }, 1000);
+    } catch (error) {
+      console.error('Could not start recording:', error);
+      this.cleanupRecorder();
+    }
+  }
+
+  private async stopVoiceRecording(send: boolean): Promise<void> {
+    if (!this.mediaRecorder || this.mediaRecorder.state === 'inactive') {
+      this.cleanupRecorder();
+      return;
+    }
+
+    const recorder = this.mediaRecorder;
+
+    await new Promise<void>((resolve) => {
+      recorder.onstop = () => resolve();
+      recorder.stop();
+    });
+
+    const duration = this.recordingSeconds();
+    const blobType = recorder.mimeType || 'audio/webm';
+    const blob = new Blob(this.voiceChunks, { type: blobType });
+
+    this.cleanupRecorder();
+
+    if (!send || blob.size === 0) {
+      return;
+    }
+
+    const chatRoomId = this.activeChatRoomId();
+    if (!chatRoomId) {
+      return;
+    }
+
+    const extension = blobType.includes('ogg') ? 'ogg' : 'webm';
+    const file = new File([blob], `voice-${Date.now()}.${extension}`, { type: blobType });
+
+    this.uploadingVoice.set(true);
+    this.chatService.sendVoiceMessage(chatRoomId, file, duration).subscribe({
+      next: (msg) => {
+        const current = this.messages();
+        if (!current.find((m) => m.messageId === msg.messageId)) {
+          this.messages.set([...current, msg]);
+          this.shouldScrollToBottom = true;
+        }
+        this.chatService.updateConversationWithNewMessage(msg);
+        this.uploadingVoice.set(false);
+      },
+      error: (err) => {
+        console.error('Failed to send voice message:', err);
+        this.uploadingVoice.set(false);
+      },
+    });
+  }
+
+  private cleanupRecorder(): void {
+    if (this.recordingTimer) {
+      clearInterval(this.recordingTimer);
+      this.recordingTimer = null;
+    }
+
+    if (this.mediaStream) {
+      this.mediaStream.getTracks().forEach((t) => t.stop());
+      this.mediaStream = null;
+    }
+
+    this.mediaRecorder = null;
+    this.voiceChunks = [];
+    this.isRecording.set(false);
+    this.recordingSeconds.set(0);
+  }
+
+  private resolveRecordingMimeType(): string | null {
+    const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus'];
+    for (const type of candidates) {
+      if (MediaRecorder.isTypeSupported(type)) {
+        return type;
+      }
+    }
+    return null;
+  }
+
+  private async hydrateDisplayedMessagesFromRaw(): Promise<void> {
+    const decoded = await Promise.all(this.rawMessages().map((msg) => this.decodeMessage(msg)));
+    this.messages.set(decoded);
+  }
+
+  private async decodeMessage(msg: MessageResponse): Promise<MessageResponse> {
+    if (this.isVoiceMessage(msg)) {
+      return msg;
+    }
+
+    const plain = await this.chatService.decryptMessageContent(msg);
+    return { ...msg, content: plain };
   }
 }

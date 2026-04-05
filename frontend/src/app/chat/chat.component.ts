@@ -15,6 +15,7 @@ import { Router } from '@angular/router';
 import { Subject, Subscription, debounceTime, distinctUntilChanged } from 'rxjs';
 import { ChatService } from './chat.service';
 import { AuthService } from '../core/auth.service';
+import { AppAlertsService } from '../core/services/app-alerts.service';
 import {
   ConversationResponse,
   MessageResponse,
@@ -31,6 +32,7 @@ import {
 export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   private readonly chatService = inject(ChatService);
   private readonly authService = inject(AuthService);
+  private readonly alerts = inject(AppAlertsService);
   private readonly router = inject(Router);
 
   @ViewChild('messagesContainer') messagesContainer!: ElementRef;
@@ -44,6 +46,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   activeChatRoomId = signal<number | null>(null);
   activeConversation = signal<ConversationResponse | null>(null);
   messages = signal<MessageResponse[]>([]);
+  rawMessages = signal<MessageResponse[]>([]);
   messagesError = signal<string | null>(null);
   newMessage = signal('');
   loading = signal(false);
@@ -51,6 +54,8 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   uploadingVoice = signal(false);
   isRecording = signal(false);
   recordingSeconds = signal(0);
+  deletingMessageId = signal<number | null>(null);
+  openedMessageMenuId = signal<number | null>(null);
 
   // User search
   searchQuery = signal('');
@@ -87,6 +92,9 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     // Load conversations
     this.loading.set(true);
+    this.chatService.ensureE2eeReadyForCurrentUser().catch((err) => {
+      console.error('Failed to initialize E2EE keys:', err);
+    });
     this.chatService.loadConversations();
     this.chatService.getConversations().subscribe({
       next: () => this.loading.set(false),
@@ -138,6 +146,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.activeChatRoomId.set(conv.chatRoomId);
     this.activeConversation.set(conv);
     this.messages.set([]);
+    this.rawMessages.set([]);
     this.messagesError.set(null);
     this.typingUsers.set(new Map());
     this.showConversationList.set(false);
@@ -149,8 +158,9 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     // Load messages
     this.messagesLoading.set(true);
     this.chatService.getMessages(conv.chatRoomId).subscribe({
-      next: (msgs) => {
-        this.messages.set(msgs);
+      next: async (msgs) => {
+        this.rawMessages.set(msgs);
+        await this.hydrateDisplayedMessagesFromRaw();
         this.messagesError.set(null);
         this.messagesLoading.set(false);
         this.shouldScrollToBottom = true;
@@ -169,11 +179,13 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     // Subscribe to new messages
     this.chatSub = this.chatService
       .subscribeToChatRoom(conv.chatRoomId)
-      .subscribe((msg) => {
-        const current = this.messages();
+      .subscribe(async (msg) => {
+        const currentRaw = this.rawMessages();
         // Avoid duplicates
-        if (!current.find((m) => m.messageId === msg.messageId)) {
-          this.messages.set([...current, msg]);
+        if (!currentRaw.find((m) => m.messageId === msg.messageId)) {
+          this.rawMessages.set([...currentRaw, msg]);
+          const decoded = await this.decodeMessage(msg);
+          this.messages.set([...this.messages(), decoded]);
           this.shouldScrollToBottom = true;
         }
 
@@ -215,16 +227,57 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   // ──── Send Message ────
 
-  sendMessage(): void {
+  async sendMessage(): Promise<void> {
     const content = this.newMessage().trim();
     const chatRoomId = this.activeChatRoomId();
-    if (!content || !chatRoomId) return;
+    const receiverId = this.activeConversation()?.otherUserId;
+    if (!content || !chatRoomId || !receiverId) return;
 
-    this.chatService.sendMessage(chatRoomId, content);
+    await this.chatService.sendMessage(chatRoomId, receiverId, content);
     this.newMessage.set('');
 
     // Stop typing indicator
     this.chatService.sendTyping(chatRoomId, false);
+  }
+
+  toggleMessageMenu(messageId: number): void {
+    this.openedMessageMenuId.update((current) =>
+      current === messageId ? null : messageId
+    );
+  }
+
+  async deleteOwnMessage(msg: MessageResponse): Promise<void> {
+    const chatRoomId = this.activeChatRoomId();
+    if (!chatRoomId || !msg?.messageId || !this.isOwnMessage(msg)) {
+      return;
+    }
+
+    const confirm = await this.alerts.confirm({
+      title: 'Delete this message?',
+      text: 'This will permanently remove it for everyone in this conversation.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      icon: 'warning',
+    });
+
+    if (!confirm.isConfirmed) {
+      return;
+    }
+
+    this.openedMessageMenuId.set(null);
+    this.deletingMessageId.set(msg.messageId);
+    this.chatService.deleteOwnMessage(chatRoomId, msg.messageId).subscribe({
+      next: () => {
+        this.rawMessages.set(this.rawMessages().filter((m) => m.messageId !== msg.messageId));
+        this.messages.set(this.messages().filter((m) => m.messageId !== msg.messageId));
+        this.deletingMessageId.set(null);
+      },
+      error: (err) => {
+        console.error('Failed to delete message:', err);
+        this.deletingMessageId.set(null);
+        this.alerts.error('Delete failed', 'Unable to delete this message. Please try again.');
+      },
+    });
   }
 
   async toggleVoiceRecording(): Promise<void> {
@@ -346,6 +399,16 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
       hour: '2-digit',
       minute: '2-digit',
     });
+  }
+
+  conversationPreview(conv: ConversationResponse): string {
+    if (conv.unreadCount === 1) {
+      return 'Sent you one message';
+    }
+    if (conv.unreadCount > 1) {
+      return `Sent you ${conv.unreadCount} messages`;
+    }
+    return 'No new messages';
   }
 
   getTypingText(): string {
@@ -539,5 +602,19 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
       }
     }
     return null;
+  }
+
+  private async hydrateDisplayedMessagesFromRaw(): Promise<void> {
+    const decoded = await Promise.all(this.rawMessages().map((msg) => this.decodeMessage(msg)));
+    this.messages.set(decoded);
+  }
+
+  private async decodeMessage(msg: MessageResponse): Promise<MessageResponse> {
+    if (this.isVoiceMessage(msg)) {
+      return msg;
+    }
+
+    const plain = await this.chatService.decryptMessageContent(msg);
+    return { ...msg, content: plain };
   }
 }

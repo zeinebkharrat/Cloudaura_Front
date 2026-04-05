@@ -121,7 +121,7 @@
               </div>
               <div class="conv-bottom">
                 <span class="conv-last-msg" [class.has-unread]="conv.unreadCount > 0">
-                  {{ conv.lastMessage || 'Nouvelle conversation' }}
+                  {{ conversationPreview(conv) }}
                 </span>
                 @if (conv.unreadCount > 0) {
                   <span class="unread-badge">{{ conv.unreadCount }}</span>
@@ -214,6 +214,30 @@
                 </div>
               }
               <div class="message-bubble" [class.own]="isOwnMessage(msg)">
+                @if (isOwnMessage(msg)) {
+                  <div class="message-actions" [class.open]="openedMessageMenuId() === msg.messageId">
+                    <button
+                      class="message-actions-toggle"
+                      type="button"
+                      (click)="toggleMessageMenu(msg.messageId)"
+                      [disabled]="deletingMessageId() === msg.messageId"
+                      title="Message actions"
+                      aria-label="Message actions"
+                    >
+                      <span></span><span></span><span></span>
+                    </button>
+                    @if (openedMessageMenuId() === msg.messageId) {
+                      <button
+                        class="message-action-item danger"
+                        type="button"
+                        (click)="deleteOwnMessage(msg)"
+                        [disabled]="deletingMessageId() === msg.messageId"
+                      >
+                        Delete
+                      </button>
+                    }
+                  </div>
+                }
                 @if (isVoiceMessage(msg)) {
                   <div class="voice-message-wrap" [class.own]="isOwnMessage(msg)">
                     <button

@@ -4,6 +4,7 @@ import { Observable, Subject } from 'rxjs';
 import { Client, IFrame, IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { AuthService } from '../core/auth.service';
+import { ChatE2eeService } from './chat-e2ee.service';
 import {
   ChatRoomResponse,
   ConversationResponse,
@@ -17,6 +18,7 @@ import {
 export class ChatService implements OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
+  private readonly e2eeService = inject(ChatE2eeService);
   private readonly baseUrl = '';
 
   private stompClient: Client | null = null;
@@ -54,6 +56,12 @@ export class ChatService implements OnDestroy {
   getMessages(chatRoomId: number): Observable<MessageResponse[]> {
     return this.http.get<MessageResponse[]>(
       `${this.baseUrl}/chatroom/${chatRoomId}/messages`
+    );
+  }
+
+  deleteOwnMessage(chatRoomId: number, messageId: number): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(
+      `${this.baseUrl}/chatroom/${chatRoomId}/messages/${messageId}`
     );
   }
 
@@ -156,11 +164,26 @@ export class ChatService implements OnDestroy {
     }
   }
 
-  sendMessage(chatRoomId: number, content: string): void {
-    const request: SendMessageRequest = { chatRoomId, content };
+  async sendMessage(chatRoomId: number, receiverId: number, plainText: string): Promise<void> {
+    const token = this.authService.token();
+    const senderId = this.authService.currentUser()?.id;
+    if (!senderId) {
+      throw new Error('Cannot send encrypted message without authenticated sender');
+    }
+
+    const encrypted = await this.e2eeService.encryptTextForParticipants(senderId, receiverId, plainText);
+    const request: SendMessageRequest = {
+      chatRoomId,
+      receiverId,
+      encryptedMessage: encrypted.encryptedMessage,
+      encryptedKey: encrypted.encryptedKey,
+      iv: encrypted.iv,
+    };
+
     const publish = () =>
       this.stompClient?.publish({
         destination: '/app/send-message',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         body: JSON.stringify(request),
       });
 
@@ -173,7 +196,21 @@ export class ChatService implements OnDestroy {
     publish();
   }
 
+  async ensureE2eeReadyForCurrentUser(): Promise<void> {
+    const userId = this.authService.currentUser()?.id;
+    if (!userId) {
+      return;
+    }
+    await this.e2eeService.ensureKeyPairReady(userId);
+  }
+
+  async decryptMessageContent(msg: MessageResponse): Promise<string> {
+    const userId = this.authService.currentUser()?.id ?? null;
+    return this.e2eeService.decryptTextMessage(msg, userId);
+  }
+
   sendTyping(chatRoomId: number, typing: boolean): void {
+    const token = this.authService.token();
     const event: TypingEvent = {
       chatRoomId,
       userId: 0, // Server will override with authenticated user
@@ -184,6 +221,7 @@ export class ChatService implements OnDestroy {
     const publish = () =>
       this.stompClient?.publish({
         destination: '/app/typing',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         body: JSON.stringify(event),
       });
 
@@ -374,6 +412,9 @@ export class ChatService implements OnDestroy {
   private previewText(msg: MessageResponse): string {
     if (msg.messageType === 'VOICE') {
       return 'Voice message';
+    }
+    if (this.e2eeService.isEncryptedTextPayload(msg.content)) {
+      return 'Encrypted message';
     }
     return msg.content;
   }

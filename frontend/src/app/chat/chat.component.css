@@ -452,7 +452,6 @@
   background: var(--glass-bg);
   backdrop-filter: blur(10px);
 }
-
 .back-btn {
   background: none;
   border: none;
@@ -544,6 +543,75 @@
   border: 1px solid var(--glass-border);
   position: relative;
   max-width: 100%;
+}
+
+.message-actions {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  z-index: 4;
+}
+
+.message-actions-toggle {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(0, 0, 0, 0.14);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease;
+}
+
+.message-row.own:hover .message-actions-toggle,
+.message-actions.open .message-actions-toggle {
+  opacity: 1;
+}
+
+.message-actions-toggle:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.22);
+  transform: scale(1.04);
+}
+
+.message-actions-toggle span {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.message-action-item {
+  position: absolute;
+  top: 28px;
+  right: 0;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: #121826;
+  color: #e5e7eb;
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.26);
+}
+
+.message-action-item.danger {
+  color: #fda4af;
+}
+
+.message-action-item:hover:not(:disabled) {
+  background: #1f2937;
+}
+
+.message-actions-toggle:disabled,
+.message-action-item:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .message-bubble.own {

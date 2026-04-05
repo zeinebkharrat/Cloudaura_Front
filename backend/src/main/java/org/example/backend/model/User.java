@@ -46,6 +46,9 @@ public class User {
     private Integer failedLoginAttempts;
     private Date lockedUntil;
 
+    @Column(columnDefinition = "TEXT")
+    private String e2eePublicKey;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "city_id")
     private City city;
@@ -218,6 +221,14 @@ public class User {
 
     public void setLockedUntil(Date lockedUntil) {
         this.lockedUntil = lockedUntil;
+    }
+
+    public String getE2eePublicKey() {
+        return e2eePublicKey;
+    }
+
+    public void setE2eePublicKey(String e2eePublicKey) {
+        this.e2eePublicKey = e2eePublicKey;
     }
 
     @JsonIgnore
