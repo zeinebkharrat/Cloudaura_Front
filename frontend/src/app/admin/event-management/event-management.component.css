@@ -170,3 +170,198 @@ label { display: block; margin-bottom: 6px; color: var(--text-secondary); font-s
 .upload-status { color: #3b82f6; font-size: 0.8rem; margin-top: 5px; font-weight: bold; }
 .footer-btns { display: flex; justify-content: flex-end; gap: 15px; margin-top: 2rem; }
 .btn-icon { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-secondary); }
+
+/* TABLE FOOTER / PAGINATION */
+.table-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-top: 1px solid var(--border);
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.light-theme .table-footer {
+  background: rgba(148, 163, 184, 0.08);
+}
+
+.table-total {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.page-indicator {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.pager-btn {
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-primary);
+  border-radius: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.pager-btn:hover:not(:disabled) {
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+.pager-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pager-btn--primary {
+  border-color: #3b82f6;
+  color: #3b82f6;
+}
+
+.pager-btn--primary:hover:not(:disabled) {
+  background: #3b82f6;
+  color: #fff;
+}
+
+@media (max-width: 760px) {
+  .table-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+/* VISUAL POLISH — FILTER BAR + PAGINATION */
+.filter-bar {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.95));
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 16px;
+  box-shadow: 0 14px 28px rgba(2, 6, 23, 0.28);
+  padding: 16px 18px;
+}
+
+.light-theme .filter-bar {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.98));
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 280px;
+  flex: 1 1 340px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 14px;
+  color: #93c5fd;
+  font-size: 0.95rem;
+  pointer-events: none;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 11px 14px 11px 38px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.65);
+  color: #f8fafc;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.search-box input::placeholder {
+  color: #94a3b8;
+}
+
+.search-box input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+  background: rgba(15, 23, 42, 0.85);
+}
+
+.light-theme .search-box input {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+.light-theme .search-box input::placeholder {
+  color: #64748b;
+}
+
+.filters-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filters-group .filter-select {
+  min-width: 130px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.65);
+  color: #f8fafc;
+  font-weight: 500;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.filters-group .filter-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.light-theme .filters-group .filter-select {
+  background: #ffffff;
+  color: #0f172a;
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+.btn-reset {
+  border-radius: 12px;
+  padding: 10px 16px;
+  border: 1px solid rgba(248, 113, 113, 0.7);
+  color: #fda4af;
+  font-weight: 600;
+  background: rgba(127, 29, 29, 0.18);
+  transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.btn-reset:hover {
+  transform: translateY(-1px);
+  background: rgba(239, 68, 68, 0.9);
+  color: #fff;
+}
+
+.table-footer {
+  border-top: 1px solid rgba(148, 163, 184, 0.22);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.45), rgba(15, 23, 42, 0.78));
+}
+
+.page-indicator {
+  color: #cbd5e1;
+  font-weight: 600;
+}
+
+.pager-btn {
+  border-radius: 999px;
+  padding: 8px 16px;
+}
+
+.pager-btn--primary {
+  background: rgba(37, 99, 235, 0.15);
+}

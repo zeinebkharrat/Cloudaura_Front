@@ -15,17 +15,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-=======
-import com.stripe.model.billingportal.Session;
-import com.stripe.param.checkout.SessionCreateParams;
-import org.example.backend.model.*;
-import org.example.backend.service.EventService;
-import org.example.backend.repository.EventReservationRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
->>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
 
 import java.util.List;
 import java.util.Map;
@@ -34,7 +23,6 @@ import java.util.Map;
 @RequestMapping("/api/events")
 @CrossOrigin(origins = "http://localhost:4200")
 public class EventController {
-<<<<<<< HEAD
     private final EventService eventService;
     private final EventReservationRepository reservationRepository;
     private final UserRepository userRepository;
@@ -122,7 +110,6 @@ public class EventController {
 
     // --- RESERVATION ---
     @PostMapping("/reservations")
-<<<<<<< HEAD
     @Transactional
     public ResponseEntity<?> createReservation(@RequestBody Map<String, Object> data, Authentication authentication) {
         try {
@@ -151,34 +138,15 @@ public class EventController {
 
             res.setEvent(event);
                 res.setUser(userRef);
-=======
-    public ResponseEntity<?> createReservation(@RequestBody Map<String, Object> data) {
-        try {
-            EventReservation res = new EventReservation();
-
-            Integer eventId = (Integer) data.get("event_id");
-            Integer userId = (Integer) data.get("user_id");
-            Double amount = Double.valueOf(data.get("total_amount").toString());
-
-            Event event = new Event(); event.setId(eventId);
-            User user = new User(); user.setId(userId);
-
-            res.setEvent(event);
-            res.setUser(user);
->>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
             res.setTotalAmount(amount);
             res.setStatus(ReservationStatus.CONFIRMED);
 
             reservationRepository.save(res);
 
-<<<<<<< HEAD
             return ResponseEntity.ok(Map.of(
                     "message", "Reservation linked successfully.",
                     "event_reservation_id", res.getEventReservationId()
             ));
-=======
-            return ResponseEntity.ok(Map.of("message", "Réservation liée avec succès !"));
->>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Erreur : " + e.getMessage());
         }
@@ -194,7 +162,7 @@ public class EventController {
             String effectiveStripeKey = resolveStripeApiKey();
             if (effectiveStripeKey == null || effectiveStripeKey.isBlank()) {
                 return ResponseEntity.status(500)
-                        .body("Stripe is not configured. Set stripe.api.key (application.properties) or STRIPE_SECRET_KEY.");
+                        .body("Online payment is temporarily unavailable.");
             }
 
             Stripe.apiKey = effectiveStripeKey;
@@ -224,26 +192,6 @@ public class EventController {
 
             res.setEvent(e);
             res.setUser(uRef);
-=======
-    public ResponseEntity<?> createSession(@RequestBody Map<String, Object> data) {
-        try {
-            // Utilise ta clé test
-            Stripe.apiKey = stripeApiKey;
-
-            EventReservation res = new EventReservation();
-            res.setStatus(ReservationStatus.PENDING);
-            res.setTotalAmount(Double.parseDouble(data.get("amount").toString()));
-
-            // Attention : utilise setEventId car c'est le nom dans ton entité Event
-            Event e = new Event();
-            e.setEventId((Integer) data.get("event_id"));
-
-            User u = new User();
-            u.setId(1); // À dynamiser plus tard
-
-            res.setEvent(e);
-            res.setUser(u);
->>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
 
             reservationRepository.save(res);
 
@@ -279,7 +227,6 @@ public class EventController {
                             .build())
                     .build();
 
-<<<<<<< HEAD
             Session session = Session.create(params);
             String url = session.getUrl();
             if (url == null || url.isBlank()) {
@@ -291,11 +238,11 @@ public class EventController {
                     "sessionUrl", url
             ));
         } catch (StripeException e) {
-            return ResponseEntity.status(500).body("Stripe error: " + e.getMessage());
+            return ResponseEntity.status(500).body("Online payment is temporarily unavailable.");
         } catch (ResponseStatusException e) {
             throw e;
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+            return ResponseEntity.status(500).body("Unable to create checkout session right now.");
         }
     }
 
@@ -311,7 +258,7 @@ public class EventController {
         }
         String effectiveStripeKey = resolveStripeApiKey();
         if (effectiveStripeKey == null || effectiveStripeKey.isBlank()) {
-            return ResponseEntity.status(500).body("Stripe is not configured");
+            return ResponseEntity.status(500).body("Online payment is temporarily unavailable.");
         }
         Stripe.apiKey = effectiveStripeKey;
         try {
@@ -348,10 +295,9 @@ public class EventController {
                     "eventId", res.getEvent() != null ? res.getEvent().getEventId() : null
             ));
         } catch (StripeException e) {
-            return ResponseEntity.status(500).body("Stripe error: " + e.getMessage());
+            return ResponseEntity.status(500).body("Online payment is temporarily unavailable.");
         }
     }
-<<<<<<< HEAD
 
     private User resolveAuthenticatedUser(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -398,6 +344,4 @@ public class EventController {
         }
         return null;
     }
-=======
->>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
 }

@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { ActivatedRoute, Data, Router, RouterLink } from '@angular/router';
@@ -19,6 +18,7 @@ import { ButtonModule } from 'primeng/button';
 import { CarouselModule } from 'primeng/carousel';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
+import Swal from 'sweetalert2';
 
 export interface FeatureBlock {
   title: string;
@@ -61,7 +61,6 @@ export interface CatalogProduct {
   styleUrl: './feature-page.component.css',
 })
 export class FeaturePageComponent implements OnInit {
-<<<<<<< HEAD
   private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
   readonly router = inject(Router);
@@ -71,16 +70,12 @@ export class FeaturePageComponent implements OnInit {
   private readonly notifier = inject(NotificationService);
   private readonly loginPrompt = inject(LoginRequiredPromptService);
 
-=======
-  // --- Propriétés ---
->>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
   kicker = '';
   title = '';
   description = '';
   accent: FeatureAccent = 'coral';
   highlights: string[] = [];
   blocks: FeatureBlock[] = [];
-<<<<<<< HEAD
   events: TravelEvent[] = [];
   isEventFeed = false;
   isLoadingEvents = false;
@@ -331,9 +326,6 @@ export class FeaturePageComponent implements OnInit {
     if (this.isArtisan()) {
       this.loadArtisanProducts();
     }
-=======
-    this.loadEvents();
->>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
   }
 
   private applyData(d: Data): void {
@@ -782,6 +774,20 @@ export class FeaturePageComponent implements OnInit {
     return this.isPaidEvent(event) ? 'Opening payment…' : 'Registering…';
   }
 
+  private toJoinUserMessage(err: HttpErrorResponse, fallback: string): string {
+    const raw = extractApiErrorMessage(err, fallback);
+    const lowered = raw.toLowerCase();
+    if (
+      lowered.includes('stripe is not configured') ||
+      lowered.includes('stripe.api.key') ||
+      lowered.includes('stripe_secret_key') ||
+      lowered.includes('stripe error')
+    ) {
+      return 'Online payment is temporarily unavailable. Please try again later.';
+    }
+    return raw;
+  }
+
   onJoinEvent(event: TravelEvent): void {
     this.eventJoinError.set(null);
 
@@ -817,11 +823,11 @@ export class FeaturePageComponent implements OnInit {
               window.location.href = res.sessionUrl;
               return;
             }
-            this.eventJoinError.set('Payment did not return a Stripe checkout link. Check the backend Stripe key.');
+            this.eventJoinError.set('Payment is temporarily unavailable. Please try again later.');
           },
           error: (err: HttpErrorResponse) => {
             this.eventJoinLoading.set(false);
-            this.eventJoinError.set(extractApiErrorMessage(err, 'Could not start payment.'));
+            this.eventJoinError.set(this.toJoinUserMessage(err, 'Could not start payment.'));
           },
         });
       return;
@@ -837,7 +843,12 @@ export class FeaturePageComponent implements OnInit {
     this.eventService.createReservation(reservationData).subscribe({
       next: (res) => {
         this.eventJoinLoading.set(false);
-        alert(`You're registered! Reservation #${res.event_reservation_id} created.`);
+        Swal.fire({
+          icon: 'success',
+          title: "You're registered!",
+          text: 'Thanks for joining this event.',
+          confirmButtonText: 'Great'
+        });
         this.closeEventDetails();
       },
       error: (err: HttpErrorResponse) => {
