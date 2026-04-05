@@ -16,7 +16,7 @@ import { CommentService } from './comment.service';
 import { LikeService, LikesByPostResponse } from './like.service';
 import { PostMediaService } from './post-media.service';
 import { PostService } from './post.service';
-import { AuthService } from '../auth.service';
+import { AuthService } from '../core/auth.service';
 import { OwnershipUtil } from './ownership.util';
 
 @Component({

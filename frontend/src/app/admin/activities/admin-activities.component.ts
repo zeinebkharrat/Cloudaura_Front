@@ -112,7 +112,7 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
         this.cities = res.content;
       },
       error: () => {
-        this.error = 'Impossible de charger les villes';
+        this.error = 'Could not load cities';
       },
     });
   }
@@ -125,7 +125,7 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
         this.totalElements = res.totalElements;
       },
       error: (err) => {
-        this.error = err?.error?.message ?? 'Erreur lors du chargement des activités';
+        this.error = err?.error?.message ?? 'Error loading activities';
       },
     });
   }
@@ -357,7 +357,7 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
         this.loadActivities();
       },
       error: (err) => {
-        this.modalError = err?.error?.message ?? 'Erreur lors de la sauvegarde';
+        this.modalError = err?.error?.message ?? 'Error saving';
       },
     });
   }
@@ -365,14 +365,14 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
   geocodeFromName(): void {
     const name = this.form.name.trim();
     if (!name) {
-      this.geocodeMessage = 'Saisissez un nom d’activité pour localiser.';
+      this.geocodeMessage = 'Enter an activity name to locate it.';
       return;
     }
 
     const selectedCity = this.cities.find((city) => city.cityId === this.form.cityId)?.name ?? '';
     const query = selectedCity ? `${name}, ${selectedCity}, Tunisia` : `${name}, Tunisia`;
 
-    this.geocodeMessage = 'Localisation en cours...';
+    this.geocodeMessage = 'Locating…';
 
     this.http
       .get<Array<{ lat: string; lon: string; display_name: string }>>(
@@ -381,7 +381,7 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (results) => {
           if (!results.length) {
-            this.geocodeMessage = 'Aucune localisation trouvée pour ce nom.';
+            this.geocodeMessage = 'No location found for this name.';
             return;
           }
 
@@ -389,11 +389,11 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
           this.form.latitude = Number(first.lat);
           this.form.longitude = Number(first.lon);
           this.form.address = first.display_name;
-          this.geocodeMessage = 'Activité localisée automatiquement.';
+          this.geocodeMessage = 'Activity located automatically.';
           this.renderMapLater();
         },
         error: () => {
-          this.geocodeMessage = 'Échec géolocalisation automatique. Saisissez latitude/longitude manuellement.';
+          this.geocodeMessage = 'Automatic geolocation failed. Enter latitude and longitude manually.';
         },
       });
   }
@@ -443,7 +443,7 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
           this.mediaTotalPages = res.totalPages;
         },
         error: (err) => {
-          this.modalError = err?.error?.message ?? 'Erreur lors du chargement des médias';
+          this.modalError = err?.error?.message ?? 'Error loading media';
         },
       });
   }
@@ -473,7 +473,7 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
     const files = Array.from(input.files ?? []);
     const accepted = files.filter((file) => file.type.startsWith('image/'));
     if (accepted.length !== files.length) {
-      this.modalError = 'Seules les images sont autorisées';
+      this.modalError = 'Only images are allowed';
     }
 
     this.uploadFiles = accepted;
@@ -497,7 +497,7 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
 
   uploadMedia(): void {
     if (!this.activityForMedia || this.uploadFiles.length === 0) {
-      this.modalError = 'Sélectionne d’abord une activité et un fichier';
+      this.modalError = 'Select an activity and a file first';
       return;
     }
 
@@ -507,7 +507,7 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
         this.loadMedia();
       },
       error: (err: any) => {
-        this.modalError = err?.error?.message ?? 'Upload image impossible';
+        this.modalError = err?.error?.message ?? 'Image upload failed';
       },
     });
   }
@@ -516,7 +516,7 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
     this.activityService.deleteMedia(media.mediaId).subscribe({
       next: () => this.loadMedia(),
       error: (err) => {
-        this.modalError = err?.error?.message ?? 'Suppression média impossible';
+        this.modalError = err?.error?.message ?? 'Could not delete media';
       },
     });
   }
@@ -535,19 +535,19 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
     this.clearValidationErrors();
 
     if (this.form.cityId == null) {
-      this.fieldErrors.cityId = 'La ville est obligatoire.';
+      this.fieldErrors.cityId = 'City is required.';
     }
 
     if (!this.form.name.trim()) {
-      this.fieldErrors.name = 'Le nom de l’activité est obligatoire.';
+      this.fieldErrors.name = 'Activity name is required.';
     }
 
     if (this.form.price != null && this.form.price < 0) {
-      this.fieldErrors.price = 'Le prix doit être supérieur ou égal à 0.';
+      this.fieldErrors.price = 'Price must be greater than or equal to 0.';
     }
 
     if (this.form.maxParticipantsPerDay != null && this.form.maxParticipantsPerDay < 1) {
-      this.fieldErrors.maxParticipantsPerDay = 'Le maximum de participants doit être supérieur ou égal à 1.';
+      this.fieldErrors.maxParticipantsPerDay = 'Maximum participants per day must be at least 1.';
     }
 
     const latitude = this.form.latitude;
@@ -556,24 +556,24 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
     const hasLongitude = longitude !== null && longitude !== undefined;
 
     if (hasLatitude && ((latitude as number) < -90 || (latitude as number) > 90)) {
-      this.fieldErrors.latitude = 'La latitude doit être entre -90 et 90.';
+      this.fieldErrors.latitude = 'Latitude must be between -90 and 90.';
     }
 
     if (hasLongitude && ((longitude as number) < -180 || (longitude as number) > 180)) {
-      this.fieldErrors.longitude = 'La longitude doit être entre -180 et 180.';
+      this.fieldErrors.longitude = 'Longitude must be between -180 and 180.';
     }
 
     if (hasLatitude !== hasLongitude) {
       if (!hasLatitude) {
-        this.fieldErrors.latitude = 'La latitude est requise si la longitude est renseignée.';
+        this.fieldErrors.latitude = 'Latitude is required when longitude is set.';
       }
       if (!hasLongitude) {
-        this.fieldErrors.longitude = 'La longitude est requise si la latitude est renseignée.';
+        this.fieldErrors.longitude = 'Longitude is required when latitude is set.';
       }
     }
 
     if (Object.keys(this.fieldErrors).length > 0) {
-      this.modalError = 'Veuillez corriger les champs en erreur.';
+      this.modalError = 'Please fix the invalid fields.';
       return false;
     }
 
@@ -659,12 +659,12 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
 
   async delete(item: Activity): Promise<void> {
     const confirmation = await Swal.fire({
-      title: 'Supprimer cette activité ?',
-      text: `${item.name} sera supprimée définitivement.`,
+      title: 'Delete this activity?',
+      text: `${item.name} will be permanently deleted.`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Oui, supprimer',
-      cancelButtonText: 'Annuler',
+      confirmButtonText: 'Yes, delete',
+      cancelButtonText: 'Cancel',
       confirmButtonColor: '#e63946',
       background: '#181d24',
       color: '#e2e8f0',
@@ -682,7 +682,7 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
         this.loadActivities();
         await Swal.fire({
           icon: 'success',
-          title: 'Activité supprimée',
+          title: 'Activity deleted',
           timer: 1300,
           showConfirmButton: false,
           background: '#181d24',
@@ -690,7 +690,7 @@ export class AdminActivitiesComponent implements OnInit, OnDestroy {
         });
       },
       error: (err) => {
-        this.error = err?.error?.message ?? 'Suppression impossible';
+        this.error = err?.error?.message ?? 'Could not delete';
       },
     });
   }

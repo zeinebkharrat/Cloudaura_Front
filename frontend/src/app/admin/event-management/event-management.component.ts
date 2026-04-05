@@ -1,11 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { EventService } from '../../event.service';
 import { Event, City } from '../../models/event';
-import Swal from 'sweetalert2';
 import { ActivatedRoute } from '@angular/router';
+import { AppAlertsService } from '../../core/services/app-alerts.service';
 
 @Component({
   selector: 'app-event-management',
@@ -15,6 +15,8 @@ import { ActivatedRoute } from '@angular/router';
   styleUrl: './event-management.component.css'
 })
 export class EventManagementComponent implements OnInit {
+  private alerts = inject(AppAlertsService);
+
   isDarkMode = true;
   events: Event[] = [];
   showModal = false;
@@ -165,7 +167,7 @@ resetFilters() {
       next: () => this.handleResponse('Updated'),
       error: (err) => {
         console.error("Update Error:", err);
-        Swal.fire('Error', 'Update failed', 'error');
+        void this.alerts.error('Error', 'Update failed');
       }
     });
   } else {
@@ -173,7 +175,7 @@ resetFilters() {
       next: () => this.handleResponse('Created'),
       error: (err) => {
         console.error("Full Creation Error Detail:", err); // Regarde ceci dans ta console F12
-        Swal.fire('Error', 'Creation failed. Check console for details.', 'error');
+        void this.alerts.error('Error', 'Creation failed. Check console for details.');
       }
     });
   }
@@ -186,11 +188,11 @@ resetFilters() {
     const end = new Date(this.currentEvent.endDate);
 
     if (start < today) {
-      Swal.fire('Date Error', 'Start date cannot be in the past!', 'error');
+      void this.alerts.error('Date error', 'Start date cannot be in the past.');
       return false;
     }
     if (end < start) {
-      Swal.fire('Date Error', 'End date must be after start date!', 'error');
+      void this.alerts.error('Date error', 'End date must be after the start date.');
       return false;
     }
     return true;
@@ -199,16 +201,21 @@ resetFilters() {
   handleResponse(msg: string) {
     this.loadEvents();
     this.showModal = false;
-    Swal.fire('Success', `Event ${msg} successfully`, 'success');
+    void this.alerts.success('Success', `Event ${msg} successfully`);
   }
 
   deleteEvent(id: any) {
-    Swal.fire({
-      title: 'Delete?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Yes'
-    }).then((res) => {
-      if (res.isConfirmed) {
-        this.eventService.deleteEvent(id).subscribe(() => this.loadEvents());
-      }
-    });
+    void this.alerts
+      .confirm({
+        title: 'Delete this event?',
+        text: 'This action cannot be undone.',
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+      })
+      .then((res) => {
+        if (res.isConfirmed) {
+          this.eventService.deleteEvent(id).subscribe(() => this.loadEvents());
+        }
+      });
   }
 }

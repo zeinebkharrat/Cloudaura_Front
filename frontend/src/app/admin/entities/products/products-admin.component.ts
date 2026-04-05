@@ -2,8 +2,9 @@ import { CommonModule } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { forkJoin } from 'rxjs';
 import Swal from 'sweetalert2';
-import { AuthService } from '../../../auth.service';
+import { AuthService } from '../../../core/auth.service';
 import { API_BASE_URL } from '../../../core/api-url';
 
 @Component({
@@ -37,12 +38,27 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
   editingProductId: number | null = null;
   productForm = {
     name: '',
+    description: '',
     imageUrl: '',
     price: '' as string | number,
     stock: '' as string | number,
+    category: '' as string,
+    status: 'PUBLISHED' as string,
+    variants: [] as {
+      variantId: number;
+      size: string;
+      color: string;
+      stock: number;
+      priceOverride: number | string;
+    }[],
+    images: [] as { id?: number; url?: string; imageUrl?: string }[],
   };
-  selectedFile: File | null = null;
-  imagePreviewObjectUrl: string | null = null;
+  /** Nouveaux fichiers locaux (aperçus blob) — uploadés à l’enregistrement. */
+  pendingFiles: File[] = [];
+  pendingPreviewUrls: string[] = [];
+
+  /** Détail produit : index image affichée dans la galerie. */
+  detailImageIndex = 0;
 
   constructor(
     private readonly http: HttpClient,
@@ -57,7 +73,7 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
     if (this.searchDebounceTimer) {
       clearTimeout(this.searchDebounceTimer);
     }
-    this.revokePreviewUrl();
+    this.revokeAllPendingPreviews();
   }
 
   get filteredSorted(): any[] {
@@ -113,7 +129,7 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
         this.clampPage();
       },
       error: () => {
-        this.error = 'Erreur de chargement des produits.';
+        this.error = 'Could not load products.';
         this.loading = false;
       },
     });
@@ -158,13 +174,30 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
     this.error = '';
     this.modalError = '';
     this.editingProductId = Number(item.productId);
-    this.revokePreviewUrl();
-    this.selectedFile = null;
+    this.revokeAllPendingPreviews();
+    this.pendingFiles = [];
+    const vars = Array.isArray(item.variants) ? item.variants : [];
+    const imgs = Array.isArray(item.images) ? item.images : [];
     this.productForm = {
       name: item.name ?? '',
+      description: item.description ?? '',
       imageUrl: item.imageUrl ?? '',
       price: item.price ?? '',
       stock: item.stock ?? '',
+      category: item.category ?? '',
+      status: item.status ?? 'PUBLISHED',
+      variants: vars.map((v: any) => ({
+        variantId: Number(v.variantId ?? v.id ?? 0),
+        size: v.size ?? '',
+        color: v.color ?? '',
+        stock: Number(v.stock ?? 0),
+        priceOverride: v.priceOverride ?? 0,
+      })),
+      images: imgs.map((img: any) => ({
+        id: img.id ?? 0,
+        url: img.url || img.imageUrl,
+        imageUrl: img.imageUrl || img.url,
+      })),
     };
     this.showProductModal = true;
   }
@@ -176,14 +209,39 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
 
   private resetProductForm(): void {
     this.editingProductId = null;
-    this.revokePreviewUrl();
-    this.selectedFile = null;
-    this.productForm = { name: '', imageUrl: '', price: '', stock: '' };
+    this.revokeAllPendingPreviews();
+    this.pendingFiles = [];
+    this.productForm = {
+      name: '',
+      description: '',
+      imageUrl: '',
+      price: '',
+      stock: '',
+      category: '',
+      status: 'PUBLISHED',
+      variants: [],
+      images: [],
+    };
     this.modalError = '';
+  }
+
+  addVariantRow(): void {
+    this.productForm.variants.push({
+      variantId: 0,
+      size: '',
+      color: '',
+      stock: 0,
+      priceOverride: 0,
+    });
+  }
+
+  removeVariantRow(index: number): void {
+    this.productForm.variants.splice(index, 1);
   }
 
   openDetails(item: any): void {
     this.detailsProduct = item;
+    this.detailImageIndex = 0;
     this.showDetailsModal = true;
   }
 
@@ -192,34 +250,54 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
     this.detailsProduct = null;
   }
 
-  onModalBackdropClick(event: MouseEvent): void {
-    if ((event.target as HTMLElement).classList.contains('modal-backdrop')) {
+  onModalOverlayClick(event: MouseEvent): void {
+    if ((event.target as HTMLElement).classList.contains('fp-modal-overlay')) {
       this.closeProductModal();
     }
   }
 
-  onDetailsBackdropClick(event: MouseEvent): void {
-    if ((event.target as HTMLElement).classList.contains('modal-backdrop')) {
+  onDetailsOverlayClick(event: MouseEvent): void {
+    if ((event.target as HTMLElement).classList.contains('fp-modal-overlay')) {
       this.closeDetailsModal();
     }
   }
 
-  onFileSelected(event: Event): void {
+  onFilesSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
-    const file = input.files && input.files.length > 0 ? input.files[0] : null;
-    this.revokePreviewUrl();
-    this.selectedFile = null;
-    if (!file) {
-      return;
-    }
-    if (file.size > this.maxImageSizeBytes) {
-      this.modalError = 'Image trop grande (max 15 Mo).';
-      input.value = '';
+    const list = input.files;
+    if (!list?.length) {
       return;
     }
     this.modalError = '';
-    this.selectedFile = file;
-    this.imagePreviewObjectUrl = URL.createObjectURL(file);
+    for (let i = 0; i < list.length; i++) {
+      const file = list[i];
+      if (file.size > this.maxImageSizeBytes) {
+        this.modalError = 'One or more images exceed 15 MB.';
+        continue;
+      }
+      this.pendingFiles.push(file);
+      this.pendingPreviewUrls.push(URL.createObjectURL(file));
+    }
+    input.value = '';
+  }
+
+  removePendingImage(index: number): void {
+    const u = this.pendingPreviewUrls[index];
+    if (u) {
+      URL.revokeObjectURL(u);
+    }
+    this.pendingPreviewUrls.splice(index, 1);
+    this.pendingFiles.splice(index, 1);
+  }
+
+  removeExistingImage(index: number): void {
+    this.productForm.images.splice(index, 1);
+    this.syncPrimaryImageUrlFromImages();
+  }
+
+  private syncPrimaryImageUrlFromImages(): void {
+    const first = this.productForm.images[0];
+    this.productForm.imageUrl = first ? String(first.imageUrl || first.url || '') : '';
   }
 
   clearFileSelection(inputId = 'productImageInput'): void {
@@ -227,52 +305,91 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
     if (el) {
       el.value = '';
     }
-    this.revokePreviewUrl();
-    this.selectedFile = null;
+    this.revokeAllPendingPreviews();
   }
 
-  private revokePreviewUrl(): void {
-    if (this.imagePreviewObjectUrl) {
-      URL.revokeObjectURL(this.imagePreviewObjectUrl);
-      this.imagePreviewObjectUrl = null;
+  private revokeAllPendingPreviews(): void {
+    for (const u of this.pendingPreviewUrls) {
+      URL.revokeObjectURL(u);
     }
+    this.pendingPreviewUrls = [];
+    this.pendingFiles = [];
+  }
+
+  /** URLs déjà enregistrées + fichiers en attente (aperçu). */
+  existingImageUrls(): string[] {
+    return this.productForm.images
+      .map((img) => this.resolveImageUrl(img.imageUrl || img.url))
+      .filter((u) => !!u);
   }
 
   save(): void {
     this.modalError = '';
     const name = String(this.productForm.name ?? '').trim();
     if (!name) {
-      this.modalError = 'Le nom du produit est obligatoire.';
+      this.modalError = 'Product name is required.';
+      return;
+    }
+    if (!String(this.productForm.category ?? '').trim()) {
+      this.modalError = 'Category is required.';
       return;
     }
 
-    if (this.selectedFile) {
-      const formData = new FormData();
-      formData.append('file', this.selectedFile as Blob);
+    const existingRaw = this.productForm.images
+      .map((img) => String(img.imageUrl || img.url || '').trim())
+      .filter((u) => u.length > 0);
+
+    const fallbackUrls =
+      existingRaw.length > 0
+        ? existingRaw
+        : this.productForm.imageUrl
+          ? [String(this.productForm.imageUrl).trim()]
+          : [];
+
+    if (this.pendingFiles.length > 0) {
       this.uploading = true;
-      this.http.post<{ imageUrl: string }>(`${this.apiUrl}/upload-image`, formData).subscribe({
-        next: (response) => {
+      const uploads = this.pendingFiles.map((file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return this.http.post<{ imageUrl: string }>(`${this.apiUrl}/upload-image`, formData);
+      });
+      forkJoin(uploads).subscribe({
+        next: (results) => {
           this.uploading = false;
-          this.persistProduct(response.imageUrl);
+          const newUrls = results.map((r) => r.imageUrl);
+          const allUrls = [...existingRaw, ...newUrls];
+          const primary = allUrls[0] || '';
+          this.revokeAllPendingPreviews();
+          this.persistProduct(primary, this.urlsToImagesPayload(allUrls));
         },
         error: () => {
           this.uploading = false;
-          this.modalError = 'Upload image impossible.';
+          this.modalError = 'Image upload failed.';
         },
       });
       return;
     }
-    this.persistProduct(this.productForm.imageUrl);
+
+    const primary = fallbackUrls[0] || '';
+    this.persistProduct(primary, this.urlsToImagesPayload(fallbackUrls));
+  }
+
+  private urlsToImagesPayload(
+    urls: string[]
+  ): { id: number; url: string; imageUrl: string }[] {
+    return urls
+      .filter((u) => u && String(u).trim())
+      .map((u) => ({ id: 0, url: u, imageUrl: u }));
   }
 
   async remove(item: any): Promise<void> {
     const confirmation = await Swal.fire({
-      title: 'Supprimer ce produit ?',
-      text: `${item.name ?? 'Ce produit'} sera supprimé définitivement.`,
+      title: 'Delete this product?',
+      text: `${item.name ?? 'This product'} will be permanently deleted.`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Oui, supprimer',
-      cancelButtonText: 'Annuler',
+      confirmButtonText: 'Delete',
+      cancelButtonText: 'Cancel',
       confirmButtonColor: '#e63946',
       background: '#181d24',
       color: '#e2e8f0',
@@ -294,7 +411,7 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
         this.loadAll();
         await Swal.fire({
           icon: 'success',
-          title: 'Produit supprimé',
+          title: 'Product deleted',
           timer: 1300,
           showConfirmButton: false,
           background: '#181d24',
@@ -303,7 +420,7 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
         });
       },
       error: () => {
-        this.error = 'Suppression impossible.';
+        this.error = 'Could not delete.';
       },
     });
   }
@@ -316,27 +433,82 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
 
   formatPrice(p: unknown): string {
     if (p === '' || p == null || Number.isNaN(Number(p))) return '—';
-    return new Intl.NumberFormat('fr-TN', {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'TND',
       minimumFractionDigits: 2,
     }).format(Number(p));
   }
 
-  modalPreviewSrc(): string {
-    if (this.imagePreviewObjectUrl) {
-      return this.imagePreviewObjectUrl;
+  /** Galerie détail admin (même logique que le catalogue). */
+  detailGalleryUrls(): string[] {
+    const p = this.detailsProduct;
+    if (!p) {
+      return [];
     }
-    return this.resolveImageUrl(this.productForm.imageUrl);
+    if (Array.isArray(p.images) && p.images.length > 0) {
+      return p.images.map((img: any) => this.resolveImageUrl(img.url || img.imageUrl));
+    }
+    if (p.imageUrl) {
+      return [this.resolveImageUrl(p.imageUrl)];
+    }
+    return [];
   }
 
-  private persistProduct(imageUrl: string): void {
-    const payload = {
+  detailMainImageUrl(): string {
+    const urls = this.detailGalleryUrls();
+    return urls[this.detailImageIndex] ?? '';
+  }
+
+  detailGalleryLength(): number {
+    return this.detailGalleryUrls().length;
+  }
+
+  detailImagePrev(): void {
+    const n = this.detailGalleryLength();
+    if (n <= 1) return;
+    this.detailImageIndex = (this.detailImageIndex - 1 + n) % n;
+  }
+
+  detailImageNext(): void {
+    const n = this.detailGalleryLength();
+    if (n <= 1) return;
+    this.detailImageIndex = (this.detailImageIndex + 1) % n;
+  }
+
+  selectDetailImage(i: number): void {
+    const n = this.detailGalleryLength();
+    if (i >= 0 && i < n) {
+      this.detailImageIndex = i;
+    }
+  }
+
+  private persistProduct(
+    primaryImageUrl: string,
+    imagesPayload: { id: number; url: string; imageUrl: string }[]
+  ): void {
+    const payload: Record<string, unknown> = {
       name: this.productForm.name,
-      imageUrl,
+      description: this.productForm.description?.trim() || null,
+      imageUrl: primaryImageUrl || null,
+      images: imagesPayload,
       price: this.productForm.price === '' ? null : Number(this.productForm.price),
       stock: this.productForm.stock === '' ? null : Number(this.productForm.stock),
+      category: this.productForm.category === '' ? null : this.productForm.category,
+      status: this.productForm.status,
     };
+    if (this.productForm.category === 'TEXTILE') {
+      payload['variants'] = this.productForm.variants.map((v) => ({
+        variantId: v.variantId || 0,
+        size: v.size,
+        color: v.color,
+        stock: Number(v.stock),
+        priceOverride:
+          v.priceOverride === '' || v.priceOverride == null ? 0 : Number(v.priceOverride),
+      }));
+    } else {
+      payload['variants'] = [];
+    }
     const id = this.editingProductId;
     if (id !== null) {
       this.http.put(`${this.apiUrl}/${id}`, payload).subscribe({
@@ -345,7 +517,7 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
           this.loadAll();
           await Swal.fire({
             icon: 'success',
-            title: 'Produit mis à jour',
+            title: 'Product updated',
             timer: 1400,
             showConfirmButton: false,
             background: '#181d24',
@@ -354,14 +526,14 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
           });
         },
         error: () => {
-          this.modalError = 'Erreur de mise à jour.';
+          this.modalError = 'Could not update product.';
         },
       });
       return;
     }
 
     if (!this.auth.isAuthenticated()) {
-      this.modalError = 'Connectez-vous pour créer un produit.';
+      this.modalError = 'Sign in to create a product.';
       return;
     }
     this.http.post(this.apiUrl, payload).subscribe({
@@ -370,7 +542,7 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
         this.loadAll();
         await Swal.fire({
           icon: 'success',
-          title: 'Produit ajouté',
+          title: 'Product added',
           timer: 1400,
           showConfirmButton: false,
           background: '#181d24',
@@ -381,9 +553,9 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
       error: (err: HttpErrorResponse) => {
         if (err.status === 400) {
           this.modalError =
-            'Création refusée : utilisateur inconnu en base. Redémarrez le backend ou reconnectez-vous.';
+            'Could not create: user not found. Restart the backend or sign in again.';
         } else {
-          this.modalError = 'Erreur de création.';
+          this.modalError = 'Could not create product.';
         }
       },
     });

@@ -1,13 +1,13 @@
 <div class="lud-dash">
   <header class="lh-header">
     <div class="lh-left">
-      <h1 class="dash-h1">Centre de Ludification</h1>
-      <p class="dash-p">Gérez les jeux interactifs et les parcours culturels de la plateforme.</p>
+      <h1 class="dash-h1">Games &amp; gamification</h1>
+      <p class="dash-p">Manage interactive games and cultural journeys on the platform.</p>
     </div>
     <div class="lh-right">
       <button class="btn-primary main-act" (click)="openCreate()">
         <span class="plus">＋</span>
-        Nouveau
+        New
       </button>
     </div>
   </header>
@@ -15,16 +15,16 @@
   <!-- Nav Tabs -->
   <div class="tabs glass-card">
     <button class="tab" [class.active]="activeTab() === 'QUIZ'" (click)="setTab('QUIZ')">
-      🧪 Quiz & Questions
+      🧪 Quizzes
     </button>
     <button class="tab" [class.active]="activeTab() === 'CROSSWORD'" (click)="setTab('CROSSWORD')">
-      🧩 Mots Croisés
+      🧩 Crosswords
     </button>
     <button class="tab" [class.active]="activeTab() === 'ROADMAP'" (click)="setTab('ROADMAP')">
-      🗺️ Parcours (Roadmap)
+      🗺️ Roadmap
     </button>
     <button class="tab" [class.active]="activeTab() === 'PUZZLE'" (click)="setTab('PUZZLE')">
-      🧩 Puzzle image
+      🧩 Image puzzles
     </button>
     <button class="tab" [class.active]="activeTab() === 'LUDO'" (click)="setTab('LUDO')">
       🎲 Ludo Tunisia
@@ -42,21 +42,21 @@
             <div class="gc-head">
               <div class="gc-icon purple">Q</div>
               <div class="gc-status" style="display:flex; gap:8px;">
-                <span class="stat-pill" [class.on]="q.published">{{ q.published ? 'Publié' : 'Brouillon' }}</span>
-                <button class="btn-ghost" (click)="deleteItem(q.quizId, 'QUIZ')" title="Supprimer">🗑️</button>
+                <span class="stat-pill" [class.on]="q.published">{{ q.published ? 'Published' : 'Draft' }}</span>
+                <button class="btn-ghost" (click)="deleteItem(q.quizId, 'QUIZ')" title="Delete">🗑️</button>
               </div>
             </div>
             <h3 class="gc-title">{{ q.title }}</h3>
             <p class="gc-desc">{{ q.description }}</p>
             <div class="gc-foot">
               <span class="gc-meta">Questions: <strong>5</strong></span>
-              <button class="btn-ghost" (click)="openEdit(q)">Éditer →</button>
+              <button class="btn-ghost" (click)="openEdit(q)">Edit →</button>
             </div>
           </div>
         }
         @if (quizzes().length === 0) {
           <div class="empty-state glass-card">
-            Aucun quiz à afficher. Créez un nouveau quiz avec le bouton <strong>Nouveau</strong>.
+            No quizzes yet. Create one with the <strong>New</strong> button.
           </div>
         }
       </div>
@@ -70,15 +70,15 @@
             <div class="gc-head">
               <div class="gc-icon green">#</div>
               <div class="gc-status" style="display:flex; gap:8px;">
-                <span class="stat-pill" [class.on]="c.published">{{ c.published ? 'Publié' : 'Brouillon' }}</span>
-                <button class="btn-ghost" (click)="deleteItem(c.crosswordId, 'CROSSWORD')" title="Supprimer">🗑️</button>
+                <span class="stat-pill" [class.on]="c.published">{{ c.published ? 'Published' : 'Draft' }}</span>
+                <button class="btn-ghost" (click)="deleteItem(c.crosswordId, 'CROSSWORD')" title="Delete">🗑️</button>
               </div>
             </div>
             <h3 class="gc-title">{{ c.title }}</h3>
             <p class="gc-desc">{{ c.description }}</p>
             <div class="gc-foot">
-              <span class="gc-meta">Dimension: <strong>10x10</strong></span>
-              <button class="btn-ghost" (click)="openEdit(c)">Éditer Grille →</button>
+              <span class="gc-meta">Size: <strong>10×10</strong></span>
+              <button class="btn-ghost" (click)="openEdit(c)">Edit grid →</button>
             </div>
           </div>
         }
@@ -88,7 +88,7 @@
     <!-- ROADMAP TAB -->
     @if (activeTab() === 'ROADMAP') {
       <div class="roadmap-layout glass-card">
-        <h2 class="rl-title">Chemin Culturel : Tunis - Carthage</h2>
+        <h2 class="rl-title">Cultural path: Tunis – Carthage</h2>
         <div class="node-tree">
           @for (r of roadmaps(); track r.nodeId) {
             <div class="r-node">
@@ -97,17 +97,17 @@
               <div class="rn-card">
                 <div style="display:flex; justify-content:space-between;">
                   <h4 class="rn-label">{{ r.nodeLabel }}</h4>
-                  <button class="btn-ghost" (click)="deleteItem(r.nodeId, 'ROADMAP')" title="Supprimer">🗑️</button>
+                  <button class="btn-ghost" (click)="deleteItem(r.nodeId, 'ROADMAP')" title="Delete">🗑️</button>
                 </div>
                 <p class="rn-type">
-                  @if (r.quizId || r.quiz?.quizId) { <span>Lié au Quiz #{{ r.quizId ?? r.quiz?.quizId }}</span> }
-                  @if (r.crosswordId || r.crossword?.crosswordId) { <span>Lié aux Mots Croisés #{{ r.crosswordId ?? r.crossword?.crosswordId }}</span> }
-                  @if (r.puzzleId) { <span>Lié au Puzzle #{{ r.puzzleId }}</span> }
+                  @if (r.quizId || r.quiz?.quizId) { <span>Linked to quiz #{{ r.quizId ?? r.quiz?.quizId }}</span> }
+                  @if (r.crosswordId || r.crossword?.crosswordId) { <span>Linked to crossword #{{ r.crosswordId ?? r.crossword?.crosswordId }}</span> }
+                  @if (r.puzzleId) { <span>Linked to puzzle #{{ r.puzzleId }}</span> }
                 </p>
               </div>
             </div>
           }
-          <button class="btn-add-node" (click)="openCreate()">＋ Ajouter une étape</button>
+          <button class="btn-add-node" (click)="openCreate()">＋ Add step</button>
         </div>
       </div>
     }
@@ -120,21 +120,21 @@
             <div class="gc-head">
               <div class="gc-icon orange">🖼️</div>
               <div class="gc-status" style="display:flex; gap:8px;">
-                <span class="stat-pill" [class.on]="p.published">{{ p.published ? 'Publié' : 'Brouillon' }}</span>
-                <button class="btn-ghost" (click)="deleteItem(p.puzzleId, 'PUZZLE')" title="Supprimer">🗑️</button>
+                <span class="stat-pill" [class.on]="p.published">{{ p.published ? 'Published' : 'Draft' }}</span>
+                <button class="btn-ghost" (click)="deleteItem(p.puzzleId, 'PUZZLE')" title="Delete">🗑️</button>
               </div>
             </div>
             <h3 class="gc-title">{{ p.title }}</h3>
             <img class="puzzle-thumb" [src]="p.imageDataUrl" [alt]="p.title" />
             <div class="gc-foot">
-              <span class="gc-meta">ID puzzle: <strong>#{{ p.puzzleId }}</strong></span>
-              <a class="btn-ghost" [routerLink]="['/games/puzzle', p.puzzleId]">Tester →</a>
+              <span class="gc-meta">Puzzle ID: <strong>#{{ p.puzzleId }}</strong></span>
+              <a class="btn-ghost" [routerLink]="['/games/puzzle', p.puzzleId]">Preview →</a>
             </div>
           </div>
         }
         @if (puzzles().length === 0) {
           <div class="empty-state glass-card">
-            Aucun puzzle image. Cliquez sur <strong>Nouveau</strong> pour en créer un.
+            No image puzzles yet. Click <strong>New</strong> to create one.
           </div>
         }
       </div>
@@ -147,21 +147,21 @@
             <div class="gc-head">
               <div class="gc-icon blue">🎲</div>
               <div class="gc-status" style="display:flex; gap:8px;">
-                <span class="stat-pill" [class.on]="card.published">{{ card.published ? 'Publié' : 'Brouillon' }}</span>
-                <button class="btn-ghost" (click)="deleteItem(card.cardId, 'LUDO')" title="Supprimer">🗑️</button>
+                <span class="stat-pill" [class.on]="card.published">{{ card.published ? 'Published' : 'Draft' }}</span>
+                <button class="btn-ghost" (click)="deleteItem(card.cardId, 'LUDO')" title="Delete">🗑️</button>
               </div>
             </div>
             <h3 class="gc-title">{{ card.title }}</h3>
             <p class="gc-desc">{{ card.description }}</p>
             <div class="gc-foot">
-              <span class="gc-meta">Effet: <strong>{{ card.effectSteps! > 0 ? '+' : '' }}{{ card.effectSteps }}</strong></span>
+              <span class="gc-meta">Effect: <strong>{{ card.effectSteps! > 0 ? '+' : '' }}{{ card.effectSteps }}</strong></span>
               <span class="gc-meta">{{ card.category }}</span>
             </div>
           </div>
         }
         @if (ludoCards().length === 0) {
           <div class="empty-state glass-card">
-            Aucune carte Ludo. Créez votre première carte événement.
+            No Ludo cards yet. Create your first event card.
           </div>
         }
       </div>
@@ -174,26 +174,26 @@
       <div class="modal-box glass-card animate-up" [class.wide]="activeTab() === 'CROSSWORD'">
         <div class="md-head">
           <h3>
-            @if (activeTab() === 'QUIZ') { {{ isEditMode() ? 'Modifier le Quiz' : 'Nouveau Quiz' }} }
-            @else if (activeTab() === 'CROSSWORD') { {{ isEditMode() ? 'Modifier les Mots Croisés' : 'Nouveaux Mots Croisés' }} }
-            @else if (activeTab() === 'ROADMAP') { Nouvelle étape de Parcours }
-            @else if (activeTab() === 'PUZZLE') { Nouveau Puzzle image }
-            @else { Nouvelle carte Ludo Tunisia }
+            @if (activeTab() === 'QUIZ') { {{ isEditMode() ? 'Edit quiz' : 'New quiz' }} }
+            @else if (activeTab() === 'CROSSWORD') { {{ isEditMode() ? 'Edit crossword' : 'New crossword' }} }
+            @else if (activeTab() === 'ROADMAP') { New roadmap step }
+            @else if (activeTab() === 'PUZZLE') { New image puzzle }
+            @else { New Ludo Tunisia card }
           </h3>
           <button class="btn-close" (click)="closeCreate()">✕</button>
         </div>
         
         <div class="md-body">
           @if (activeTab() === 'QUIZ') {
-            <div class="form-group"><label>Titre</label><input type="text" class="g-input" maxlength="200" required [value]="newQuiz().title" (input)="newQuiz().title = $any($event.target).value" /></div>
+            <div class="form-group"><label>Title</label><input type="text" class="g-input" maxlength="200" required [value]="newQuiz().title" (input)="newQuiz().title = $any($event.target).value" /></div>
             <div class="form-group"><label>Description</label><textarea class="g-input" rows="2" [value]="newQuiz().description" (input)="newQuiz().description = $any($event.target).value"></textarea></div>
-            <div class="form-group-toggle"><label class="tg-label">Publier immédiatement</label><label class="switch"><input type="checkbox" [checked]="newQuiz().published" (change)="newQuiz().published = !newQuiz().published"><span class="slider"></span></label></div>
+            <div class="form-group-toggle"><label class="tg-label">Publish immediately</label><label class="switch"><input type="checkbox" [checked]="newQuiz().published" (change)="newQuiz().published = !newQuiz().published"><span class="slider"></span></label></div>
             
             <!-- Questions Section -->
             <div class="questions-section">
               <div class="qs-header">
-                <h4>Questions du Quiz</h4>
-                <button class="btn-ghost btn-mini" (click)="addQuestion()">+ Ajouter une question</button>
+                <h4>Quiz questions</h4>
+                <button class="btn-ghost btn-mini" (click)="addQuestion()">+ Add question</button>
               </div>
               
               <div class="questions-list">
@@ -201,14 +201,14 @@
                   <div class="question-card">
                     <div class="q-card-head">
                       <span>Question {{ i + 1 }}</span>
-                      <button class="btn-ghost text-red" (click)="removeQuestion(i)" title="Supprimer">✕</button>
+                      <button class="btn-ghost text-red" (click)="removeQuestion(i)" title="Remove">✕</button>
                     </div>
-                    <div class="form-group"><input type="text" class="g-input sm" placeholder="Intitulé de la question..." [(ngModel)]="q.questionText" /></div>
+                    <div class="form-group"><input type="text" class="g-input sm" placeholder="Question text…" [(ngModel)]="q.questionText" /></div>
                     
                     <div class="options-grid">
                       @for (opt of q._tempOptions; track $index; let optIdx = $index) {
                         <div class="opt-row">
-                          <input type="radio" [name]="'correct_' + i" [checked]="q.correctOptionIndex === optIdx" (change)="q.correctOptionIndex = optIdx" title="Cocher si c'est la bonne réponse" />
+                          <input type="radio" [name]="'correct_' + i" [checked]="q.correctOptionIndex === optIdx" (change)="q.correctOptionIndex = optIdx" title="Mark as correct answer" />
                           <input type="text" class="g-input sm" [placeholder]="'Option ' + (optIdx + 1)" [(ngModel)]="q._tempOptions![optIdx]" />
                         </div>
                       }
@@ -220,18 +220,18 @@
           }
           
           @if (activeTab() === 'CROSSWORD') {
-            <div class="form-group"><label>Titre</label><input type="text" class="g-input" maxlength="200" required [value]="newCrossword().title" (input)="newCrossword().title = $any($event.target).value" /></div>
+            <div class="form-group"><label>Title</label><input type="text" class="g-input" maxlength="200" required [value]="newCrossword().title" (input)="newCrossword().title = $any($event.target).value" /></div>
             <div class="form-group"><label>Description</label><textarea class="g-input" rows="2" [value]="newCrossword().description" (input)="newCrossword().description = $any($event.target).value"></textarea></div>
-            <div class="form-group-toggle"><label class="tg-label">Publier</label><label class="switch"><input type="checkbox" [checked]="newCrossword().published" (change)="newCrossword().published = !newCrossword().published"><span class="slider"></span></label></div>
+            <div class="form-group-toggle"><label class="tg-label">Publish</label><label class="switch"><input type="checkbox" [checked]="newCrossword().published" (change)="newCrossword().published = !newCrossword().published"><span class="slider"></span></label></div>
             
             <!-- Words list builder section -->
             <div class="questions-section">
               <div class="form-grid-2" style="margin-bottom:12px;">
-                 <div class="form-group"><label>Lignes</label><input type="number" class="g-input sm" min="3" max="40" [value]="gridRows()" (input)="gridRows.set(+$any($event.target).value)" /></div>
-                 <div class="form-group"><label>Colonnes</label><input type="number" class="g-input sm" min="3" max="40" [value]="gridCols()" (input)="gridCols.set(+$any($event.target).value)" /></div>
+                 <div class="form-group"><label>Rows</label><input type="number" class="g-input sm" min="3" max="40" [value]="gridRows()" (input)="gridRows.set(+$any($event.target).value)" /></div>
+                 <div class="form-group"><label>Columns</label><input type="number" class="g-input sm" min="3" max="40" [value]="gridCols()" (input)="gridCols.set(+$any($event.target).value)" /></div>
               </div>
 
-              <label class="tg-label" style="font-size:0.8rem; margin-bottom:4px; display:block;">Aperçu de la Grille</label>
+              <label class="tg-label" style="font-size:0.8rem; margin-bottom:4px; display:block;">Grid preview</label>
               <div class="visual-grid" [style.grid-template-columns]="'repeat(' + gridCols() + ', 1fr)'">
                  @for (row of gridPreview; let r = $index; track r) {
                     @for (cell of row; let c = $index; track c) {
@@ -243,29 +243,29 @@
               </div>
 
               <div class="qs-header" style="margin-top: 20px;">
-                <h4>Liste des Mots (Grille)</h4>
-                <button class="btn-ghost btn-mini" (click)="addCrosswordWord()">+ Ajouter un mot</button>
+                <h4>Word list</h4>
+                <button class="btn-ghost btn-mini" (click)="addCrosswordWord()">+ Add word</button>
               </div>
               <div class="questions-list">
                 @for (w of crosswordWords(); track $index; let i = $index) {
                   <div class="question-card">
                     <div class="q-card-head">
-                      <span>Mot #{{ i + 1 }}</span>
+                      <span>Word #{{ i + 1 }}</span>
                       <button class="btn-ghost text-red" (click)="removeCrosswordWord(i)">✕</button>
                     </div>
                     
                     <div class="form-grid-2">
-                      <div class="form-group"><label>Mot</label><input type="text" class="g-input sm" [(ngModel)]="w.word" placeholder="EX: CARTHAGE" style="text-transform: uppercase;" /></div>
+                      <div class="form-group"><label>Word</label><input type="text" class="g-input sm" [(ngModel)]="w.word" placeholder="EX: CARTHAGE" style="text-transform: uppercase;" /></div>
                       <div class="form-group"><label>Direction</label><select class="g-input sm" [(ngModel)]="w.dir"><option value="H">Horizontal</option><option value="V">Vertical</option></select></div>
                     </div>
                     
                     <div class="form-grid-3">
-                      <div class="form-group"><label>Ligne (X)</label><input type="number" class="g-input sm" [(ngModel)]="w.x" min="0"/></div>
+                      <div class="form-group"><label>Row (X)</label><input type="number" class="g-input sm" [(ngModel)]="w.x" min="0"/></div>
                       <div class="form-group"><label>Col (Y)</label><input type="number" class="g-input sm" [(ngModel)]="w.y" min="0"/></div>
-                      <div class="form-group"><label>Lettres</label><input type="text" class="g-input sm" [value]="(w.word || '').length" disabled style="background:transparent; border:none; font-weight:700; color: #10b981;" /></div>
+                      <div class="form-group"><label>Letters</label><input type="text" class="g-input sm" [value]="(w.word || '').length" disabled style="background:transparent; border:none; font-weight:700; color: #10b981;" /></div>
                     </div>
                     
-                    <div class="form-group"><label>Définition / Indice</label><input type="text" class="g-input sm" [(ngModel)]="w.clue" placeholder="L'indice pour trouver le mot..." /></div>
+                    <div class="form-group"><label>Clue / definition</label><input type="text" class="g-input sm" [(ngModel)]="w.clue" placeholder="Clue for this word…" /></div>
                   </div>
                 }
               </div>
@@ -273,30 +273,30 @@
           }
 
           @if (activeTab() === 'ROADMAP') {
-            <div class="form-group"><label>Label du Noeud</label><input type="text" class="g-input" maxlength="200" required [value]="newRoadmap().nodeLabel" (input)="newRoadmap().nodeLabel = $any($event.target).value" /></div>
-            <div class="form-group"><label>Position (Ordre)</label><input type="number" class="g-input" min="1" step="1" [value]="newRoadmap().stepOrder" (input)="newRoadmap().stepOrder = +$any($event.target).value" /></div>
+            <div class="form-group"><label>Step label</label><input type="text" class="g-input" maxlength="200" required [value]="newRoadmap().nodeLabel" (input)="newRoadmap().nodeLabel = $any($event.target).value" /></div>
+            <div class="form-group"><label>Order</label><input type="number" class="g-input" min="1" step="1" [value]="newRoadmap().stepOrder" (input)="newRoadmap().stepOrder = +$any($event.target).value" /></div>
             <div class="form-group">
-              <label>Quiz Lié (Optionnel)</label>
+              <label>Linked quiz (optional)</label>
               <select class="g-input" (change)="newRoadmap().quizId = +$any($event.target).value || undefined">
-                <option value="">-- Aucun quiz --</option>
+                <option value="">— None —</option>
                 @for (q of quizzes(); track q.quizId) {
                   <option [value]="q.quizId" [selected]="newRoadmap().quizId === q.quizId">{{ q.title }}</option>
                 }
               </select>
             </div>
             <div class="form-group">
-              <label>Mots Croisés Liés (Optionnel)</label>
+              <label>Linked crossword (optional)</label>
               <select class="g-input" (change)="newRoadmap().crosswordId = +$any($event.target).value || undefined">
-                <option value="">-- Aucun mots croisés --</option>
+                <option value="">— None —</option>
                 @for (c of crosswords(); track c.crosswordId) {
                   <option [value]="c.crosswordId" [selected]="newRoadmap().crosswordId === c.crosswordId">{{ c.title }}</option>
                 }
               </select>
             </div>
             <div class="form-group">
-              <label>Puzzle Lié (Optionnel)</label>
+              <label>Linked puzzle (optional)</label>
               <select class="g-input" (change)="newRoadmap().puzzleId = +$any($event.target).value || undefined">
-                <option value="">-- Aucun puzzle --</option>
+                <option value="">— None —</option>
                 @for (p of puzzles(); track p.puzzleId) {
                   <option [value]="p.puzzleId" [selected]="newRoadmap().puzzleId === p.puzzleId">{{ p.title }}</option>
                 }
@@ -306,7 +306,7 @@
 
           @if (activeTab() === 'PUZZLE') {
             <div class="form-group">
-              <label>Titre du puzzle</label>
+              <label>Puzzle title</label>
               <input
                 type="text"
                 class="g-input"
@@ -317,7 +317,7 @@
               />
             </div>
             <div class="form-group-toggle">
-              <label class="tg-label">Publier</label>
+              <label class="tg-label">Publish</label>
               <label class="switch">
                 <input
                   type="checkbox"
@@ -328,19 +328,19 @@
               </label>
             </div>
             <div class="form-group">
-              <label>Image du puzzle</label>
+              <label>Puzzle image</label>
               <input type="file" accept="image/*" class="g-input" (change)="onPuzzleFileSelected($event)" />
             </div>
             @if (newPuzzle().imageDataUrl) {
               <div class="puzzle-preview-wrap">
-                <img class="puzzle-preview" [src]="newPuzzle().imageDataUrl" alt="Aperçu puzzle" />
+                <img class="puzzle-preview" [src]="newPuzzle().imageDataUrl" alt="Puzzle preview" />
               </div>
             }
           }
 
           @if (activeTab() === 'LUDO') {
             <div class="form-group">
-              <label>Titre de la carte</label>
+              <label>Card title</label>
               <input type="text" class="g-input" maxlength="120" required [value]="newLudo().title" (input)="newLudo().title = $any($event.target).value" />
             </div>
             <div class="form-group">
@@ -349,11 +349,11 @@
             </div>
             <div class="form-grid-2">
               <div class="form-group">
-                <label>Effet (cases)</label>
+                <label>Effect (spaces)</label>
                 <input type="number" class="g-input" min="-99" max="99" step="1" [value]="newLudo().effectSteps ?? 0" (input)="newLudo().effectSteps = +$any($event.target).value" />
               </div>
               <div class="form-group">
-                <label>Catégorie</label>
+                <label>Category</label>
                 <select class="g-input" (change)="newLudo().category = $any($event.target).value">
                   <option value="GENERAL" [selected]="newLudo().category === 'GENERAL'">GENERAL</option>
                   <option value="BONUS" [selected]="newLudo().category === 'BONUS'">BONUS</option>
@@ -362,7 +362,7 @@
               </div>
             </div>
             <div class="form-group-toggle">
-              <label class="tg-label">Publier</label>
+              <label class="tg-label">Publish</label>
               <label class="switch">
                 <input type="checkbox" [checked]="newLudo().published" (change)="newLudo().published = !newLudo().published" />
                 <span class="slider"></span>
@@ -372,8 +372,8 @@
         </div>
         
         <div class="md-foot">
-          <button class="btn-cancel" (click)="closeCreate()">Annuler</button>
-          <button class="btn-primary" (click)="save()">💾 Sauvegarder</button>
+          <button class="btn-cancel" (click)="closeCreate()">Cancel</button>
+          <button class="btn-primary" (click)="save()">💾 Save</button>
         </div>
       </div>
     </div>

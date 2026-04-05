@@ -15,7 +15,7 @@ import { CommentService } from './comment.service';
 import { LikeService } from './like.service';
 import { PostMediaService } from './post-media.service';
 import { PostService } from './post.service';
-import { AuthService } from '../auth.service';
+import { AuthService } from '../core/auth.service';
 import { OwnershipUtil } from './ownership.util';
 import Swal from 'sweetalert2';
 
@@ -189,7 +189,7 @@ export class MyPostsComponent {
       this.loadMyPosts();
       await Swal.fire({
         icon: 'success',
-        title: 'Post modifie',
+        title: 'Post updated',
         timer: 1200,
         showConfirmButton: false,
         ...this.swalTheme(),
@@ -198,8 +198,8 @@ export class MyPostsComponent {
       console.error('Error updating post:', error);
       await Swal.fire({
         icon: 'error',
-        title: 'Modification impossible',
-        text: 'Le post n\'a pas pu etre modifie.',
+        title: 'Could not update',
+        text: 'The post could not be updated.',
         ...this.swalTheme(),
       });
     } finally {
@@ -210,12 +210,12 @@ export class MyPostsComponent {
   // Delete functionality
   async startDeletePost(postId: number): Promise<void> {
     const confirmation = await Swal.fire({
-      title: 'Supprimer ce post ?',
-      text: 'Cette action est irreversible.',
+      title: 'Delete this post?',
+      text: 'This cannot be undone.',
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Oui, supprimer',
-      cancelButtonText: 'Annuler',
+      confirmButtonText: 'Yes, delete',
+      cancelButtonText: 'Cancel',
       confirmButtonColor: '#e63946',
       ...this.swalTheme(),
     });
@@ -242,7 +242,7 @@ export class MyPostsComponent {
       this.loadMyPosts();
       await Swal.fire({
         icon: 'success',
-        title: 'Post supprime',
+        title: 'Post deleted',
         timer: 1200,
         showConfirmButton: false,
         ...this.swalTheme(),
@@ -251,8 +251,8 @@ export class MyPostsComponent {
       console.error('Error deleting post:', error);
       await Swal.fire({
         icon: 'error',
-        title: 'Suppression impossible',
-        text: 'Le post n\'a pas pu etre supprime.',
+        title: 'Could not delete',
+        text: 'The post could not be deleted.',
         ...this.swalTheme(),
       });
     }
@@ -380,8 +380,8 @@ export class MyPostsComponent {
       console.error('Error uploading media:', error);
       await Swal.fire({
         icon: 'error',
-        title: 'Upload impossible',
-        text: 'Le media n\'a pas pu etre ajoute.',
+        title: 'Upload failed',
+        text: 'The media could not be added.',
         ...this.swalTheme(),
       });
     }

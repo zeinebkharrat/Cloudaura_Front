@@ -1,7 +1,7 @@
 package org.example.backend.controller;
 
 import com.stripe.Stripe;
-<<<<<<< HEAD
+import com.stripe.exception.StripeException;
 import com.stripe.model.checkout.Session;
 import com.stripe.param.checkout.SessionCreateParams;
 import org.example.backend.model.*;
@@ -39,6 +39,15 @@ public class EventController {
     private final EventReservationRepository reservationRepository;
     private final UserRepository userRepository;
 
+    @Value("${app.frontend.base-url:http://localhost:4200}")
+    private String frontendBaseUrl;
+
+    @Value("${stripe.checkout.currency:usd}")
+    private String stripeCheckoutCurrency;
+
+    @Value("${stripe.api.key:${STRIPE_SECRET_KEY:}}")
+    private String stripeApiKey;
+
     public EventController(
             EventService eventService,
             EventReservationRepository reservationRepository,
@@ -48,14 +57,11 @@ public class EventController {
         this.reservationRepository = reservationRepository;
         this.userRepository = userRepository;
     }
-=======
 
-    @Autowired
-    private EventService eventService;
-
-    @Autowired
-    private EventReservationRepository reservationRepository;
->>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
+    private String normalizeFrontendBase() {
+        String base = frontendBaseUrl == null ? "http://localhost:4200" : frontendBaseUrl.trim();
+        return base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
+    }
 
 
     // --- GET ---
@@ -123,7 +129,7 @@ public class EventController {
             User currentUser = resolveAuthenticatedUser(authentication);
             Integer currentUserId = currentUser.getUserId();
             if (currentUserId == null) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Utilisateur non valide");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid user");
             }
 
             EventReservation res = new EventReservation();
@@ -131,14 +137,14 @@ public class EventController {
             Integer eventId = parseInteger(data.get("event_id"));
             Double amount = parseDouble(data.get("total_amount"));
             if (eventId == null) {
-                return ResponseEntity.badRequest().body("event_id est requis");
+                return ResponseEntity.badRequest().body("event_id is required");
             }
             if (amount == null) {
                 amount = 0d;
             }
 
             Event event = eventService.getEventById(eventId)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event introuvable"));
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found"));
 
                 User userRef = new User();
                 userRef.setUserId(currentUserId);
@@ -167,7 +173,7 @@ public class EventController {
 
 <<<<<<< HEAD
             return ResponseEntity.ok(Map.of(
-                    "message", "Réservation liée avec succès !",
+                    "message", "Reservation linked successfully.",
                     "event_reservation_id", res.getEventReservationId()
             ));
 =======
@@ -178,17 +184,11 @@ public class EventController {
         }
     }
 
-<<<<<<< HEAD
-    @Value("${stripe.api.key:${STRIPE_SECRET_KEY:}}")
-=======
-    @Value("${STRIPE_SECRET_KEY}")
->>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
-    private String stripeApiKey;
-
-
+    /**
+     * Creates a Stripe Checkout session and returns its URL (hosted payment page).
+     * Success redirect includes {@code session_id} for {@link #finalizeCheckout}.
+     */
     @PostMapping("/create-checkout-session")
-<<<<<<< HEAD
-    @Transactional
     public ResponseEntity<?> createSession(@RequestBody Map<String, Object> data, Authentication authentication) {
         try {
             String effectiveStripeKey = resolveStripeApiKey();
@@ -199,24 +199,25 @@ public class EventController {
 
             Stripe.apiKey = effectiveStripeKey;
 
-            EventReservation res = new EventReservation();
-            res.setStatus(ReservationStatus.PENDING);
-            Double amount = parseDouble(data.get("amount"));
-            if (amount == null || amount <= 0) {
-                return ResponseEntity.badRequest().body("amount doit être > 0");
-            }
-            res.setTotalAmount(amount);
-
             Integer eventId = parseInteger(data.get("event_id"));
             if (eventId == null) {
-                return ResponseEntity.badRequest().body("event_id est requis");
+                return ResponseEntity.badRequest().body("event_id is required");
             }
             Event e = eventService.getEventById(eventId)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event introuvable"));
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found"));
+
+            Double dbPrice = e.getPrice() != null ? e.getPrice() : 0d;
+            if (dbPrice <= 0) {
+                return ResponseEntity.badRequest().body("This event has no paid ticket. Use the free reservation flow.");
+            }
+
+            EventReservation res = new EventReservation();
+            res.setStatus(ReservationStatus.PENDING);
+            res.setTotalAmount(dbPrice);
 
             User u = resolveAuthenticatedUser(authentication);
             if (u.getUserId() == null) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Utilisateur non valide");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid user");
             }
             User uRef = new User();
             uRef.setUserId(u.getUserId());
@@ -246,53 +247,122 @@ public class EventController {
 
             reservationRepository.save(res);
 
-            // Construction des paramètres de la session
+            String base = normalizeFrontendBase();
+            String currency = stripeCheckoutCurrency == null || stripeCheckoutCurrency.isBlank()
+                    ? "usd"
+                    : stripeCheckoutCurrency.trim().toLowerCase();
+            long unitAmountMinor = Math.round(dbPrice * 100);
+            if (unitAmountMinor < 1) {
+                return ResponseEntity.badRequest().body("amount too small for Stripe");
+            }
+
+            Object eventNameObj = data.get("eventName");
+            String productName = eventNameObj != null && !eventNameObj.toString().isBlank()
+                    ? eventNameObj.toString()
+                    : ("Event #" + eventId);
+
             SessionCreateParams params = SessionCreateParams.builder()
                     .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
                     .setMode(SessionCreateParams.Mode.PAYMENT)
-                    // On passe l'ID de réservation pour le récupérer sur la page success d'Angular
-                    .setSuccessUrl("http://localhost:4200/success?resId=" + res.getEventReservationId())
-                    .setCancelUrl("http://localhost:4200/events")
+                    .setClientReferenceId(String.valueOf(res.getEventReservationId()))
+                    .setSuccessUrl(base + "/success?session_id={CHECKOUT_SESSION_ID}")
+                    .setCancelUrl(base + "/evenements")
                     .addLineItem(SessionCreateParams.LineItem.builder()
                             .setQuantity(1L)
                             .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
-                                    .setCurrency("usd") // ou "eur"
-                                    .setUnitAmount((long)(res.getTotalAmount() * 100)) // Stripe calcule en centimes
+                                    .setCurrency(currency)
+                                    .setUnitAmount(unitAmountMinor)
                                     .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                                            .setName("Event: " + data.get("eventName")).build())
+                                            .setName("Event: " + productName)
+                                            .build())
                                     .build())
                             .build())
                     .build();
 
 <<<<<<< HEAD
             Session session = Session.create(params);
+            String url = session.getUrl();
+            if (url == null || url.isBlank()) {
+                return ResponseEntity.status(500).body("Stripe did not return a checkout URL");
+            }
 
             return ResponseEntity.ok(Map.of(
                     "sessionId", session.getId(),
-                    "sessionUrl", session.getUrl()
+                    "sessionUrl", url
             ));
-=======
-            // CORRECTION ICI : Pas de cast en Map
-            Session session = Session.create((Map<String, Object>) params);
-
-            return ResponseEntity.ok(Map.of("sessionId", session.getId()));
->>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
+        } catch (StripeException e) {
+            return ResponseEntity.status(500).body("Stripe error: " + e.getMessage());
+        } catch (ResponseStatusException e) {
+            throw e;
         } catch (Exception e) {
-            return ResponseEntity.status(500).body("Erreur Stripe : " + e.getMessage());
+            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+        }
+    }
+
+    /**
+     * After Stripe redirects back with {@code session_id}, confirms payment and marks the reservation CONFIRMED.
+     */
+    @PostMapping("/finalize-checkout")
+    @Transactional
+    public ResponseEntity<?> finalizeCheckout(@RequestBody Map<String, String> body, Authentication authentication) {
+        String sessionId = body != null ? body.get("sessionId") : null;
+        if (sessionId == null || sessionId.isBlank()) {
+            return ResponseEntity.badRequest().body("sessionId is required");
+        }
+        String effectiveStripeKey = resolveStripeApiKey();
+        if (effectiveStripeKey == null || effectiveStripeKey.isBlank()) {
+            return ResponseEntity.status(500).body("Stripe is not configured");
+        }
+        Stripe.apiKey = effectiveStripeKey;
+        try {
+            Session session = Session.retrieve(sessionId);
+            if (!"paid".equalsIgnoreCase(session.getPaymentStatus())) {
+                return ResponseEntity.badRequest().body("Payment not completed yet");
+            }
+            String ref = session.getClientReferenceId();
+            if (ref == null || ref.isBlank()) {
+                return ResponseEntity.badRequest().body("Missing reservation reference on session");
+            }
+            int reservationId;
+            try {
+                reservationId = Integer.parseInt(ref.trim());
+            } catch (NumberFormatException ex) {
+                return ResponseEntity.badRequest().body("Invalid reservation reference");
+            }
+
+            EventReservation res = reservationRepository.findById(reservationId)
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reservation not found"));
+
+            User current = resolveAuthenticatedUser(authentication);
+            if (res.getUser() == null || res.getUser().getUserId() == null
+                    || !res.getUser().getUserId().equals(current.getUserId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("This reservation belongs to another account");
+            }
+
+            res.setStatus(ReservationStatus.CONFIRMED);
+            reservationRepository.save(res);
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Reservation confirmed",
+                    "eventReservationId", res.getEventReservationId(),
+                    "eventId", res.getEvent() != null ? res.getEvent().getEventId() : null
+            ));
+        } catch (StripeException e) {
+            return ResponseEntity.status(500).body("Stripe error: " + e.getMessage());
         }
     }
 <<<<<<< HEAD
 
     private User resolveAuthenticatedUser(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication requise");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
         }
         String identifier = authentication.getName();
         if (identifier == null || identifier.isBlank()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Session invalide");
         }
         return userRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(identifier, identifier)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Utilisateur introuvable"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
     }
 
     private static Integer parseInteger(Object value) {

@@ -93,7 +93,7 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
         this.cities = res.content;
       },
       error: () => {
-        this.error = 'Impossible de charger la liste des villes';
+        this.error = 'Could not load cities list';
       },
     });
   }
@@ -107,7 +107,7 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
         this.totalElements = res.totalElements;
       },
       error: (err) => {
-        this.error = err?.error?.message ?? 'Erreur lors du chargement des restaurants';
+        this.error = err?.error?.message ?? 'Error loading restaurants';
       },
     });
   }
@@ -255,7 +255,7 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
         this.loadRestaurants();
       },
       error: (err) => {
-        this.modalError = err?.error?.message ?? 'Erreur lors de la sauvegarde';
+        this.modalError = err?.error?.message ?? 'Error saving';
       },
     });
   }
@@ -263,14 +263,14 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
   geocodeFromName(): void {
     const name = this.form.name.trim();
     if (!name) {
-      this.geocodeMessage = 'Saisissez un nom de restaurant pour localiser.';
+      this.geocodeMessage = 'Enter a restaurant name to locate it.';
       return;
     }
 
     const selectedCity = this.cities.find((city) => city.cityId === this.form.cityId)?.name ?? '';
     const query = selectedCity ? `${name}, ${selectedCity}, Tunisia` : `${name}, Tunisia`;
 
-    this.geocodeMessage = 'Localisation en cours...';
+    this.geocodeMessage = 'Locating…';
 
     this.http
       .get<Array<{ lat: string; lon: string; display_name: string }>>(
@@ -279,7 +279,7 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (results) => {
           if (!results.length) {
-            this.geocodeMessage = 'Aucune localisation trouvée pour ce nom.';
+            this.geocodeMessage = 'No location found for this name.';
             return;
           }
 
@@ -287,11 +287,11 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
           this.form.latitude = Number(first.lat);
           this.form.longitude = Number(first.lon);
           this.form.address = first.display_name;
-          this.geocodeMessage = 'Restaurant localisé automatiquement.';
+          this.geocodeMessage = 'Restaurant located automatically.';
           this.renderMapLater();
         },
         error: () => {
-          this.geocodeMessage = 'Échec géolocalisation automatique. Saisissez la latitude/longitude manuellement.';
+          this.geocodeMessage = 'Automatic geocoding failed. Enter latitude/longitude manually.';
         },
       });
   }
@@ -338,7 +338,7 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
     }
 
     if (!file.type.startsWith('image/')) {
-      this.modalError = 'Seules les images sont autorisées pour le restaurant';
+      this.modalError = 'Only images are allowed for the restaurant';
       this.clearImageSelection();
       return;
     }
@@ -391,15 +391,15 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
     this.clearValidationErrors();
 
     if (this.form.cityId == null) {
-      this.fieldErrors.cityId = 'La ville est obligatoire.';
+      this.fieldErrors.cityId = 'City is required.';
     }
 
     if (!this.form.name.trim()) {
-      this.fieldErrors.name = 'Le nom du restaurant est obligatoire.';
+      this.fieldErrors.name = 'Restaurant name is required.';
     }
 
     if (this.form.rating != null && (this.form.rating < 0 || this.form.rating > 5)) {
-      this.fieldErrors.rating = 'La note doit être comprise entre 0 et 5.';
+      this.fieldErrors.rating = 'Rating must be between 0 and 5.';
     }
 
     const latitude = this.form.latitude;
@@ -408,24 +408,24 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
     const hasLongitude = longitude !== null && longitude !== undefined;
 
     if (hasLatitude && ((latitude as number) < -90 || (latitude as number) > 90)) {
-      this.fieldErrors.latitude = 'La latitude doit être entre -90 et 90.';
+      this.fieldErrors.latitude = 'Latitude must be between -90 and 90.';
     }
 
     if (hasLongitude && ((longitude as number) < -180 || (longitude as number) > 180)) {
-      this.fieldErrors.longitude = 'La longitude doit être entre -180 et 180.';
+      this.fieldErrors.longitude = 'Longitude must be between -180 and 180.';
     }
 
     if (hasLatitude !== hasLongitude) {
       if (!hasLatitude) {
-        this.fieldErrors.latitude = 'La latitude est requise si la longitude est renseignée.';
+        this.fieldErrors.latitude = 'Latitude is required when longitude is set.';
       }
       if (!hasLongitude) {
-        this.fieldErrors.longitude = 'La longitude est requise si la latitude est renseignée.';
+        this.fieldErrors.longitude = 'Longitude is required when latitude is set.';
       }
     }
 
     if (Object.keys(this.fieldErrors).length > 0) {
-      this.modalError = 'Veuillez corriger les champs en erreur.';
+      this.modalError = 'Please fix the invalid fields.';
       return false;
     }
 
@@ -505,12 +505,12 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
 
   async delete(item: Restaurant): Promise<void> {
     const confirmation = await Swal.fire({
-      title: 'Supprimer ce restaurant ?',
-      text: `${item.name} sera supprimé définitivement.`,
+      title: 'Delete this restaurant?',
+      text: `${item.name} will be permanently deleted.`,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Oui, supprimer',
-      cancelButtonText: 'Annuler',
+      confirmButtonText: 'Yes, delete',
+      cancelButtonText: 'Cancel',
       confirmButtonColor: '#e63946',
       background: '#181d24',
       color: '#e2e8f0',
@@ -528,7 +528,7 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
         this.loadRestaurants();
         await Swal.fire({
           icon: 'success',
-          title: 'Restaurant supprimé',
+          title: 'Restaurant deleted',
           timer: 1300,
           showConfirmButton: false,
           background: '#181d24',
@@ -536,7 +536,7 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
         });
       },
       error: (err) => {
-        this.error = err?.error?.message ?? 'Suppression impossible';
+        this.error = err?.error?.message ?? 'Could not delete';
       },
     });
   }

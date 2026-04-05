@@ -165,7 +165,7 @@ export class AdminGamesComponent implements OnInit {
       const qz = this.newQuiz();
       const title = String(qz.title ?? '').trim();
       if (!title) {
-        alert('Indiquez un titre pour le quiz.');
+        alert('Enter a title for the quiz.');
         return;
       }
       const questions = qz.questions ?? [];
@@ -176,13 +176,13 @@ export class AdminGamesComponent implements OnInit {
       for (let i = 0; i < questions.length; i++) {
         const q = questions[i];
         if (!String(q.questionText ?? '').trim()) {
-          alert(`Question ${i + 1} : saisissez l’intitulé de la question.`);
+          alert(`Question ${i + 1}: enter the question text.`);
           return;
         }
         const opts = q._tempOptions ?? ['', '', '', ''];
         for (let j = 0; j < 4; j++) {
           if (!String(opts[j] ?? '').trim()) {
-            alert(`Question ${i + 1} : remplissez les 4 options de réponse.`);
+            alert(`Question ${i + 1}: fill in all 4 answer options.`);
             return;
           }
         }
@@ -208,17 +208,17 @@ export class AdminGamesComponent implements OnInit {
       const c = this.newCrossword();
       const ct = String(c.title ?? '').trim();
       if (!ct) {
-        alert('Indiquez un titre pour les mots croisés.');
+        alert('Enter a title for the crossword.');
         return;
       }
       let rows = Math.floor(Number(this.gridRows()));
       let cols = Math.floor(Number(this.gridCols()));
       if (!Number.isFinite(rows) || rows < 3 || rows > 40) {
-        alert('Nombre de lignes : entre 3 et 40.');
+        alert('Row count must be between 3 and 40.');
         return;
       }
       if (!Number.isFinite(cols) || cols < 3 || cols > 40) {
-        alert('Nombre de colonnes : entre 3 et 40.');
+        alert('Column count must be between 3 and 40.');
         return;
       }
       const words = this.crosswordWords();
@@ -226,25 +226,25 @@ export class AdminGamesComponent implements OnInit {
         const w = words[i];
         const word = String(w.word ?? '').trim().toUpperCase();
         if (!word) {
-          alert(`Mot #${i + 1} : le mot ne peut pas être vide (supprimez la ligne ou remplissez-le).`);
+          alert(`Word #${i + 1}: word cannot be empty (remove the row or fill it in).`);
           return;
         }
         const len = word.length;
         const x = Math.floor(Number(w.x));
         const y = Math.floor(Number(w.y));
         if (!Number.isFinite(x) || !Number.isFinite(y)) {
-          alert(`Mot « ${word} » : position ligne/colonne invalide.`);
+          alert(`Word "${word}": invalid row/column position.`);
           return;
         }
         // x = ligne, y = colonne (comme l’aperçu : H avance les colonnes, V les lignes)
         if (w.dir === 'H') {
           if (x < 0 || x >= rows || y < 0 || y + len > cols) {
-            alert(`Mot « ${word} » : ne rentre pas dans la grille (${rows}×${cols}).`);
+            alert(`Word "${word}" does not fit in the grid (${rows}×${cols}).`);
             return;
           }
         } else {
           if (y < 0 || y >= cols || x < 0 || x + len > rows) {
-            alert(`Mot « ${word} » : ne rentre pas dans la grille (${rows}×${cols}).`);
+            alert(`Word "${word}" does not fit in the grid (${rows}×${cols}).`);
             return;
           }
         }
@@ -260,12 +260,12 @@ export class AdminGamesComponent implements OnInit {
       const r = this.newRoadmap();
       const label = String(r.nodeLabel ?? '').trim();
       if (!label) {
-        alert('Indiquez un libellé pour l’étape du parcours.');
+        alert('Enter a label for the roadmap step.');
         return;
       }
       const stepOrder = Math.floor(Number(r.stepOrder));
       if (!Number.isFinite(stepOrder) || stepOrder < 1) {
-        alert('L’ordre de l’étape doit être un nombre entier ≥ 1.');
+        alert('Step order must be an integer ≥ 1.');
         return;
       }
       const payload: Partial<RoadmapNode> = {
@@ -282,11 +282,11 @@ export class AdminGamesComponent implements OnInit {
       const p = this.newPuzzle();
       const title = p.title.trim();
       if (!title) {
-        alert('Donnez un titre au puzzle.');
+        alert('Enter a puzzle title.');
         return;
       }
       if (!this.puzzleFile()) {
-        alert('Ajoutez une image pour créer le puzzle.');
+        alert('Add an image to create the puzzle.');
         return;
       }
       this.api
@@ -298,7 +298,7 @@ export class AdminGamesComponent implements OnInit {
     } else if (this.activeTab() === 'LUDO') {
       const ludo = this.newLudo();
       if (!String(ludo.title ?? '').trim()) {
-        alert('Donnez un titre à la carte Ludo.');
+        alert('Enter a title for the Ludo card.');
         return;
       }
       let eff = Number(ludo.effectSteps ?? 0);
@@ -308,7 +308,7 @@ export class AdminGamesComponent implements OnInit {
       }
       eff = Math.trunc(eff);
       if (eff < -99 || eff > 99) {
-        alert('L’effet (cases) doit être compris entre -99 et 99.');
+        alert('Effect (spaces) must be between -99 and 99.');
         return;
       }
       this.api
@@ -340,7 +340,7 @@ export class AdminGamesComponent implements OnInit {
     const file = input.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
-      alert('Sélectionnez un fichier image.');
+      alert('Please select an image file.');
       return;
     }
 

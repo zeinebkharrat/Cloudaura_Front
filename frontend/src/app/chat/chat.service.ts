@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, Subject } from 'rxjs';
 import { Client, IFrame, IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
-import { AuthService } from '../auth.service';
+import { AuthService } from '../core/auth.service';
 import {
   ChatRoomResponse,
   ConversationResponse,

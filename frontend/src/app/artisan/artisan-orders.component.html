@@ -1,0 +1,187 @@
+<div class="ao-shell">
+  <div class="ao-bg" aria-hidden="true"></div>
+
+  <header class="ao-header">
+    <p class="ao-kicker">Artisan workspace</p>
+    <h1 class="ao-title">My orders</h1>
+    <p class="ao-lead">
+      Track your sales, fulfilment, and customer contacts in one place — expand a row for full detail.
+    </p>
+  </header>
+
+  <section *ngIf="!loading() && !error() && summary() as s" class="ao-stats" aria-label="Overview">
+    <div class="ao-stat ao-stat--primary">
+      <span class="ao-stat__icon" aria-hidden="true"><i class="pi pi-shopping-bag"></i></span>
+      <div class="ao-stat__text">
+        <span class="ao-stat__value">{{ s.orders }}</span>
+        <span class="ao-stat__label">Active orders</span>
+      </div>
+    </div>
+    <div class="ao-stat">
+      <span class="ao-stat__icon" aria-hidden="true"><i class="pi pi-box"></i></span>
+      <div class="ao-stat__text">
+        <span class="ao-stat__value">{{ s.items }}</span>
+        <span class="ao-stat__label">Items sold</span>
+      </div>
+    </div>
+    <div class="ao-stat ao-stat--accent">
+      <span class="ao-stat__icon" aria-hidden="true"><i class="pi pi-chart-line"></i></span>
+      <div class="ao-stat__text">
+        <span class="ao-stat__value">{{ formatPrice(s.revenue) }}</span>
+        <span class="ao-stat__label">Volume (listed)</span>
+      </div>
+    </div>
+  </section>
+
+  <div *ngIf="loading()" class="ao-state ao-state--loading">
+    <span class="ao-spinner" aria-hidden="true"></span>
+    <p>Loading your orders…</p>
+  </div>
+
+  <div *ngIf="error()" class="ao-state ao-state--error">
+    <span class="ao-state__icon" aria-hidden="true">!</span>
+    <p>{{ error() }}</p>
+    <button type="button" class="ao-btn ao-btn--ghost" (click)="loadList()">Try again</button>
+  </div>
+
+  <div *ngIf="!loading() && !error() && orders() !== null && orders()!.length === 0" class="ao-empty">
+    <span class="ao-empty__glyph" aria-hidden="true">◇</span>
+    <h2>No orders yet</h2>
+    <p>When a customer buys one of your pieces, it will show up here.</p>
+  </div>
+
+  <div *ngIf="!loading() && !error() && orders() !== null && orders()!.length > 0" class="ao-list">
+    <article
+      *ngFor="let row of orders()"
+      class="ao-order"
+      [class.ao-order--open]="rowExpanded(row)"
+    >
+      <button
+        type="button"
+        class="ao-order__summary"
+        (click)="toggleDetail(row)"
+        [attr.aria-expanded]="rowExpanded(row)"
+      >
+        <div class="ao-order__summary-main">
+          <div class="ao-order__ref">
+            <span class="ao-order__ref-icon" aria-hidden="true">
+              <i class="pi pi-box"></i>
+            </span>
+            <div class="ao-order__ref-text">
+              <span class="ao-label">Reference</span>
+              <span class="ao-value">#{{ row.orderId }}</span>
+            </div>
+          </div>
+
+          <div class="ao-order__metrics">
+            <div class="ao-metric">
+              <i class="pi pi-calendar" aria-hidden="true"></i>
+              <div>
+                <span class="ao-label">Date</span>
+                <span class="ao-value">{{ formatDate(row.orderedAt) }}</span>
+              </div>
+            </div>
+            <div class="ao-metric">
+              <i class="pi pi-wallet" aria-hidden="true"></i>
+              <div>
+                <span class="ao-label">Total</span>
+                <span class="ao-value ao-value--accent">{{ formatPrice(row.totalAmount) }}</span>
+              </div>
+            </div>
+            <div class="ao-metric ao-metric--compact">
+              <i class="pi pi-list" aria-hidden="true"></i>
+              <div>
+                <span class="ao-label">Items</span>
+                <span class="ao-value">{{ row.itemCount }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ao-order__summary-side">
+          <span class="ao-pill" [attr.data-status]="row.status">{{ orderStatusLabel(row.status) }}</span>
+          <span class="ao-chevron" [class.ao-chevron--up]="rowExpanded(row)" aria-hidden="true">
+            <i class="pi" [class.pi-chevron-down]="!rowExpanded(row)" [class.pi-chevron-up]="rowExpanded(row)"></i>
+          </span>
+        </div>
+      </button>
+
+      <div class="ao-order__panel" *ngIf="rowExpanded(row)">
+        <div class="ao-order__panel-inner">
+          <div *ngIf="detailLoading()" class="ao-panel-loading">
+            <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
+            <span>Loading details…</span>
+          </div>
+
+          <ng-container *ngIf="detail() as d">
+            <section class="ao-buyer" [attr.aria-labelledby]="'buyer-' + row.orderId">
+              <div class="ao-buyer__head">
+                <h3 [id]="'buyer-' + row.orderId" class="ao-section-title">
+                  <i class="pi pi-map-marker" aria-hidden="true"></i>
+                  Customer &amp; delivery
+                </h3>
+              </div>
+              <div class="ao-buyer__grid">
+                <div class="ao-field">
+                  <span class="ao-label">Name</span>
+                  <span class="ao-value">{{ d.buyer?.firstName }} {{ d.buyer?.lastName }}</span>
+                </div>
+                <div class="ao-field ao-field--email">
+                  <span class="ao-label">Email</span>
+                  <a class="ao-email-pill" [href]="'mailto:' + d.buyer?.email">
+                    <i class="pi pi-envelope" aria-hidden="true"></i>
+                    {{ d.buyer?.email }}
+                  </a>
+                </div>
+              </div>
+            </section>
+
+            <section class="ao-lines" [attr.aria-labelledby]="'lines-' + row.orderId">
+              <h3 [id]="'lines-' + row.orderId" class="ao-section-title">
+                <i class="pi pi-shopping-bag" aria-hidden="true"></i>
+                Line items
+              </h3>
+
+              <ul class="ao-line-list">
+                <li *ngFor="let item of d.lines" class="ao-line">
+                  <div class="ao-line__main">
+                    <span class="ao-line__avatar" aria-hidden="true">{{ lineInitial(item.name) }}</span>
+                    <div class="ao-line__product">
+                      <p class="ao-line__name">{{ item.name }}</p>
+                      <div class="ao-line__tags">
+                        <span class="ao-tag">Qty {{ item.quantity }}</span>
+                        <span *ngIf="item.size" class="ao-tag">Size {{ item.size }}</span>
+                        <span *ngIf="item.color" class="ao-tag">Color {{ item.color }}</span>
+                      </div>
+                      <p class="ao-line__sub">{{ formatPrice(item.unitPrice) }} × {{ item.quantity }}</p>
+                    </div>
+                  </div>
+                  <div class="ao-line__total">{{ formatPrice(item.lineTotal) }}</div>
+                  <div class="ao-line__status">
+                    <label class="ao-label" [attr.for]="'st-' + item.orderItemId">Status</label>
+                    <div class="ao-select-wrap">
+                      <select
+                        [id]="'st-' + item.orderItemId"
+                        [(ngModel)]="item.status"
+                        (change)="updateStatus(item.orderItemId, item.status)"
+                        class="ao-select"
+                        [class.ao-select--busy]="updatingItems().has(item.orderItemId)"
+                      >
+                        <option *ngFor="let opt of statusOptions" [value]="opt.value">{{ opt.label }}</option>
+                      </select>
+                      <i
+                        *ngIf="updatingItems().has(item.orderItemId)"
+                        class="pi pi-spin pi-spinner ao-select__spinner"
+                        aria-hidden="true"
+                      ></i>
+                    </div>
+                  </div>
+                </li>
+              </ul>
+            </section>
+          </ng-container>
+        </div>
+      </div>
+    </article>
+  </div>
+</div>

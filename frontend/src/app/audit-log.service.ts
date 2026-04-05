@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { AuditLogPage } from './auth.types';
+import { AuditLogPage } from './core/auth.types';
 
 export interface AuditLogFilters {
   q?: string;

@@ -19,4 +19,6 @@ public interface UserRoadmapCompletionRepository extends JpaRepository<UserRoadm
     boolean existsByUserUserIdAndRoadmapNode_NodeId(Integer userId, Integer nodeId);
 
     boolean existsByUsernameAndRoadmapNode_NodeId(String username, Integer nodeId);
+
+    void deleteAllByRoadmapNode_NodeId(Integer nodeId);
 }

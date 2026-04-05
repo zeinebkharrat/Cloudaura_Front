@@ -7,7 +7,7 @@ import { PostService } from './post.service';
 import { SavedPostService } from './saved-post.service';
 import { FollowService } from './follow.service';
 import { PostMediaService } from './post-media.service';
-import { AuthService } from '../auth.service';
+import { AuthService } from '../core/auth.service';
 
 @Component({
   selector: 'app-user-profile',
@@ -26,7 +26,7 @@ export class UserProfileComponent {
   readonly authService = inject(AuthService);
 
   readonly userId = signal<number | null>(null);
-  readonly profileName = signal<string>('Utilisateur');
+  readonly profileName = signal<string>('User');
   readonly profileUsername = signal<string>('');
   readonly profileImageUrl = signal<string | null>(null);
 
@@ -170,7 +170,7 @@ export class UserProfileComponent {
 
   displayName(user?: { username?: string; firstName?: string; lastName?: string }): string {
     return (
-      user?.username || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'Utilisateur'
+      user?.username || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'User'
     );
   }
 

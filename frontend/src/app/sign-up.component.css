@@ -7,6 +7,20 @@
   overflow: hidden;
 }
 
+.auth-page.auth-page--embedded {
+  min-height: auto;
+  padding: 0;
+}
+
+.auth-page.auth-page--embedded .auth-bg-orb {
+  display: none;
+}
+
+.auth-page.auth-page--embedded .auth-card {
+  width: min(860px, 100%);
+  margin: 0;
+}
+
 .auth-bg-orb {
   position: absolute;
   width: 420px;

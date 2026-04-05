@@ -24,5 +24,18 @@ public interface CommentRepository extends JpaRepository<Comment, Integer> {
     @Modifying
     @Query("delete from Comment c where c.post.postId = :postId and c.parent is null")
     void deleteRootCommentsByPostId(@Param("postId") Integer postId);
+
+    @Query("SELECT DISTINCT c FROM Comment c "
+            + "LEFT JOIN FETCH c.post p LEFT JOIN FETCH p.author "
+            + "LEFT JOIN FETCH c.author "
+            + "LEFT JOIN FETCH c.parent")
+    List<Comment> findAllWithGraph();
+
+    @Query("SELECT DISTINCT c FROM Comment c "
+            + "LEFT JOIN FETCH c.post p LEFT JOIN FETCH p.author "
+            + "LEFT JOIN FETCH c.author "
+            + "LEFT JOIN FETCH c.parent "
+            + "WHERE p.postId = :postId ORDER BY c.createdAt ASC")
+    List<Comment> findByPostIdWithGraph(@Param("postId") Integer postId);
 }
 

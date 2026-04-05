@@ -8,7 +8,7 @@
           class="composer-main-input"
           [value]="newPostContent()"
           (input)="newPostContent.set($any($event.target).value)"
-          placeholder="Partagez votre expérience tunisienne..."
+          placeholder="Share your Tunisia experience..."
         />
       </div>
 
@@ -20,17 +20,17 @@
             multiple
             (change)="onNewPostMediaSelect($event)"
           />
-          🖼 Photo
+          <i class="pi pi-image" aria-hidden="true"></i> Photo
         </label>
 
         <label class="composer-chip location-chip">
-          📍
+          <img src="icones/location-pin.svg" alt="" class="composer-loc-icon" width="18" height="18" />
           <select
             class="composer-location-select"
             [value]="newPostLocation()"
             (change)="newPostLocation.set($any($event.target).value)"
           >
-            <option value="">Lieu</option>
+            <option value="">Place</option>
             <option *ngFor="let city of cities(); trackBy: trackByCity" [value]="city.name">
               {{ city.name }}
             </option>
@@ -43,7 +43,7 @@
           (click)="createPost()"
           [disabled]="!newPostContent().trim() || isPosting()"
         >
-          <span *ngIf="!isPosting()">Publier</span>
+          <span *ngIf="!isPosting()">Publish</span>
           <span *ngIf="isPosting()">...</span>
         </button>
       </div>
@@ -52,17 +52,17 @@
         <div class="media-preview-item" *ngFor="let preview of newPostMediaPreviews(); let i = index">
           <img *ngIf="preview.type === 'image'" [src]="preview.url" alt="Preview" class="media-preview-thumb" />
           <video *ngIf="preview.type === 'video'" [src]="preview.url" class="media-preview-thumb"></video>
-          <button type="button" class="media-preview-remove" (click)="removeNewPostMedia(i)" title="Supprimer">✕</button>
+          <button type="button" class="media-preview-remove" (click)="removeNewPostMedia(i)" title="Remove">✕</button>
         </div>
       </div>
     </div>
 
     <div class="community-header__right">
       <button type="button" class="btn-outline my-posts-btn" (click)="toggleSavedMode()" *ngIf="authService.isAuthenticated()">
-        {{ showSavedOnly() ? 'Tous les posts' : 'Sauvegardes' }}
+        {{ showSavedOnly() ? 'All posts' : 'Saved' }}
       </button>
       <button type="button" class="btn-primary my-posts-btn" (click)="goToMyPosts()" *ngIf="authService.isAuthenticated()">
-        Mon profil
+        My profile
       </button>
     </div>
   </div>
@@ -72,7 +72,7 @@
     <div class="likers-modal-backdrop" *ngIf="activeLikersPostId()" (click)="toggleLikersModal(null)">
       <div class="likers-modal-content glass-panel" (click)="$event.stopPropagation()">
         <div class="likers-modal-header">
-          <h3>Aiment ça</h3>
+          <h3>Likes</h3>
           <button type="button" class="btn-close" (click)="toggleLikersModal(null)">✕</button>
         </div>
         <div class="likers-list">
@@ -94,7 +94,7 @@
           class="media-lightbox-nav media-lightbox-nav--prev"
           *ngIf="activeMediaList().length > 1"
           (click)="prevMedia()"
-          aria-label="Image precedente"
+          aria-label="Previous image"
         >
           ‹
         </button>
@@ -103,7 +103,7 @@
           class="media-lightbox-image"
           *ngIf="currentLightboxMedia()?.fileUrl"
           [src]="currentLightboxMedia()!.fileUrl!"
-          alt="Media du post"
+          alt="Post media"
         />
 
         <button
@@ -111,7 +111,7 @@
           class="media-lightbox-nav media-lightbox-nav--next"
           *ngIf="activeMediaList().length > 1"
           (click)="nextMedia()"
-          aria-label="Image suivante"
+          aria-label="Next image"
         >
           ›
         </button>
@@ -127,11 +127,13 @@
   <!-- Feed Section -->
   <section class="feed">
     <div class="feed-error glass-panel" *ngIf="loadError()">
-      ⚠️ {{ loadError() }}
+      <i class="pi pi-exclamation-triangle feed-err-ico" aria-hidden="true"></i>
+      <span>{{ loadError() }}</span>
     </div>
 
     <div class="feed-loading glass-panel" *ngIf="!loadError() && !feedLoaded()">
-      🔄 Chargement de la communauté...
+      <i class="pi pi-spinner pi-spin feed-load-ico" aria-hidden="true"></i>
+      <span>Loading community…</span>
     </div>
 
     <div class="posts-container" *ngIf="feedLoaded()">
@@ -139,15 +141,15 @@
         <div class="empty-state glass-panel">
           <div class="empty-state__content">
             <div class="empty-icon">📭</div>
-            <h3>{{ showSavedOnly() ? 'Aucun post sauvegarde' : 'Aucun post pour le moment' }}</h3>
-            <p>{{ showSavedOnly() ? 'Sauvegardez des publications pour les retrouver ici.' : 'Soyez le premier a partager quelque chose!' }}</p>
+            <h3>{{ showSavedOnly() ? 'No saved posts' : 'No posts yet' }}</h3>
+            <p>{{ showSavedOnly() ? 'Save posts to find them here.' : 'Be the first to share something!' }}</p>
             <button 
               type="button"
               class="btn-primary"
               (click)="backToCommunity()"
               *ngIf="authService.isAuthenticated()"
             >
-              📝 Utiliser le formulaire en haut
+              <i class="pi pi-pencil btn-inline-pi" aria-hidden="true"></i> Use the form at the top
             </button>
           </div>
         </div>
@@ -162,7 +164,7 @@
                 <div class="author-info">
                   <button type="button" class="author-name author-link" (click)="goToUserProfile(post.author?.userId)">{{ displayName(post.author) }}</button>
                   <span class="post-time">{{ formatDate(post.createdAt) }}</span>
-                  <span class="post-location-inline" *ngIf="post.location">📍 {{ post.location }}</span>
+                  <span class="post-location-inline" *ngIf="post.location"><img src="icones/location-pin.svg" alt="" class="post-loc-ico" width="14" height="14" /> {{ post.location }}</span>
                 </div>
                 <button
                   type="button"
@@ -170,7 +172,7 @@
                   *ngIf="authService.isAuthenticated() && post.author?.userId && authService.currentUser()?.id !== post.author?.userId"
                   (click)="toggleFollow(post.author?.userId)"
                 >
-                  {{ isFollowing(post.author?.userId) ? 'Suivi' : '+ Suivre' }}
+                  {{ isFollowing(post.author?.userId) ? 'Following' : '+ Follow' }}
                 </button>
                 <div class="post-actions" *ngIf="canEditPost(post) || canDeletePost(post)" (click)="$event.stopPropagation()">
                   <button 
@@ -189,7 +191,7 @@
                       (click)="startEditPost(post)"
                       *ngIf="canEditPost(post)"
                     >
-                      Modifier
+                      Edit
                     </button>
                     <button
                       type="button"
@@ -197,7 +199,7 @@
                       (click)="deletePost(post.postId!)"
                       *ngIf="canDeletePost(post)"
                     >
-                      Supprimer
+                      Delete
                     </button>
                   </div>
                 </div>
@@ -207,7 +209,7 @@
             <div class="post-content">
               <ng-container *ngIf="!isEditingPost(post.postId!); else editPostForm">
                 <section class="repost-shell" *ngIf="isRepost(post) && post.repostOf">
-                  <p class="repost-credit">🔁 Repost de {{ displayName(post.repostOf.author) }}</p>
+                  <p class="repost-credit"><i class="pi pi-replay repost-ico" aria-hidden="true"></i> Repost from {{ displayName(post.repostOf.author) }}</p>
                   <article class="repost-card">
                     <header class="repost-head">
                       <div class="avatar small">{{ displayName(post.repostOf.author).charAt(0).toUpperCase() || 'U' }}</div>
@@ -225,7 +227,7 @@
                         <ng-container *ngIf="m.fileUrl">
                           <div class="media-item">
                             <video class="media-video" controls *ngIf="m.mediaType === 'VIDEO'" [src]="m.fileUrl"></video>
-                            <img class="media-image" *ngIf="m.mediaType !== 'VIDEO'" [src]="m.fileUrl" [alt]="'Media du post original ' + post.repostOf.postId" />
+                            <img class="media-image" *ngIf="m.mediaType !== 'VIDEO'" [src]="m.fileUrl" [alt]="'Original post media ' + post.repostOf.postId" />
                           </div>
                         </ng-container>
                       </ng-container>
@@ -253,7 +255,7 @@
                         <img
                           class="media-image"
                           [src]="m.fileUrl"
-                          [alt]="'Media du post ' + post.postId"
+                          [alt]="'Post media ' + post.postId"
                         />
                         <div class="post-media-item__overlay" *ngIf="isCollapsedImageTile(post.postId!, i)">
                           +{{ getRemainingImagesCount(post.postId!) }}
@@ -279,35 +281,30 @@
 
                 <p class="post-caption">{{ post.content }}</p>
 
-                <div class="post-meta-row" *ngIf="post.visibility">
-                  <div class="post-visibility" *ngIf="post.visibility">
-                    {{ post.visibility === 'private' ? '🔒 Prive' : '🌍 Public' }}
-                  </div>
-                </div>
               </ng-container>
 
               <ng-template #editPostForm>
                 <div class="edit-post-form glass-panel">
                   <label class="field-label">
-                    <span>Modifier le contenu</span>
+                    <span>Edit content</span>
                     <textarea
                       rows="3"
                       class="form-textarea"
                       [value]="editPostContent()"
                       (input)="editPostContent.set($any($event.target).value)"
-                      placeholder="Mettez a jour votre post..."
+                      placeholder="Update your post…"
                     ></textarea>
                   </label>
 
                   <div class="form-row">
                     <label class="field-label">
-                      <span>Lieu</span>
+                      <span>Place</span>
                       <select
                         class="form-select"
                         [value]="editPostLocation()"
                         (change)="editPostLocation.set($any($event.target).value)"
                       >
-                        <option value="">Choisir une ville</option>
+                        <option value="">Choose a city</option>
                         <option *ngFor="let city of cities(); trackBy: trackByCity" [value]="city.name">
                           {{ cityDisplay(city) }}
                         </option>
@@ -315,21 +312,21 @@
                     </label>
 
                     <label class="field-label">
-                      <span>Visibilite</span>
+                      <span>Visibility</span>
                       <select
                         class="form-select"
                         [value]="editPostVisibility()"
                         (change)="editPostVisibility.set($any($event.target).value)"
                       >
                         <option value="public">Public</option>
-                        <option value="private">Prive</option>
+                        <option value="private">Private</option>
                       </select>
                     </label>
                   </div>
 
                   <div class="edit-post-actions">
                     <button type="button" class="btn-outline" (click)="cancelEditPost()">
-                      Annuler
+                      Cancel
                     </button>
                     <button
                       type="button"
@@ -337,8 +334,8 @@
                       [disabled]="!editPostContent().trim() || !editPostLocation().trim() || isSavingEdit()"
                       (click)="saveEditedPost(post)"
                     >
-                      <span *ngIf="!isSavingEdit()">Enregistrer</span>
-                      <span *ngIf="isSavingEdit()">Enregistrement...</span>
+                      <span *ngIf="!isSavingEdit()">Save</span>
+                      <span *ngIf="isSavingEdit()">Saving…</span>
                     </button>
                   </div>
                 </div>
@@ -350,16 +347,21 @@
                     class="stat-item stat-item--clickable"
                     (click)="toggleLike(post.postId!)"
                     [class.stat-item--liked]="isPostLiked(post.postId!)"
+                    [class.stat-item--like-busy]="togglingLikePostId() === post.postId"
                   >
-                    <span class="stat-icon">{{ isPostLiked(post.postId!) ? '❤️' : '🤍' }}</span>
+                    <span
+                      class="like-heart-emoji"
+                      [attr.aria-label]="isPostLiked(post.postId!) ? 'Unlike' : 'Like'"
+                      role="img"
+                    >{{ isPostLiked(post.postId!) ? '❤️' : '🤍' }}</span>
                     <span
                       class="stat-count"
                       (click)="$event.stopPropagation(); toggleLikersModal(post.postId!)"
-                    >{{ getLikeCount(post.postId!) }} j'aime</span>
+                    >{{ getLikeCount(post.postId!) }} likes</span>
                   </div>
                   <button type="button" class="stat-item stat-item--clickable stat-comment-trigger" (click)="toggleComments(post.postId!)">
-                    <span class="stat-icon">💬</span>
-                    <span>{{ getCommentCount(post.postId!) }} commentaires</span>
+                    <img src="icones/commenter.png" alt="" class="stat-ico stat-ico--comment" width="18" height="18" />
+                    <span>{{ getCommentCount(post.postId!) }} comments</span>
                   </button>
                 </div>
 
@@ -382,7 +384,7 @@
                     type="button"
                     class="stat-action-btn stat-action-btn--bookmark"
                     (click)="toggleSavePost(post.postId!)"
-                    [title]="isPostSaved(post.postId!) ? 'Retirer des sauvegardes' : 'Sauvegarder'"
+                    [title]="isPostSaved(post.postId!) ? 'Remove from saved' : 'Save'"
                     [class.active]="isPostSaved(post.postId!)"
                   >
                     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -394,7 +396,7 @@
 
               <div class="inline-comments-block" *ngIf="isCommentsExpanded(post.postId!)">
                 <p class="empty-thread" *ngIf="commentTreeForPost(post.postId!).length === 0">
-                  Aucun commentaire pour ce post.
+                  No comments on this post yet.
                 </p>
 
                 <ng-container *ngFor="let root of commentTreeForPost(post.postId!); trackBy: trackByComment">
@@ -413,7 +415,7 @@
                   [value]="getPostDraft(post.postId!)"
                   (input)="setPostDraft(post.postId!, $any($event.target).value)"
                   (keydown.enter)="addComment(post.postId!)"
-                  placeholder="Écrire un commentaire..."
+                  placeholder="Write a comment…"
                 />
               </div>
             </div>
@@ -442,7 +444,7 @@
             (click)="openReply(comment.commentId!)"
             [disabled]="activeReplyCommentId() === comment.commentId"
           >
-            Répondre
+            Reply
           </button>
           <button
             type="button"
@@ -450,7 +452,7 @@
             *ngIf="canDeleteComment(comment)"
             (click)="deleteComment(comment.commentId!)"
           >
-            Supprimer
+            Delete
           </button>
         </div>
 
@@ -462,7 +464,7 @@
             rows="2"
             [value]="getReplyDraft(comment.commentId!)"
             (input)="setReplyDraft(comment.commentId!, $any($event.target).value)"
-            placeholder="Votre réponse..."
+            placeholder="Your reply…"
           ></textarea>
           <div class="reply-actions">
             <button
@@ -471,14 +473,14 @@
               (click)="addComment(postId, comment.commentId!)"
               [disabled]="getReplyDraft(comment.commentId!).trim().length === 0"
             >
-              Répondre
+              Reply
             </button>
             <button
               type="button"
               class="btn-outline btn-outline--small"
               (click)="closeReply()"
             >
-              Annuler
+              Cancel
             </button>
           </div>
         </div>

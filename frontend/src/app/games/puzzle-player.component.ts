@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { LudificationService, PuzzleImage, RoadmapNode } from '../core/ludification.service';
-import { AuthService } from '../auth.service';
+import { AuthService } from '../core/auth.service';
 
 /**
  * Puzzle « fragments » : les pièces (0 … n²-1) commencent dans les colonnes latérales,
@@ -92,7 +92,7 @@ export class PuzzlePlayerComponent implements OnInit {
     this.api.canPlayRoadmapNode(nodeId).subscribe({
       next: (res) => {
         if (!res.allowed) {
-          this.loadError.set(res.error ?? 'Cette étape du parcours n’est pas accessible.');
+          this.loadError.set(res.error ?? 'This roadmap step is not available.');
         }
       },
       error: () => {},
@@ -107,10 +107,10 @@ export class PuzzlePlayerComponent implements OnInit {
       return;
     }
     if (!this.auth.currentUser()) {
-      this.roadmapStageHint.set('Connectez-vous pour enregistrer l’étape du parcours à la fin du puzzle.');
+      this.roadmapStageHint.set('Sign in to save the roadmap step when you finish the puzzle.');
       return;
     }
-    this.roadmapStageHint.set('Parcours lié : la validation se fera automatiquement quand l’image sera reconstituée.');
+    this.roadmapStageHint.set('Linked path: progress will save automatically when the image is complete.');
   }
 
   private recordRoadmapProgress(): void {
@@ -131,7 +131,7 @@ export class PuzzlePlayerComponent implements OnInit {
       error: () => {
         this.roadmapSaveFailed.set(true);
         this.roadmapStageHint.set(
-          'Impossible d’enregistrer l’étape (réseau ou étape précédente non terminée). Réessayez depuis le hub.',
+          'Could not save the step (network or previous step not completed). Try again from the hub.',
         );
       },
     });

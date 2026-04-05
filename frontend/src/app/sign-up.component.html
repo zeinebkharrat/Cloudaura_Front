@@ -1,32 +1,32 @@
-<section class="auth-page">
+<section class="auth-page" [class.auth-page--embedded]="embedded">
   <div class="auth-bg-orb auth-bg-orb-left"></div>
   <div class="auth-bg-orb auth-bg-orb-right"></div>
 
-  <article class="auth-card animate-in">
-    <p class="auth-kicker">Tunisia Travel Access</p>
-    <h1>Créer un compte voyageur</h1>
-    <p class="auth-subtitle">Rejoignez la communauté YallaTN+ pour planifier vos aventures en Tunisie.</p>
+  <article class="auth-card auth-card-entrance animate-in">
+    <p class="auth-kicker">YallaTN+ · Traveller access</p>
+    <h1>Create an account</h1>
+    <p class="auth-subtitle">Join the YallaTN+ community to plan your adventures in Tunisia.</p>
 
     <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
       <div class="upload-block upload-block-top">
-        <label class="upload-label">Photo de profil (optionnel)</label>
+        <label class="upload-label">Profile photo (optional)</label>
         <div class="upload-top-layout">
           <div class="upload-preview-shell">
             @if (uploadedImageUrl()) {
-              <img [src]="uploadedImageUrl()!" alt="Aperçu profil" class="preview-image" />
+              <img [src]="uploadedImageUrl()!" alt="Profile preview" class="preview-image" />
             } @else {
               <div class="preview-placeholder">Photo</div>
             }
           </div>
           <div class="upload-actions">
-            <label class="upload-btn" for="signup-upload">{{ isUploadingImage() ? 'Upload...' : 'Uploader une photo' }}</label>
+            <label class="upload-btn" for="signup-upload">{{ isUploadingImage() ? 'Upload...' : 'Upload a photo' }}</label>
             <input id="signup-upload" type="file" accept="image/*" (change)="onImageSelected($event)" [disabled]="isUploadingImage()" />
             @if (isUploadingImage()) {
-              <p class="upload-state">Upload en cours...</p>
+              <p class="upload-state">Uploading…</p>
             } @else if (uploadedImageUrl()) {
-              <p class="upload-state success">Image uploadée avec succès.</p>
+              <p class="upload-state success">Image uploaded successfully.</p>
             } @else {
-              <p class="upload-state">Ajoutez une photo pour personnaliser votre compte.</p>
+              <p class="upload-state">Add a photo to personalize your account.</p>
             }
           </div>
         </div>
@@ -34,40 +34,40 @@
 
       <div class="grid-two">
         <label>
-          Prénom
-          <input type="text" formControlName="firstName" placeholder="Votre prénom" autocomplete="given-name" [class.input-invalid]="controlInvalid('firstName')" />
+          First name
+          <input type="text" formControlName="firstName" placeholder="Your first name" autocomplete="given-name" [class.input-invalid]="controlInvalid('firstName')" />
           @if (controlInvalid('firstName')) {
-            <small class="field-error">Le prénom est obligatoire (min. 2 caractères).</small>
+            <small class="field-error">First name is required (min. 2 characters).</small>
           }
         </label>
 
         <label>
-          Nom
-          <input type="text" formControlName="lastName" placeholder="Votre nom" autocomplete="family-name" [class.input-invalid]="controlInvalid('lastName')" />
+          Last name
+          <input type="text" formControlName="lastName" placeholder="Your last name" autocomplete="family-name" [class.input-invalid]="controlInvalid('lastName')" />
           @if (controlInvalid('lastName')) {
-            <small class="field-error">Le nom est obligatoire (min. 2 caractères).</small>
+            <small class="field-error">Last name is required (min. 2 characters).</small>
           }
         </label>
       </div>
 
       <label>
-        Nom d’utilisateur
-        <input type="text" formControlName="username" placeholder="ex: explorer_sousse" autocomplete="username" [class.input-invalid]="controlInvalid('username')" />
+        Username
+        <input type="text" formControlName="username" placeholder="e.g. explorer_sousse" autocomplete="username" [class.input-invalid]="controlInvalid('username')" />
         @if (controlInvalid('username')) {
-          <small class="field-error">Le nom d'utilisateur est obligatoire (min. 3 caractères).</small>
+          <small class="field-error">Username is required (min. 3 characters).</small>
         }
       </label>
 
       <label>
         Email
-        <input type="email" formControlName="email" placeholder="vous@email.com" autocomplete="email" [class.input-invalid]="controlInvalid('email')" />
+        <input type="email" formControlName="email" placeholder="you@email.com" autocomplete="email" [class.input-invalid]="controlInvalid('email')" />
         @if (controlInvalid('email')) {
-          <small class="field-error">Veuillez saisir un email valide.</small>
+          <small class="field-error">Please enter a valid email address.</small>
         }
       </label>
 
       <label>
-        Numéro téléphone
+        Phone number
         <input type="tel" formControlName="phone" placeholder="+216 22 345 678" autocomplete="tel" [class.input-invalid]="controlInvalid('phone')" />
         @if (controlInvalid('phone')) {
           <small class="field-error">{{ phoneErrorMessage() }}</small>
@@ -76,9 +76,9 @@
 
       <div class="grid-two">
         <label>
-          Nationalite
+          Nationality
           <select formControlName="nationality">
-            <option value="">Choisir une nationalite</option>
+            <option value="">Choose a nationality</option>
             @for (nationality of nationalities(); track nationality) {
               <option [value]="nationality">{{ nationality }}</option>
             }
@@ -87,64 +87,69 @@
 
         @if (showCityField()) {
           <label>
-            Ville (Tunisie)
+            City (Tunisia)
             <select formControlName="cityId" [class.input-invalid]="cityErrorVisible()">
-              <option value="">Choisir une ville</option>
+              <option [ngValue]="null">Choose a city</option>
               @for (city of cities(); track city.id) {
-                <option [value]="city.id">{{ city.name }} ({{ city.region }})</option>
+                <option [ngValue]="city.id">{{ city.name }}@if (city.region) { — {{ city.region }} }</option>
               }
             </select>
             @if (cityErrorVisible()) {
-              <small class="field-error">Veuillez sélectionner une ville en Tunisie.</small>
+              <small class="field-error">Please select a city in Tunisia.</small>
             }
           </label>
         }
       </div>
 
       <label>
-        Mot de passe
-        <input type="password" formControlName="password" placeholder="Minimum 8 caractères" autocomplete="new-password" [class.input-invalid]="controlInvalid('password')" />
+        Password
+        <input type="password" formControlName="password" placeholder="At least 8 characters" autocomplete="new-password" [class.input-invalid]="controlInvalid('password')" />
         @if (controlInvalid('password')) {
-          <small class="field-error">Le mot de passe est obligatoire (min. 8 caractères).</small>
+          <small class="field-error">Password is required (min. 8 characters).</small>
         }
       </label>
 
       <label>
-        Confirmer le mot de passe
-        <input type="password" formControlName="confirmPassword" placeholder="Confirmez votre mot de passe" autocomplete="new-password" [class.input-invalid]="controlInvalid('confirmPassword') || (form.hasError('passwordMismatch') && form.controls.confirmPassword.touched)" />
+        Confirm password
+        <input type="password" formControlName="confirmPassword" placeholder="Confirm your password" autocomplete="new-password" [class.input-invalid]="controlInvalid('confirmPassword') || (form.hasError('passwordMismatch') && form.controls.confirmPassword.touched)" />
         @if (controlInvalid('confirmPassword')) {
-          <small class="field-error">Veuillez confirmer votre mot de passe.</small>
+          <small class="field-error">Please confirm your password.</small>
         }
       </label>
 
-      <section class="captcha-card" aria-label="Captcha anti-bot">
-        <div class="captcha-head">
-          <strong>Vérification sécurité</strong>
-          <button type="button" class="captcha-refresh" (click)="regenerateCaptcha()">Nouveau</button>
+      @if (captchaMisconfigured()) {
+        <div class="auth-error" role="alert">
+          Incomplete reCAPTCHA configuration: the secret key is set but not the site key. Set
+          <code>app.recaptcha.site-key</code>.
         </div>
-        <p class="captcha-question">Résolvez: {{ captchaQuestion() }}</p>
-        <label>
-          Réponse captcha
-          <input type="text" formControlName="captchaAnswer" placeholder="Votre réponse" [class.input-invalid]="controlInvalid('captchaAnswer') || (formError() && formError()?.includes('Captcha'))" />
-          @if (controlInvalid('captchaAnswer')) {
-            <small class="field-error">Veuillez répondre au captcha.</small>
-          }
-        </label>
-      </section>
+      }
+
+      @if (captchaEnabled() && !captchaV3()) {
+        <section class="recaptcha-panel" aria-label="reCAPTCHA">
+          <div class="recaptcha-panel__head">
+            <span class="recaptcha-panel__icon" aria-hidden="true">🛡️</span>
+            <div>
+              <strong>Anti-bot verification</strong>
+              <p class="recaptcha-panel__hint">Google reCAPTCHA v2 — check the box below.</p>
+            </div>
+          </div>
+          <div #recaptchaHost class="recaptcha-host g-recaptcha"></div>
+        </section>
+      }
 
       <div class="artisan-box">
         <label class="artisan-check">
           <input type="checkbox" id="becomeArtisan" formControlName="becomeArtisan" />
           <span class="checkbox-box"></span>
-          <span>Je suis artisan et je souhaite vendre mes produits</span>
+          <span>I am a craftsperson and I want to sell my products</span>
         </label>
         @if (form.controls.becomeArtisan.value) {
-          <p>Votre demande artisan sera examinée par un administrateur avant activation du rôle.</p>
+          <p>Your artisan request will be reviewed by an administrator before the role is activated.</p>
         }
       </div>
 
       @if (form.hasError('passwordMismatch') && form.controls.confirmPassword.touched) {
-        <p class="field-error">Les mots de passe ne correspondent pas.</p>
+        <p class="field-error">Passwords do not match.</p>
       }
 
       @if (formError()) {
@@ -154,13 +159,24 @@
         <div class="auth-success">{{ formSuccess() }}</div>
       }
 
-      <button type="submit" class="auth-submit" [disabled]="isLoading()">
-        {{ isLoading() ? 'Création en cours...' : 'Créer mon compte' }}
+      <button
+        type="submit"
+        class="auth-submit"
+        [disabled]="isLoading() || !captchaConfigReady() || captchaConfigUnavailable()"
+      >
+        {{ isLoading() ? 'Creating account…' : 'Create my account' }}
       </button>
     </form>
 
-    <p class="auth-switch">
-      Déjà inscrit ? <a routerLink="/signin">Se connecter</a>
-    </p>
+    @if (embedded) {
+      <p class="auth-switch">
+        Already have an account?
+        <button type="button" class="inline-link-btn" (click)="switchMode.emit('signin')">Sign in</button>
+      </p>
+    } @else {
+      <p class="auth-switch">
+        Already have an account? <a routerLink="/signin">Sign in</a>
+      </p>
+    }
   </article>
 </section>

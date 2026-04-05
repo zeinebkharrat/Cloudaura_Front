@@ -15,5 +15,6 @@ import java.util.Optional;
 // Remplace Long par Integer ici
 >>>>>>> 399e854c3d54ec9df0c8c53ac355004220cf1236
 public interface CityRepository extends JpaRepository<City, Integer>, JpaSpecificationExecutor<City> {
+    Optional<City> findByName(String name);
 }
 

@@ -106,13 +106,20 @@ public class ImgBbService {
         }
 
         Map<?, ?> data = (Map<?, ?>) payload.get("data");
+        Object nested = data.get("image");
+        if (nested instanceof Map<?, ?> imageMap) {
+            Object iu = imageMap.get("url");
+            if (iu != null && !iu.toString().isBlank()) {
+                return iu.toString().trim();
+            }
+        }
         Object url = data.get("url");
-        if (url == null) {
+        if (url == null || url.toString().isBlank()) {
             url = data.get("display_url");
         }
-        if (url == null) {
+        if (url == null || url.toString().isBlank()) {
             throw new IllegalStateException("URL image absente dans la réponse ImgBB");
         }
-        return url.toString();
+        return url.toString().trim();
     }
 }

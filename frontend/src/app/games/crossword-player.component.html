@@ -4,19 +4,19 @@
       @if (isLoading()) {
         <div class="loader-container">
           <div class="spinner"></div>
-          <p>Préparation de votre grille...</p>
+          <p>Preparing your grid…</p>
         </div>
       } @else if (loadError()) {
         <div class="error-state">
           <div class="error-icon">⚠️</div>
           <p>{{ loadError() }}</p>
-          <button class="btn-primary" (click)="backToHub()">Retour au Hub</button>
+          <button class="btn-primary" (click)="backToHub()">Back to hub</button>
         </div>
       } @else {
         <header class="cw-header">
           <div class="header-left">
-            <button class="btn-back" (click)="backToHub()" title="Quitter le jeu">
-              <span class="icon">←</span> Quitter
+            <button class="btn-back" (click)="backToHub()" title="Leave game">
+              <span class="icon">←</span> Leave
             </button>
             <div class="title-group">
               <h2>{{ crossword()?.title }}</h2>
@@ -41,7 +41,7 @@
                 <span class="icon">▦</span> {{ parsedGrid()?.rows }}x{{ parsedGrid()?.cols }}
               </span>
               <span class="badge">
-                <span class="icon">✎</span> {{ horizontalClues().length + verticalClues().length }} mots
+                <span class="icon">✎</span> {{ horizontalClues().length + verticalClues().length }} words
               </span>
             </div>
           </div>
@@ -77,7 +77,7 @@
                             (input)="onCellInput(r, c, $event)"
                             (keydown)="onKeyDown(r, c, $event)"
                             (focus)="onCellFocus(r, c)"
-                            aria-label="Case mots croisés"
+                            aria-label="Crossword cell"
                           />
                         }
                       </div>
@@ -100,7 +100,7 @@
                         <div class="clue-num-box">#{{ clue.number }}</div>
                         <div class="clue-content">
                           <p class="clue-text">{{ clue.clue }}</p>
-                          <span class="clue-len">{{ clue.length }} lettres</span>
+                          <span class="clue-len">{{ clue.length }} letters</span>
                         </div>
                       </li>
                     }
@@ -120,7 +120,7 @@
                         <div class="clue-num-box">#{{ clue.number }}</div>
                         <div class="clue-content">
                           <p class="clue-text">{{ clue.clue }}</p>
-                          <span class="clue-len">{{ clue.length }} lettres</span>
+                          <span class="clue-len">{{ clue.length }} letters</span>
                         </div>
                       </li>
                     }
@@ -131,7 +131,7 @@
           </div>
         } @else {
           <div class="error-state">
-            <p>Le format de la grille est invalide.</p>
+            <p>Invalid grid format.</p>
           </div>
         }
       }
