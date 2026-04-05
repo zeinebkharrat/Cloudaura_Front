@@ -67,9 +67,6 @@
         </div>
 
         <a class="city-link" [routerLink]="['/city', activity.cityId]">Back to city</a>
-        <p class="success" *ngIf="created">
-          Booking created, status: {{ created.status }}.
-        </p>
       </div>
     </article>
 
@@ -207,7 +204,12 @@
           </div>
         </div>
 
-        <button class="primary-btn" [disabled]="reservationForm.invalid || submitting || loadingAvailability" type="submit">
+        <button
+          class="primary-btn"
+          [disabled]="reservationForm.invalid || submitting || loadingAvailability"
+          type="submit"
+          (mousedown)="releaseFocus()"
+          (touchstart)="releaseFocus()">
           {{ submitting ? 'Sending...' : 'Confirm booking' }}
         </button>
       </form>

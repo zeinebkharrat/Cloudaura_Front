@@ -134,32 +134,6 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(body);
     }
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ApiErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
-        ApiErrorResponse body = new ApiErrorResponse(
-                HttpStatus.BAD_REQUEST.value(),
-                HttpStatus.BAD_REQUEST.getReasonPhrase(),
-                ex.getMessage() != null ? ex.getMessage() : "Invalid request",
-                Instant.now(),
-                Map.of()
-        );
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
-    }
-
-    @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<ApiErrorResponse> handleIllegalState(IllegalStateException ex) {
-        ApiErrorResponse body = new ApiErrorResponse(
-                HttpStatus.BAD_GATEWAY.value(),
-                HttpStatus.BAD_GATEWAY.getReasonPhrase(),
-                ex.getMessage() != null ? ex.getMessage() : "Service externe indisponible",
-                Instant.now(),
-                Map.of()
-        );
-
-        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(body);
-    }
-
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleUnhandled(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

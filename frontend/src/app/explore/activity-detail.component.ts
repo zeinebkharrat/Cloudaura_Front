@@ -2,11 +2,12 @@ import { CommonModule, Location } from '@angular/common';
 import { AfterViewInit, Component, OnDestroy, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import * as L from 'leaflet';
 import Swal from 'sweetalert2';
+import { extractApiErrorMessage } from '../api-error.util';
 import {
   ActivityAvailabilityDay,
-  ActivityReservationResponse,
   Activity,
   ActivityMedia,
   PublicReview,
@@ -34,6 +35,7 @@ interface CalendarDayCell {
 export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly exploreService = inject(ExploreService);
+  private readonly http = inject(HttpClient);
   private readonly location = inject(Location);
 
   activity?: Activity;
@@ -66,7 +68,6 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   };
 
   submitting = false;
-  created?: ActivityReservationResponse;
   showBookingModal = false;
   reviewSummary: ReviewSummary = { averageStars: 0, totalReviews: 0 };
   reviews: PublicReview[] = [];
@@ -246,6 +247,8 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   }
 
   submitReservation(): void {
+    this.blurActiveElement();
+
     if (!this.activity || this.form.numberOfPeople < 1) {
       return;
     }
@@ -253,6 +256,7 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     const selectedAvailability = this.availabilityByDate.get(this.form.reservationDate);
     if (selectedAvailability && selectedAvailability.remainingParticipants != null) {
       if (this.form.numberOfPeople > selectedAvailability.remainingParticipants) {
+        this.blurActiveElement();
         Swal.fire({
           icon: 'warning',
           title: 'Places insuffisantes',
@@ -264,27 +268,36 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     }
 
     this.submitting = true;
-    this.exploreService
-      .reserveActivity(this.activity.activityId, this.form)
+    this.http
+      .post<{ sessionId: string; sessionUrl: string }>(
+        `/api/public/activities/${this.activity.activityId}/reservations/checkout`,
+        this.form
+      )
       .subscribe({
-        next: (res) => {
-          this.created = res;
+        next: (res: { sessionId: string; sessionUrl: string }) => {
           this.submitting = false;
           this.showBookingModal = false;
-          this.loadAvailability();
-          Swal.fire({
-            icon: 'success',
-            title: 'Booking sent',
-            text: 'Your reservation was sent successfully.',
-            confirmButtonColor: '#e63946',
-          });
-        },
-        error: (err) => {
-          this.submitting = false;
+          if (res?.sessionUrl) {
+            this.blurActiveElement();
+            window.location.href = res.sessionUrl;
+            return;
+          }
+
+          this.blurActiveElement();
           Swal.fire({
             icon: 'error',
             title: 'Error',
-            text: err?.error?.message || 'Booking failed.',
+            text: 'Unable to start payment session.',
+            confirmButtonColor: '#e63946',
+          });
+        },
+        error: (err: HttpErrorResponse) => {
+          this.submitting = false;
+          this.blurActiveElement();
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: extractApiErrorMessage(err, 'Booking failed.'),
             confirmButtonColor: '#e63946',
           });
         },
@@ -592,5 +605,16 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  private blurActiveElement(): void {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement) {
+      active.blur();
+    }
+  }
+
+  releaseFocus(): void {
+    this.blurActiveElement();
   }
 }

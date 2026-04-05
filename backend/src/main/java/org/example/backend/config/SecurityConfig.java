@@ -46,6 +46,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/auth/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/public/activities/*/reservations").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/public/activities/*/reservations/checkout").authenticated()
+                        .requestMatchers("/api/public/activity-reservations/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/public/restaurants/*/reviews").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/public/activities/*/reviews").authenticated()
                         .requestMatchers("/api/public/my/**").authenticated()
