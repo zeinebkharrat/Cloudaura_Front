@@ -3,14 +3,15 @@ package org.example.backend.service;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
+import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
-
-import java.io.UnsupportedEncodingException;
-import java.nio.charset.StandardCharsets;
 
 @Service
 public class EmailService {
@@ -77,8 +78,7 @@ public class EmailService {
                 verificationLink,
                 "Link valid for 24 hours.",
                 displayName,
-                preheader
-        );
+                preheader);
         sendEmail(userMailSender, userFromAddress, toEmail, subject, plainText, html);
     }
 
@@ -103,8 +103,7 @@ public class EmailService {
                 resetLink,
                 "Link valid for 30 minutes.",
                 displayName,
-                preheader
-        );
+                preheader);
         sendEmail(userMailSender, userFromAddress, toEmail, subject, plainText, html);
     }
 
@@ -124,8 +123,7 @@ public class EmailService {
                 ordersUrl,
                 "Estimated delivery within 3–5 business days.",
                 "there",
-                preheader
-        );
+                preheader);
         String plain = "Thank you for order #" + orderId + ".\nTotal: " + totalAmount + " TND.\n— Cloudaura";
         sendEmail(shopMailSender, shopFromAddress, toEmail, subject, plain, html);
     }
@@ -149,8 +147,7 @@ public class EmailService {
                 trackUrl,
                 "Thank you for your trust.",
                 "there",
-                preheader
-        );
+                preheader);
         String plain = "Your product " + productName + " " + statusEnglish + ".\n— Cloudaura";
         sendEmail(shopMailSender, shopFromAddress, toEmail, subject, plain, html);
     }
@@ -173,8 +170,7 @@ public class EmailService {
                 shopUrl,
                 "Code valid for 30 days.",
                 displayName,
-                preheader
-        );
+                preheader);
         String plain = "Hi " + displayName + "! Your 5% promo code: " + code + "\n— Cloudaura";
         sendEmail(shopMailSender, shopFromAddress, toEmail, subject, plain, html);
     }
@@ -191,30 +187,32 @@ public class EmailService {
             MimeMessageHelper helper = new MimeMessageHelper(
                     message,
                     MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED,
-                    "UTF-8"
-            );
+                    "UTF-8");
             helper.setFrom(from);
             helper.setTo(toEmail);
             helper.setSubject(subject);
             helper.setText(plainText, htmlText);
             sender.send(message);
         } catch (MessagingException ex) {
-            throw new IllegalStateException("Failed to build or send email message", ex);
+            throw new MailSendException("Failed to build or send email message", ex);
+        } catch (MailException ex) {
+            throw ex;
         }
     }
 
     /**
      * @param bodyContent plain text (escaped) or trusted HTML when bodyIsHtml is true
      */
-    private String buildTravelEmailHtml(String title,
-                                        String heroLine,
-                                        String bodyContent,
-                                        boolean bodyIsHtml,
-                                        String ctaLabel,
-                                        String ctaLink,
-                                        String timeHint,
-                                        String firstName,
-                                        String preheader) {
+    private String buildTravelEmailHtml(
+            String title,
+            String heroLine,
+            String bodyContent,
+            boolean bodyIsHtml,
+            String ctaLabel,
+            String ctaLink,
+            String timeHint,
+            String firstName,
+            String preheader) {
         String safeTitle = escapeHtml(title);
         String safeHeroLine = escapeHtml(heroLine);
         String safeBody = bodyIsHtml ? bodyContent : escapeHtml(bodyContent);
@@ -282,7 +280,19 @@ public class EmailService {
                     </table>
                 </body>
                 </html>
-                """.formatted(safeTitle, safePreheader, safeTitle, safeHeroLine, safeName, safeBody, safeLink, safeCtaLabel, safeHint, safeLink, safeLink);
+                """
+                .formatted(
+                        safeTitle,
+                        safePreheader,
+                        safeTitle,
+                        safeHeroLine,
+                        safeName,
+                        safeBody,
+                        safeLink,
+                        safeCtaLabel,
+                        safeHint,
+                        safeLink,
+                        safeLink);
     }
 
     private String escapeHtml(String value) {

@@ -10,6 +10,8 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface CartItemRepository extends JpaRepository<CartItem, Integer> {
+    void deleteAllByProduct_ProductId(Integer productId);
+
     Optional<CartItem> findByCart_CartIdAndProduct_ProductId(Integer cartId, Integer productId);
 
     @Query("SELECT ci FROM CartItem ci JOIN FETCH ci.product WHERE ci.cart.cartId = :cartId")

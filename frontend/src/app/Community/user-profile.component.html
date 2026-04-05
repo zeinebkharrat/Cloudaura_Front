@@ -1,0 +1,106 @@
+<section class="user-profile-page">
+  <div class="profile-shell" *ngIf="!loading(); else loadingTpl">
+    <div class="error-box" *ngIf="error()">{{ error() }}</div>
+
+    <header class="profile-head" *ngIf="!error()">
+      <button type="button" class="back-btn" (click)="backToCommunity()">Back</button>
+
+      <div class="profile-avatar-wrap">
+        <img *ngIf="profileImageUrl()" [src]="profileImageUrl()!" [alt]="profileName()" class="profile-avatar-img" />
+        <div *ngIf="!profileImageUrl()" class="profile-avatar-fallback">{{ authorInitial() }}</div>
+      </div>
+
+      <h2>{{ profileName() }}</h2>
+      <p *ngIf="profileUsername()"><span>&#64;</span>{{ profileUsername() }}</p>
+
+      <div class="profile-metrics">
+        <div>
+          <strong>{{ userPosts().length + userReposts().length }}</strong>
+          <span>Posts</span>
+        </div>
+        <button type="button" class="metric-btn" (click)="openFollowList('followers')">
+          <strong>{{ followersCount() }}</strong>
+          <span>Followers</span>
+        </button>
+        <button type="button" class="metric-btn" (click)="openFollowList('following')">
+          <strong>{{ followingCount() }}</strong>
+          <span>Following</span>
+        </button>
+        
+        <div>
+          <strong>{{ userReposts().length }}</strong>
+          <span>Reposts</span>
+        </div>
+      </div>
+
+      <button
+        *ngIf="authService.isAuthenticated() && !isOwnProfile()"
+        type="button"
+        class="follow-btn"
+        (click)="toggleFollow()"
+      >
+        {{ following() ? 'Suivi' : '+ Suivre' }}
+      </button>
+    </header>
+
+    <section class="tabs" *ngIf="!error()">
+      <button type="button" [class.active]="activeTab() === 'posts'" (click)="openTab('posts')">Posts</button>
+      <button type="button" [class.active]="activeTab() === 'reposts'" (click)="openTab('reposts')">Reposts</button>
+      <button
+        *ngIf="canSeeSaved()"
+        type="button"
+        [class.active]="activeTab() === 'saved'"
+        (click)="openTab('saved')"
+      >
+        Sauvegardes
+      </button>
+    </section>
+
+    <section class="profile-feed" *ngIf="!error()">
+      <article class="post-card" *ngFor="let post of visiblePosts()">
+        <header class="post-author-row">
+          <div class="author-left">
+            <div class="avatar-sm">{{ displayName(post.author).charAt(0).toUpperCase() }}</div>
+            <div>
+              <button type="button" class="author-link" (click)="goToAuthorProfile(post)">{{ displayName(post.author) }}</button>
+              <small>{{ formatDate(post.createdAt) }}</small>
+            </div>
+          </div>
+        </header>
+
+        <div class="post-content">{{ post.content }}</div>
+
+        <div class="hashtags-row" *ngIf="post.hashtags">{{ post.hashtags }}</div>
+
+        <div class="media-grid" *ngIf="post.postId && getMediaForPost(post.postId).length > 0">
+          <ng-container *ngFor="let m of getMediaForPost(post.postId!)">
+            <img *ngIf="m.fileUrl && m.mediaType !== 'VIDEO'" [src]="m.fileUrl" alt="media" />
+            <video *ngIf="m.fileUrl && m.mediaType === 'VIDEO'" controls [src]="m.fileUrl"></video>
+          </ng-container>
+        </div>
+
+        <section class="repost-block" *ngIf="post.repostOf">
+          <p class="repost-title">Repost de {{ displayName(post.repostOf.author) }}</p>
+          <div class="repost-card">
+            <strong>{{ displayName(post.repostOf.author) }}</strong>
+            <p>{{ post.repostOf.content }}</p>
+            <small>{{ post.repostOf.location }}</small>
+
+            <div class="media-grid" *ngIf="post.repostOf.postId && getMediaForPost(post.repostOf.postId).length > 0">
+              <ng-container *ngFor="let m of getMediaForPost(post.repostOf.postId!)">
+                <img *ngIf="m.fileUrl && m.mediaType !== 'VIDEO'" [src]="m.fileUrl" alt="media" />
+                <video *ngIf="m.fileUrl && m.mediaType === 'VIDEO'" controls [src]="m.fileUrl"></video>
+              </ng-container>
+            </div>
+          </div>
+        </section>
+      </article>
+
+      <div class="empty" *ngIf="visiblePosts().length === 0">Aucune publication dans cet onglet.</div>
+    </section>
+  </div>
+
+  <ng-template #loadingTpl>
+    <div class="loading-box">Loading profile…</div>
+  </ng-template>
+</section>

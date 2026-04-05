@@ -33,51 +33,93 @@
       <div class="block-head">
         <h2>{{ vm.city.name }} restaurants</h2>
       </div>
-      <div class="list-grid">
-        @for (restaurant of vm.restaurants; track restaurant.restaurantId) {
-          <article class="list-card">
-            <img class="list-cover" [src]="restaurant.imageUrl || heroImage()" [alt]="restaurant.name" loading="lazy" />
-            <span class="card-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v8"></path><path d="M12 3v8"></path><path d="M10 11v10"></path><path d="M17 3v18"></path><path d="M17 10c2 0 4-2 4-4V3"></path></svg>
-            </span>
-            <h3>{{ restaurant.name }}</h3>
-            <p class="list-desc">{{ restaurant.description || ('Cuisine: ' + (restaurant.cuisineType || 'Local')) }}</p>
-            <div class="row">
-              <span class="muted">{{ restaurant.cuisineType || 'Local cuisine' }}</span>
-              <a class="btn" [routerLink]="['/restaurants', restaurant.restaurantId]">Details</a>
-            </div>
-          </article>
-        } @empty {
+      @if (vm.restaurants.length === 0) {
           <p class="muted">No restaurants available.</p>
+      } @else {
+        <div class="related-carousel" [class.with-controls]="hasRestaurantCarouselControls()">
+          @if (hasRestaurantCarouselControls()) {
+            <button class="related-nav prev" type="button" (click)="previousRestaurantPage()" aria-label="Previous restaurants">‹</button>
+          }
+
+          <div class="related-viewport">
+            <div class="related-track" [style.transform]="'translateX(-' + (restaurantPageIndex() * 100) + '%)'">
+              @for (page of restaurantPages(); track $index) {
+                <div class="related-page">
+                  <div class="related-grid">
+                    @for (restaurant of page; track restaurant.restaurantId) {
+                      <article class="related-card">
+                        <img [src]="restaurant.imageUrl || heroImage()" [alt]="restaurant.name" loading="lazy" />
+                        <div class="related-content">
+                          <h4>{{ restaurant.name }}</h4>
+                          <p>{{ restaurant.description || ('Cuisine: ' + (restaurant.cuisineType || 'Local')) }}</p>
+                          <div class="related-meta">
+                            <span>{{ restaurant.cuisineType || 'Local cuisine' }}</span>
+                            <span class="rating-badge">
+                              <span class="stars">
+                                @for (state of starStates(restaurantRating(restaurant.restaurantId)); track $index) {
+                                  <span [class.filled]="state === 'full'">★</span>
+                                }
+                              </span>
+                            </span>
+                          </div>
+                          <a class="btn" [routerLink]="['/restaurants', restaurant.restaurantId]">Details</a>
+                        </div>
+                      </article>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
+          @if (hasRestaurantCarouselControls()) {
+            <button class="related-nav next" type="button" (click)="nextRestaurantPage()" aria-label="Next restaurants">›</button>
+          }
+        </div>
+
+        @if (hasRestaurantCarouselControls()) {
+          <div class="related-dots">
+            @for (_page of restaurantPages(); track $index) {
+              <button class="related-dot" type="button" [class.active]="restaurantPageIndex() === $index" (click)="goToRestaurantPage($index)" [attr.aria-label]="'Page ' + ($index + 1)"></button>
+            }
+          </div>
         }
-      </div>
+      }
     </section>
 
     <section id="activities" class="block animate-in delay-3">
       <div class="block-head">
         <h2>{{ vm.city.name }} activities</h2>
       </div>
-      @if (vm.activities.length > 0) {
-        <div class="activities-carousel" [class.with-controls]="hasActivityCarouselControls()">
+      @if (vm.activities.length === 0) {
+        <p class="muted">No activities available.</p>
+      } @else {
+        <div class="related-carousel" [class.with-controls]="hasActivityCarouselControls()">
           @if (hasActivityCarouselControls()) {
-            <button class="carousel-nav prev" type="button" (click)="previousActivityPage()" aria-label="Previous activities">‹</button>
+            <button class="related-nav prev" type="button" (click)="previousActivityPage()" aria-label="Previous activities">‹</button>
           }
 
-          <div class="carousel-viewport">
-            <div class="carousel-track" [style.transform]="'translateX(-' + (activityPageIndex() * 100) + '%)'">
+          <div class="related-viewport">
+            <div class="related-track" [style.transform]="'translateX(-' + (activityPageIndex() * 100) + '%)'">
               @for (page of activityPages(); track $index) {
-                <div class="carousel-page">
-                  <div class="activity-grid-page">
+                <div class="related-page">
+                  <div class="related-grid">
                     @for (activity of page; track activity.activityId) {
-                      <article class="list-card activity-card">
-                        <img class="list-cover" [src]="activityCardImage(activity)" [alt]="activity.name" loading="lazy" />
-                        <span class="card-icon" aria-hidden="true">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="2"></circle></svg>
-                        </span>
-                        <h3>{{ activity.name }}</h3>
-                        <p class="list-desc">{{ activity.description || ('Type: ' + (activity.type || 'Tourist activity')) }}</p>
-                        <div class="row">
-                          <span>Price: {{ activity.price ?? '—' }} DT</span>
+                      <article class="related-card">
+                        <img [src]="activityCardImage(activity)" [alt]="activity.name" loading="lazy" />
+                        <div class="related-content">
+                          <h4>{{ activity.name }}</h4>
+                          <p>{{ activity.description || ('Type: ' + (activity.type || 'Tourist activity')) }}</p>
+                          <div class="related-meta">
+                            <span>{{ activity.type || 'Tourist activity' }}</span>
+                            <span class="rating-badge">
+                              <span class="stars">
+                                @for (state of starStates(activityRating(activity.activityId)); track $index) {
+                                  <span [class.filled]="state === 'full'">★</span>
+                                }
+                              </span>
+                            </span>
+                          </div>
                           <a class="btn" [routerLink]="['/activities', activity.activityId]">Details</a>
                         </div>
                       </article>
@@ -89,25 +131,17 @@
           </div>
 
           @if (hasActivityCarouselControls()) {
-            <button class="carousel-nav next" type="button" (click)="nextActivityPage()" aria-label="Next activities">›</button>
+            <button class="related-nav next" type="button" (click)="nextActivityPage()" aria-label="Next activities">›</button>
           }
         </div>
 
         @if (hasActivityCarouselControls()) {
-          <div class="carousel-dots" role="tablist" aria-label="Activities pages">
+          <div class="related-dots">
             @for (_page of activityPages(); track $index) {
-              <button
-                class="dot"
-                type="button"
-                [class.active]="activityPageIndex() === $index"
-                (click)="goToActivityPage($index)"
-                [attr.aria-label]="'Page ' + ($index + 1)">
-              </button>
+              <button class="related-dot" type="button" [class.active]="activityPageIndex() === $index" (click)="goToActivityPage($index)" [attr.aria-label]="'Page ' + ($index + 1)"></button>
             }
           </div>
         }
-      } @else {
-        <p class="muted">No activities available.</p>
       }
     </section>
   </section>

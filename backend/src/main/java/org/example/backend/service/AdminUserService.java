@@ -46,6 +46,7 @@ public class AdminUserService {
         this.auditService = auditService;
     }
 
+    @Transactional(readOnly = true)
     public List<AdminUserResponse> listUsers(String query) {
         List<User> users;
         if (query == null || query.isBlank()) {
@@ -56,6 +57,7 @@ public class AdminUserService {
         return users.stream().map(this::toAdminUserResponse).toList();
     }
 
+    @Transactional(readOnly = true)
     public AdminUserResponse getUser(Integer userId) {
         User user = getExistingUser(userId);
         return toAdminUserResponse(user);
@@ -143,10 +145,10 @@ public class AdminUserService {
 
         boolean permanent = Boolean.TRUE.equals(request.permanent());
         if (!permanent && request.expiresAt() == null) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, "expiresAt is required for temporary bans");
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "expiresAt is required for temporary bans");
         }
         if (permanent && request.expiresAt() != null) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, "expiresAt must be omitted for permanent bans");
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "expiresAt must be omitted for permanent bans");
         }
 
         Ban previousBan = deactivateActiveBan(user);
@@ -213,7 +215,7 @@ public class AdminUserService {
             return null;
         }
         if (cityId == null) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, "cityId is required for Tunisian users");
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "cityId is required for Tunisian users");
         }
         return cityRepository.findById(cityId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid cityId"));

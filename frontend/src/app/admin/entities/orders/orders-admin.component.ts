@@ -305,7 +305,7 @@ export class OrdersAdminComponent implements OnInit, OnDestroy {
     event?.stopPropagation();
     const confirmation = await Swal.fire({
       title: 'Delete this order?',
-      html: `Order <strong>#${order.orderId}</strong> and its lines will be permanently removed.`,
+      html: `Order <strong>#${order.orderId}</strong> and its line items will be permanently deleted.`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Delete',

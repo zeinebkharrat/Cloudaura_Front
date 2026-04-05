@@ -24,12 +24,13 @@ public class RestaurantController {
     @GetMapping
     public PageResponse<RestaurantResponse> list(
         @RequestParam(required = false) String q,
+        @RequestParam(required = false) String cuisineType,
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "10") int size,
         @RequestParam(defaultValue = "restaurantId,desc") String sort
     ) {
         Pageable pageable = buildPageable(page, size, sort);
-        return PageResponse.from(restaurantService.list(q, pageable));
+        return PageResponse.from(restaurantService.list(q, null, cuisineType, pageable));
     }
 
     @GetMapping("/{id}")

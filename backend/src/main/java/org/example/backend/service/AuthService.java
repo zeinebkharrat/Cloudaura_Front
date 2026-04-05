@@ -1,5 +1,5 @@
 package org.example.backend.service;
-
+import org.springframework.http.HttpStatus;
 import org.example.backend.dto.AuthMessageResponse;
 import org.example.backend.dto.AuthResponse;
 import org.example.backend.dto.ChangePasswordRequest;
@@ -20,7 +20,6 @@ import org.example.backend.repository.RoleRepository;
 import org.example.backend.repository.UserRepository;
 import org.example.backend.repository.VerificationTokenRepository;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.mail.MailException;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -69,9 +68,14 @@ public class AuthService {
     private final VerificationTokenRepository verificationTokenRepository;
     private final EmailService emailService;
     private final AuditService auditService;
+    private final RecaptchaService recaptchaService;
 
     @Value("${app.frontend.base-url:http://localhost:4200}")
     private String frontendBaseUrl;
+
+    /** Si {@code false}, connexion possible sans lien de vérification e-mail (pratique en local ; garder {@code true} en prod). */
+    @Value("${app.auth.require-email-verified-for-signin:true}")
+    private boolean requireEmailVerifiedForSignin;
 
     public AuthService(UserRepository userRepository,
                        RoleRepository roleRepository,
@@ -82,7 +86,8 @@ public class AuthService {
                        CityRepository cityRepository,
                        VerificationTokenRepository verificationTokenRepository,
                        EmailService emailService,
-                       AuditService auditService) {
+                       AuditService auditService,
+                       RecaptchaService recaptchaService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
@@ -93,10 +98,23 @@ public class AuthService {
         this.verificationTokenRepository = verificationTokenRepository;
         this.emailService = emailService;
         this.auditService = auditService;
+        this.recaptchaService = recaptchaService;
     }
 
     @Transactional
     public AuthMessageResponse signup(SignupRequest request) {
+        if (recaptchaService.isEnabled()) {
+            String captchaToken = request.captchaToken();
+            if (captchaToken == null || captchaToken.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Captcha required: wait for the page to finish loading, then try again. In v2 check the box; in v3 the token is sent on submit. Check app.recaptcha.version (v2 or v3), both keys in application.properties, and localhost in the Google console.");
+            }
+            if (!recaptchaService.verifyResponse(captchaToken)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Captcha rejected by Google. Check key type (v2 checkbox vs v3 score), app.recaptcha.version, localhost / 127.0.0.1 domains, and that site key and secret key are not swapped.");
+            }
+        }
+
         if (userRepository.existsByEmailIgnoreCase(request.email())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already in use");
         }
@@ -140,12 +158,22 @@ public class AuthService {
         try {
             emailService.sendVerificationEmail(savedUser.getEmail(), savedUser.getFirstName(), verificationLink);
         } catch (MailException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Email service unavailable. Check SMTP credentials.");
+            return new AuthMessageResponse(
+                    "Account created. Verification email could not be sent (SMTP). "
+                            + "Use “Resend verification link” on the sign-in page once mail is configured."
+            );
         }
 
-        return new AuthMessageResponse("Compte cree. Verifiez votre email avant de vous connecter.");
+        return new AuthMessageResponse(
+                "Account created. Open the email we just sent and click the link to activate your account before signing in."
+        );
     }
 
+    /**
+     * Read-only transaction keeps the persistence context open so {@link #toUserSummary(User)}
+     * can initialize lazy associations ({@code city}, {@code level}) safely.
+     */
+    @Transactional(readOnly = true)
     public AuthResponse signin(LoginRequest request) {
         Optional<User> candidate = findByIdentifier(request.identifier());
         candidate.ifPresent(this::ensureAccountNotLocked);
@@ -174,6 +202,7 @@ public class AuthService {
         return new AuthResponse(token, jwtService.getExpirationMs(), toUserSummary(user));
     }
 
+    @Transactional(readOnly = true)
     public UserSummaryResponse me() {
         return toUserSummary(currentUser());
     }
@@ -276,7 +305,7 @@ public class AuthService {
         verificationToken.setUsedAt(new Date());
         verificationTokenRepository.save(verificationToken);
 
-        return new AuthMessageResponse("Email verifie avec succes. Vous pouvez vous connecter.");
+        return new AuthMessageResponse("Email verified successfully. You can sign in.");
     }
 
     @Transactional
@@ -296,24 +325,40 @@ public class AuthService {
                     }
                 });
 
-        return new AuthMessageResponse("Si cet email existe, un lien de verification a ete envoye.");
+        return new AuthMessageResponse("If that email exists, a verification link has been sent.");
     }
 
     @Transactional
     public AuthMessageResponse forgotPassword(ForgotPasswordRequest request) {
+        if (recaptchaService.isEnabled()) {
+            String captchaToken = request.captchaToken();
+            if (captchaToken == null || captchaToken.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Captcha required: wait for loading, then try again (v2: checkbox; v3: automatic on click).");
+            }
+            if (!recaptchaService.verifyResponse(captchaToken)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Captcha rejected by Google. Check app.recaptcha.version, keys, and domains in the Google console.");
+            }
+        }
+
         String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
         userRepository.findByEmailIgnoreCase(normalizedEmail)
                 .ifPresent(user -> {
+                    if (!"LOCAL".equalsIgnoreCase(user.getAuthProvider())) {
+                        return;
+                    }
                     String token = createToken(user, TOKEN_TYPE_RESET_PASSWORD, RESET_PASSWORD_EXPIRATION_MS);
                     String resetLink = buildFrontendLink("/reset-password", token);
                     try {
                         emailService.sendPasswordResetEmail(user.getEmail(), user.getFirstName(), resetLink);
                     } catch (MailException ex) {
-                        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Email service unavailable. Check SMTP credentials.");
+                        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                                "Could not send email. Check the server SMTP configuration.", ex);
                     }
                 });
 
-        return new AuthMessageResponse("Si cet email existe, un lien de reinitialisation a ete envoye.");
+        return new AuthMessageResponse("If that email matches a local account, a reset link has just been sent.");
     }
 
     @Transactional
@@ -337,7 +382,7 @@ public class AuthService {
         verificationToken.setUsedAt(new Date());
         verificationTokenRepository.save(verificationToken);
 
-        return new AuthMessageResponse("Mot de passe reinitialise avec succes.");
+        return new AuthMessageResponse("Password reset successfully.");
     }
 
     private User createSocialUser(String email, String firstName, String lastName, String provider, String usernameSeed) {
@@ -477,11 +522,7 @@ public class AuthService {
     }
 
     private UserDetails toUserDetails(User user) {
-        return org.springframework.security.core.userdetails.User.builder()
-                .username(user.getUsername())
-                .password(user.getPasswordHash())
-                .authorities(user.getRoles().stream().map(Role::getName).toArray(String[]::new))
-                .build();
+        return new org.example.backend.service.CustomUserDetailsService.CustomUserDetails(user);
     }
 
     private Optional<User> findByIdentifier(String identifier) {
@@ -538,6 +579,9 @@ public class AuthService {
     }
 
     private void ensureEmailVerified(User user) {
+        if (!requireEmailVerifiedForSignin) {
+            return;
+        }
         if (!Boolean.TRUE.equals(user.getEmailVerified())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Email non verifie. Verifiez votre boite mail.");
         }
@@ -576,12 +620,19 @@ public class AuthService {
     }
 
     private City resolveCityForNationality(String nationality, Integer cityId) {
+        // If no nationality specified, don't require city
+        if (nationality == null || nationality.trim().isEmpty()) {
+            return null;
+        }
+        
         boolean tunisian = isTunisiaNationality(nationality);
         if (!tunisian) {
             return null;
         }
+        
+        // For Tunisian users, cityId is required
         if (cityId == null) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, "cityId is required for Tunisian users");
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "cityId is required for Tunisian users");
         }
         return cityRepository.findById(cityId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid cityId"));

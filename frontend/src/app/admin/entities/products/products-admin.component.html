@@ -1,4 +1,4 @@
-<div class="admin-page">
+﻿<div class="admin-page">
   <header class="page-head">
     <div>
       <h1>Product management</h1>
@@ -23,21 +23,21 @@
           type="text"
           [(ngModel)]="q"
           (ngModelChange)="onSearchInputChange()"
-          placeholder="Search product or seller…"
+          placeholder="Search product or sellerâ€¦"
         />
       </div>
       <select [(ngModel)]="sort" (change)="sortChanged()">
         <option value="productId,desc">Newest first</option>
-        <option value="name,asc">Name A → Z</option>
-        <option value="name,desc">Name Z → A</option>
-        <option value="price,asc">Price ↑</option>
-        <option value="price,desc">Price ↓</option>
+        <option value="name,asc">Name A â†’ Z</option>
+        <option value="name,desc">Name Z â†’ A</option>
+        <option value="price,asc">Price low â†’ high</option>
+        <option value="price,desc">Price high â†’ low</option>
       </select>
     </div>
 
     <div class="table-wrap">
       @if (loading) {
-        <p class="empty">Loading…</p>
+        <p class="empty">Loadingâ€¦</p>
       } @else {
         <table>
           <thead>
@@ -58,7 +58,7 @@
                     @if (item.user?.username) {
                       {{ '@' + item.user.username }}
                     } @else {
-                      —
+                      â€”
                     }
                   </div>
                 </td>
@@ -66,11 +66,11 @@
                   @if (item.imageUrl) {
                     <img class="thumb" [src]="resolveImageUrl(item.imageUrl)" alt="" />
                   } @else {
-                    <span class="sub">—</span>
+                    <span class="sub">â€”</span>
                   }
                 </td>
                 <td>{{ formatPrice(item.price) }}</td>
-                <td>{{ item.stock ?? '—' }}</td>
+                <td>{{ item.stock ?? 'â€”' }}</td>
                 <td class="actions">
                   <button
                     type="button"
@@ -140,28 +140,27 @@
       </div>
     </div>
   </section>
-
-  <!-- Modal ajout / édition — même logique visuelle que la fiche Artisanat -->
+  <!-- Modal ajout / Ã©dition â€” mÃªme logique visuelle que la fiche Artisanat -->
   @if (showProductModal) {
     <div class="fp-modal-root">
       <div class="fp-modal-overlay" (click)="onModalOverlayClick($event)">
         <div class="fp-modal-card admin-products-modal-light" (click)="$event.stopPropagation()">
           <header class="fp-modal-head">
             <div class="fp-modal-head__titles">
-              <span class="fp-modal-kicker">{{ editingProductId ? '✏️' : '➕' }}</span>
+              <span class="fp-modal-kicker">{{ editingProductId ? 'âœï¸' : 'âž•' }}</span>
               <div>
                 <h2 id="product-modal-title">{{ editingProductId ? 'Edit product' : 'New product' }}</h2>
                 <p class="fp-modal-sub">Catalog information (same fields as the artisan workspace).</p>
               </div>
             </div>
-            <button type="button" class="fp-modal-close" (click)="closeProductModal()" aria-label="Close">✕</button>
+            <button type="button" class="fp-modal-close" (click)="closeProductModal()" aria-label="Close">âœ•</button>
           </header>
 
           @if (modalError) {
             <div class="alert modal-alert">{{ modalError }}</div>
           }
           @if (uploading) {
-            <p class="empty">Uploading images…</p>
+            <p class="empty">Uploading imagesâ€¦</p>
           }
 
           <div class="fp-modal-body">
@@ -176,7 +175,7 @@
                 name="pdesc"
                 rows="3"
                 class="form-textarea"
-                placeholder="Materials, dimensions, story…"
+                placeholder="Materials, dimensions, storyâ€¦"
               ></textarea>
             </div>
             <div class="form-row-2">
@@ -184,12 +183,12 @@
                 <label class="form-label">Category</label>
                 <select [(ngModel)]="productForm.category" name="pcat" class="form-select">
                   <option value="">Select</option>
-                  <option value="BIJOUX">💎 Bijoux</option>
-                  <option value="TEXTILE">🧵 Textile</option>
-                  <option value="CERAMIQUE">🏺 Céramique</option>
-                  <option value="BOIS">🪵 Bois</option>
-                  <option value="TAPIS">🪬 Tapis</option>
-                  <option value="AUTRE">✦ Autre</option>
+                  <option value="BIJOUX">ðŸ’Ž Bijoux</option>
+                  <option value="TEXTILE">ðŸ§µ Textile</option>
+                  <option value="CERAMIQUE">ðŸº CÃ©ramique</option>
+                  <option value="BOIS">ðŸªµ Bois</option>
+                  <option value="TAPIS">ðŸª¬ Tapis</option>
+                  <option value="AUTRE">âœ¦ Autre</option>
                 </select>
               </div>
               <div class="form-group">
@@ -274,13 +273,13 @@
                   @for (u of existingImageUrls(); track $index) {
                     <div class="admin-photo-tile">
                       <img [src]="u" alt="" />
-                      <button type="button" class="admin-photo-remove" (click)="removeExistingImage($index)" title="Remove">×</button>
+                      <button type="button" class="admin-photo-remove" (click)="removeExistingImage($index)" title="Remove">Ã—</button>
                     </div>
                   }
                   @for (u of pendingPreviewUrls; track $index) {
                     <div class="admin-photo-tile admin-photo-tile--new">
                       <img [src]="u" alt="" />
-                      <button type="button" class="admin-photo-remove" (click)="removePendingImage($index)" title="Remove">×</button>
+                      <button type="button" class="admin-photo-remove" (click)="removePendingImage($index)" title="Remove">Ã—</button>
                     </div>
                   }
                 </div>
@@ -384,7 +383,7 @@
                 <dl class="pd-view-specs">
                   <div class="pd-view-spec">
                     <dt>Seller</dt>
-                    <dd>{{ detailsProduct.user?.username ? '@' + detailsProduct.user.username : '—' }}</dd>
+                    <dd>{{ detailsProduct.user?.username ? '@' + detailsProduct.user.username : 'â€”' }}</dd>
                   </div>
                   <div class="pd-view-spec">
                     <dt>Price</dt>
@@ -392,7 +391,7 @@
                   </div>
                   <div class="pd-view-spec">
                     <dt>Stock</dt>
-                    <dd>{{ detailsProduct.stock ?? '—' }}</dd>
+                    <dd>{{ detailsProduct.stock ?? 'â€”' }}</dd>
                   </div>
                   <div class="pd-view-spec">
                     <dt>Reference</dt>
@@ -408,7 +407,7 @@
                     @for (vv of detailsProduct.variants; track $index) {
                       <li class="pd-view-variant">
                         <span class="pd-view-variant__size">{{ vv.size }}</span>
-                        <span class="pd-view-variant__sep">·</span>
+                        <span class="pd-view-variant__sep">Â·</span>
                         <span class="pd-view-variant__color">{{ vv.color }}</span>
                         <span class="pd-view-variant__stock">Stock {{ vv.stock }}</span>
                       </li>
@@ -423,3 +422,4 @@
     </div>
   }
 </div>
+

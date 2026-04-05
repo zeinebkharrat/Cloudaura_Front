@@ -1,23 +1,23 @@
 <main class="cart-page">
-  <a routerLink="/artisanat" class="back">← Artisanat</a>
+  <a routerLink="/artisanat" class="back">← Crafts</a>
 
   <header class="cart-head">
-    <h1>Mon panier</h1>
-    <p class="lead">Validez votre commande — le récapitulatif affiche vos coordonnées et le détail des articles.</p>
+    <h1>My cart</h1>
+    <p class="lead">Complete your order — the summary shows your details and line items.</p>
   </header>
 
   @if (orderDone()) {
     <section class="order-receipt glass-panel" aria-labelledby="receipt-title">
       <div class="receipt-header">
-        <h2 id="receipt-title">Commande confirmée</h2>
-        <p class="receipt-intro">Merci pour votre achat. Conservez ces informations pour votre suivi.</p>
+        <h2 id="receipt-title">Order confirmed</h2>
+        <p class="receipt-intro">Thank you for your purchase. Keep these details for your records.</p>
       </div>
 
       <div class="receipt-grid">
         <div class="receipt-card">
-          <h3 class="receipt-card__title">Référence</h3>
+          <h3 class="receipt-card__title">Reference</h3>
           <p class="receipt-card__row">
-            <span class="label">N° commande</span>
+            <span class="label">Order no.</span>
             <strong>#{{ orderDone()!.orderId }}</strong>
           </p>
           <p class="receipt-card__row">
@@ -25,7 +25,7 @@
             <span>{{ formatOrderedAt(orderDone()!.orderedAt) }}</span>
           </p>
           <p class="receipt-card__row">
-            <span class="label">Statut</span>
+            <span class="label">Status</span>
             <span class="status-pill">{{ orderStatusLabel(orderDone()!.status) }}</span>
           </p>
           <p class="receipt-card__row">
@@ -37,45 +37,45 @@
             <span>7,00 TND</span>
           </p>
           <p class="receipt-card__row receipt-card__row--total">
-            <span class="label">Total TTC</span>
+            <span class="label">Total (incl. tax)</span>
             <strong>{{ formatPrice(orderDone()!.totalAmount) }}</strong>
           </p>
         </div>
 
         <div class="receipt-card">
-          <h3 class="receipt-card__title">Coordonnées (compte)</h3>
+          <h3 class="receipt-card__title">Contact (account)</h3>
           @if (orderDone()!.buyer) {
             <p class="receipt-card__row">
-              <span class="label">Nom</span>
+              <span class="label">Name</span>
               <span>{{ buyerDisplayName(orderDone()!.buyer) }}</span>
             </p>
             <p class="receipt-card__row">
-              <span class="label">E-mail</span>
+              <span class="label">Email</span>
               <span>{{ orderDone()!.buyer!.email }}</span>
             </p>
             <p class="receipt-card__row">
-              <span class="label">Téléphone</span>
+              <span class="label">Phone</span>
               <span>{{ orderDone()!.buyer!.phone || '—' }}</span>
             </p>
             <p class="receipt-card__row">
-              <span class="label">Identifiant</span>
+              <span class="label">Username</span>
               <span>{{ '@' + orderDone()!.buyer!.username }}</span>
             </p>
           } @else {
-            <p class="receipt-muted">Coordonnées non disponibles.</p>
+            <p class="receipt-muted">Contact details not available.</p>
           }
         </div>
       </div>
 
       <div class="receipt-lines-wrap">
-        <h3 class="receipt-lines-title">Détail de la commande</h3>
+        <h3 class="receipt-lines-title">Order details</h3>
         <table class="receipt-table">
           <thead>
             <tr>
-              <th>Article</th>
-              <th class="num">Qté</th>
-              <th class="num">Prix unit.</th>
-              <th class="num">Sous-total</th>
+              <th>Item</th>
+              <th class="num">Qty</th>
+              <th class="num">Unit price</th>
+              <th class="num">Subtotal</th>
             </tr>
           </thead>
           <tbody>
@@ -103,30 +103,30 @@
       </div>
 
       <div class="receipt-actions">
-        <a routerLink="/artisanat" class="btn primary">Continuer les achats</a>
-        <button type="button" class="btn ghost" (click)="clearReceipt()">Fermer le reçu</button>
+        <a routerLink="/artisanat" class="btn primary">Continue shopping</a>
+        <button type="button" class="btn ghost" (click)="clearReceipt()">Close receipt</button>
       </div>
     </section>
   } @else {
     @if (loading()) {
       <div class="loading glass-panel">
         <div class="loading-spinner"></div>
-        <p>Chargement de votre panier...</p>
+        <p>Loading your cart…</p>
       </div>
     } @else if (error()) {
       <div class="error glass-panel">
         <div class="error-icon">⚠️</div>
         <p class="error-message">{{ error() }}</p>
-        <button type="button" class="btn ghost" (click)="load()">Réessayer</button>
+        <button type="button" class="btn ghost" (click)="load()">Try again</button>
       </div>
     } @else if (cart() && cart()!.items.length === 0) {
       <div class="empty glass-panel">
         <div class="empty-icon">🛒</div>
-        <h2 class="empty-title">Votre panier est vide</h2>
-        <p class="empty-description">Découvrez nos produits artisanaux tunisiens et remplissez votre panier</p>
+        <h2 class="empty-title">Your cart is empty</h2>
+        <p class="empty-description">Browse Tunisian crafts and add items to your cart</p>
         <div class="empty-actions">
-          <a routerLink="/artisanat" class="btn primary large">Voir les produits</a>
-          <a routerLink="/destinations" class="btn ghost large">Explorer les destinations</a>
+          <a routerLink="/artisanat" class="btn primary large">View products</a>
+          <a routerLink="/destinations" class="btn ghost large">Explore destinations</a>
         </div>
       </div>
     } @else if (cart()) {
@@ -137,7 +137,7 @@
               @if (line.imageUrl) {
                 <img [src]="imageSrc(line.imageUrl)" [alt]="line.name" />
               } @else {
-                <div class="ph">Produit</div>
+                <div class="ph">Product</div>
               }
             </div>
             <div class="line-body">
@@ -154,7 +154,7 @@
                     class="qty-btn"
                     [disabled]="qtyUpdatingId() === line.cartItemId"
                     (click)="changeQty(line, -1)"
-                    aria-label="Diminuer"
+                    aria-label="Decrease"
                   >
                     −
                   </button>
@@ -164,7 +164,7 @@
                     class="qty-btn"
                     [disabled]="qtyUpdatingId() === line.cartItemId || line.quantity >= maxStock(line)"
                     (click)="changeQty(line, 1)"
-                    aria-label="Augmenter"
+                    aria-label="Increase"
                   >
                     +
                   </button>
@@ -174,10 +174,10 @@
                 </span>
               </div>
               @if (line.stock != null) {
-                <p class="stock-hint">Stock disponible : {{ line.stock }}</p>
+                <p class="stock-hint">In stock: {{ line.stock }}</p>
               }
             </div>
-            <button type="button" class="btn danger ghost" (click)="remove(line)">Retirer</button>
+            <button type="button" class="btn danger ghost" (click)="remove(line)">Remove</button>
           </li>
         }
       </ul>
@@ -233,7 +233,7 @@
           (click)="checkout()"
         >
           @if (checkoutLoading()) {
-            Commande…
+            Placing order…
           } @else {
             {{ paymentMethod() === 'CARD' ? 'Procéder au paiement' : 'Confirmer la commande' }}
           }

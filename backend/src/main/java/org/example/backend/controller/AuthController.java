@@ -3,6 +3,7 @@ package org.example.backend.controller;
 import jakarta.validation.Valid;
 import org.example.backend.dto.AuthMessageResponse;
 import org.example.backend.dto.AuthResponse;
+import org.example.backend.dto.CaptchaConfigResponse;
 import org.example.backend.dto.ForgotPasswordRequest;
 import org.example.backend.dto.LoginRequest;
 import org.example.backend.dto.ResendVerificationRequest;
@@ -11,6 +12,7 @@ import org.example.backend.dto.SignupRequest;
 import org.example.backend.dto.SocialProvidersResponse;
 import org.example.backend.dto.UserSummaryResponse;
 import org.example.backend.service.AuthService;
+import org.example.backend.service.RecaptchaService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,6 +28,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final RecaptchaService recaptchaService;
+
+    @Value("${app.recaptcha.site-key:}")
+    private String recaptchaSiteKey;
+
+    /** {@code v2} = checkbox widget · {@code v3} = score-based (grecaptcha.execute). Must match your keys in Google Admin. */
+    @Value("${app.recaptcha.version:v2}")
+    private String recaptchaVersion;
 
     @Value("${app.oauth2.google-client-id}")
     private String googleClientId;
@@ -51,8 +61,20 @@ public class AuthController {
     @Value("${app.oauth2.instagram-client-secret}")
     private String instagramClientSecret;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, RecaptchaService recaptchaService) {
         this.authService = authService;
+        this.recaptchaService = recaptchaService;
+    }
+
+    @GetMapping("/captcha-config")
+    public CaptchaConfigResponse captchaConfig() {
+        boolean secretOn = recaptchaService.hasSecret();
+        String key = recaptchaSiteKey == null ? "" : recaptchaSiteKey.trim();
+        boolean missingSiteKey = secretOn && key.isEmpty();
+        boolean widgetEnabled = recaptchaService.isEnabled();
+        String ver = recaptchaVersion == null ? "" : recaptchaVersion.trim().toLowerCase();
+        String version = "v3".equals(ver) ? "v3" : "v2";
+        return new CaptchaConfigResponse(widgetEnabled, key, missingSiteKey, version);
     }
 
     @PostMapping("/signup")

@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { API_BASE_URL } from '../core/api-url';
-import { AuthService } from '../auth.service';
+import { AuthService } from '../core/auth.service';
 import { ShopService } from '../core/shop.service';
 import { CatalogProduct } from '../feature-page.component';
 

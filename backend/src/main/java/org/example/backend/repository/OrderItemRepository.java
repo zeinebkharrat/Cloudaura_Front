@@ -13,7 +13,11 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Integer> {
 
     void deleteByOrder_OrderId(Integer orderId);
 
-    @Query("SELECT oi FROM OrderItem oi JOIN FETCH oi.product WHERE oi.order.orderId = :orderId")
+    void deleteAllByProduct_ProductId(Integer productId);
+
+    @Query(
+            "SELECT oi FROM OrderItem oi JOIN FETCH oi.product LEFT JOIN FETCH oi.variant "
+                    + "WHERE oi.order.orderId = :orderId")
     List<OrderItem> findByOrderIdWithProduct(@Param("orderId") Integer orderId);
 
     @Query(

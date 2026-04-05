@@ -1,0 +1,64 @@
+<div class="ludo-page">
+  <div class="ludo-card">
+    <header class="ludo-header">
+      <button class="btn ghost" (click)="back()">⟵ Back</button>
+      <h2>Tunisian Ludo Tour</h2>
+      <button class="btn" (click)="reset()">Reset</button>
+    </header>
+
+    <div class="hud">
+      <div class="player-info">
+        <span>Turn: <strong [style.color]="players[turn()].color">{{ players[turn()].name }}</strong></span>
+      </div>
+      <div class="dice-info">
+        <span>Dice: <strong>{{ dice() }}</strong></span>
+      </div>
+    </div>
+
+    <div class="game-layout">
+      <!-- Ludo Board Rendering -->
+      <div class="board-container">
+        <!-- Grid Cells (Still needed for the board structure/bg) -->
+        @for (row of [].constructor(15); track $index; let r = $index) {
+          @for (col of [].constructor(15); track $index; let c = $index) {
+            <div class="cell"></div>
+          }
+        }
+
+        <!-- Tokens Layer (Absolute Positioning) -->
+        @for (t of tokens(); track (t.playerIdx + '-' + t.tokenIdx)) {
+          @if (!t.isFinished) {
+            <div class="token" 
+                 [class.green]="t.playerIdx === 0" 
+                 [class.blue]="t.playerIdx === 1" 
+                 [class.yellow]="t.playerIdx === 2" 
+                 [class.red]="t.playerIdx === 3"
+                 [class.selectable]="canMove() && t.playerIdx === 0 && isValidMove(t, dice())"
+                 [style.top.px]="getTokenCoords(t).r * 40 + (t.tokenIdx * 2 - 2)"
+                 [style.left.px]="getTokenCoords(t).c * 40 + (t.tokenIdx * 2 - 2)"
+                 [style.z-index]="t.playerIdx === turn() ? 50 : 10"
+                 (click)="onTokenClick(t)">
+            </div>
+          }
+        }
+      </div>
+    </div>
+
+    <div class="event-container">
+      <p class="event">{{ eventMessage() }}</p>
+    </div>
+
+    <div class="controls">
+      @if (!finished()) {
+        <button class="btn roll" [disabled]="turn() !== 0 || rolling() || canMove()" (click)="$event.stopPropagation(); roll()">
+          Roll dice
+        </button>
+      } @else {
+        <div class="win-banner">
+          <p class="win">🏆 {{ finished() }} won the Grand Tour!</p>
+          <button class="btn" (click)="reset()">Rejouer</button>
+        </div>
+      }
+    </div>
+  </div>
+</div>

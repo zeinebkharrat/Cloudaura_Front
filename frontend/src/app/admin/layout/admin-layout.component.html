@@ -15,21 +15,59 @@
     </div>
 
     <nav class="sb-nav">
-      @for (item of nav; track item.route) {
-        <a [routerLink]="item.route" routerLinkActive="active"
-           [routerLinkActiveOptions]="{exact: item.route === '/admin'}"
-           class="sb-item" [id]="'nav-' + item.icon">
-          <span class="sb-icon">{{ item.icon }}</span>
-          @if (open()) { <span class="sb-lbl">{{ item.label }}</span> }
-        </a>
-      }
-    </nav>
+  @for (item of nav; track item.route) {
+
+    @if (item.label === 'Events') {
+      <div class="sb-item-container">
+        <div class="sb-item" (click)="toggleEventsMenu()" style="cursor: pointer;">
+          @if (item.iconImg) {
+            <img class="sb-icon-img" [src]="item.iconImg" alt="" width="22" height="22" />
+          } @else if (item.iconClass) {
+            <i class="sb-icon-pi" [class]="item.iconClass"></i>
+          }
+          @if (open()) {
+            <span class="sb-lbl">{{ item.label }}</span>
+            <span [style.transform]="isEventsMenuOpen ? 'rotate(180deg)' : 'rotate(0)'"
+                  style="transition: 0.3s; margin-left: auto; font-size: 0.7rem;">▼</span>
+          }
+        </div>
+
+        @if (isEventsMenuOpen && open()) {
+          <div class="sub-menu" style="display: flex; flex-direction: column; padding-left: 35px; gap: 8px; margin-top: 5px; margin-bottom: 10px;">
+            <a routerLink="/admin/events/dashboard" routerLinkActive="active-sub"
+               style="text-decoration: none; color: #94a3b8; font-size: 0.85rem; display: flex; align-items: center; gap: 8px;">
+              <img src="icones/dashboard.png" alt="" width="18" height="18" class="sub-menu-icon" /> Dashboard
+            </a>
+            <a routerLink="/admin/events/calendar" routerLinkActive="active-sub"
+               style="text-decoration: none; color: #94a3b8; font-size: 0.85rem; display: flex; align-items: center; gap: 8px;">
+              <i class="pi pi-calendar sub-menu-pi"></i> Calendar
+            </a>
+          </div>
+        }
+      </div>
+    }
+
+    @else {
+      <a [routerLink]="item.route" routerLinkActive="active"
+         [routerLinkActiveOptions]="{exact: item.route === '/admin'}"
+         class="sb-item" [id]="navDomId(item)">
+        @if (item.iconImg) {
+          <img class="sb-icon-img" [src]="item.iconImg" alt="" width="22" height="22" />
+        } @else if (item.iconClass) {
+          <i class="sb-icon-pi" [class]="item.iconClass"></i>
+        }
+        @if (open()) { <span class="sb-lbl">{{ item.label }}</span> }
+      </a>
+    }
+
+  }
+</nav>
 
     @if (open()) {
       <div class="sb-foot">
         <button type="button" class="sb-user" (click)="openProfile()" id="admin-profile-btn">
           @if (user()?.profileImageUrl) {
-            <img class="sb-av-img" [src]="user()!.profileImageUrl!" alt="Photo profil admin" />
+            <img class="sb-av-img" [src]="user()!.profileImageUrl!" alt="Admin profile photo" />
           } @else {
             <div class="sb-av">{{ user()?.username?.charAt(0)?.toUpperCase() }}</div>
           }
@@ -39,7 +77,8 @@
           </div>
         </button>
         <button class="logout-btn" (click)="logout()" id="admin-logout-btn">
-          🚪 Déconnexion
+          <img src="icones/se-deconnecter.png" alt="" class="logout-icon-img" width="20" height="20" />
+          Sign out
         </button>
       </div>
     }

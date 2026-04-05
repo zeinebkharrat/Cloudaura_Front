@@ -5,12 +5,24 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import * as L from 'leaflet';
 import Swal from 'sweetalert2';
 import {
+  ActivityAvailabilityDay,
   ActivityReservationResponse,
   Activity,
   ActivityMedia,
+  PublicReview,
+  ReviewSummary,
   CreateActivityReservationRequest,
 } from './explore.models';
 import { ExploreService } from './explore.service';
+
+interface CalendarDayCell {
+  dateIso: string;
+  dayNumber: number;
+  inCurrentMonth: boolean;
+  available: boolean;
+  selectable: boolean;
+  remainingParticipants: number | null;
+}
 
 @Component({
   selector: 'app-activity-detail',
@@ -38,6 +50,15 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   private viewReady = false;
   private sliderTimer: ReturnType<typeof setInterval> | null = null;
   private animationResetTimer: ReturnType<typeof setTimeout> | null = null;
+  private availabilityDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+  loadingAvailability = false;
+  availabilityDays: ActivityAvailabilityDay[] = [];
+  availabilityByDate = new Map<string, ActivityAvailabilityDay>();
+  calendarDays: CalendarDayCell[] = [];
+  calendarMonth = this.startOfMonth(new Date());
+  weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  showOnlyAvailable = false;
 
   form: CreateActivityReservationRequest = {
     reservationDate: new Date().toISOString().slice(0, 10),
@@ -47,6 +68,13 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   submitting = false;
   created?: ActivityReservationResponse;
   showBookingModal = false;
+  reviewSummary: ReviewSummary = { averageStars: 0, totalReviews: 0 };
+  reviews: PublicReview[] = [];
+  reviewSubmitting = false;
+  reviewForm = {
+    stars: 5,
+    commentText: '',
+  };
 
   ngAfterViewInit(): void {
     this.viewReady = true;
@@ -61,6 +89,9 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
       next: (res) => {
         this.activity = res;
         this.loadActivityMedia(res.activityId);
+        this.loadReviewSummary();
+        this.loadReviews();
+        this.loadAvailability();
         this.loading = false;
         setTimeout(() => this.tryInitMap(), 80);
       },
@@ -76,6 +107,10 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     if (this.animationResetTimer) {
       clearTimeout(this.animationResetTimer);
       this.animationResetTimer = null;
+    }
+    if (this.availabilityDebounceTimer) {
+      clearTimeout(this.availabilityDebounceTimer);
+      this.availabilityDebounceTimer = null;
     }
     if (this.map) {
       this.map.remove();
@@ -215,6 +250,19 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
       return;
     }
 
+    const selectedAvailability = this.availabilityByDate.get(this.form.reservationDate);
+    if (selectedAvailability && selectedAvailability.remainingParticipants != null) {
+      if (this.form.numberOfPeople > selectedAvailability.remainingParticipants) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Places insuffisantes',
+          text: `Il reste ${selectedAvailability.remainingParticipants} place(s) pour cette date.`,
+          confirmButtonColor: '#e63946',
+        });
+        return;
+      }
+    }
+
     this.submitting = true;
     this.exploreService
       .reserveActivity(this.activity.activityId, this.form)
@@ -223,10 +271,11 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
           this.created = res;
           this.submitting = false;
           this.showBookingModal = false;
+          this.loadAvailability();
           Swal.fire({
             icon: 'success',
             title: 'Booking sent',
-            text: `Reference #${res.reservationId}`,
+            text: 'Your reservation was sent successfully.',
             confirmButtonColor: '#e63946',
           });
         },
@@ -244,6 +293,7 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
 
   openBookingModal(): void {
     this.showBookingModal = true;
+    this.loadAvailability();
   }
 
   closeBookingModal(): void {
@@ -255,6 +305,56 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
 
   goBack(): void {
     this.location.back();
+  }
+
+  ratingValue(): number {
+    return this.reviewSummary.averageStars || 0;
+  }
+
+  starStates(value: number): Array<'full' | 'empty'> {
+    return Array.from({ length: 5 }, (_, index) => (value >= index + 1 ? 'full' : 'empty'));
+  }
+
+  setReviewStars(stars: number): void {
+    this.reviewForm.stars = stars;
+  }
+
+  submitReview(): void {
+    if (!this.activity || !this.reviewForm.commentText.trim()) {
+      return;
+    }
+
+    this.reviewSubmitting = true;
+    this.exploreService.createOrUpdateActivityReview(this.activity.activityId, {
+      stars: this.reviewForm.stars,
+      commentText: this.reviewForm.commentText.trim(),
+    }).subscribe({
+      next: () => {
+        this.reviewSubmitting = false;
+        this.reviewForm = { stars: 5, commentText: '' };
+        this.loadReviewSummary();
+        this.loadReviews();
+      },
+      error: (err) => {
+        this.reviewSubmitting = false;
+        if (err?.status === 401) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Sign in required',
+            text: 'Please sign in to post a comment.',
+            confirmButtonColor: '#e63946',
+          });
+          return;
+        }
+
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: err?.error?.message || 'Unable to publish comment.',
+          confirmButtonColor: '#e63946',
+        });
+      },
+    });
   }
 
   openDirectionsFromCurrentPosition(): void {
@@ -283,6 +383,35 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
         window.open(fallback, '_blank');
       }
     );
+  }
+
+  private loadReviewSummary(): void {
+    if (!this.activity) {
+      return;
+    }
+    this.exploreService.getActivityReviewSummary(this.activity.activityId).subscribe({
+      next: (summary) => {
+        this.reviewSummary = summary;
+      },
+      error: () => {
+        this.reviewSummary = { averageStars: 0, totalReviews: 0 };
+      },
+    });
+  }
+
+  private loadReviews(): void {
+    if (!this.activity) {
+      return;
+    }
+    this.exploreService.listActivityReviews(this.activity.activityId, 0, 6).subscribe({
+      next: (payload) => {
+        this.reviewSummary = payload.summary;
+        this.reviews = payload.reviews.content;
+      },
+      error: () => {
+        this.reviews = [];
+      },
+    });
   }
 
   private startAutoSlide(): void {
@@ -318,5 +447,150 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
         this.heroAnimating = false;
       }, 430);
     });
+  }
+
+  onParticipantsChanged(): void {
+    if (this.form.numberOfPeople < 1) {
+      this.form.numberOfPeople = 1;
+    }
+
+    if (this.availabilityDebounceTimer) {
+      clearTimeout(this.availabilityDebounceTimer);
+    }
+    this.availabilityDebounceTimer = setTimeout(() => this.loadAvailability(), 220);
+  }
+
+  previousMonth(): void {
+    this.calendarMonth = new Date(this.calendarMonth.getFullYear(), this.calendarMonth.getMonth() - 1, 1);
+    this.loadAvailability();
+  }
+
+  nextMonth(): void {
+    this.calendarMonth = new Date(this.calendarMonth.getFullYear(), this.calendarMonth.getMonth() + 1, 1);
+    this.loadAvailability();
+  }
+
+  selectDate(cell: CalendarDayCell): void {
+    if (!cell.selectable) {
+      return;
+    }
+    this.form.reservationDate = cell.dateIso;
+  }
+
+  isSelectedDate(dateIso: string): boolean {
+    return this.form.reservationDate === dateIso;
+  }
+
+  monthLabel(): string {
+    return this.calendarMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  }
+
+  totalPrice(): number {
+    const unitPrice = this.activity?.price ?? 0;
+    return unitPrice * Math.max(1, this.form.numberOfPeople || 1);
+  }
+
+  selectedRemainingPlaces(): string {
+    const availability = this.availabilityByDate.get(this.form.reservationDate);
+    if (!availability) {
+      return '—';
+    }
+    if (availability.remainingParticipants == null) {
+      return 'Unlimited';
+    }
+    return String(availability.remainingParticipants);
+  }
+
+  private loadAvailability(): void {
+    if (!this.activity) {
+      return;
+    }
+
+    const from = this.toIsoDate(this.calendarMonth);
+    const days = 62;
+    const participants = Math.max(1, this.form.numberOfPeople || 1);
+
+    this.loadingAvailability = true;
+    this.exploreService.getActivityAvailability(this.activity.activityId, from, days, participants).subscribe({
+      next: (daysAvailability) => {
+        this.availabilityDays = daysAvailability;
+        this.availabilityByDate = new Map(daysAvailability.map((day) => [day.date, day]));
+        this.buildCalendar();
+        this.loadingAvailability = false;
+      },
+      error: () => {
+        this.availabilityDays = [];
+        this.availabilityByDate = new Map();
+        this.buildCalendar();
+        this.loadingAvailability = false;
+      },
+    });
+  }
+
+  buildCalendar(): void {
+    const start = this.startOfMonth(this.calendarMonth);
+    const end = this.endOfMonth(this.calendarMonth);
+    const firstWeekday = start.getDay();
+    const totalDays = end.getDate();
+
+    const cells: CalendarDayCell[] = [];
+    for (let index = 0; index < firstWeekday; index++) {
+      const date = new Date(start.getFullYear(), start.getMonth(), 1 - (firstWeekday - index));
+      cells.push(this.makeCell(date, false));
+    }
+
+    for (let day = 1; day <= totalDays; day++) {
+      const date = new Date(start.getFullYear(), start.getMonth(), day);
+      cells.push(this.makeCell(date, true));
+    }
+
+    while (cells.length % 7 !== 0) {
+      const day = cells.length - (firstWeekday + totalDays) + 1;
+      const date = new Date(start.getFullYear(), start.getMonth() + 1, day);
+      cells.push(this.makeCell(date, false));
+    }
+
+    this.calendarDays = cells;
+
+    const currentSelection = this.availabilityByDate.get(this.form.reservationDate);
+    if (!currentSelection?.available) {
+      const firstAvailable = cells.find((cell) => cell.inCurrentMonth && cell.selectable);
+      if (firstAvailable) {
+        this.form.reservationDate = firstAvailable.dateIso;
+      }
+    }
+  }
+
+  private makeCell(date: Date, inCurrentMonth: boolean): CalendarDayCell {
+    const dateIso = this.toIsoDate(date);
+    const availability = this.availabilityByDate.get(dateIso);
+    const todayIso = this.toIsoDate(new Date());
+    const isPast = dateIso < todayIso;
+    const available = availability ? availability.available : !isPast;
+    const selectable = inCurrentMonth && available;
+
+    return {
+      dateIso,
+      dayNumber: date.getDate(),
+      inCurrentMonth,
+      available,
+      selectable,
+      remainingParticipants: availability?.remainingParticipants ?? null,
+    };
+  }
+
+  private startOfMonth(date: Date): Date {
+    return new Date(date.getFullYear(), date.getMonth(), 1);
+  }
+
+  private endOfMonth(date: Date): Date {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0);
+  }
+
+  private toIsoDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 }

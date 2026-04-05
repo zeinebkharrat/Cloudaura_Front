@@ -20,6 +20,7 @@ import org.example.backend.repository.CityMediaRepository;
 import org.example.backend.repository.CityRepository;
 import org.example.backend.repository.RestaurantRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.text.Normalizer;
 import java.util.Comparator;
@@ -67,6 +68,15 @@ public class PublicExploreService {
         return new CityResolveResponse(toCityResponse(best), false);
     }
 
+    /** Liste toutes les villes (catalogue public, ex. {@code GET /api/public/cities/all}). */
+    @Transactional(readOnly = true)
+    public List<CityResponse> listAllCities() {
+        return cityRepository.findAll().stream()
+                .map(this::toCityResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public PublicCityDetailsResponse getCityDetails(Integer cityId) {
         City city = cityRepository.findById(cityId)
             .orElseThrow(() -> new ResourceNotFoundException("Ville introuvable: " + cityId));
@@ -89,6 +99,7 @@ public class PublicExploreService {
         return new PublicCityDetailsResponse(toCityResponse(city), media, restaurants, activities);
     }
 
+    @Transactional(readOnly = true)
     public List<ActivityMediaResponse> getActivityMedia(Integer activityId) {
         Activity activity = activityRepository.findById(activityId)
             .orElseThrow(() -> new ResourceNotFoundException("Activité introuvable: " + activityId));
@@ -183,7 +194,9 @@ public class PublicExploreService {
             activity.getAddress(),
             activity.getLatitude(),
             activity.getLongitude(),
-            imageUrl
+            imageUrl,
+            activity.getMaxParticipantsPerDay(),
+            activity.getMaxParticipantsStartDate()
         );
     }
 

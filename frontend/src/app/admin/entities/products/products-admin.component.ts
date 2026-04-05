@@ -4,7 +4,7 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
 import Swal from 'sweetalert2';
-import { AuthService } from '../../../auth.service';
+import { AuthService } from '../../../core/auth.service';
 import { API_BASE_URL } from '../../../core/api-url';
 
 @Component({
@@ -385,7 +385,7 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
   async remove(item: any): Promise<void> {
     const confirmation = await Swal.fire({
       title: 'Delete this product?',
-      text: `${item.name ?? 'This product'} will be permanently removed.`,
+      text: `${item.name ?? 'This product'} will be permanently deleted.`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonText: 'Delete',
@@ -526,7 +526,7 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
           });
         },
         error: () => {
-          this.modalError = 'Update failed.';
+          this.modalError = 'Could not update product.';
         },
       });
       return;

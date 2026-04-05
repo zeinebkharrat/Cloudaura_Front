@@ -1,22 +1,31 @@
 import { Routes } from '@angular/router';
 import { HomeComponent } from './home.component';
+import { DestinationMapComponent } from './destination-map.component';
 import { VirtualTourPageComponent } from './virtual-tour-page.component';
 import { FeaturePageComponent } from './feature-page.component';
+import { CommunityComponent } from './Community/community.component';
+import { MyPostsComponent } from './Community/my-posts.component';
+import { UserProfileComponent } from './Community/user-profile.component';
+import { FollowListComponent } from './Community/follow-list.component';
 import { SignInComponent } from './sign-in.component';
 import { SignUpComponent } from './sign-up.component';
 import { ForgotPasswordComponent } from './forgot-password.component';
 import { ResetPasswordComponent } from './reset-password.component';
 import { VerifyEmailComponent } from './verify-email.component';
+import { EventPaymentSuccessComponent } from './event-payment-success.component';
 import { authGuard } from './auth.guard';
 import { roleGuard } from './role.guard';
 import { AdminUsersComponent } from './admin-users.component';
 import { AdminLayoutComponent } from './admin/layout/admin-layout.component';
 import { AdminDashboardComponent } from './admin/dashboard/admin-dashboard.component';
 import { ProfileComponent } from './profile.component';
+import { MesReservationsComponent } from './mes-reservations.component';
 import { AuditLogsComponent } from './audit-logs.component';
 import { AdminCitiesComponent } from './admin/cities/admin-cities.component';
 import { AdminRestaurantsComponent } from './admin/restaurants/admin-restaurants.component';
 import { AdminActivitiesComponent } from './admin/activities/admin-activities.component';
+import { AdminActivityReservationsComponent } from './admin/activity-reservations/admin-activity-reservations.component';
+import { AdminPostsComponent } from './admin/posts/admin-posts.component';
 import { CityExploreComponent } from './explore/city-explore.component';
 import { RestaurantDetailComponent } from './explore/restaurant-detail.component';
 import { ActivityDetailComponent } from './explore/activity-detail.component';
@@ -24,23 +33,37 @@ import { ProductsAdminComponent } from './admin/entities/products/products-admin
 import { OrdersAdminComponent } from './admin/entities/orders/orders-admin.component';
 import { CartPageComponent } from './shop/cart-page.component';
 import { MyOrdersComponent } from './shop/my-orders.component';
+import { ChatComponent } from './chat/chat.component';
+import { AdminGamesComponent } from './admin/games/admin-games.component';
+import { UserGamesComponent } from './games/user-games.component';
+import { QuizPlayerComponent } from './games/quiz-player.component';
+import { CrosswordPlayerComponent } from './games/crossword-player.component';
+import { PuzzlePlayerComponent } from './games/puzzle-player.component';
+import { LudoPlayerComponent } from './games/ludo-player.component';
+import { ServicesRestaurantsComponent } from './explore/services-restaurants.component';
+import { ServicesActivitiesComponent } from './explore/services-activities.component';
 import { MockPaymentComponent } from './shop/mock-payment/mock-payment.component';
 import { ArtisanOrdersComponent } from './artisan/artisan-orders.component';
 import { FavoritesComponent } from './shop/favorites.component';
 
+import { EventManagementComponent } from './admin/event-management/event-management.component';
+import { EventCalendarComponent } from './admin/event-calendar/event-calendar.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
+  { path: 'destination-map', component: DestinationMapComponent },
   { path: 'login', component: SignInComponent },
   { path: 'signin', component: SignInComponent },
   { path: 'signup', component: SignUpComponent },
   { path: 'forgot-password', component: ForgotPasswordComponent },
   { path: 'reset-password', component: ResetPasswordComponent },
   { path: 'verify-email', component: VerifyEmailComponent },
+  { path: 'success', component: EventPaymentSuccessComponent },
   { path: 'city/:cityId', component: CityExploreComponent },
+  { path: 'services/restaurants', component: ServicesRestaurantsComponent },
+  { path: 'services/activities', component: ServicesActivitiesComponent },
   { path: 'restaurants/:restaurantId', component: RestaurantDetailComponent },
   { path: 'activities/:activityId', component: ActivityDetailComponent },
-  { path: 'login', component: SignInComponent },
   { path: 'panier', component: CartPageComponent, canActivate: [authGuard] },
   { path: 'mes-commandes', component: MyOrdersComponent, canActivate: [authGuard] },
   { path: 'mes-ordres', component: ArtisanOrdersComponent, canActivate: [authGuard], data: { roles: ['ROLE_ARTISAN', 'ROLE_ADMIN'], title: 'My orders (sales)' } },
@@ -48,6 +71,27 @@ export const routes: Routes = [
   { path: 'favoris', component: FavoritesComponent, canActivate: [authGuard] },
 
   { path: 'virtual-tour', component: VirtualTourPageComponent },
+  { path: 'jeux', redirectTo: 'games', pathMatch: 'full' },
+  { path: 'games', component: UserGamesComponent },
+  { path: 'games/quiz/:id', component: QuizPlayerComponent },
+  { path: 'games/crossword/:id', component: CrosswordPlayerComponent },
+  { path: 'games/puzzle/:id', component: PuzzlePlayerComponent },
+  { path: 'games/ludo', component: LudoPlayerComponent },
+  {
+    path: 'hebergement',
+    loadChildren: () => import('./features/hebergement/hebergement.routes')
+      .then(m => m.HEBERGEMENT_ROUTES)
+  },
+  {
+    path: 'transport',
+    loadChildren: () => import('./features/transport/transport.routes')
+      .then(m => m.TRANSPORT_ROUTES)
+  },
+  {
+    path: 'confirmation',
+    loadComponent: () => import('./shared/components/booking-confirmation/booking-confirmation.component')
+      .then(m => m.BookingConfirmationComponent)
+  },
   {
     path: 'admin',
     canActivate: [authGuard, roleGuard],
@@ -56,142 +100,71 @@ export const routes: Routes = [
     children: [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       { path: 'dashboard', component: AdminDashboardComponent },
+      { path: 'games', component: AdminGamesComponent },
       { path: 'audit-logs', component: AuditLogsComponent },
       { path: 'users', component: AdminUsersComponent },
       { path: 'cities', component: AdminCitiesComponent },
       { path: 'restaurants', component: AdminRestaurantsComponent },
       { path: 'activities', component: AdminActivitiesComponent },
-      //{ path: 'panier', component: CartPageComponent },
+      { path: 'posts', component: AdminPostsComponent },
+      { path: 'events', component: EventManagementComponent },
+      { path: 'events/dashboard', component: EventManagementComponent },
+      { path: 'events/calendar', component: EventCalendarComponent },
       { path: 'orders', component: OrdersAdminComponent },
       { path: 'products', component: ProductsAdminComponent },
-
-
+      { path: 'activity-reservations', component: AdminActivityReservationsComponent },
+      { path: 'accommodations', loadComponent: () => import('./admin/entities/accommodations/accommodations-admin.component').then(m => m.AccommodationsAdminComponent) },
+      { path: 'hebergements', redirectTo: 'accommodations', pathMatch: 'full' },
+      { path: 'transports', loadComponent: () => import('./admin/entities/transports/transports-admin.component').then(m => m.TransportsAdminComponent) },
     ],
   },
   { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },
-  { path: 'virtual-tour', component: VirtualTourPageComponent },
+  {
+    path: 'mes-reservations',
+    component: MesReservationsComponent,
+    canActivate: [authGuard],
+  },
+  { path: 'my-bookings', redirectTo: 'mes-reservations', pathMatch: 'full' },
   {
     path: 'destinations',
     component: FeaturePageComponent,
     data: {
-      kicker: 'Villes & parcours',
+      kicker: 'Cities & journeys',
       accent: 'blue',
-      title: 'Destinations & villes',
+      title: 'Destinations & cities',
       description:
-        'Pilier central pour explorer la Tunisie au niveau des villes : contenus riches, idées de séjour et offres locales pour préparer chaque voyage.',
+        'Your hub for exploring Tunisia by city: rich content, trip ideas, and local offers to plan every journey.',
       blocks: [
         {
           icon: '🏙️',
-          title: 'Gestion des villes tunisiennes',
+          title: 'Tunisian city guides',
           items: [
-            'Base de données des villes avec descriptions, photos et conseils pratiques.',
-            'Fiches structurées pour orienter les voyageurs (accès, climat, durée idéale).',
+            'City database with descriptions, photos, and practical tips.',
+            'Structured pages to help travellers (access, climate, ideal length of stay).',
           ],
         },
         {
           icon: '🗺️',
-          title: 'Activités touristiques par ville',
+          title: 'Things to do by city',
           items: [
-            'Listes par destination : monuments, sites culturels, parcs naturels, activités sportives ou d’aventure.',
-            'Liens vers réservations et recommandations croisées.',
+            'Lists by destination: monuments, cultural sites, nature, sports, and adventure.',
+            'Links to bookings and cross-cutting recommendations.',
           ],
         },
         {
           icon: '🍽️',
-          title: 'Restaurants recommandés',
+          title: 'Recommended restaurants',
           items: [
-            'Sélection de tables avec spécialités locales, fourchettes de prix et ambiance.',
-            'Avis, notes et filtres (végétarien, familial, vue mer…).',
+            'Curated tables with local specialties, price ranges, and atmosphere.',
+            'Reviews, ratings, and filters (vegetarian, family-friendly, sea view…).',
           ],
         },
         {
           icon: '🏷️',
-          title: 'Offres & bons plans',
+          title: 'Deals & perks',
           items: [
-            'Promotions et packages saisonniers par ville.',
-            'Réductions partenaires et alertes pour les voyageurs inscrits.',
-          ],
-        },
-      ],
-    },
-  },
-  {
-    path: 'transport',
-    component: FeaturePageComponent,
-    data: {
-      kicker: 'Mobilité',
-      accent: 'coral',
-      title: 'Transport & mobilité',
-      description:
-        'Planifier, suivre et optimiser les déplacements : trajets clairs, informations à jour et suggestions adaptées au profil du voyageur.',
-      blocks: [
-        {
-          icon: '🧭',
-          title: 'Itinéraires & horaires',
-          items: [
-            'Planification de trajets avec routes et horaires fiables.',
-            'Optimisation des correspondances et alternatives (durée, coût, confort).',
-          ],
-        },
-        {
-          icon: '📍',
-          title: 'Suivi de trajet',
-          items: [
-            'Suivi en temps réel du déplacement pour une meilleure gestion du voyage.',
-            'Notifications et rappels sur les étapes clés.',
-          ],
-        },
-        {
-          icon: '🎯',
-          title: 'Recommandations transport',
-          items: [
-            'Suggestions personnalisées selon préférences, historique et contraintes (budget, accessibilité).',
-            'Cohérence avec hébergements et activités réservées.',
-          ],
-        },
-      ],
-    },
-  },
-  {
-    path: 'hebergement',
-    component: FeaturePageComponent,
-    data: {
-      kicker: 'Séjour',
-      accent: 'gold',
-      title: 'Hébergement',
-      description:
-        'Un catalogue complet des lieux où se poser — de l’hôtel à la maison d’hôtes — avec disponibilité, avis et suggestions sur mesure.',
-      blocks: [
-        {
-          icon: '🛏️',
-          title: 'Hôtels & maisons d’hôtes',
-          items: [
-            'Liste des hébergements avec descriptions, photos, équipements et services.',
-            'Typologies variées (hôtel, guesthouse, maison d’hôte, autre).',
-          ],
-        },
-        {
-          icon: '📅',
-          title: 'Disponibilité en temps réel',
-          items: [
-            'Affichage des disponibilités transport & hébergement pour une réservation instantanée (évolution).',
-            'Synchronisation des flux de réservation (front préparé).',
-          ],
-        },
-        {
-          icon: '⭐',
-          title: 'Avis & réputation',
-          items: [
-            'Notes et commentaires détaillés pour guider les voyageurs.',
-            'Modération et signalement pour garder des avis utiles.',
-          ],
-        },
-        {
-          icon: '✨',
-          title: 'Recommandations hébergement',
-          items: [
-            'Suggestions de logement selon préférences, historique et séjour en cours.',
-            'Alignement avec transports et activités choisies.',
+            'Seasonal promotions and packages by city.',
+            'Partner discounts and alerts for signed-in travellers.',
           ],
         },
       ],
@@ -201,26 +174,26 @@ export const routes: Routes = [
     path: 'activites',
     component: FeaturePageComponent,
     data: {
-      kicker: 'Expériences',
+      kicker: 'Experiences',
       accent: 'emerald',
-      title: 'Activités',
+      title: 'Activities',
       description:
-        'Découvrir et réserver des expériences : culture, nature, sport et rencontres — au croisement des destinations et des recommandations.',
+        'Discover and book experiences: culture, nature, sport, and meet-ups — tied to destinations and recommendations.',
       blocks: [
         {
           icon: '🎭',
-          title: 'Catalogue d’activités',
+          title: 'Activity catalogue',
           items: [
-            'Activités par région, thème et niveau de difficulté.',
-            'Créneaux, disponibilité et options de groupe.',
+            'Activities by region, theme, and difficulty.',
+            'Time slots, availability, and group options.',
           ],
         },
         {
           icon: '✅',
-          title: 'Qualité & confiance',
+          title: 'Quality & trust',
           items: [
-            'Avis voyageurs, favoris et listes personnalisées.',
-            'Intégration avec destinations, artisanat et événements.',
+            'Traveller reviews, favourites, and personal lists.',
+            'Integration with destinations, crafts, and events.',
           ],
         },
       ],
@@ -233,44 +206,10 @@ export const routes: Routes = [
     data: {
       kicker: 'Agenda',
       accent: 'rose',
-      title: 'Événements',
-      description:
-        'Un calendrier vivant : festivals, célébrations, sport, tech et nature — pour participer et partager des moments forts.',
-      blocks: [
-        {
-          icon: '🎉',
-          title: 'Festivals & célébrations',
-          items: [
-            'Listes et calendriers des événements culturels, historiques et religieux.',
-            'Informations pratiques et lieux.',
-          ],
-        },
-        {
-          icon: '🏃',
-          title: 'Sport & innovation',
-          items: [
-            'Hackathons, marathons, randonnées et événements outdoor.',
-            'Encourager la participation et la visibilité des organisateurs.',
-          ],
-        },
-        {
-          icon: '📆',
-          title: 'Calendrier interactif',
-          items: [
-            'Vue calendrier avec filtres et recherche.',
-            'Filtres par thème, région et date.',
-          ],
-        },
-        {
-          icon: '🎫',
-          title: 'Participation & suivi',
-          items: [
-            'Inscriptions, présence et partage d’expériences post-événement.',
-            'Rappels et ajout au carnet de voyage.',
-          ],
-        },
-      ],
-    },
+      title: 'Events',
+      eventFeed: true,
+      description: "Experience Tunisia's heartbeat with YallaTN+.\nDiscover authentic festivals, sports, and tech events.",
+     },
   },
   {
     path: 'artisanat',
@@ -279,17 +218,16 @@ export const routes: Routes = [
       kicker: 'Living heritage',
       accent: 'sand',
       title: 'Crafts & souvenirs',
-      /** Product catalog (GET /api/products) */
       catalog: 'products',
       description:
-        'Showcase artisans and their work: digital storefront, a simple purchase path, and positive impact on the local economy.',
+        'Spotlight artisans and their work: digital storefront, checkout with secure payment (Stripe or mock), and positive impact on the local economy.',
       blocks: [
         {
           icon: '👤',
           title: 'Tunisian artisans',
           items: [
             'Profiles with specialties, location, and contact options.',
-            'Workshop story and craftsmanship.',
+            'Workshop story and craft know-how.',
           ],
         },
         {
@@ -297,7 +235,7 @@ export const routes: Routes = [
           title: 'Catalog & souvenirs',
           items: [
             'Handmade products, crafts, and souvenirs.',
-            'Checkout flow with secure payment integration.',
+            'Checkout flow with Stripe checkout and mock payment for local testing.',
           ],
         },
         {
@@ -305,7 +243,7 @@ export const routes: Routes = [
           title: 'Promotion & impact',
           items: [
             'Highlighting unique products and short supply chains.',
-            'Supporting local entrepreneurship and sustainable tourism.',
+            'Support for local entrepreneurship and sustainable tourism.',
           ],
         },
       ],
@@ -317,32 +255,37 @@ export const routes: Routes = [
     data: {
       kicker: 'Intelligence',
       accent: 'blue',
-      title: 'Recommandations',
+      title: 'Recommendations',
       description:
-        'Un moteur de suggestions cohérent : transports, hébergements, activités et achats — transparent, respectueux de la vie privée et personnalisable.',
+        'A consistent suggestion engine for transport, stays, activities, and shopping — transparent, privacy-aware, and customizable.',
       blocks: [
         {
           icon: '🤖',
-          title: 'Moteur de suggestion',
+          title: 'Suggestion engine',
           items: [
-            'Règles métier puis enrichissement progressif (ML possible).',
-            'Croisement quiz, favoris, historique et tendances.',
+            'Business rules first, then gradual enrichment (ML possible).',
+            'Combines quizzes, favourites, history, and trends.',
           ],
         },
         {
           icon: '🔐',
-          title: 'Confiance & transparence',
+          title: 'Trust & transparency',
           items: [
-            'Explication des critères de recommandation (opt-in).',
-            'Respect du RGPD et préférences utilisateur.',
+            'Explanation of recommendation criteria (opt-in).',
+            'GDPR alignment and user preferences.',
           ],
         },
       ],
     },
   },
   {
+    path: 'chat',
+    component: ChatComponent,
+    canActivate: [authGuard],
+  },
+  {
     path: 'communaute',
-    component: FeaturePageComponent,
+    component: CommunityComponent,
     data: {
       kicker: 'Voyageurs',
       accent: 'violet',
@@ -376,6 +319,19 @@ export const routes: Routes = [
         },
       ],
     },
+  },
+  {
+    path: 'communaute/my-posts',
+    component: MyPostsComponent,
+    canActivate: [authGuard],
+  },
+  {
+    path: 'communaute/user/:userId',
+    component: UserProfileComponent,
+  },
+  {
+    path: 'communaute/user/:userId/follows',
+    component: FollowListComponent,
   },
   { path: '**', redirectTo: '' },
 ];

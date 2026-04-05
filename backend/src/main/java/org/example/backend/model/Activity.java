@@ -1,6 +1,7 @@
 package org.example.backend.model;
 import jakarta.persistence.*;
 import lombok.Data;
+import java.time.LocalDate;
 @Data @Entity @Table(name="activities")
 public class Activity {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -10,9 +11,12 @@ public class Activity {
     private String name;
     private String type;
     private Double price;
+    
     @Lob @Column(columnDefinition="TEXT")
     private String description;
     private String address;
     private Double latitude;
     private Double longitude;
+    private Integer maxParticipantsPerDay;
+    private LocalDate maxParticipantsStartDate;
 }

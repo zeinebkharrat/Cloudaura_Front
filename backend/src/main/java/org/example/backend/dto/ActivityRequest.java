@@ -4,6 +4,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
+import java.time.LocalDate;
+
 @Data
 public class ActivityRequest {
     @NotNull(message = "cityId est obligatoire")
@@ -16,4 +18,6 @@ public class ActivityRequest {
     private String address;
     private Double latitude;
     private Double longitude;
+    private Integer maxParticipantsPerDay;
+    private LocalDate maxParticipantsStartDate;
 }

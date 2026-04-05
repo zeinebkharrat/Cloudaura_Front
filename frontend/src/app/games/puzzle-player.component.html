@@ -1,0 +1,114 @@
+<div class="puzzle-page">
+  <div class="puzzle-card">
+    @if (isLoading()) {
+      <p>Loading puzzle…</p>
+    } @else if (loadError()) {
+      <p>{{ loadError() }}</p>
+      <button type="button" class="btn" (click)="backToHub()">Back</button>
+    } @else {
+      <header class="puzzle-head">
+        <button type="button" class="btn ghost" (click)="backToHub()">⟵ Leave</button>
+        <div class="meta">
+          <h2>{{ puzzle()?.title }}</h2>
+          <p>Pièces placées : {{ moves() }} / {{ gridSize * gridSize }}</p>
+          <p class="puzzle-help">
+            Les fragments sont sur les côtés — glissez chaque pièce vers son emplacement sur l’image (la bonne case uniquement).
+          </p>
+        </div>
+        <button type="button" class="btn" (click)="resetBoard()">New game</button>
+      </header>
+
+      @if (roadmapStageHint()) {
+        <p class="roadmap-hint" role="status">{{ roadmapStageHint() }}</p>
+      }
+
+      @if (rejectHint()) {
+        <p class="reject-hint" role="alert">{{ rejectHint() }}</p>
+      }
+
+      <div
+        class="puzzle-workspace"
+        [class.puzzle-workspace--dragging]="draggingPieceId() !== null"
+      >
+        <aside class="piece-bank piece-bank--left" aria-label="Pieces to place">
+          @for (pieceId of bankLeft(); track pieceId) {
+            <div
+              class="bank-piece"
+              [class.bank-piece--dragging]="draggingPieceId() === pieceId"
+              [ngStyle]="getPieceStyle(pieceId)"
+              [draggable]="!won()"
+              (dragstart)="onBankDragStart($event, pieceId)"
+              (dragend)="onDragEnd()"
+              [attr.aria-label]="'Piece ' + (pieceId + 1) + ', place on the board'"
+            ></div>
+          }
+        </aside>
+
+        <div class="board-wrap">
+          <div
+            class="board"
+            [style.grid-template-columns]="'repeat(' + gridSize + ', 1fr)'"
+          >
+            @for (_ of slots(); track $index; let i = $index) {
+              <div
+                class="slot"
+                [class.slot--filled]="slots()[i] !== null"
+                [class.slot--drop-hover]="slots()[i] === null && dragOverSlotIndex() === i"
+                (dragover)="onSlotDragOver($event, i)"
+                (dragleave)="onSlotDragLeave(i)"
+                (drop)="onSlotDrop($event, i)"
+                [attr.aria-label]="
+                  slots()[i] !== null
+                    ? 'Cell ' + (i + 1) + ', piece placed'
+                    : 'Cell ' + (i + 1) + ', empty'
+                "
+              >
+                @if (slots()[i] !== null) {
+                  <div class="slot-piece" [ngStyle]="getPieceStyle(slots()[i]!)"></div>
+                } @else {
+                  <span class="slot-placeholder">{{ i + 1 }}</span>
+                }
+              </div>
+            }
+          </div>
+        </div>
+
+        <aside class="piece-bank piece-bank--right" aria-label="Fragments à placer">
+          @for (pieceId of bankRight(); track pieceId) {
+            <div
+              class="bank-piece"
+              [class.bank-piece--dragging]="draggingPieceId() === pieceId"
+              [ngStyle]="getPieceStyle(pieceId)"
+              [draggable]="!won()"
+              (dragstart)="onBankDragStart($event, pieceId)"
+              (dragend)="onDragEnd()"
+              [attr.aria-label]="'Piece ' + (pieceId + 1) + ', place on the board'"
+            ></div>
+          }
+        </aside>
+      </div>
+
+      @if (won()) {
+        <div class="win">
+          ✅ Image complete — you can confirm and continue.
+          @if (hasLinkedRoadmap() && isLoggedIn() && !roadmapStageSaved() && !roadmapSaveFailed()) {
+            <p class="win-pending">Saving roadmap step…</p>
+          }
+          @if (roadmapStageSaved()) {
+            <p class="roadmap-saved">Roadmap step saved.</p>
+          }
+          <div class="win-actions">
+            @if (canProceedToNextStage()) {
+              <button type="button" class="btn btn-next-stage" (click)="goToNextStage()">
+                Confirm and go to next step →
+              </button>
+            }
+            <button type="button" class="btn btn-secondary-light" (click)="backToHub()">
+              Back to games hub
+            </button>
+          </div>
+        </div>
+      }
+    }
+  </div>
+</div>

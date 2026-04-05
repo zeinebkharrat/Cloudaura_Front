@@ -3,13 +3,14 @@ import { forkJoin } from 'rxjs';
 import { ActivatedRoute, Data, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { extractApiErrorMessage } from './api-error.util';
 import { API_BASE_URL, API_FALLBACK_ORIGIN } from './core/api-url';
-import { AuthService } from './auth.service';
+import { AuthService } from './core/auth.service';
 import { ShopService } from './core/shop.service';
+import { EventService } from './event.service';
+import { Event as TravelEvent } from './models/event';
 import { NotificationService } from './core/notification.service';
-
-// PrimeNG
 import { DialogModule } from 'primeng/dialog';
 import { GalleriaModule } from 'primeng/galleria';
 import { ButtonModule } from 'primeng/button';
@@ -63,6 +64,7 @@ export class FeaturePageComponent implements OnInit {
   readonly router = inject(Router);
   readonly auth = inject(AuthService);
   readonly shop = inject(ShopService);
+  private readonly eventService = inject(EventService);
   private readonly notifier = inject(NotificationService);
 
   kicker = '';
@@ -71,6 +73,13 @@ export class FeaturePageComponent implements OnInit {
   accent: FeatureAccent = 'coral';
   highlights: string[] = [];
   blocks: FeatureBlock[] = [];
+  events: TravelEvent[] = [];
+  isEventFeed = false;
+  isLoadingEvents = false;
+  eventsLoadError: string | null = null;
+  selectedEvent: TravelEvent | null = null;
+  readonly eventJoinLoading = signal(false);
+  readonly eventJoinError = signal<string | null>(null);
 
   catalog: 'none' | 'products' = 'none';
   catalogProducts: CatalogProduct[] = [];
@@ -126,7 +135,9 @@ export class FeaturePageComponent implements OnInit {
     price: null,
     stock: null,
     imageUrl: '',
-    status: 'PENDING'
+    status: 'PENDING',
+    variants: [],
+    images: [],
   });
   readonly editingProductId = signal<number | null>(null);
   readonly addingProductId = signal<number | null>(null);
@@ -307,8 +318,7 @@ export class FeaturePageComponent implements OnInit {
   readonly isUploadingImage = signal(false);
 
   ngOnInit(): void {
-    const data = this.route.snapshot.data;
-    this.applyData(data);
+    this.applyData(this.route.snapshot.data);
     this.route.data.subscribe((d) => this.applyData(d));
     if (this.isArtisan()) {
       this.loadArtisanProducts();
@@ -336,12 +346,28 @@ export class FeaturePageComponent implements OnInit {
       this.catalogProducts = [];
       this.catalogError = null;
     }
+
+    const shouldLoadEvents = d['eventFeed'] === true || this.title === 'Events';
+    this.isEventFeed = shouldLoadEvents;
+    if (shouldLoadEvents) {
+      this.loadEvents();
+    } else {
+      this.events = [];
+      this.isLoadingEvents = false;
+      this.eventsLoadError = null;
+      this.selectedEvent = null;
+    }
   }
 
   loadCities(): void {
     this.http.get<any>('/api/public/cities/all').subscribe({
-      next: res => this.cities.set(res.content || res),
-      error: () => { }
+      next: (res) => {
+        const list = Array.isArray(res) ? res : res?.data ?? res?.content ?? [];
+        this.cities.set(list);
+      },
+      error: () => {
+        this.cities.set([]);
+      },
     });
   }
 
@@ -350,6 +376,8 @@ export class FeaturePageComponent implements OnInit {
     const cityId = this.selectedCityId();
     let primary = `${API_BASE_URL}/api/products`;
     if (cityId) primary += `?cityId=${cityId}`;
+    const fallback = `${API_FALLBACK_ORIGIN}/api/products${cityId ? `?cityId=${cityId}` : ''}`;
+    const tryFallback = API_BASE_URL === '';
 
     this.http.get<CatalogProduct[]>(primary).subscribe({
       next: (list) => {
@@ -358,8 +386,24 @@ export class FeaturePageComponent implements OnInit {
         this.catalogImageFailed.set(new Set());
       },
       error: () => {
-        this.catalogError = 'Could not load the catalog. Check that the backend is running.';
-        this.catalogLoading = false;
+        if (tryFallback) {
+          this.http.get<CatalogProduct[]>(fallback).subscribe({
+            next: (list) => {
+              this.catalogProducts = list ?? [];
+              this.catalogLoading = false;
+              this.catalogImageFailed.set(new Set());
+            },
+            error: () => {
+              this.catalogError =
+                'Could not load the catalog. Start the backend (default port 9091) and run `ng serve` with the Angular proxy.';
+              this.catalogLoading = false;
+            },
+          });
+        } else {
+          this.catalogError =
+            'Could not load the catalog. Check that the backend is running (e.g. port 9091) and that the Angular proxy is configured.';
+          this.catalogLoading = false;
+        }
       },
     });
   }
@@ -424,6 +468,13 @@ export class FeaturePageComponent implements OnInit {
       this.notifier.show('Please select a color and size.', 'info');
       return;
     }
+    if (!this.needsVariantChoice(p)) {
+      const stock = p.stock ?? 0;
+      if (stock <= 0) {
+        this.notifier.show('This product is unavailable (out of stock).', 'error');
+        return;
+      }
+    }
     this.addingProductId.set(p.productId);
     this.shop.addToCart(p.productId, 1, varId).subscribe({
       next: () => {
@@ -433,7 +484,7 @@ export class FeaturePageComponent implements OnInit {
       },
       error: () => {
         this.addingProductId.set(null);
-        this.notifier.show('Could not add to cart.', 'error');
+        this.notifier.show('Could not add to cart (stock or connection issue).', 'error');
       },
     });
   }
@@ -459,8 +510,23 @@ export class FeaturePageComponent implements OnInit {
         this.artisanProductsLoading.set(false);
       },
       error: () => {
-        this.artisanProductsError.set('Could not load your products.');
-        this.artisanProductsLoading.set(false);
+        const fallback = `${API_FALLBACK_ORIGIN}/api/products/my-products`;
+        const tryFallback = API_BASE_URL === '';
+        if (tryFallback) {
+          this.http.get<CatalogProduct[]>(fallback).subscribe({
+            next: (list) => {
+              this.artisanProducts.set(list ?? []);
+              this.artisanProductsLoading.set(false);
+            },
+            error: () => {
+              this.artisanProductsError.set('Could not load your products.');
+              this.artisanProductsLoading.set(false);
+            },
+          });
+        } else {
+          this.artisanProductsError.set('Could not load your products.');
+          this.artisanProductsLoading.set(false);
+        }
       },
     });
   }
@@ -601,33 +667,194 @@ export class FeaturePageComponent implements OnInit {
 
   deleteProduct(productId: number, event?: Event): void {
     event?.stopPropagation();
-    if (!confirm('Delete this product?')) return;
-    this.http.delete(`${API_BASE_URL}/api/products/${productId}`).subscribe({
-      next: () => {
-        this.artisanProducts.update(products => products.filter(p => p.productId !== productId));
-        this.notifier.show('Product deleted.', 'success');
-      },
+    if (!confirm('Delete this product?')) {
+      return;
+    }
+
+    const primary = `${API_BASE_URL}/api/products/${productId}`;
+    const fallback = `${API_FALLBACK_ORIGIN}/api/products/${productId}`;
+    const tryFallback = API_BASE_URL === '';
+
+    const onDeleted = () => {
+      this.artisanProducts.update((products) => products.filter((p) => p.productId !== productId));
+      this.notifier.show('Product deleted.', 'success');
+    };
+
+    this.http.delete(primary).subscribe({
+      next: onDeleted,
       error: () => {
-        this.notifier.show('Could not delete the product.', 'error');
+        if (tryFallback) {
+          this.http.delete(fallback).subscribe({
+            next: onDeleted,
+            error: () => this.notifier.show('Could not delete the product.', 'error'),
+          });
+        } else {
+          this.notifier.show('Could not delete the product.', 'error');
+        }
+      },
+    });
+  }
+
+  private loadEvents(): void {
+    this.isLoadingEvents = true;
+    this.eventsLoadError = null;
+    this.eventService.getEvents().subscribe({
+      next: (events) => {
+        this.events = events.map((event) => ({
+          ...event,
+          imageUrl: this.normalizeEventImageUrl(event.imageUrl),
+        }));
+        this.isLoadingEvents = false;
+      },
+      error: (err) => {
+        console.error('Error loading events:', err);
+        this.eventsLoadError = 'Could not load events right now.';
+        this.isLoadingEvents = false;
+      }
+    });
+  }
+
+  private normalizeEventImageUrl(url: string | undefined): string | undefined {
+    if (!url) {
+      return undefined;
+    }
+    const value = String(url).trim();
+    if (!value) {
+      return undefined;
+    }
+    if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('/')) {
+      return value;
+    }
+    if (value.startsWith('uploads/')) {
+      return `/${value}`;
+    }
+    return `/${value}`;
+  }
+
+  selectEvent(event: TravelEvent): void {
+    this.selectedEvent = event;
+    document.body.classList.add('modal-open');
+  }
+
+  closeEventDetails(): void {
+    this.selectedEvent = null;
+    this.eventJoinError.set(null);
+    this.eventJoinLoading.set(false);
+    document.body.classList.remove('modal-open');
+  }
+
+  /** Normalized ticket price; Stripe checkout only runs when this is &gt; 0. */
+  eventPriceAmount(event: TravelEvent): number {
+    const raw = event.price as unknown;
+    if (typeof raw === 'number' && !Number.isNaN(raw)) {
+      return raw;
+    }
+    const n = Number.parseFloat(String(raw ?? '').replace(',', '.'));
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  isPaidEvent(event: TravelEvent | null): boolean {
+    return event != null && this.eventPriceAmount(event) > 0;
+  }
+
+  joinActionLabel(event: TravelEvent | null): string {
+    if (!event) {
+      return 'Join Event';
+    }
+    return this.isPaidEvent(event) ? 'Pay & join' : 'Join free';
+  }
+
+  joinLoadingLabel(event: TravelEvent | null): string {
+    if (!event) {
+      return 'Please wait…';
+    }
+    return this.isPaidEvent(event) ? 'Opening payment…' : 'Registering…';
+  }
+
+  onJoinEvent(event: TravelEvent): void {
+    this.eventJoinError.set(null);
+
+    if (!this.auth.isAuthenticated()) {
+      this.router.navigate(['/signin'], { queryParams: { returnUrl: this.router.url } });
+      return;
+    }
+
+    const eventId = event.eventId;
+    if (eventId == null) {
+      this.eventJoinError.set('This event cannot be booked (missing identifier).');
+      return;
+    }
+
+    const amount = this.eventPriceAmount(event);
+
+    if (amount > 0) {
+      this.eventJoinLoading.set(true);
+      this.eventService
+        .createCheckoutSession({
+          event_id: eventId,
+          amount,
+          eventName: event.title,
+        })
+        .subscribe({
+          next: (res) => {
+            this.eventJoinLoading.set(false);
+            if (res?.sessionUrl) {
+              window.location.href = res.sessionUrl;
+              return;
+            }
+            this.eventJoinError.set('Payment did not return a Stripe checkout link. Check the backend Stripe key.');
+          },
+          error: (err: HttpErrorResponse) => {
+            this.eventJoinLoading.set(false);
+            this.eventJoinError.set(extractApiErrorMessage(err, 'Could not start payment.'));
+          },
+        });
+      return;
+    }
+
+    const reservationData = {
+      event_id: eventId,
+      total_amount: 0,
+      status: 'CONFIRMED',
+    };
+
+    this.eventJoinLoading.set(true);
+    this.eventService.createReservation(reservationData).subscribe({
+      next: (res) => {
+        this.eventJoinLoading.set(false);
+        alert(`You're registered! Reservation #${res.event_reservation_id} created.`);
+        this.closeEventDetails();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.eventJoinLoading.set(false);
+        this.eventJoinError.set(extractApiErrorMessage(err, 'Could not complete registration.'));
       },
     });
   }
 
   getStatusLabel(status: string | undefined): string {
     switch (status) {
-      case 'PUBLISHED': return 'Published';
-      case 'REJECTED': return 'Rejected';
-      case 'DRAFT': return 'Draft';
-      default: return 'Pending';
+      case 'PUBLISHED':
+        return 'Published';
+      case 'REJECTED':
+        return 'Rejected';
+      case 'DRAFT':
+        return 'Draft';
+      default:
+        return 'Pending';
     }
   }
 
   getStatusSeverity(status: string | undefined): string {
     switch (status) {
-      case 'PUBLISHED': return 'success';
-      case 'REJECTED': return 'danger';
-      case 'DRAFT': return 'warning';
-      default: return 'info';
+      case 'PUBLISHED':
+        return 'success';
+      case 'REJECTED':
+        return 'danger';
+      case 'DRAFT':
+        return 'warning';
+      default:
+        return 'info';
     }
   }
 }

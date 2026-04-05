@@ -1,14 +1,17 @@
-import { Component, HostListener, inject, signal, OnInit, Renderer2, computed } from '@angular/core';
+import { Component, inject, signal, OnInit, Renderer2, effect, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
-import { AuthService } from './auth.service';
+import { NavigationEnd, Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { filter } from 'rxjs';
+import { AuthService } from './core/auth.service';
 import { ShopService } from './core/shop.service';
+import { ChatService } from './chat/chat.service';
+import { ChatBubbleComponent } from './chat/chat-bubble/chat-bubble.component';
 import { NotificationService } from './core/notification.service';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, ChatBubbleComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
 })
@@ -17,41 +20,55 @@ export class AppComponent implements OnInit {
   private readonly renderer = inject(Renderer2);
   readonly auth = inject(AuthService);
   readonly shop = inject(ShopService);
+  private readonly chatService = inject(ChatService);
   readonly notifier = inject(NotificationService);
 
   isDarkMode = signal(true);
-  readonly isAuthenticated = this.auth.isAuthenticated;
-  readonly currentUser = this.auth.currentUser;
+  isUserMenuOpen = signal(false);
+  isServicesMenuOpen = signal(false);
+  selectedCityName = signal<string | null>(null);
+  isScrolled = signal(false);
+  isHomeRoute = signal(false);
+
   readonly isAdmin = this.auth.isAdmin;
   readonly isArtisan = this.auth.isArtisan;
-  isScrolled = signal(false);
-  readonly isUserMenuOpen = signal(false);
+  readonly isAuthenticated = this.auth.isAuthenticated;
+  readonly currentUser = this.auth.currentUser;
 
-  // Use the notification service's signals directly
   readonly toastMessage = this.notifier.message;
   readonly toastType = this.notifier.type;
+
+  constructor() {
+    effect(
+      () => {
+        if (this.isAuthenticated()) {
+          this.chatService.connect();
+          this.chatService.loadConversations();
+        } else {
+          this.chatService.disconnect();
+        }
+      },
+      { allowSignalWrites: true }
+    );
+
+    this.router.events
+      .pipe(filter((event) => event instanceof NavigationEnd))
+      .subscribe(() => this.syncRouteState());
+  }
 
   clearToast(): void {
     this.notifier.clear();
   }
 
   @HostListener('window:scroll', [])
-  onWindowScroll() {
-    this.isScrolled.set(window.scrollY > 20);
+  onWindowScroll(): void {
+    const threshold = this.isHomeRoute() ? 110 : 20;
+    this.isScrolled.set(window.scrollY > threshold);
   }
 
   ngOnInit() {
     this.auth.restoreSession();
     this.shop.refreshCartCount();
-
-    // DEBUG: Forcer l'affichage des infos utilisateur
-    console.log('=== DEBUG AUTH ===');
-    console.log('Token:', this.auth.token());
-    console.log('Current user:', this.auth.currentUser());
-    console.log('Is authenticated:', this.auth.isAuthenticated());
-    console.log('Has ROLE_ARTISAN:', this.auth.hasRole('ROLE_ARTISAN'));
-    console.log('Username:', this.auth.currentUser()?.username);
-    console.log('==================');
 
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'light') {
@@ -60,17 +77,18 @@ export class AppComponent implements OnInit {
     } else {
       this.renderer.setAttribute(document.documentElement, 'data-theme', 'dark');
     }
+
+    this.syncRouteState();
+  }
+
+  private syncRouteState(): void {
+    const path = this.router.url.split('?')[0].split('#')[0];
+    this.isHomeRoute.set(path === '' || path === '/');
+    this.onWindowScroll();
   }
 
   isAdminArea(): boolean {
     return this.router.url.startsWith('/admin');
-  }
-
-  logout(): void {
-    this.isUserMenuOpen.set(false);
-    this.shop.cartCount.set(0);
-    this.auth.logout();
-    this.router.navigateByUrl('/');
   }
 
   toggleTheme() {
@@ -80,7 +98,7 @@ export class AppComponent implements OnInit {
     localStorage.setItem('theme', theme);
   }
 
-  toggleUserMenu(event: MouseEvent) {
+  toggleUserMenu(event: Event) {
     event.stopPropagation();
     this.isUserMenuOpen.set(!this.isUserMenuOpen());
   }
@@ -89,8 +107,24 @@ export class AppComponent implements OnInit {
     this.isUserMenuOpen.set(false);
   }
 
+  toggleServicesMenu(event: MouseEvent) {
+    event.stopPropagation();
+    this.isServicesMenuOpen.set(!this.isServicesMenuOpen());
+  }
+
+  closeServicesMenu() {
+    this.isServicesMenuOpen.set(false);
+  }
+
   @HostListener('document:click')
   onDocumentClick() {
     this.isUserMenuOpen.set(false);
+    this.isServicesMenuOpen.set(false);
+  }
+
+  logout() {
+    this.auth.logout();
+    this.isUserMenuOpen.set(false);
+    this.router.navigate(['/signin']);
   }
 }

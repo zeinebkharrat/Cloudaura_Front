@@ -1,0 +1,174 @@
+.quiz-play-bg {
+  min-height: 100vh;
+  background: radial-gradient(circle at 50% 10%, #2f2a4f, #0f141a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 100px 20px 20px 20px;
+  font-family: 'Inter', sans-serif;
+  color: #fff;
+}
+
+.qp-container {
+  background: rgba(24, 29, 36, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 30px;
+  width: 100%;
+  max-width: 800px;
+  min-height: 500px;
+  padding: 40px;
+  box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+}
+
+.qp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 40px;
+  padding-bottom: 20px;
+  border-bottom: 1px dashed rgba(255,255,255,0.1);
+}
+
+.btn-back {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: color 0.2s;
+}
+.btn-back:hover { color: #fff; }
+
+.qp-progress {
+  font-family: 'Outfit', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #a855f7;
+  background: rgba(168, 85, 247, 0.1);
+  padding: 8px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(168, 85, 247, 0.3);
+}
+
+.qp-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.q-text {
+  font-family: 'Outfit', sans-serif;
+  font-size: 2rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 40px;
+  line-height: 1.3;
+}
+
+.q-options {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.opt-btn {
+  display: flex;
+  align-items: center;
+  background: #232c38;
+  border: 2px solid rgba(255,255,255,0.05);
+  padding: 20px 24px;
+  border-radius: 16px;
+  color: #fff;
+  font-size: 1.1rem;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  text-align: left;
+}
+
+.opt-btn:not([disabled]):hover {
+  background: #2a3442;
+  border-color: rgba(255,255,255,0.2);
+  transform: translateY(-2px);
+}
+
+.opt-letter {
+  background: rgba(255,255,255,0.1);
+  color: #cbd5e1;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-weight: 700;
+  margin-right: 16px;
+}
+
+.opt-text { flex: 1; }
+.opt-icon { font-size: 1.2rem; }
+
+/* Interactive States */
+.opt-btn.correct { background: rgba(16, 185, 129, 0.1); border-color: #10b981; }
+.opt-btn.correct .opt-letter { background: #10b981; color: #fff; }
+
+.opt-btn.wrong { background: rgba(239, 68, 68, 0.1); border-color: #ef4444; }
+.opt-btn.wrong .opt-letter { background: #ef4444; color: #fff; }
+
+/* Result View */
+.qp-result {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.qr-score-circle {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(circle at top right, #a855f7, #6b21a8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10px 30px rgba(168, 85, 247, 0.4);
+  margin-bottom: 24px;
+  border: 4px solid #181d24;
+  outline: 2px solid #a855f7;
+}
+
+.sr-num { font-family: 'Outfit', sans-serif; font-size: 3rem; font-weight: 800; line-height: 1; }
+.sr-tot { font-size: 1.2rem; font-weight: 600; color: rgba(255,255,255,0.7); }
+
+.qr-title { font-family: 'Outfit', sans-serif; font-size: 2.5rem; margin-bottom: 12px; }
+.qr-desc { font-size: 1.1rem; color: #94a3b8; margin-bottom: 32px; }
+
+.btn-primary {
+  background: linear-gradient(135deg, #a855f7, #6b21a8);
+  border: none;
+  font-family: 'Outfit', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  padding: 16px 32px;
+  border-radius: 16px;
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(168, 85, 247, 0.3);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 25px rgba(168, 85, 247, 0.4);
+}
+
+@keyframes animate-up { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+.animate-up { animation: animate-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }

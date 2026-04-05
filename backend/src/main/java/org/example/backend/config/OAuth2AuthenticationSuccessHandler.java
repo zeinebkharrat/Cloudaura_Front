@@ -38,7 +38,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
         AuthResponse authResponse = authService.processSocialLogin(oAuth2User, provider);
 
         String targetUrl = UriComponentsBuilder.fromUriString(redirectUri)
-                .queryParam("token", authResponse.token())
+                .queryParam("token", authResponse.getToken())
                 .build()
                 .toUriString();
 

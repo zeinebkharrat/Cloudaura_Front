@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -103,9 +104,9 @@ public class ProductController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
         try {
-            Product created = productService.save(entity, username);
+            ProductCatalogItem created = productService.save(entity, username);
             return ResponseEntity
-                .created(URI.create("/api/products/" + created.getProductId()))
+                .created(URI.create("/api/products/" + created.productId()))
                 .body(created);
         } catch (NoSuchElementException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));

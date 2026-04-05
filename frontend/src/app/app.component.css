@@ -4,7 +4,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px 24px;
-  padding: 15px 6%;
+  padding: 16px 6%;
   position: sticky;
   top: 0;
   left: 0;
@@ -15,6 +15,8 @@
   -webkit-backdrop-filter: blur(0px);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   border-bottom: 1px solid transparent;
+  max-height: 140px;
+  overflow: hidden;
 }
 
 .navbar:hover,
@@ -27,43 +29,67 @@
   padding: 12px 6%;
 }
 
+.navbar--hidden {
+  opacity: 0;
+  pointer-events: none;
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-bottom-color: transparent;
+  box-shadow: none;
+}
+
+/* Brand mark: src/assets/logo/yallatn-logo.png */
 .logo {
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  align-items: center;
+  gap: 10px;
   flex-shrink: 0;
 }
 
 .logo-link {
   text-decoration: none;
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  align-items: center;
+  line-height: 0;
+  transition:
+    transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+    filter 0.3s ease;
 }
 
-.logo h1 {
-  font-size: 1.8rem;
-  font-weight: 800;
-  margin: 0;
-  background: var(--logo-gradient);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+.logo-link:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.07);
 }
 
-.logo-plus {
-  -webkit-text-fill-color: var(--tunisia-red);
-  background: none;
-  font-weight: 700;
-  margin-left: 1px;
+.logo-link:active {
+  transform: translateY(0);
 }
 
-.logo-dot {
-  width: 8px;
-  height: 8px;
-  background-color: var(--tunisia-red);
-  border-radius: 50%;
-  box-shadow: 0 0 10px var(--tunisia-red);
+.logo-img {
+  height: 52px;
+  width: auto;
+  max-width: min(300px, 70vw);
+  object-fit: contain;
+  display: block;
+}
+
+@media (max-width: 640px) {
+  .logo-img {
+    height: 44px;
+    max-width: min(260px, 68vw);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-link {
+    transition: none;
+  }
+
+  .logo-link:hover {
+    transform: none;
+    filter: none;
+  }
 }
 
 .nav-links {
@@ -81,6 +107,90 @@
 
 .nav-links li {
   list-style: none;
+}
+
+.services-menu-wrap {
+  position: relative;
+}
+
+.services-menu-btn {
+  border: 1px solid transparent;
+  background: color-mix(in srgb, var(--surface-2) 55%, transparent);
+  color: var(--text-color);
+  font-family: 'Outfit', sans-serif;
+  font-weight: 600;
+  font-size: 0.88rem;
+  opacity: 0.95;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 999px;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.services-menu-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.services-menu-btn:hover,
+.services-menu-btn.active {
+  opacity: 1;
+  border-color: var(--border-soft);
+  background: color-mix(in srgb, var(--surface-1) 88%, transparent);
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+}
+
+.services-menu-btn.active svg {
+  transform: rotate(180deg);
+}
+
+.services-menu-btn svg {
+  transition: transform 0.2s ease;
+}
+
+.services-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 190px;
+  border-radius: 14px;
+  border: 1px solid var(--border-soft);
+  background: color-mix(in srgb, var(--surface-1) 94%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.16);
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+  z-index: 140;
+  animation: menuReveal .18s ease-out;
+}
+
+.services-dd-item {
+  text-decoration: none;
+  color: var(--text-color);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 0.87rem;
+  border: 1px solid transparent;
+}
+
+.services-dd-item:hover {
+  background: color-mix(in srgb, var(--surface-2) 75%, transparent);
+  border-color: var(--border-soft);
+}
+
+.services-dd-item.active {
+  background: color-mix(in srgb, var(--surface-2) 85%, transparent);
+  border-color: var(--border-soft);
+}
+
+@keyframes menuReveal {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .nav-links a {
@@ -330,13 +440,18 @@ footer {
 }
 
 .footer-logo {
-  font-family: 'Outfit', sans-serif;
-  font-weight: 800;
-  font-size: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
 }
 
-.footer-logo .logo-plus {
-  color: var(--tunisia-red);
+.footer-logo-img {
+  height: 40px;
+  width: auto;
+  max-width: 220px;
+  object-fit: contain;
+  display: block;
+  opacity: 0.92;
 }
 
 .footer-text {

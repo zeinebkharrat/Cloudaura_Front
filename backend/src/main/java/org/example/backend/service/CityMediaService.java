@@ -23,6 +23,7 @@ public class CityMediaService {
     private final CityService cityService;
     private final ImgBbService imgBbService;
 
+    @Transactional(readOnly = true)
     public Page<CityMediaResponse> list(Integer cityId, String q, Pageable pageable) {
         Specification<CityMedia> spec = (root, query, cb) -> {
             var predicate = cb.conjunction();
@@ -52,6 +53,7 @@ public class CityMediaService {
         return cityMediaRepository.findAll(spec, pageable).map(this::toResponse);
     }
 
+    @Transactional(readOnly = true)
     public CityMediaResponse getById(Integer id) {
         return toResponse(findMedia(id));
     }

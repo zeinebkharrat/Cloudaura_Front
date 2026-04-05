@@ -1,103 +1,40 @@
-<header class="hero">
-  <div class="hero-content">
-    <h1 class="hero-title animate-in delay-1">Tunisia in <br><span class="gradient-text">3D Dimension</span></h1>
-    <p class="hero-subtitle animate-in delay-2">
-      Experience the beauty of the Mediterranean, the vastness of the Sahara,
-      and the heritage of antiquity, like never before through premium 3D realism.
+<header class="hero-cinematic">
+  <video
+    #heroVideoRef
+    class="hero-cinematic__video"
+    autoplay
+    loop
+    playsinline
+    preload="auto"
+    [poster]="heroVideoPoster"
+    (error)="onHeroVideoError()"
+  >
+    <source [src]="heroVideoSrc" type="video/mp4" />
+  </video>
+  <div *ngIf="heroVideoError()" class="hero-cinematic__fallback"></div>
+  <div class="hero-cinematic__overlay"></div>
+  <button
+    type="button"
+    class="hero-cinematic__mute-btn"
+    (click)="toggleHeroVideoMute()"
+    [attr.aria-label]="videoMuted() ? 'Unmute video' : 'Mute video'"
+  >
+    {{ videoMuted() ? 'Unmute' : 'Mute' }}
+  </button>
+  <div class="hero-cinematic__content animate-in">
+    <span class="hero-cinematic__kicker">Tunisia, curated beautifully</span>
+    <h1>Discover Tunisia through one elegant travel platform</h1>
+    <p>
+      Cities, activities, stays, transport, restaurants, artisan products, community, and events.
+      Plan, book, and explore with a premium experience from the first scroll.
     </p>
-    <div class="hero-buttons animate-in delay-3">
-      <button class="btn-primary">Start Your Journey</button>
-      <button class="btn-outline" style="margin-left: 15px">Watch Video</button>
-    </div>
-  </div>
-
-  <div class="hero-visual animate-in delay-2">
-    <div class="model-container sidi-bou-container">
-      <img src="assets/sidi_bou.png" alt="Sidi Bou Said 3D Render" class="float-img sidi-bou">
-      <div class="glow-orb blue-orb"></div>
+    <div class="hero-cinematic__actions">
+      <a routerLink="/destination-map" class="btn-primary">Explore Destinations</a>
     </div>
   </div>
 </header>
 
-<section class="home-manifesto" aria-label="Valeurs de la plateforme">
-  <div class="home-manifesto__glow" aria-hidden="true"></div>
-  <div class="home-manifesto__inner">
-    <div class="home-manifesto__ornament" aria-hidden="true"></div>
-    <p class="home-manifesto__line">
-      Villes &amp; parcours · Mobilité &amp; séjour · Événements · Artisanat · Communauté
-    </p>
-    <p class="home-manifesto__sub">
-      Une vision front-end : interfaces soignées, prêtes à accueillir données, réservations et échanges.
-    </p>
-  </div>
-</section>
-
-<section id="hub" class="hub-section destinations">
-  <div class="section-header">
-    <p class="hub-kicker animate-in">Écosystème YallaTN+</p>
-    <h2 class="animate-in">Le reste de l’écosystème</h2>
-    <p class="animate-in delay-1">
-      Destinations, transports, hébergement, activités et artisanat sont dans la barre du haut. Ici : quiz, événements, recommandations et communauté.
-    </p>
-  </div>
-  <div class="hub-grid hub-grid--secondary">
-    <a routerLink="/jeux" class="hub-card glass-panel animate-in delay-1">
-      <span class="hub-card__icon" aria-hidden="true">🧠</span>
-      <h3>Jeux &amp; quiz</h3>
-      <p>Roadmap interactive : avancez étape par étape.</p>
-    </a>
-    <a routerLink="/evenements" class="hub-card glass-panel animate-in delay-1">
-      <span class="hub-card__icon" aria-hidden="true">📅</span>
-      <h3>Événements</h3>
-      <p>Festivals, sport, tech et calendrier interactif.</p>
-    </a>
-    <a routerLink="/recommandations" class="hub-card glass-panel animate-in delay-2">
-      <span class="hub-card__icon" aria-hidden="true">✨</span>
-      <h3>Recommandations</h3>
-      <p>Suggestions adaptées à votre profil.</p>
-    </a>
-    <a routerLink="/communaute" class="hub-card glass-panel animate-in delay-3">
-      <span class="hub-card__icon" aria-hidden="true">💬</span>
-      <h3>Communauté</h3>
-      <p>Chat, forums, avis et carnets de voyage.</p>
-    </a>
-  </div>
-</section>
-
-<section id="destinations" class="destinations">
-  <div class="section-header">
-    <h2 class="animate-in">Immersive Destinations</h2>
-    <p class="animate-in delay-1">Explore our most requested sites in 3D isometric view.</p>
-  </div>
-
-  <div class="destination-grid">
-    <div class="destination-card glass-panel animate-in delay-1">
-      <div class="card-visual">
-        <img src="assets/el_jem.png" alt="El Jem 3D Render" class="float-img el-jem">
-        <div class="glow-orb purple-orb"></div>
-      </div>
-      <div class="card-content">
-        <h3>El Jem Amphitheater</h3>
-        <p>A marvel of Roman engineering rising majestically from the Tunisian plains.</p>
-        <a href="#" class="explore-link">Enter 3D View &rarr;</a>
-      </div>
-    </div>
-
-    <div class="destination-card glass-panel animate-in delay-2">
-      <div class="card-visual">
-        <img src="assets/sahara.png" alt="Sahara Desert 3D Render" class="float-img sahara">
-        <div class="glow-orb orange-orb"></div>
-      </div>
-      <div class="card-content">
-        <h3>Sahara Dunes</h3>
-        <p>Endless golden sands and timeless nomadic traditions captured in an isometric landscape.</p>
-        <a href="#" class="explore-link">Enter 3D View &rarr;</a>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section id="map-section" class="destinations map-section">
+<section id="map-section" class="destinations map-section map-section--hero-adjacent">
   <div class="map-wrapper animate-in delay-2 glass-panel" [class.map-wrapper--zooming]="isMapNavigating()">
     <div class="map-view-tabs" role="tablist" aria-label="Map display mode">
       <button
@@ -125,6 +62,10 @@
 
     <div *ngIf="selectedRegion()" class="region-info-panel slide-up">
       <button class="close-btn" (click)="selectedRegion.set(null)">&times;</button>
+      <div class="region-badges">
+        <span class="region-chip">Tunisia</span>
+        <span class="region-chip">Interactive</span>
+      </div>
       <h3>{{ selectedRegion()?.name }}</h3>
       <p>{{ selectedRegion()?.description }}</p>
       <button
@@ -144,11 +85,194 @@
   </div>
 </section>
 
-<section id="story" class="destinations story-section">
-  <div class="section-header">
-    <h2 class="animate-in">Our Story</h2>
-    <p class="animate-in delay-1">
-      YallaTN+ brings Tunisia’s heritage and landscapes to the immersive web—so you can feel the place before you go.
-    </p>
+<section class="slider-section">
+  <div class="slider-aurora" aria-hidden="true"></div>
+  <div class="slider-head">
+    <h2>Top Activities</h2>
+  </div>
+  <div class="slider-shell">
+    <button type="button" class="slider-arrow slider-arrow--left" (click)="scrollActivities(-1)" aria-label="Previous activities">←</button>
+    <div id="activities-slider" class="slider-track slider-track--activities" (scroll)="onActivitiesSliderScroll()">
+      <a *ngFor="let item of activityCards(); let i = index" [routerLink]="item.route" class="slider-card slider-card--activity-clean card-pop-in" [style.animationDelay.ms]="70 * i">
+        <div class="activity-card__media-wrap">
+          <img [src]="item.image" [alt]="item.title" />
+        </div>
+        <div class="activity-card__body">
+          <div class="slider-card__topline">
+            <span class="slider-card__badge slider-card__badge--solid" *ngIf="item.badge">{{ item.badge }}</span>
+            <span class="slider-card__hint slider-card__hint--dark">Popular choice</span>
+          </div>
+          <h3 class="slider-card__title-lg slider-card__title-lg--dark">{{ item.title }}</h3>
+          <p class="activity-card__subtitle">{{ item.subtitle }}</p>
+          <div class="activity-stars activity-stars--dark" *ngIf="item.reviewsCount && item.reviewsCount > 0">
+            <span class="activity-stars__star" [class.activity-stars__star--full]="star === 'full'" *ngFor="let star of activityStars(item.rating)">★</span>
+            <span class="activity-stars__count activity-stars__count--dark">{{ item.rating?.toFixed(1) }} ({{ item.reviewsCount }})</span>
+          </div>
+          <div class="slider-card__chips slider-card__chips--light">
+            <span *ngFor="let tag of item.tags">{{ tag }}</span>
+          </div>
+          <div class="slider-card__footerline">
+            <div class="slider-card__price" *ngIf="item.priceTag">{{ item.priceTag }}</div>
+            <span class="slider-card__action slider-card__action--dark">View details -></span>
+          </div>
+        </div>
+      </a>
+      <div *ngIf="loadingActivities()" class="slider-card slider-card--skeleton" aria-hidden="true"></div>
+      <div *ngIf="loadingActivities()" class="slider-card slider-card--skeleton" aria-hidden="true"></div>
+      <div *ngIf="loadingActivities()" class="slider-card slider-card--skeleton" aria-hidden="true"></div>
+    </div>
+    <button type="button" class="slider-arrow slider-arrow--right" (click)="scrollActivities(1)" aria-label="Next activities">→</button>
+  </div>
+  <div class="slider-pagination" *ngIf="activityPageCount() > 1" aria-label="Activities pagination">
+    <button
+      type="button"
+      class="slider-dot"
+      *ngFor="let page of activityPages()"
+      [class.slider-dot--active]="page === currentActivityPage()"
+      (click)="goToActivityPage(page)"
+      [attr.aria-label]="'Go to activities page ' + (page + 1)"
+    ></button>
   </div>
 </section>
+
+<section class="transport-modes-section">
+  <div class="slider-aurora slider-aurora--right" aria-hidden="true"></div>
+  <div class="slider-head">
+    <h2>Transport Modes</h2>
+    <a routerLink="/transport" class="transport-modes__link">Go to transport -></a>
+  </div>
+  <div class="transport-modes-grid" *ngIf="!loadingTransportModes(); else transportModesLoading">
+    <a routerLink="/transport" class="transport-mode-card card-pop-in" *ngFor="let mode of transportModes(); let i = index" [style.animationDelay.ms]="90 * i">
+      <img class="transport-mode-card__media" [src]="mode.image" [alt]="mode.label" />
+      <div class="transport-mode-card__overlay"></div>
+      <div class="transport-mode-card__content">
+        <div class="transport-mode-card__icon">{{ mode.icon }}</div>
+        <h3>{{ mode.label }}</h3>
+        <p>{{ mode.description }}</p>
+        <span class="transport-mode-card__cta">{{ mode.cta }}</span>
+      </div>
+    </a>
+  </div>
+  <ng-template #transportModesLoading>
+    <div class="transport-modes-grid">
+      <div class="transport-mode-card transport-mode-card--skeleton"></div>
+      <div class="transport-mode-card transport-mode-card--skeleton"></div>
+      <div class="transport-mode-card transport-mode-card--skeleton"></div>
+      <div class="transport-mode-card transport-mode-card--skeleton"></div>
+    </div>
+  </ng-template>
+</section>
+
+<section class="about-us-home">
+  <div class="about-us-home__glow" aria-hidden="true"></div>
+  <div class="about-us-home__content">
+    <span class="about-us-home__kicker">About Us</span>
+    <h2>Crafting Tunisia's most immersive travel platform</h2>
+    <p>
+      YallaTN+ connects travelers with local businesses, events, and communities through one elegant platform.
+      Our mission is to make discovering Tunisia easier, richer, and more authentic for everyone.
+    </p>
+    <div class="about-us-home__values">
+      <span>Authentic local discovery</span>
+      <span>Smart planning in one place</span>
+      <span>Community-powered experiences</span>
+    </div>
+    <div class="about-us-home__stats">
+      <article>
+        <strong>24</strong>
+        <span>Governorates Covered</span>
+      </article>
+      <article>
+        <strong>One Platform</strong>
+        <span>Map, Events, Activities, Transport</span>
+      </article>
+      <article>
+        <strong>Local-first</strong>
+        <span>Crafts, Restaurants, and Communities</span>
+      </article>
+    </div>
+      <div class="about-us-home__steps">
+        <div><strong>1</strong><span>Explore regions on the live map</span></div>
+        <div><strong>2</strong><span>Build your route with activities and transport</span></div>
+        <div><strong>3</strong><span>Connect with communities and local events</span></div>
+      </div>
+      <div class="about-us-home__actions">
+        <a routerLink="/features" class="about-us-home__btn about-us-home__btn--primary">See Platform Features</a>
+        <a routerLink="/communaute" class="about-us-home__btn about-us-home__btn--ghost">Join the Community</a>
+      </div>
+  </div>
+  <div class="about-us-home__visual">
+    <div class="about-us-home__quote">"Travel Tunisia deeper, not faster."</div>
+    <img src="assets/el_jem.png" alt="About YallaTN" />
+  </div>
+</section>
+
+<section class="restaurants-showcase">
+  <div class="slider-aurora" aria-hidden="true"></div>
+  <div class="slider-head">
+    <h2>Restaurants Spotlight</h2>
+    <a routerLink="/services/restaurants" class="transport-modes__link">Browse all restaurants -></a>
+  </div>
+  <div class="restaurants-grid" *ngIf="!loadingRestaurants(); else restaurantLoading">
+    <a *ngFor="let item of restaurantCards(); let i = index" [routerLink]="item.route" class="restaurant-grid-card card-pop-in" [style.animationDelay.ms]="80 * i">
+      <img [src]="item.image" [alt]="item.title" />
+      <div class="restaurant-grid-card__content">
+        <span class="slider-card__badge" *ngIf="item.badge">{{ item.badge }}</span>
+        <h3>{{ item.title }}</h3>
+        <p>{{ item.subtitle }}</p>
+        <div class="slider-card__chips">
+          <span *ngFor="let tag of item.tags">{{ tag }}</span>
+        </div>
+      </div>
+    </a>
+  </div>
+  <ng-template #restaurantLoading>
+    <div class="restaurants-grid">
+      <div class="restaurant-grid-card restaurant-grid-card--skeleton"></div>
+      <div class="restaurant-grid-card restaurant-grid-card--skeleton"></div>
+      <div class="restaurant-grid-card restaurant-grid-card--skeleton"></div>
+      <div class="restaurant-grid-card restaurant-grid-card--skeleton"></div>
+    </div>
+  </ng-template>
+</section>
+
+<section class="cta-duo">
+  <a routerLink="/communaute" class="cta-duo__card cta-duo__card--forum">
+    <div class="cta-duo__pill">Community</div>
+    <h3>Join the Traveler Forum</h3>
+    <p>Ask questions, share itineraries, and get real tips from locals and travelers.</p>
+  </a>
+  <a routerLink="/evenements" class="cta-duo__card cta-duo__card--event">
+    <div class="cta-duo__pill">Events</div>
+    <h3>Discover Upcoming Events</h3>
+    <p>Festivals, concerts, culture, and local experiences happening all over Tunisia.</p>
+  </a>
+</section>
+
+<section class="slider-section">
+  <div class="slider-aurora slider-aurora--right" aria-hidden="true"></div>
+  <div class="slider-head">
+    <h2>Our Artisan Products</h2>
+  </div>
+  <div class="slider-shell">
+    <button type="button" class="slider-arrow slider-arrow--left" (click)="scrollSlider('artisan-slider', -1)" aria-label="Previous artisan cards">←</button>
+    <div id="artisan-slider" class="slider-track">
+      <a *ngFor="let item of artisanCards(); let i = index" [routerLink]="item.route" class="slider-card slider-card--image slider-card--rich card-pop-in" [style.animationDelay.ms]="70 * i">
+        <img [src]="item.image" [alt]="item.title" />
+        <div class="slider-card__overlay slider-card__overlay--rich">
+          <span class="slider-card__badge" *ngIf="item.badge">{{ item.badge }}</span>
+          <h3>{{ item.title }}</h3>
+          <p>{{ item.subtitle }}</p>
+          <div class="slider-card__chips">
+            <span *ngFor="let tag of item.tags">{{ tag }}</span>
+          </div>
+          <div class="slider-card__price" *ngIf="item.priceTag">{{ item.priceTag }}</div>
+        </div>
+      </a>
+      <div *ngIf="loadingArtisans()" class="slider-card slider-card--skeleton" aria-hidden="true"></div>
+      <div *ngIf="loadingArtisans()" class="slider-card slider-card--skeleton" aria-hidden="true"></div>
+    </div>
+    <button type="button" class="slider-arrow slider-arrow--right" (click)="scrollSlider('artisan-slider', 1)" aria-label="Next artisan cards">→</button>
+  </div>
+</section>
+

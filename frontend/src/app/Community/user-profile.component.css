@@ -1,0 +1,335 @@
+.user-profile-page {
+  padding: 96px 16px 40px;
+  background: transparent;
+  min-height: 100vh;
+}
+
+.profile-shell {
+  max-width: 980px;
+  margin: 0 auto;
+  background: var(--surface-1);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow-soft);
+}
+
+.profile-head {
+  padding: 24px 20px 16px;
+  text-align: center;
+  border-bottom: 1px solid var(--glass-border);
+  background: var(--surface-1);
+}
+
+.back-btn {
+  float: left;
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  background: var(--surface-1);
+  color: var(--text-color);
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.back-btn:hover {
+  background: var(--btn-outline-hover-bg);
+}
+
+.profile-avatar-wrap {
+  width: 88px;
+  height: 88px;
+  margin: 0 auto 8px;
+}
+
+.profile-avatar-img,
+.profile-avatar-fallback {
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+.profile-avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #d60326;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.5rem;
+}
+
+.profile-head h2 {
+  margin: 6px 0 2px;
+  color: var(--text-color);
+}
+
+.profile-head p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.profile-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin: 14px auto;
+  max-width: 560px;
+  gap: 10px;
+}
+
+.profile-metrics div {
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.metric-btn {
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 10px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.metric-btn:hover {
+  filter: brightness(0.98);
+}
+
+.metric-btn strong {
+  color: var(--text-color);
+  font-size: 1rem;
+}
+
+.metric-btn span {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.profile-metrics strong {
+  color: var(--text-color);
+}
+
+.profile-metrics span {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.follow-btn {
+  border: 1px solid #d60326;
+  background: #d60326;
+  color: #fff;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tabs {
+  display: flex;
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.tabs button {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.tabs button.active {
+  color: #d60326;
+  border-bottom: 2px solid #d60326;
+}
+
+.profile-feed {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.post-card {
+  background: var(--surface-1);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 4px 14px rgba(20, 32, 56, 0.06);
+}
+
+.post-author-row {
+  margin-bottom: 10px;
+}
+
+.author-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.avatar-sm {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: #204d89;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.author-link {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: var(--text-color);
+  padding: 0;
+  font-weight: 700;
+}
+
+.author-left small {
+  display: block;
+  color: var(--text-muted);
+}
+
+.post-content {
+  color: var(--text-color);
+  margin-bottom: 8px;
+}
+
+.hashtags-row {
+  color: var(--mediterranean-blue);
+  font-size: 0.88rem;
+  margin-bottom: 8px;
+}
+
+.media-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.media-grid img,
+.media-grid video {
+  width: 100%;
+  border-radius: 10px;
+  max-height: 340px;
+  object-fit: contain;
+  object-position: center;
+  background: var(--surface-2);
+}
+
+.repost-block {
+  margin-top: 10px;
+}
+
+.repost-title {
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  margin: 0 0 8px;
+}
+
+.repost-card {
+  border: 1px solid var(--glass-border);
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.repost-card p {
+  margin: 6px 0;
+}
+
+.repost-card small {
+  color: var(--text-muted);
+}
+
+.empty,
+.loading-box,
+.error-box {
+  margin: 16px;
+  border-radius: 12px;
+  padding: 14px;
+  background: var(--surface-1);
+  color: var(--text-muted);
+  border: 1px solid var(--glass-border);
+  text-align: center;
+}
+
+:root[data-theme='dark'] .profile-shell,
+:root[data-theme='dark'] .post-card,
+:root[data-theme='dark'] .repost-card {
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.42);
+}
+
+:root[data-theme='dark'] .profile-shell {
+  background: #121a29;
+  border-color: #2a3650;
+}
+
+:root[data-theme='dark'] .profile-head,
+:root[data-theme='dark'] .tabs {
+  background: #121a29;
+  border-color: #2b3954;
+}
+
+:root[data-theme='dark'] .profile-metrics div,
+:root[data-theme='dark'] .metric-btn,
+:root[data-theme='dark'] .repost-card,
+:root[data-theme='dark'] .back-btn {
+  background: var(--surface-2);
+}
+
+:root[data-theme='dark'] .post-card {
+  background: #131b2a;
+  border-color: #2a3650;
+}
+
+:root[data-theme='dark'] .author-link,
+:root[data-theme='dark'] .post-content,
+:root[data-theme='dark'] .profile-head h2,
+:root[data-theme='dark'] .profile-metrics strong,
+:root[data-theme='dark'] .metric-btn strong {
+  color: #e6edf7;
+}
+
+:root[data-theme='dark'] .author-left small,
+:root[data-theme='dark'] .profile-head p,
+:root[data-theme='dark'] .profile-metrics span,
+:root[data-theme='dark'] .metric-btn span {
+  color: #a3b1c8;
+}
+
+@media (max-width: 700px) {
+  .profile-metrics {
+    grid-template-columns: repeat(2, 1fr);
+    max-width: 100%;
+  }
+}
+
+:root[data-theme='dark'] .profile-head p,
+:root[data-theme='dark'] .profile-metrics span,
+:root[data-theme='dark'] .author-left small,
+:root[data-theme='dark'] .repost-title,
+:root[data-theme='dark'] .repost-card small,
+:root[data-theme='dark'] .empty,
+:root[data-theme='dark'] .loading-box,
+:root[data-theme='dark'] .error-box {
+  color: #c3cfdf;
+}

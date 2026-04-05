@@ -8,6 +8,8 @@ import org.example.backend.model.Product;
 import org.example.backend.model.ProductImage;
 import org.example.backend.model.ProductVariant;
 import org.example.backend.model.User;
+import org.example.backend.repository.CartItemRepository;
+import org.example.backend.repository.OrderItemRepository;
 import org.example.backend.repository.ProductRepository;
 import org.example.backend.repository.UserRepository;
 import org.springframework.security.core.Authentication;
@@ -19,10 +21,18 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProductService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
+    private final CartItemRepository cartItemRepository;
+    private final OrderItemRepository orderItemRepository;
 
-    public ProductService(ProductRepository productRepository, UserRepository userRepository) {
+    public ProductService(
+            ProductRepository productRepository,
+            UserRepository userRepository,
+            CartItemRepository cartItemRepository,
+            OrderItemRepository orderItemRepository) {
         this.productRepository = productRepository;
         this.userRepository = userRepository;
+        this.cartItemRepository = cartItemRepository;
+        this.orderItemRepository = orderItemRepository;
     }
 
     /**
@@ -117,7 +127,7 @@ public class ProductService {
     }
 
     @Transactional
-    public Product save(Product entity, String username) {
+    public ProductCatalogItem save(Product entity, String username) {
         User currentUser = userRepository.findByUsernameIgnoreCase(username)
                 .orElseThrow(() -> new NoSuchElementException("User not found with username: " + username));
         // Frontend sends productId: 0 for new products — must be null or Hibernate / DB can error
@@ -127,29 +137,40 @@ public class ProductService {
         entity.setUser(currentUser);
         entity.setImageUrl(normalizeImageUrlForApi(entity.getImageUrl()));
 
-        // Correctly link nested entities and reset auto-generated IDs
         if (entity.getImages() != null) {
             entity.getImages().forEach(img -> {
                 img.setProduct(entity);
-                // Reset id=0 so JPA handles auto-increment
-                if (img.getId() != null && img.getId() == 0) img.setId(null);
+                if (img.getId() != null && img.getId() == 0) {
+                    img.setId(null);
+                }
                 img.setImageUrl(normalizeImageUrlForApi(img.getImageUrl()));
             });
         }
         if (entity.getVariants() != null) {
             entity.getVariants().forEach(v -> {
                 v.setProduct(entity);
-                // Reset variantId=0 so JPA handles auto-increment
-                if (v.getVariantId() != null && v.getVariantId() == 0) v.setVariantId(null);
+                if (v.getVariantId() != null && v.getVariantId() == 0) {
+                    v.setVariantId(null);
+                }
             });
         }
 
-        return productRepository.save(entity);
+        Product saved = productRepository.save(entity);
+        return productRepository
+                .findByIdWithSeller(saved.getProductId())
+                .map(this::toCatalogItem)
+                .orElseThrow(() -> new NoSuchElementException("Product not found after save"));
     }
 
+    /**
+     * Updates catalog fields only. Seller ({@code user}) is never taken from the JSON body (avoids detached
+     * {@code User} proxies and keeps ownership stable). Returns a DTO so Jackson does not touch
+     * {@code Product.user} after the session closes (open-in-view=false).
+     */
     @Transactional
-    public Product update(Integer id, Product entityDetails) {
-        Product existing = productRepository.findById(id)
+    public ProductCatalogItem update(Integer id, Product entityDetails) {
+        Product existing = productRepository
+                .findByIdWithSeller(id)
                 .orElseThrow(() -> new NoSuchElementException("Product not found with id: " + id));
 
         existing.setName(entityDetails.getName());
@@ -160,7 +181,6 @@ public class ProductService {
         existing.setStock(entityDetails.getStock());
         existing.setStatus(entityDetails.getStatus());
 
-        // New entity instances: re-adding the same detached IDs after clear() confuses Hibernate / orphanRemoval
         existing.getVariants().clear();
         if (entityDetails.getVariants() != null) {
             for (ProductVariant src : entityDetails.getVariants()) {
@@ -188,13 +208,17 @@ public class ProductService {
             }
         }
 
-        return productRepository.save(existing);
+        Product saved = productRepository.save(existing);
+        return toCatalogItem(saved);
     }
 
+    @Transactional
     public void deleteById(Integer id) {
         if (!productRepository.existsById(id)) {
             throw new NoSuchElementException("Product not found with id: " + id);
         }
+        cartItemRepository.deleteAllByProduct_ProductId(id);
+        orderItemRepository.deleteAllByProduct_ProductId(id);
         productRepository.deleteById(id);
     }
 }
