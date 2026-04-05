@@ -20,6 +20,25 @@
             <button class="btn ghost" type="button" (click)="scrollToSection('activities'); $event.stopPropagation()">See activities</button>
             <button class="btn ghost" type="button" (click)="goToMapZoomOut(); $event.stopPropagation()">Back to map</button>
           </div>
+
+          <div class="weather-box" (click)="$event.stopPropagation()">
+            @if (weatherLoading()) {
+              <p class="weather-line">Loading weather...</p>
+            } @else if (weatherError()) {
+              <p class="weather-line weather-error">{{ weatherError() }}</p>
+            } @else {
+              <p class="weather-line weather-title">Today weather</p>
+              <p class="weather-line weather-main">{{ weatherIcon() }} {{ weatherLabel() }}</p>
+              <p class="weather-line weather-meta">
+                @if (weatherTemperature() !== null) {
+                  <span>{{ weatherTemperature() }}°C</span>
+                }
+                @if (weatherWind() !== null) {
+                  <span> • Wind {{ weatherWind() }} km/h</span>
+                }
+              </p>
+            }
+          </div>
         </div>
         @if (hasMultipleImages()) {
           <div class="hero-nav hero-nav-left">◀</div>

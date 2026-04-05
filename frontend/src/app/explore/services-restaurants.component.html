@@ -9,7 +9,7 @@
     <div class="services-layout">
       <aside class="filters-sidebar">
         <h3>Filters</h3>
-        <label class="filter-field">
+        <label class="filter-field" [class.filter-detected]="voiceDetectedFilters().city">
           <span>City</span>
           <select [ngModel]="selectedCityId()" (ngModelChange)="onCityFilterChange($event)">
             <option value="all">All cities</option>
@@ -19,16 +19,38 @@
           </select>
         </label>
 
-        <label class="filter-field">
+        <label class="filter-field" [class.filter-detected]="voiceDetectedFilters().cuisine">
           <span>Cuisine type</span>
           <input type="text" [ngModel]="cuisineType()" (ngModelChange)="onCuisineTypeChange($event)" placeholder="e.g. Tunisian, Italian" />
+        </label>
+
+        <label class="filter-field" [class.filter-detected]="voiceDetectedFilters().location">
+          <span>Location keyword</span>
+          <input
+            type="text"
+            [ngModel]="locationKeyword()"
+            (ngModelChange)="onLocationKeywordChange($event)"
+            placeholder="e.g. lac 2, medina"
+          />
         </label>
       </aside>
 
       <div class="services-content">
         <div class="toolbar">
-          <div class="search-wrap">
+          <div class="search-wrap modern-voice">
             <input type="text" [ngModel]="q()" (ngModelChange)="onSearchChange($event)" placeholder="Search restaurant..." />
+            <button
+              class="voice-btn"
+              type="button"
+              (click)="onVoiceSearchClick()"
+              [disabled]="!voiceSupported() || voiceProcessing()"
+              [class.active]="voiceListening()"
+              [attr.aria-label]="voiceListening() ? 'Stop voice recording' : 'Start voice recording'"
+              title="Voice search"
+            >
+              🎤
+            </button>
+            <span class="voice-counter" [class.active]="voiceListening()">{{ (voiceDetectedFilters().city ? 1 : 0) + (voiceDetectedFilters().cuisine ? 1 : 0) + (voiceDetectedFilters().location ? 1 : 0) }}</span>
           </div>
           <select [ngModel]="sort()" (ngModelChange)="onSortChange($event)">
             <option value="restaurantId,desc">Newest</option>
@@ -36,6 +58,22 @@
             <option value="rating,desc">Best rating</option>
           </select>
         </div>
+
+        @if (voiceListening()) {
+          <p class="voice-state">Listening... tap microphone again to apply filters.</p>
+        }
+        @if (voiceProcessing()) {
+          <p class="voice-state">Analyzing your voice request...</p>
+        }
+        @if (lastTranscript()) {
+          <p class="voice-state transcript">“{{ lastTranscript() }}”</p>
+        }
+        @if (voiceSuggestion()) {
+          <p class="voice-state">{{ voiceSuggestion() }}</p>
+        }
+        @if (voiceError()) {
+          <p class="voice-state error">{{ voiceError() }}</p>
+        }
 
         @if (loading()) {
           <p class="state">Loading restaurants...</p>

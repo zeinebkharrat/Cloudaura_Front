@@ -67,6 +67,8 @@ export interface PublicReview {
   reviewId: number;
   userId: number;
   username: string;
+  userEmail: string | null;
+  profileImageUrl: string | null;
   stars: number;
   commentText: string;
   createdAt: string;
@@ -139,3 +141,25 @@ export interface ActivityReservationListItem {
   username: string | null;
   userEmail: string | null;
 }
+
+export interface ActivityCheckoutSessionResponse {
+  sessionId: string;
+  sessionUrl: string;
+}
+
+export interface VoiceTranscriptionResponse {
+  text: string;
+  detectedLanguage: string | null;
+  provider: string;
+}
+
+export interface OpenMeteoCurrentResponse {
+  current?: {
+    time?: string;
+    temperature_2m?: number;
+    weather_code?: number;
+    wind_speed_10m?: number;
+  };
+}
+
+

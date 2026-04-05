@@ -15,6 +15,7 @@ import {
   CreateActivityReservationRequest,
 } from './explore.models';
 import { ExploreService } from './explore.service';
+import { AuthService } from '../core/auth.service';
 
 interface CalendarDayCell {
   dateIso: string;
@@ -35,6 +36,7 @@ interface CalendarDayCell {
 export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly exploreService = inject(ExploreService);
+  private readonly authService = inject(AuthService);
   private readonly http = inject(HttpClient);
   private readonly location = inject(Location);
 
@@ -76,6 +78,8 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     stars: 5,
     commentText: '',
   };
+  editingReviewId: number | null = null;
+  readonly commentEmojis = ['😊', '😍', '😋', '👍', '🔥', '🎉', '👏', '🤩', '💯', '❤️'];
 
   ngAfterViewInit(): void {
     this.viewReady = true;
@@ -332,6 +336,86 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     this.reviewForm.stars = stars;
   }
 
+  appendEmoji(emoji: string): void {
+    this.reviewForm.commentText = `${this.reviewForm.commentText}${emoji}`;
+  }
+
+  startEditReview(review: PublicReview): void {
+    this.editingReviewId = review.reviewId;
+    this.reviewForm = {
+      stars: review.stars,
+      commentText: review.commentText,
+    };
+  }
+
+  cancelEditReview(): void {
+    this.editingReviewId = null;
+    this.reviewForm = { stars: 5, commentText: '' };
+  }
+
+  isOwnReview(review: PublicReview): boolean {
+    const currentUserId = this.authService.currentUser()?.id;
+    return currentUserId != null && currentUserId === review.userId;
+  }
+
+  reviewAuthorEmail(review: PublicReview): string {
+    return review.userEmail?.trim() || review.username;
+  }
+
+  reviewAuthorInitial(review: PublicReview): string {
+    const source = this.reviewAuthorEmail(review).trim();
+    return source ? source.charAt(0).toUpperCase() : '?';
+  }
+
+  deleteOwnReview(): void {
+    if (!this.activity) {
+      return;
+    }
+
+    Swal.fire({
+      icon: 'warning',
+      title: 'Delete your comment?',
+      text: 'This action cannot be undone.',
+      showCancelButton: true,
+      confirmButtonText: 'Delete',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#e63946',
+    }).then((result) => {
+      if (!result.isConfirmed || !this.activity) {
+        return;
+      }
+
+      this.reviewSubmitting = true;
+      this.exploreService.deleteActivityReviewMine(this.activity.activityId).subscribe({
+        next: () => {
+          this.reviewSubmitting = false;
+          this.cancelEditReview();
+          this.loadReviewSummary();
+          this.loadReviews();
+        },
+        error: (err: HttpErrorResponse) => {
+          this.reviewSubmitting = false;
+          if (err?.status === 401) {
+            Swal.fire({
+              icon: 'warning',
+              title: 'Sign in required',
+              text: 'Please sign in to manage your comment.',
+              confirmButtonColor: '#e63946',
+            });
+            return;
+          }
+
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: err?.error?.message || 'Unable to delete comment.',
+            confirmButtonColor: '#e63946',
+          });
+        },
+      });
+    });
+  }
+
   submitReview(): void {
     if (!this.activity || !this.reviewForm.commentText.trim()) {
       return;
@@ -344,7 +428,7 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     }).subscribe({
       next: () => {
         this.reviewSubmitting = false;
-        this.reviewForm = { stars: 5, commentText: '' };
+        this.cancelEditReview();
         this.loadReviewSummary();
         this.loadReviews();
       },

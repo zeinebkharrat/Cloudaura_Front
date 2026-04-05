@@ -50,6 +50,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/public/activity-reservations/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/public/restaurants/*/reviews").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/public/activities/*/reviews").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/public/restaurants/*/reviews/mine").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/public/activities/*/reviews/mine").authenticated()
                         .requestMatchers("/api/public/my/**").authenticated()
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/public/**").permitAll()

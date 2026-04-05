@@ -1,8 +1,9 @@
 import { Component, HostListener, OnDestroy, OnInit, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { ExploreService } from './explore.service';
-import { Activity, PublicCityDetailsResponse, Restaurant } from './explore.models';
+import { Activity, OpenMeteoCurrentResponse, PublicCityDetailsResponse, Restaurant } from './explore.models';
 
 const HOME_MAP_RETURN_CONTEXT_KEY = 'homeMapReturnContext';
 
@@ -25,6 +26,12 @@ export class CityExploreComponent implements OnInit, OnDestroy {
   activitiesPerPage = signal(2);
   restaurantPageIndex = signal(0);
   activityPageIndex = signal(0);
+  weatherLoading = signal(false);
+  weatherError = signal('');
+  weatherLabel = signal('');
+  weatherIcon = signal('⛅');
+  weatherTemperature = signal<number | null>(null);
+  weatherWind = signal<number | null>(null);
 
   media = computed(() => this.details()?.media ?? []);
   currentMedia = computed(() => {
@@ -85,7 +92,8 @@ export class CityExploreComponent implements OnInit, OnDestroy {
   constructor(
     private readonly route: ActivatedRoute,
     private readonly exploreService: ExploreService,
-    private readonly router: Router
+    private readonly router: Router,
+    private readonly http: HttpClient
   ) {}
 
   ngOnInit(): void {
@@ -112,6 +120,7 @@ export class CityExploreComponent implements OnInit, OnDestroy {
         this.loadActivityImages(details.activities);
         this.loadActivityRatings(details.activities);
         this.currentImageIndex.set(0);
+        this.loadCurrentWeather(details.city.latitude, details.city.longitude);
         this.startAutoSlide();
         this.startRestaurantsAutoSlide();
         this.startActivitiesAutoSlide();
@@ -487,5 +496,71 @@ export class CityExploreComponent implements OnInit, OnDestroy {
 
   private restartActivitiesAutoSlide(): void {
     this.startActivitiesAutoSlide();
+  }
+
+  private loadCurrentWeather(latitude: number | null, longitude: number | null): void {
+    if (latitude == null || longitude == null) {
+      this.weatherError.set('Weather unavailable for this city coordinates.');
+      this.weatherLoading.set(false);
+      return;
+    }
+
+    this.weatherLoading.set(true);
+    this.weatherError.set('');
+
+    const params = new HttpParams()
+      .set('latitude', latitude)
+      .set('longitude', longitude)
+      .set('current', 'temperature_2m,weather_code,wind_speed_10m')
+      .set('timezone', 'auto');
+
+    this.http.get<OpenMeteoCurrentResponse>('https://api.open-meteo.com/v1/forecast', { params }).subscribe({
+      next: (response: OpenMeteoCurrentResponse) => {
+        const current = response.current;
+        if (!current) {
+          this.weatherError.set('Weather data unavailable right now.');
+          this.weatherLoading.set(false);
+          return;
+        }
+
+        this.weatherTemperature.set(
+          typeof current.temperature_2m === 'number' ? current.temperature_2m : null
+        );
+        this.weatherWind.set(
+          typeof current.wind_speed_10m === 'number' ? current.wind_speed_10m : null
+        );
+
+        const summary = this.describeWeatherCode(current.weather_code ?? 0);
+        this.weatherLabel.set(summary.label);
+        this.weatherIcon.set(summary.icon);
+        this.weatherLoading.set(false);
+      },
+      error: () => {
+        this.weatherLoading.set(false);
+        this.weatherError.set('Unable to load weather now.');
+      },
+    });
+  }
+
+  private describeWeatherCode(code: number): { label: string; icon: string } {
+    if (code === 0) {
+      return { label: 'Clear sky', icon: '☀️' };
+    }
+    if (code >= 1 && code <= 3) {
+      return { label: 'Partly cloudy', icon: '⛅' };
+    }
+    if (code >= 45 && code <= 48) {
+      return { label: 'Foggy', icon: '🌫️' };
+    }
+    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) {
+      return { label: 'Rainy', icon: '🌧️' };
+    }
+    if (code >= 71 && code <= 77) {
+      return { label: 'Snowy', icon: '❄️' };
+    }
+    if (code >= 95) {
+      return { label: 'Stormy', icon: '⛈️' };
+    }
+    return { label: 'Variable weather', icon: '🌤️' };
   }
 }
