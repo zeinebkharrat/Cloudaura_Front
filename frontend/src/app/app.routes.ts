@@ -38,6 +38,7 @@ import { CartPageComponent } from './shop/cart-page.component';
 import { MyOrdersComponent } from './shop/my-orders.component';
 import { ChatComponent } from './chat/chat.component';
 import { AdminGamesComponent } from './admin/games/admin-games.component';
+import { AdminGamificationComponent } from './admin/gamification/admin-gamification.component';
 import { AdminTicketsComponent } from './admin/tickets/admin-tickets.component';
 import { UserGamesComponent } from './games/user-games.component';
 import { QuizPlayerComponent } from './games/quiz-player.component';
@@ -74,10 +75,10 @@ export const routes: Routes = [
   { path: 'virtual-tour', component: VirtualTourPageComponent },
   { path: 'jeux', redirectTo: 'games', pathMatch: 'full' },
   { path: 'games', component: UserGamesComponent },
-  { path: 'games/quiz/:id', component: QuizPlayerComponent },
-  { path: 'games/crossword/:id', component: CrosswordPlayerComponent },
-  { path: 'games/puzzle/:id', component: PuzzlePlayerComponent },
-  { path: 'games/ludo', component: LudoPlayerComponent },
+  { path: 'games/quiz/:id', component: QuizPlayerComponent, canActivate: [authGuard] },
+  { path: 'games/crossword/:id', component: CrosswordPlayerComponent, canActivate: [authGuard] },
+  { path: 'games/puzzle/:id', component: PuzzlePlayerComponent, canActivate: [authGuard] },
+  { path: 'games/ludo', component: LudoPlayerComponent, canActivate: [authGuard] },
   {
     path: 'hebergement',
     loadChildren: () => import('./features/hebergement/hebergement.routes')
@@ -107,6 +108,7 @@ export const routes: Routes = [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       { path: 'dashboard', component: AdminDashboardComponent },
       { path: 'games', component: AdminGamesComponent },
+      { path: 'gamification', component: AdminGamificationComponent },
       { path: 'audit-logs', component: AuditLogsComponent },
       { path: 'users', component: AdminUsersComponent },
       { path: 'cities', component: AdminCitiesComponent },

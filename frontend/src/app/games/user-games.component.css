@@ -294,6 +294,11 @@
   margin: 0;
 }
 
+.ludo-signin-hint {
+  color: #fbbf24;
+  font-weight: 600;
+}
+
 .ludo-cover {
   width: 100%;
   height: 150px;

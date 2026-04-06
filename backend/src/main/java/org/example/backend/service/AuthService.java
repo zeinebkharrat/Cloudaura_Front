@@ -198,7 +198,7 @@ public class AuthService {
         }
 
         UserDetails principal = (UserDetails) authentication.getPrincipal();
-        User user = userRepository.findByUsernameIgnoreCase(principal.getUsername())
+        User user = userRepository.findFirstByUsernameIgnoreCaseOrderByUserIdAsc(principal.getUsername())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
 
         resetFailedSigninState(user);
@@ -221,7 +221,7 @@ public class AuthService {
         String lastName = extractLastName(oauth2User);
         String usernameSeed = extractUsernameSeed(oauth2User, provider, normalizedEmail);
 
-        User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
+        User user = userRepository.findFirstByEmailIgnoreCaseOrderByUserIdAsc(normalizedEmail)
                 .orElseGet(() -> createSocialUser(normalizedEmail, firstName, lastName, provider, usernameSeed));
 
         ensureNotBanned(user);
@@ -318,7 +318,7 @@ public class AuthService {
     @Transactional
     public AuthMessageResponse resendVerification(ResendVerificationRequest request) {
         String normalizedIdentifier = request.identifier().trim().toLowerCase(Locale.ROOT);
-        userRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(normalizedIdentifier, normalizedIdentifier)
+        userRepository.findFirstByUsernameIgnoreCaseOrEmailIgnoreCaseOrderByUserIdAsc(normalizedIdentifier, normalizedIdentifier)
                 .ifPresent(user -> {
                     if (Boolean.TRUE.equals(user.getEmailVerified())) {
                         return;
@@ -357,7 +357,7 @@ public class AuthService {
         }
 
         String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
-        userRepository.findByEmailIgnoreCase(normalizedEmail)
+        userRepository.findFirstByEmailIgnoreCaseOrderByUserIdAsc(normalizedEmail)
                 .ifPresent(user -> {
                     if (!"LOCAL".equalsIgnoreCase(user.getAuthProvider())) {
                         return;
@@ -544,7 +544,7 @@ public class AuthService {
         if (normalized.isBlank()) {
             return Optional.empty();
         }
-        return userRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(normalized, normalized);
+        return userRepository.findFirstByUsernameIgnoreCaseOrEmailIgnoreCaseOrderByUserIdAsc(normalized, normalized);
     }
 
     private void handleFailedSignin(User user) {
@@ -658,7 +658,11 @@ public class AuthService {
             return false;
         }
         String normalized = nationality.trim().toLowerCase(Locale.ROOT);
-        return normalized.equals("tunisia") || normalized.equals("tunisian") || normalized.equals("tunisie");
+        return normalized.equals("tunisia")
+                || normalized.equals("tunisian")
+                || normalized.equals("tunisie")
+                || normalized.equals("tunisien")
+                || normalized.equals("tunisienne");
     }
 
     private User currentUser() {
@@ -668,8 +672,8 @@ public class AuthService {
         }
 
         String username = authentication.getName();
-        return userRepository.findByUsernameIgnoreCase(username)
-                .or(() -> userRepository.findByEmailIgnoreCase(username))
+        return userRepository.findFirstByUsernameIgnoreCaseOrderByUserIdAsc(username)
+                .or(() -> userRepository.findFirstByEmailIgnoreCaseOrderByUserIdAsc(username))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
@@ -704,7 +708,8 @@ public class AuthService {
                 roles,
                 user.getStatus(),
                 Boolean.TRUE.equals(user.getArtisanRequestPending()),
-                user.getProfileImageUrl()
+                user.getProfileImageUrl(),
+                user.getPoints()
         );
     }
 }

@@ -4,7 +4,12 @@
 
   <article class="profile-card glass-panel">
     <h1>My profile</h1>
-    <p class="subtitle">Update your personal information and password.</p>
+    <p class="subtitle">
+      Update your personal information and password.
+      @if (currentUser()?.points != null) {
+        <span class="points-pill">Points: {{ currentUser()?.points }}</span>
+      }
+    </p>
 
     @if (actionError()) {
       <div class="msg error">{{ actionError() }}</div>

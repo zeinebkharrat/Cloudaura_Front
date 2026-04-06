@@ -552,7 +552,7 @@ public class EventController {
         if (identifier == null || identifier.isBlank()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Session invalide");
         }
-        return userRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(identifier, identifier)
+        return userRepository.findFirstByUsernameIgnoreCaseOrEmailIgnoreCaseOrderByUserIdAsc(identifier, identifier)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
     }
 

@@ -27,6 +27,7 @@ export class AdminLayoutComponent {
   nav: AdminNavItem[] = [
     { label: 'Dashboard', route: '/admin/dashboard', iconImg: 'icones/dashboard.png' },
     { label: 'Games', route: '/admin/games', iconImg: 'icones/game.png' },
+    { label: 'Gamification', route: '/admin/gamification', iconClass: 'pi pi-star' },
     { label: 'Cities', route: '/admin/cities', iconImg: 'icones/city.png' },
     { label: 'Restaurants', route: '/admin/restaurants', iconImg: 'icones/restaurant.png' },
     { label: 'Activities', route: '/admin/activities', iconImg: 'icones/actitvity.png' },

@@ -1,0 +1,275 @@
+<div class="lud-dash">
+  <header class="lh-header">
+    <div class="lh-left">
+      <h1 class="dash-h1">Gamification</h1>
+      <p class="dash-p">Badges, daily challenges, and live tournaments.</p>
+    </div>
+    <div class="lh-right">
+      <button type="button" class="btn-primary main-act" (click)="refreshAll()" [disabled]="busy()">Refresh</button>
+    </div>
+  </header>
+
+  @if (error()) {
+    <div class="msg error glass-card">{{ error() }}</div>
+  }
+
+  <div class="tabs glass-card">
+    <button type="button" class="tab" [class.active]="activeTab() === 'badges'" (click)="setTab('badges')">Badges</button>
+    <button type="button" class="tab" [class.active]="activeTab() === 'challenges'" (click)="setTab('challenges')">
+      Daily challenges
+    </button>
+    <button type="button" class="tab" [class.active]="activeTab() === 'tournaments'" (click)="setTab('tournaments')">
+      Tournaments
+    </button>
+  </div>
+
+  @if (activeTab() === 'badges') {
+    <section class="glass-card panel-block">
+      <h2>Badges</h2>
+      <p class="dash-p">Create badges; tournaments can pick a winner badge.</p>
+      <div class="form-grid">
+        <label>
+          Name
+          <input type="text" [(ngModel)]="newBadge.name" name="bn" placeholder="e.g. Champion" />
+        </label>
+        <label>
+          Icon (URL or from PC)
+          <div style="display: flex; gap: 8px;">
+            <input type="text" [(ngModel)]="newBadge.iconUrl" name="bi" placeholder="https://..." style="flex: 1;" />
+            <button type="button" class="btn-secondary" (click)="fileIn.click()">📁 Browse</button>
+            <input #fileIn type="file" (change)="onBadgeFileSelected($event)" style="display: none;" accept="image/*" />
+          </div>
+          @if (badgePreviewUrl || newBadge.iconUrl) {
+            <div style="margin-top: 8px; display: flex; align-items: center; gap: 10px;">
+              <img [src]="badgePreviewUrl || newBadge.iconUrl" alt="Badge preview" style="height: 48px; width: 48px; object-fit: contain; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);" />
+              <button type="button" (click)="newBadge.iconUrl = ''; badgePreviewUrl = null; selectedBadgeFile = null" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 0.8rem; text-decoration: underline;">Remove</button>
+            </div>
+          }
+        </label>
+        <label class="span-2">
+          Description
+          <textarea [(ngModel)]="newBadge.description" name="bd" rows="2"></textarea>
+        </label>
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn-primary main-act" (click)="saveBadge()" [disabled]="busy()">
+          {{ editBadgeId != null ? 'Update badge' : 'Create badge' }}
+        </button>
+        @if (editBadgeId != null) {
+          <button type="button" class="btn-ghost" (click)="cancelEditBadge()">Cancel</button>
+        }
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Description</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (b of badges(); track b.badgeId) {
+            <tr>
+              <td>{{ b.badgeId }}</td>
+              <td>{{ b.name }}</td>
+              <td>{{ b.description }}</td>
+              <td class="actions">
+                <button type="button" class="btn-ghost" (click)="startEditBadge(b)">Edit</button>
+                <button type="button" class="btn-danger" (click)="deleteBadge(b.badgeId)">Delete</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  }
+
+  @if (activeTab() === 'challenges') {
+    <section class="glass-card panel-block">
+      <h2>Daily challenges</h2>
+      <p class="dash-p">Reward points when the user completes the target game in the valid date range (automatically set to 24 hours from creation).</p>
+      
+      <div class="form-grid">
+        <label class="span-2">
+          Game kind
+          <select [(ngModel)]="challengeKind" name="cgkpick">
+            <option [ngValue]="null">Select a game type...</option>
+            @for (k of gameKinds; track k) {
+              <option [ngValue]="k">{{ k }}</option>
+            }
+          </select>
+        </label>
+      </div>
+
+      @if (challengeKind) {
+        <div class="form-grid challenge-form-block animate-in">
+          <label>
+            Title
+            <input type="text" [(ngModel)]="newChallenge.title" name="ct" placeholder="e.g. Daily Quiz" />
+          </label>
+          <label>
+            Points
+            <input type="number" [(ngModel)]="newChallenge.pointsReward" name="cp" />
+          </label>
+          <label>
+            Target ({{ challengeKind }})
+            @if (challengeKind === 'QUIZ') {
+              <select [(ngModel)]="newChallenge.targetId" name="ctid">
+                <option [ngValue]="null">Select a quiz...</option>
+                @for (q of allQuizzes(); track q.quizId) {
+                  <option [ngValue]="q.quizId">{{ q.title }} (#{{ q.quizId }})</option>
+                }
+              </select>
+            } @else if (challengeKind === 'CROSSWORD') {
+              <select [(ngModel)]="newChallenge.targetId" name="ctid">
+                <option [ngValue]="null">Select a crossword...</option>
+                @for (c of allCrosswords(); track c.crosswordId) {
+                  <option [ngValue]="c.crosswordId">{{ c.title }} (#{{ c.crosswordId }})</option>
+                }
+              </select>
+            } @else if (challengeKind === 'PUZZLE') {
+              <select [(ngModel)]="newChallenge.targetId" name="ctid">
+                <option [ngValue]="null">Select a puzzle...</option>
+                @for (p of allPuzzles(); track p.puzzleId) {
+                  <option [ngValue]="p.puzzleId">{{ p.title }} (#{{ p.puzzleId }})</option>
+                }
+              </select>
+            } @else {
+              <input type="number" [(ngModel)]="newChallenge.targetId" name="ctid" placeholder="Manual ID if needed" />
+            }
+            <small class="form-hint" style="margin-top: 4px;">
+              Manage content in <a href="/admin/games" style="color: #e63946; text-decoration: underline;">Games section</a>.
+            </small>
+          </label>
+          <label class="span-2">
+            Description
+            <textarea [(ngModel)]="newChallenge.description" name="cd" rows="3" placeholder="Challenge details..."></textarea>
+          </label>
+          <label class="chk">
+            <input type="checkbox" [(ngModel)]="newChallenge.active" name="cact" />
+            Active
+          </label>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn-primary main-act" (click)="saveChallenge()" [disabled]="busy()">
+            Create challenge
+          </button>
+        </div>
+      }
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Title</th>
+            <th>Points</th>
+            <th>Game</th>
+            <th>Target</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of challenges(); track c.challengeId) {
+            <tr>
+              <td>{{ c.challengeId }}</td>
+              <td>{{ c.title }}</td>
+              <td>{{ c.pointsReward }}</td>
+              <td>{{ c.gameKind }}</td>
+              <td>{{ c.targetId ?? 'any' }}</td>
+              <td class="actions">
+                <button type="button" class="btn-danger" (click)="deleteChallenge(c.challengeId)">Delete</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  }
+
+  @if (activeTab() === 'tournaments') {
+    <section class="glass-card panel-block">
+      <h2>Tournaments</h2>
+      <p class="dash-p">Create rounds with live time windows; go live, then finalize to award the badge to the top scorer.</p>
+      <div class="form-grid">
+        <label>
+          Title
+          <input type="text" [(ngModel)]="newTournament.title" name="tt" />
+        </label>
+        <label>
+          Winner badge
+          <select [(ngModel)]="newTournament.winnerBadgeId" name="twb">
+            <option [ngValue]="null">— none —</option>
+            @for (b of badges(); track b.badgeId) {
+              <option [ngValue]="b.badgeId">{{ b.name }} ({{ b.badgeId }})</option>
+            }
+          </select>
+        </label>
+        <label>
+          Starts at
+          <input type="datetime-local" [(ngModel)]="newTournament.startsAt" name="tsa" />
+        </label>
+        <label>
+          Ends at
+          <input type="datetime-local" [(ngModel)]="newTournament.endsAt" name="tea" />
+        </label>
+        <label class="span-2">
+          Description
+          <textarea [(ngModel)]="newTournament.description" name="td" rows="2"></textarea>
+        </label>
+      </div>
+      <h3>Rounds (Random Selection)</h3>
+      <div class="tournament-rounds-list">
+        @for (r of tournamentRounds; track $index) {
+          <div class="round-summary-card glass-card">
+            <div class="rs-info">
+              <span class="rs-order">#{{ r.sequenceOrder }}</span>
+              <span class="rs-badge badge-{{ r.gameKind.toLowerCase() }}">{{ r.gameKind }}</span>
+              <span class="rs-title">{{ r.gameTitle }}</span>
+            </div>
+            <button type="button" class="btn-text delete" (click)="removeRoundRow($index)">Remove</button>
+          </div>
+        }
+        @if (tournamentRounds.length === 0) {
+          <p class="empty-msg">No rounds added yet. Click the button below to add a random game round.</p>
+        }
+        <div class="round-actions-bottom">
+          <button type="button" class="btn-secondary" (click)="addRoundRow()">+ Add Random Round</button>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn-primary main-act" (click)="saveTournament()" [disabled]="busy()">Create tournament</button>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Title</th>
+            <th>Status</th>
+            <th>Rounds</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (t of tournaments(); track t.tournamentId) {
+            <tr>
+              <td>{{ t.tournamentId }}</td>
+              <td>{{ t.title }}</td>
+              <td>{{ t.status }}</td>
+              <td>{{ t.rounds.length }}</td>
+              <td class="actions">
+                @if (t.status === 'DRAFT') {
+                  <button type="button" class="btn-primary main-act" (click)="goLive(t.tournamentId)">Go live</button>
+                }
+                @if (t.status === 'LIVE') {
+                  <button type="button" class="btn-primary main-act" (click)="finalize(t.tournamentId)">Finalize</button>
+                }
+                <button type="button" class="btn-danger" (click)="deleteTournament(t.tournamentId)">Delete</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  }
+</div>

@@ -29,6 +29,11 @@ export class UserGamesComponent implements OnInit {
     private auth: AuthService,
   ) {}
 
+  /** Accès au Ludo réservé aux utilisateurs connectés (voir route `games/ludo` + authGuard). */
+  isLoggedIn(): boolean {
+    return this.auth.isAuthenticated();
+  }
+
   ngOnInit() {
     this.api.getQuizzes().subscribe((list) => {
       this.quizzes.set((list ?? []).filter((q) => q.published));
@@ -152,6 +157,10 @@ export class UserGamesComponent implements OnInit {
   }
 
   playNode(node: RoadmapNode, index: number) {
+    if (!this.isLoggedIn()) {
+      this.router.navigate(['/login']);
+      return;
+    }
     if (!this.isUnlocked(index)) {
       this.roadmapNotice.set('This step is locked. Complete the previous step first.');
       return;
@@ -235,10 +244,18 @@ export class UserGamesComponent implements OnInit {
   }
 
   playPuzzle(puzzleId: number): void {
+    if (!this.isLoggedIn()) {
+      this.router.navigate(['/login']);
+      return;
+    }
     this.router.navigate(['/games/puzzle', puzzleId]);
   }
 
   playLudo(): void {
+    if (!this.isLoggedIn()) {
+      this.router.navigate(['/login']);
+      return;
+    }
     this.router.navigate(['/games/ludo']);
   }
 }

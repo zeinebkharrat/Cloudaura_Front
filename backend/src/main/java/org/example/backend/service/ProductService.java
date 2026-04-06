@@ -93,7 +93,7 @@ public class ProductService {
         boolean isFavorite = false;
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated() && !auth.getPrincipal().equals("anonymousUser")) {
-            java.util.Optional<User> userOpt = userRepository.findByUsernameIgnoreCase(auth.getName());
+            java.util.Optional<User> userOpt = userRepository.findFirstByUsernameIgnoreCaseOrderByUserIdAsc(auth.getName());
             if (userOpt.isPresent()) {
                 User user = userOpt.get();
                 if (user.getFavorites() != null) {
@@ -128,7 +128,7 @@ public class ProductService {
 
     @Transactional
     public ProductCatalogItem save(Product entity, String username) {
-        User currentUser = userRepository.findByUsernameIgnoreCase(username)
+        User currentUser = userRepository.findFirstByUsernameIgnoreCaseOrderByUserIdAsc(username)
                 .orElseThrow(() -> new NoSuchElementException("User not found with username: " + username));
         // Frontend sends productId: 0 for new products — must be null or Hibernate / DB can error
         if (entity.getProductId() != null && entity.getProductId() == 0) {

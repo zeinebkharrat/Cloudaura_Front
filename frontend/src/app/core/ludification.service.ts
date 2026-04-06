@@ -10,6 +10,10 @@ export interface Quiz {
   description?: string;
   published?: boolean;
   createdAt?: string | Date;
+  /** Image de couverture (URL). */
+  coverImageUrl?: string | null;
+  /** Durée totale en secondes (multiple de 3 côté serveur ; 3 tiers = 3 étoiles). */
+  timeLimitSeconds?: number | null;
   questions?: QuizQuestion[];
 }
 
@@ -211,6 +215,8 @@ export class LudificationService {
       description: p.description ?? null,
       published: p.published ?? null,
       createdAt: p.createdAt ?? null,
+      coverImageUrl: p.coverImageUrl ?? null,
+      timeLimitSeconds: p.timeLimitSeconds ?? null,
       questions: (p.questions ?? []).map((q) => ({
         orderIndex: q.orderIndex ?? null,
         questionText: q.questionText ?? null,
