@@ -31,6 +31,9 @@ public class SchemaRepairRunner implements CommandLineRunner {
     public void run(String... args) {
         fixStatusColumn("orders");
         fixStatusColumn("order_items");
+        ensureTicketTypeColumns();
+        ensureEventReservationItemQrTokenColumn();
+        ensureEventReservationItemScanColumns();
     }
 
     private void fixStatusColumn(String tableName) {
@@ -63,6 +66,104 @@ public class SchemaRepairRunner implements CommandLineRunner {
 
         } catch (Exception e) {
             log.error("SchemaRepairRunner: failed to check/fix `{}`.`status` – {}", tableName, e.getMessage());
+        }
+    }
+
+    private void ensureEventReservationItemQrTokenColumn() {
+        try {
+            Integer count = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.COLUMNS " +
+                            "WHERE TABLE_SCHEMA = DATABASE() " +
+                            "AND TABLE_NAME = 'event_reservation_items' " +
+                            "AND COLUMN_NAME = 'qr_code_token'",
+                    Integer.class
+            );
+
+            if (count == null || count == 0) {
+                log.warn("Adding missing column event_reservation_items.qr_code_token");
+                jdbcTemplate.execute(
+                        "ALTER TABLE event_reservation_items " +
+                                "ADD COLUMN qr_code_token VARCHAR(64) NULL, " +
+                                "ADD UNIQUE INDEX uk_event_res_item_qr_token (qr_code_token)"
+                );
+                log.info("Column event_reservation_items.qr_code_token added");
+            }
+        } catch (Exception e) {
+            log.error("SchemaRepairRunner: failed to ensure qr_code_token column - {}", e.getMessage());
+        }
+    }
+
+    private void ensureTicketTypeColumns() {
+        try {
+            Integer hasTicketNomevent = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.COLUMNS " +
+                            "WHERE TABLE_SCHEMA = DATABASE() " +
+                            "AND TABLE_NAME = 'ticket_types' " +
+                            "AND COLUMN_NAME = 'ticket_nomevent'",
+                    Integer.class
+            );
+            Integer hasLegacyName = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.COLUMNS " +
+                            "WHERE TABLE_SCHEMA = DATABASE() " +
+                            "AND TABLE_NAME = 'ticket_types' " +
+                            "AND COLUMN_NAME = 'name'",
+                    Integer.class
+            );
+
+            if ((hasTicketNomevent == null || hasTicketNomevent == 0)
+                    && hasLegacyName != null && hasLegacyName > 0) {
+                log.warn("Renaming ticket_types.name to ticket_types.ticket_nomevent");
+                jdbcTemplate.execute("ALTER TABLE ticket_types CHANGE COLUMN name ticket_nomevent VARCHAR(255)");
+                log.info("ticket_types.ticket_nomevent is now in place");
+            }
+
+            Integer hasTotalQuantity = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.COLUMNS " +
+                            "WHERE TABLE_SCHEMA = DATABASE() " +
+                            "AND TABLE_NAME = 'ticket_types' " +
+                            "AND COLUMN_NAME = 'total_quantity'",
+                    Integer.class
+            );
+
+            if (hasTotalQuantity != null && hasTotalQuantity > 0) {
+                log.warn("Dropping legacy ticket_types.total_quantity column");
+                jdbcTemplate.execute("ALTER TABLE ticket_types DROP COLUMN total_quantity");
+                log.info("ticket_types.total_quantity dropped");
+            }
+        } catch (Exception e) {
+            log.error("SchemaRepairRunner: failed to ensure ticket_types columns - {}", e.getMessage());
+        }
+    }
+
+    private void ensureEventReservationItemScanColumns() {
+        try {
+            Integer hasIsScanned = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.COLUMNS " +
+                            "WHERE TABLE_SCHEMA = DATABASE() " +
+                            "AND TABLE_NAME = 'event_reservation_items' " +
+                            "AND COLUMN_NAME = 'is_scanned'",
+                    Integer.class
+            );
+            if (hasIsScanned == null || hasIsScanned == 0) {
+                log.warn("Adding missing column event_reservation_items.is_scanned");
+                jdbcTemplate.execute("ALTER TABLE event_reservation_items ADD COLUMN is_scanned TINYINT(1) NOT NULL DEFAULT 0");
+                log.info("Column event_reservation_items.is_scanned added");
+            }
+
+            Integer hasScannedAt = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.COLUMNS " +
+                            "WHERE TABLE_SCHEMA = DATABASE() " +
+                            "AND TABLE_NAME = 'event_reservation_items' " +
+                            "AND COLUMN_NAME = 'scanned_at'",
+                    Integer.class
+            );
+            if (hasScannedAt == null || hasScannedAt == 0) {
+                log.warn("Adding missing column event_reservation_items.scanned_at");
+                jdbcTemplate.execute("ALTER TABLE event_reservation_items ADD COLUMN scanned_at DATETIME NULL");
+                log.info("Column event_reservation_items.scanned_at added");
+            }
+        } catch (Exception e) {
+            log.error("SchemaRepairRunner: failed to ensure scan columns - {}", e.getMessage());
         }
     }
 }

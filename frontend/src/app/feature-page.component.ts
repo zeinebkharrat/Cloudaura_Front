@@ -705,8 +705,9 @@ export class FeaturePageComponent implements OnInit {
       next: (events) => {
         this.events = events.map((event) => ({
           ...event,
+          status: this.normalizeEventStatus(event.status),
           imageUrl: this.normalizeEventImageUrl(event.imageUrl),
-        }));
+        })).filter((event) => this.shouldDisplayInFrontOffice(event.status));
         this.isLoadingEvents = false;
       },
       error: (err) => {
@@ -715,6 +716,31 @@ export class FeaturePageComponent implements OnInit {
         this.isLoadingEvents = false;
       }
     });
+  }
+
+  private normalizeEventStatus(status: unknown): string {
+    const normalized = String(status ?? '').trim();
+    if (!normalized) {
+      return 'UPCOMING';
+    }
+    const upper = normalized.toUpperCase();
+    const compact = upper.replace(/[^A-Z]/g, '');
+
+    if (compact === 'UPCOMING' || compact === 'ONGOING' || compact === 'COMPLETED') {
+      return compact;
+    }
+
+    // Accept common typos coming from legacy/admin inputs.
+    if (compact === 'COMPELETED' || compact === 'COMPELETD' || compact === 'COMPLETED' || compact === 'COMPLETEDD') {
+      return 'COMPLETED';
+    }
+
+    return upper;
+  }
+
+  private shouldDisplayInFrontOffice(status: unknown): boolean {
+    const normalized = this.normalizeEventStatus(status);
+    return normalized === 'UPCOMING' || normalized === 'ONGOING';
   }
 
   private normalizeEventImageUrl(url: string | undefined): string | undefined {
@@ -843,17 +869,22 @@ export class FeaturePageComponent implements OnInit {
     this.eventService.createReservation(reservationData).subscribe({
       next: (res) => {
         this.eventJoinLoading.set(false);
+        const emailSent = res?.emailSent !== false;
         Swal.fire({
           icon: 'success',
           title: "You're registered!",
-          text: 'Thanks for joining this event.',
+          text: emailSent
+            ? 'Thanks for joining this event. A confirmation email has been sent.'
+            : 'Thanks for joining this event. Registration is confirmed, but the email could not be sent now.',
           confirmButtonText: 'Great'
         });
         this.closeEventDetails();
       },
       error: (err: HttpErrorResponse) => {
         this.eventJoinLoading.set(false);
-        this.eventJoinError.set(extractApiErrorMessage(err, 'Could not complete registration.'));
+        const apiMessage = extractApiErrorMessage(err, 'Could not complete registration.');
+        const providerError = typeof err?.error?.emailError === 'string' ? err.error.emailError.trim() : '';
+        this.eventJoinError.set(providerError ? `${apiMessage} (${providerError})` : apiMessage);
       },
     });
   }

@@ -38,6 +38,7 @@ import { CartPageComponent } from './shop/cart-page.component';
 import { MyOrdersComponent } from './shop/my-orders.component';
 import { ChatComponent } from './chat/chat.component';
 import { AdminGamesComponent } from './admin/games/admin-games.component';
+import { AdminTicketsComponent } from './admin/tickets/admin-tickets.component';
 import { UserGamesComponent } from './games/user-games.component';
 import { QuizPlayerComponent } from './games/quiz-player.component';
 import { CrosswordPlayerComponent } from './games/crossword-player.component';
@@ -102,6 +103,7 @@ export const routes: Routes = [
       { path: 'events', component: EventManagementComponent },
       { path: 'events/dashboard', component: EventManagementComponent },
       { path: 'events/calendar', component: EventCalendarComponent },
+      { path: 'tickets', component: AdminTicketsComponent },
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       { path: 'dashboard', component: AdminDashboardComponent },
       { path: 'games', component: AdminGamesComponent },
