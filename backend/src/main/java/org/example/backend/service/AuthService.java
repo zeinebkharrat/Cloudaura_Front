@@ -156,7 +156,14 @@ public class AuthService {
         String token = createToken(savedUser, TOKEN_TYPE_EMAIL_VERIFICATION, EMAIL_VERIFICATION_EXPIRATION_MS);
         String verificationLink = buildFrontendLink("/verify-email", token);
         try {
-            emailService.sendVerificationEmail(savedUser.getEmail(), savedUser.getFirstName(), verificationLink);
+            emailService.sendVerificationEmail(
+                    savedUser.getEmail(),
+                    savedUser.getFirstName(),
+                    savedUser.getLastName(),
+                    savedUser.getUsername(),
+                    savedUser.getPhone(),
+                    savedUser.getNationality(),
+                    verificationLink);
         } catch (MailException ex) {
             return new AuthMessageResponse(
                     "Account created. Verification email could not be sent (SMTP). "
@@ -319,7 +326,14 @@ public class AuthService {
                     String token = createToken(user, TOKEN_TYPE_EMAIL_VERIFICATION, EMAIL_VERIFICATION_EXPIRATION_MS);
                     String verificationLink = buildFrontendLink("/verify-email", token);
                     try {
-                        emailService.sendVerificationEmail(user.getEmail(), user.getFirstName(), verificationLink);
+                        emailService.sendVerificationEmail(
+                                user.getEmail(),
+                                user.getFirstName(),
+                                user.getLastName(),
+                                user.getUsername(),
+                                user.getPhone(),
+                                user.getNationality(),
+                                verificationLink);
                     } catch (MailException ex) {
                         throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Email service unavailable. Check SMTP credentials.");
                     }

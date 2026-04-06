@@ -689,6 +689,50 @@ footer {
   font-size: 1.2rem;
 }
 
+.login-gate__brand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 2px 0 12px;
+}
+
+.login-gate__logo {
+  height: 34px;
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 16px rgba(15, 23, 42, 0.2));
+}
+
+.login-gate__travel {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.login-gate__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  background: color-mix(in srgb, var(--surface-1) 88%, transparent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  animation: travelPillFloat 3.6s ease-in-out infinite;
+}
+
+.login-gate__pill:nth-child(2) {
+  animation-delay: 0.35s;
+}
+
+.login-gate__pill:nth-child(3) {
+  animation-delay: 0.7s;
+}
+
 .login-gate__head p {
   margin: 0;
   color: var(--text-muted);
@@ -791,8 +835,38 @@ footer {
 }
 
 :root[data-theme='light'] .login-gate__panel {
+  background:
+    radial-gradient(circle at 92% -8%, rgba(225, 29, 72, 0.14), transparent 42%),
+    radial-gradient(circle at -2% 100%, rgba(2, 132, 199, 0.12), transparent 44%),
+    rgba(255, 255, 255, 0.94);
+  color: #0f172a;
   border-color: rgba(148, 163, 184, 0.45);
   box-shadow: 0 20px 48px rgba(15, 23, 42, 0.22);
+}
+
+:root[data-theme='light'] .login-gate__head p {
+  color: #64748b;
+}
+
+:root[data-theme='light'] .auth-switch {
+  background: rgba(241, 245, 249, 0.98);
+  border-color: rgba(148, 163, 184, 0.45);
+}
+
+:root[data-theme='light'] .auth-switch__btn {
+  color: #1e293b;
+  opacity: 0.95;
+}
+
+:root[data-theme='light'] .auth-switch__btn.active {
+  color: #fff;
+  opacity: 1;
+}
+
+:root[data-theme='light'] .login-gate__pill {
+  background: rgba(248, 250, 252, 0.95);
+  border-color: rgba(148, 163, 184, 0.4);
+  color: #334155;
 }
 
 .login-gate__actions {
@@ -848,6 +922,16 @@ footer {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes travelPillFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
   }
 }
 

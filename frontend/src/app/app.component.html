@@ -170,6 +170,14 @@
     <div class="login-gate__panel" (click)="$event.stopPropagation()">
       <button type="button" class="login-gate__close" (click)="closeLoginPrompt()" aria-label="Close">×</button>
       <div class="login-gate__head">
+        <div class="login-gate__brand">
+          <img src="assets/logo/yallatn-logo.png" alt="YallaTN" class="login-gate__logo" />
+          <div class="login-gate__travel" aria-hidden="true">
+            <span class="login-gate__pill"><img src="icones/city.png" alt="" width="14" height="14" /> Cities</span>
+            <span class="login-gate__pill"><img src="icones/actitvity.png" alt="" width="14" height="14" /> Activities</span>
+            <span class="login-gate__pill"><img src="icones/bus.png" alt="" width="14" height="14" /> Transport</span>
+          </div>
+        </div>
         <h3>{{ loginPrompt.title() }}</h3>
         <p>{{ loginPrompt.message() }}</p>
       </div>
