@@ -5,11 +5,9 @@ export interface RestaurantVoiceFilters {
   searchQuery: string;
   cityId: number | null;
   cuisineType: string | null;
-  locationKeyword: string | null;
   detected: {
     city: boolean;
     cuisine: boolean;
-    location: boolean;
   };
 }
 
@@ -54,28 +52,56 @@ const CUISINE_KEYWORDS: Array<{ keyword: string; canonical: string }> = [
   { keyword: 'poisson', canonical: 'Seafood' },
   { keyword: 'grill', canonical: 'Grill' },
   { keyword: 'pizza', canonical: 'Pizza' },
+  { keyword: 'تونسي', canonical: 'Tunisian' },
+  { keyword: 'ايطالي', canonical: 'Italian' },
+  { keyword: 'تركي', canonical: 'Turkish' },
+  { keyword: 'صيني', canonical: 'Chinese' },
+  { keyword: 'ياباني', canonical: 'Japanese' },
 ];
 
-export function parseRestaurantVoiceQuery(rawTranscript: string, cities: City[]): RestaurantVoiceFilters {
+const CUISINE_TOKEN_SET = new Set(
+  CUISINE_KEYWORDS
+    .map((entry) => normalizeText(entry.keyword))
+    .flatMap((keyword) => keyword.split(' '))
+    .filter((token) => !!token)
+);
+
+export function parseRestaurantVoiceQuery(rawTranscript: string, cities: City[], cuisineOptions: string[] = []): RestaurantVoiceFilters {
   const transcript = sanitizeTranscript(rawTranscript);
   const normalized = normalizeText(transcript);
   const cityId = findCityId(normalized, cities);
-  const cuisineType = findCuisineType(normalized);
-  const locationKeyword = findLocationKeyword(normalized, ['restaurant', 'resto', 'cuisine']);
-  const searchQuery = extractSearchQuery(normalized, cities, 'restaurant');
+  const cuisineType = findCuisineTypeFromOptions(normalized, cuisineOptions) ?? findCuisineType(normalized);
+  const cuisineTokens = cuisineType ? normalizeText(cuisineType).split(' ').filter((token) => !!token) : [];
+  const searchQuery = extractSearchQuery(normalized, cities, 'restaurant', cuisineTokens);
 
   return {
     cleanedTranscript: transcript,
     searchQuery,
     cityId,
     cuisineType,
-    locationKeyword,
     detected: {
       city: cityId != null,
       cuisine: !!cuisineType,
-      location: !!locationKeyword,
     },
   };
+}
+
+function findCuisineTypeFromOptions(normalizedTranscript: string, cuisineOptions: string[]): string | null {
+  for (const option of cuisineOptions) {
+    const normalizedOption = normalizeText(option);
+    if (!normalizedOption) {
+      continue;
+    }
+    if (
+      normalizedTranscript === normalizedOption ||
+      normalizedTranscript.includes(` ${normalizedOption} `) ||
+      normalizedTranscript.startsWith(`${normalizedOption} `) ||
+      normalizedTranscript.endsWith(` ${normalizedOption}`)
+    ) {
+      return option;
+    }
+  }
+  return null;
 }
 
 export function parseActivityVoiceQuery(rawTranscript: string, cities: City[]): ActivityVoiceFilters {
@@ -455,9 +481,17 @@ function parseSpokenNumber(value: string): number | null {
   return null;
 }
 
-function extractSearchQuery(normalizedTranscript: string, cities: City[], scope: 'restaurant' | 'activity'): string {
+function extractSearchQuery(
+  normalizedTranscript: string,
+  cities: City[],
+  scope: 'restaurant' | 'activity',
+  extraStopTokens: string[] = []
+): string {
   const stopWords = new Set([
     'je', 'veux', 'want', 'i', 'need', 'a', 'an', 'the', 'de', 'des', 'du', 'dans', 'in', 'for', 'pour',
+    'cuisine', 'type', 'food',
+    'cherche', 'recherche', 'trouve', 'montre', 'affiche', 'voudrais', 'aimerais',
+    'search', 'find', 'look', 'show',
     'activity', 'activite', 'activities', 'restaurant', 'restaurants', 'resto', 'budget', 'between', 'entre',
     'from', 'to', 'et', 'and', 'dt', 'dinar', 'dinars', 'tnd', 'today', 'tomorrow', 'demain', 'aujourd', 'hui',
     'avec', 'with', 'participants', 'people', 'personnes', 'near', 'close', 'to', 'around', 'pres', 'vers',
@@ -465,7 +499,14 @@ function extractSearchQuery(normalizedTranscript: string, cities: City[], scope:
     'prix', 'price', 'le', 'la', 'au', 'aux', 'minimum', 'maximum', 'min', 'max',
     'inferieur', 'superieur', 'moins', 'plus', 'lower', 'upper', 'least', 'most',
     'at', 'than', 'que', 'auplus', 'aumoins', 'jusqu', 'partir',
+    'في', 'من', 'على', 'الى', 'و', 'او', 'اريد', 'ابحث', 'مطعم', 'مطاعم', 'نشاط', 'انشطة', 'المدينة',
+    'ciudad', 'ciudades', 'restaurante', 'restaurantes', 'actividad', 'actividades', 'precio',
+    'stadt', 'stadte', 'restauranten', 'aktivitat', 'aktivitaten', 'preis',
+    'citta', 'ristorante', 'ristoranti', 'attivita', 'prezzo',
   ]);
+  for (const token of extraStopTokens) {
+    stopWords.add(token);
+  }
 
   const currencyWords = new Set(['dt', 'tnd', 'dinar', 'dinars']);
   const numberWords = new Set([
@@ -502,6 +543,7 @@ function extractSearchQuery(normalizedTranscript: string, cities: City[], scope:
       return token;
     })
     .filter((token) => !stopWords.has(token))
+    .filter((token) => !CUISINE_TOKEN_SET.has(token))
     .filter((token) => !currencyWords.has(token))
     .filter((token) => !numberWords.has(token))
     .filter((token) => !cityTokenSet.has(token))

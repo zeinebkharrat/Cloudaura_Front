@@ -20,11 +20,11 @@ export class ServicesRestaurantsComponent implements OnInit, OnDestroy {
   error = signal('');
   restaurants = signal<Restaurant[]>([]);
   cities = signal<City[]>([]);
+  cuisineOptions = signal<string[]>([]);
   q = signal('');
   voiceQuery = signal('');
   selectedCityId = signal<number | 'all'>('all');
   cuisineType = signal('');
-  locationKeyword = signal('');
   sort = signal('restaurantId,desc');
   page = signal(0);
   readonly size = 9;
@@ -37,7 +37,7 @@ export class ServicesRestaurantsComponent implements OnInit, OnDestroy {
   voiceError = signal('');
   lastTranscript = signal('');
   voiceSuggestion = signal('');
-  voiceDetectedFilters = signal({ city: false, cuisine: false, location: false });
+  voiceDetectedFilters = signal({ city: false, cuisine: false });
 
   private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -52,6 +52,7 @@ export class ServicesRestaurantsComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.voiceSupported.set(this.voiceSearchService.isSupported());
     this.loadCities();
+    this.loadCuisineOptions();
     this.loadRestaurants();
   }
 
@@ -91,8 +92,15 @@ export class ServicesRestaurantsComponent implements OnInit, OnDestroy {
     this.loadRestaurants();
   }
 
-  onLocationKeywordChange(value: string): void {
-    this.locationKeyword.set(value);
+  clearAvailabilityFilter(): void {
+    this.q.set('');
+    this.voiceQuery.set('');
+    this.selectedCityId.set('all');
+    this.cuisineType.set('');
+    this.voiceSuggestion.set('');
+    this.voiceError.set('');
+    this.lastTranscript.set('');
+    this.voiceDetectedFilters.set({ city: false, cuisine: false });
     this.page.set(0);
     this.loadRestaurants();
   }
@@ -137,7 +145,7 @@ export class ServicesRestaurantsComponent implements OnInit, OnDestroy {
             return;
           }
 
-          const parsed = parseRestaurantVoiceQuery(transcript, this.cities());
+          const parsed = parseRestaurantVoiceQuery(transcript, this.cities(), this.cuisineOptions());
           this.lastTranscript.set(parsed.cleanedTranscript);
           this.voiceDetectedFilters.set(parsed.detected);
           this.voiceQuery.set(parsed.searchQuery);
@@ -147,20 +155,15 @@ export class ServicesRestaurantsComponent implements OnInit, OnDestroy {
           }
 
           if (parsed.cuisineType) {
-            this.cuisineType.set(parsed.cuisineType);
-          }
-
-          if (parsed.locationKeyword) {
-            this.locationKeyword.set(parsed.locationKeyword);
+            this.cuisineType.set(this.resolveCuisineOption(parsed.cuisineType));
           }
 
           const hasAnyDetected =
             parsed.detected.city ||
             parsed.detected.cuisine ||
-            parsed.detected.location ||
             !!parsed.searchQuery;
           if (!hasAnyDetected) {
-            this.voiceSuggestion.set('Try a structured phrase like: restaurant tunisian in Tunis near lac 2.');
+            this.voiceSuggestion.set('Try a structured phrase like: Tunisian restaurant in Tunis.');
             this.voiceProcessing.set(false);
             return;
           }
@@ -229,6 +232,45 @@ export class ServicesRestaurantsComponent implements OnInit, OnDestroy {
     return value === 'all' ? null : value;
   }
 
+  private loadCuisineOptions(): void {
+    const cuisineSet = new Set<string>();
+    const maxPagesToScan = 12;
+
+    const fetchPage = (page: number): void => {
+      this.exploreService.listRestaurants({
+        q: '',
+        cityId: null,
+        cuisineType: null,
+        page,
+        size: 100,
+        sort: 'restaurantId,desc',
+      }).subscribe({
+        next: (res) => {
+          for (const restaurant of res.content) {
+            const cuisine = (restaurant.cuisineType || '').trim();
+            if (cuisine) {
+              cuisineSet.add(cuisine);
+            }
+          }
+
+          const reachedEnd = page + 1 >= res.totalPages;
+          const reachedSafetyLimit = page + 1 >= maxPagesToScan;
+          if (reachedEnd || reachedSafetyLimit) {
+            this.cuisineOptions.set(Array.from(cuisineSet).sort((a, b) => a.localeCompare(b)));
+            return;
+          }
+
+          fetchPage(page + 1);
+        },
+        error: () => {
+          this.cuisineOptions.set(Array.from(cuisineSet).sort((a, b) => a.localeCompare(b)));
+        },
+      });
+    };
+
+    fetchPage(0);
+  }
+
   private loadRestaurants(): void {
     this.loading.set(true);
     this.error.set('');
@@ -276,9 +318,37 @@ export class ServicesRestaurantsComponent implements OnInit, OnDestroy {
   }
 
   private buildRestaurantQuery(): string {
-    return [this.q().trim(), this.voiceQuery().trim(), this.locationKeyword().trim()]
+    return [this.q().trim(), this.voiceQuery().trim()]
       .filter((value) => !!value)
       .join(' ')
+      .trim();
+  }
+
+  private resolveCuisineOption(parsedCuisine: string): string {
+    const options = this.cuisineOptions();
+    if (!options.length) {
+      return parsedCuisine;
+    }
+
+    const normalizedParsed = this.normalizeLabel(parsedCuisine);
+    const exact = options.find((option) => this.normalizeLabel(option) === normalizedParsed);
+    if (exact) {
+      return exact;
+    }
+
+    const close = options.find((option) => {
+      const normalizedOption = this.normalizeLabel(option);
+      return normalizedOption.includes(normalizedParsed) || normalizedParsed.includes(normalizedOption);
+    });
+
+    return close ?? parsedCuisine;
+  }
+
+  private normalizeLabel(value: string): string {
+    return (value || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
       .trim();
   }
 }

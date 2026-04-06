@@ -5,6 +5,24 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { ExploreService } from './explore.service';
 import { Activity, OpenMeteoCurrentResponse, PublicCityDetailsResponse, Restaurant } from './explore.models';
 
+interface WeeklyWeatherDay {
+  date: string;
+  minTemp: number | null;
+  maxTemp: number | null;
+  windMax: number | null;
+  weatherCode: number;
+}
+
+interface OpenMeteoWeeklyResponse {
+  daily?: {
+    time?: string[];
+    weather_code?: number[];
+    temperature_2m_max?: number[];
+    temperature_2m_min?: number[];
+    wind_speed_10m_max?: number[];
+  };
+}
+
 const HOME_MAP_RETURN_CONTEXT_KEY = 'homeMapReturnContext';
 
 @Component({
@@ -32,6 +50,10 @@ export class CityExploreComponent implements OnInit, OnDestroy {
   weatherIcon = signal('⛅');
   weatherTemperature = signal<number | null>(null);
   weatherWind = signal<number | null>(null);
+  weatherDrawerOpen = signal(false);
+  weeklyWeatherLoading = signal(false);
+  weeklyWeatherError = signal('');
+  weeklyForecast = signal<WeeklyWeatherDay[]>([]);
 
   media = computed(() => this.details()?.media ?? []);
   currentMedia = computed(() => {
@@ -310,6 +332,28 @@ export class CityExploreComponent implements OnInit, OnDestroy {
     this.goBack();
   }
 
+  openWeatherDrawer(): void {
+    this.weatherDrawerOpen.set(true);
+    const city = this.details()?.city;
+    this.loadWeeklyWeather(city?.latitude ?? null, city?.longitude ?? null);
+  }
+
+  closeWeatherDrawer(): void {
+    this.weatherDrawerOpen.set(false);
+  }
+
+  weeklyDayLabel(dateIso: string): string {
+    const parsed = new Date(dateIso);
+    if (Number.isNaN(parsed.getTime())) {
+      return dateIso;
+    }
+    return parsed.toLocaleDateString('en-US', { weekday: 'short', day: '2-digit', month: 'short' });
+  }
+
+  weeklyDaySummary(code: number): { label: string; icon: string } {
+    return this.describeWeatherCode(code);
+  }
+
   activityCardImage(activity: Activity): string {
     return (
       this.activityImageById()[activity.activityId] ||
@@ -538,6 +582,51 @@ export class CityExploreComponent implements OnInit, OnDestroy {
       error: () => {
         this.weatherLoading.set(false);
         this.weatherError.set('Unable to load weather now.');
+      },
+    });
+  }
+
+  private loadWeeklyWeather(latitude: number | null, longitude: number | null): void {
+    if (latitude == null || longitude == null) {
+      this.weeklyWeatherError.set('Weekly weather unavailable for this city coordinates.');
+      this.weeklyWeatherLoading.set(false);
+      this.weeklyForecast.set([]);
+      return;
+    }
+
+    this.weeklyWeatherLoading.set(true);
+    this.weeklyWeatherError.set('');
+
+    const params = new HttpParams()
+      .set('latitude', latitude)
+      .set('longitude', longitude)
+      .set('daily', 'weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max')
+      .set('forecast_days', 7)
+      .set('timezone', 'auto');
+
+    this.http.get<OpenMeteoWeeklyResponse>('https://api.open-meteo.com/v1/forecast', { params }).subscribe({
+      next: (response) => {
+        const daily = response.daily;
+        const dates = daily?.time ?? [];
+        const codes = daily?.weather_code ?? [];
+        const maxTemps = daily?.temperature_2m_max ?? [];
+        const minTemps = daily?.temperature_2m_min ?? [];
+        const winds = daily?.wind_speed_10m_max ?? [];
+
+        const mapped: WeeklyWeatherDay[] = dates.map((date, index) => ({
+          date,
+          weatherCode: Number.isFinite(codes[index]) ? codes[index] : 0,
+          maxTemp: Number.isFinite(maxTemps[index]) ? maxTemps[index] : null,
+          minTemp: Number.isFinite(minTemps[index]) ? minTemps[index] : null,
+          windMax: Number.isFinite(winds[index]) ? winds[index] : null,
+        }));
+
+        this.weeklyForecast.set(mapped);
+        this.weeklyWeatherLoading.set(false);
+      },
+      error: () => {
+        this.weeklyWeatherLoading.set(false);
+        this.weeklyWeatherError.set('Unable to load weekly weather now.');
       },
     });
   }
