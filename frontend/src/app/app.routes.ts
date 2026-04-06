@@ -18,6 +18,9 @@ import { roleGuard } from './role.guard';
 import { AdminUsersComponent } from './admin-users.component';
 import { AdminLayoutComponent } from './admin/layout/admin-layout.component';
 import { AdminDashboardComponent } from './admin/dashboard/admin-dashboard.component';
+
+import { EventManagementComponent } from './admin/event-management/event-management.component';
+import { EventCalendarComponent } from './admin/event-calendar/event-calendar.component';
 import { ProfileComponent } from './profile.component';
 import { MesReservationsComponent } from './mes-reservations.component';
 import { AuditLogsComponent } from './audit-logs.component';
@@ -35,6 +38,7 @@ import { CartPageComponent } from './shop/cart-page.component';
 import { MyOrdersComponent } from './shop/my-orders.component';
 import { ChatComponent } from './chat/chat.component';
 import { AdminGamesComponent } from './admin/games/admin-games.component';
+import { AdminTicketsComponent } from './admin/tickets/admin-tickets.component';
 import { UserGamesComponent } from './games/user-games.component';
 import { QuizPlayerComponent } from './games/quiz-player.component';
 import { CrosswordPlayerComponent } from './games/crossword-player.component';
@@ -45,9 +49,6 @@ import { ServicesActivitiesComponent } from './explore/services-activities.compo
 import { MockPaymentComponent } from './shop/mock-payment/mock-payment.component';
 import { ArtisanOrdersComponent } from './artisan/artisan-orders.component';
 import { FavoritesComponent } from './shop/favorites.component';
-
-import { EventManagementComponent } from './admin/event-management/event-management.component';
-import { EventCalendarComponent } from './admin/event-calendar/event-calendar.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -98,6 +99,11 @@ export const routes: Routes = [
     data: { roles: ['ROLE_ADMIN'] },
     component: AdminLayoutComponent,
     children: [
+      { path: '', component: AdminDashboardComponent },
+      { path: 'events', component: EventManagementComponent },
+      { path: 'events/dashboard', component: EventManagementComponent },
+      { path: 'events/calendar', component: EventCalendarComponent },
+      { path: 'tickets', component: AdminTicketsComponent },
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       { path: 'dashboard', component: AdminDashboardComponent },
       { path: 'games', component: AdminGamesComponent },
@@ -107,9 +113,6 @@ export const routes: Routes = [
       { path: 'restaurants', component: AdminRestaurantsComponent },
       { path: 'activities', component: AdminActivitiesComponent },
       { path: 'posts', component: AdminPostsComponent },
-      { path: 'events', component: EventManagementComponent },
-      { path: 'events/dashboard', component: EventManagementComponent },
-      { path: 'events/calendar', component: EventCalendarComponent },
       { path: 'orders', component: OrdersAdminComponent },
       { path: 'products', component: ProductsAdminComponent },
       { path: 'activity-reservations', component: AdminActivityReservationsComponent },

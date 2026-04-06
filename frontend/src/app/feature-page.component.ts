@@ -18,6 +18,7 @@ import { ButtonModule } from 'primeng/button';
 import { CarouselModule } from 'primeng/carousel';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
+import Swal from 'sweetalert2';
 
 export interface FeatureBlock {
   title: string;
@@ -704,8 +705,9 @@ export class FeaturePageComponent implements OnInit {
       next: (events) => {
         this.events = events.map((event) => ({
           ...event,
+          status: this.normalizeEventStatus(event.status),
           imageUrl: this.normalizeEventImageUrl(event.imageUrl),
-        }));
+        })).filter((event) => this.shouldDisplayInFrontOffice(event.status));
         this.isLoadingEvents = false;
       },
       error: (err) => {
@@ -714,6 +716,31 @@ export class FeaturePageComponent implements OnInit {
         this.isLoadingEvents = false;
       }
     });
+  }
+
+  private normalizeEventStatus(status: unknown): string {
+    const normalized = String(status ?? '').trim();
+    if (!normalized) {
+      return 'UPCOMING';
+    }
+    const upper = normalized.toUpperCase();
+    const compact = upper.replace(/[^A-Z]/g, '');
+
+    if (compact === 'UPCOMING' || compact === 'ONGOING' || compact === 'COMPLETED') {
+      return compact;
+    }
+
+    // Accept common typos coming from legacy/admin inputs.
+    if (compact === 'COMPELETED' || compact === 'COMPELETD' || compact === 'COMPLETED' || compact === 'COMPLETEDD') {
+      return 'COMPLETED';
+    }
+
+    return upper;
+  }
+
+  private shouldDisplayInFrontOffice(status: unknown): boolean {
+    const normalized = this.normalizeEventStatus(status);
+    return normalized === 'UPCOMING' || normalized === 'ONGOING';
   }
 
   private normalizeEventImageUrl(url: string | undefined): string | undefined {
@@ -773,6 +800,20 @@ export class FeaturePageComponent implements OnInit {
     return this.isPaidEvent(event) ? 'Opening payment…' : 'Registering…';
   }
 
+  private toJoinUserMessage(err: HttpErrorResponse, fallback: string): string {
+    const raw = extractApiErrorMessage(err, fallback);
+    const lowered = raw.toLowerCase();
+    if (
+      lowered.includes('stripe is not configured') ||
+      lowered.includes('stripe.api.key') ||
+      lowered.includes('stripe_secret_key') ||
+      lowered.includes('stripe error')
+    ) {
+      return 'Online payment is temporarily unavailable. Please try again later.';
+    }
+    return raw;
+  }
+
   onJoinEvent(event: TravelEvent): void {
     this.eventJoinError.set(null);
 
@@ -808,11 +849,11 @@ export class FeaturePageComponent implements OnInit {
               window.location.href = res.sessionUrl;
               return;
             }
-            this.eventJoinError.set('Payment did not return a Stripe checkout link. Check the backend Stripe key.');
+            this.eventJoinError.set('Payment is temporarily unavailable. Please try again later.');
           },
           error: (err: HttpErrorResponse) => {
             this.eventJoinLoading.set(false);
-            this.eventJoinError.set(extractApiErrorMessage(err, 'Could not start payment.'));
+            this.eventJoinError.set(this.toJoinUserMessage(err, 'Could not start payment.'));
           },
         });
       return;
@@ -828,12 +869,22 @@ export class FeaturePageComponent implements OnInit {
     this.eventService.createReservation(reservationData).subscribe({
       next: (res) => {
         this.eventJoinLoading.set(false);
-        alert(`You're registered! Reservation #${res.event_reservation_id} created.`);
+        const emailSent = res?.emailSent !== false;
+        Swal.fire({
+          icon: 'success',
+          title: "You're registered!",
+          text: emailSent
+            ? 'Thanks for joining this event. A confirmation email has been sent.'
+            : 'Thanks for joining this event. Registration is confirmed, but the email could not be sent now.',
+          confirmButtonText: 'Great'
+        });
         this.closeEventDetails();
       },
       error: (err: HttpErrorResponse) => {
         this.eventJoinLoading.set(false);
-        this.eventJoinError.set(extractApiErrorMessage(err, 'Could not complete registration.'));
+        const apiMessage = extractApiErrorMessage(err, 'Could not complete registration.');
+        const providerError = typeof err?.error?.emailError === 'string' ? err.error.emailError.trim() : '';
+        this.eventJoinError.set(providerError ? `${apiMessage} (${providerError})` : apiMessage);
       },
     });
   }

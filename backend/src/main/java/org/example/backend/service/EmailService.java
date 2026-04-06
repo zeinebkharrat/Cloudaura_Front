@@ -3,10 +3,14 @@ package org.example.backend.service;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
+import java.io.ByteArrayInputStream;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.InputStreamSource;
 import org.springframework.mail.MailException;
 import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -187,6 +191,36 @@ public class EmailService {
         String plain = "Hi " + displayName + "! Your 5% promo code: " + code + "\n— Cloudaura";
         sendEmail(shopMailSender, shopFromAddress, toEmail, subject, plain, html);
     }
+
+        public void sendEventJoinConfirmation(String toEmail, String firstName, String eventTitle, java.util.Date startDate, String venue) {
+        String displayName = (firstName == null || firstName.isBlank()) ? "traveler" : firstName;
+        String subject = "YallaTN+ - Event registration confirmed";
+        String dateLabel = startDate == null ? "TBA" : new SimpleDateFormat("dd/MM/yyyy").format(startDate);
+        String safeEventTitle = eventTitle == null || eventTitle.isBlank() ? "Event" : eventTitle;
+        String safeVenue = venue == null || venue.isBlank() ? "TBA" : venue;
+
+        String plain = "Hi " + displayName + ",\n\n"
+            + "Your event registration is confirmed.\n"
+            + "Event: " + safeEventTitle + "\n"
+            + "Date: " + dateLabel + "\n"
+            + "Venue: " + safeVenue + "\n\n"
+            + "Thank you for joining YallaTN+.";
+
+        String html = buildTravelEmailHtml(
+            "Event registration confirmed",
+            "You are successfully registered.",
+            "Your registration is confirmed for <strong>" + escapeHtml(safeEventTitle) + "</strong>.<br/>"
+                + "Date: <strong>" + escapeHtml(dateLabel) + "</strong><br/>"
+                + "Venue: <strong>" + escapeHtml(safeVenue) + "</strong>",
+            true,
+            "View events",
+            frontendBaseUrl + "/evenements",
+            "We look forward to seeing you there.",
+            displayName,
+            "Your event registration is confirmed.");
+
+        sendEmail(userMailSender, userFromAddress, toEmail, subject, plain, html);
+        }
 
     private void sendEmail(
             JavaMailSender sender,
@@ -467,5 +501,102 @@ public class EmailService {
                 .replace(">", "&gt;")
                 .replace("\"", "&quot;")
                 .replace("'", "&#39;");
+    }
+
+    public void sendEventTicketConfirmation(
+            String toEmail,
+            String firstName,
+            String eventTitle,
+            String venue,
+            java.util.Date startDate,
+            Integer reservationId,
+            List<String> qrTokens,
+            byte[] primaryQrPng) {
+
+        String displayName = (firstName == null || firstName.isBlank()) ? "traveler" : firstName;
+        String safeEventTitle = escapeHtml(eventTitle == null ? "Event" : eventTitle);
+        String safeVenue = escapeHtml(venue == null ? "TBA" : venue);
+        String safeReservation = escapeHtml(String.valueOf(reservationId));
+        String eventDate = startDate == null ? "TBA" : new SimpleDateFormat("dd/MM/yyyy").format(startDate);
+
+        String qrListHtml = "";
+        if (qrTokens != null && !qrTokens.isEmpty()) {
+            StringBuilder b = new StringBuilder();
+            for (String token : qrTokens) {
+                b.append("<li style=\"margin:4px 0;font-family:monospace;\">")
+                        .append(escapeHtml(token))
+                        .append("</li>");
+            }
+            qrListHtml = "<ul style=\"padding-left:18px;color:#3a4d67;\">" + b + "</ul>";
+        }
+
+        String html = """
+                <!doctype html>
+                <html lang="en">
+                <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+                <body style="margin:0;padding:0;background:#f2f6fb;font-family:Arial,Helvetica,sans-serif;color:#102030;">
+                    <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="padding:24px 0;background:#f2f6fb;">
+                        <tr><td align="center">
+                            <table role="presentation" width="620" cellpadding="0" cellspacing="0" style="max-width:620px;width:100%%;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 16px 34px rgba(15,42,74,.12);">
+                                <tr><td style="padding:24px 28px;background:linear-gradient(135deg,#e8002d 0%%,#0077b6 100%%);color:#fff;">
+                                    <div style="font-size:26px;font-weight:800;">YallaTN+</div>
+                                    <div style="margin-top:8px;font-size:20px;font-weight:700;">Votre ticket est confirme</div>
+                                </td></tr>
+                                <tr><td style="padding:24px 28px;">
+                                    <p style="margin:0 0 10px;">Hi %s,</p>
+                                    <p style="margin:0 0 12px;color:#3a4d67;">Merci pour votre paiement. Votre reservation est confirmee.</p>
+                                    <p style="margin:0;color:#3a4d67;"><strong>Event:</strong> %s</p>
+                                    <p style="margin:6px 0;color:#3a4d67;"><strong>Venue:</strong> %s</p>
+                                    <p style="margin:6px 0;color:#3a4d67;"><strong>Date:</strong> %s</p>
+                                    <p style="margin:6px 0 16px;color:#3a4d67;"><strong>Reservation ID:</strong> %s</p>
+                                    <div style="margin:16px 0;text-align:center;">
+                                        <img src="cid:event-ticket-qr" alt="QR Code" style="width:210px;height:210px;border:1px solid #e6eef7;border-radius:10px;padding:8px;background:#fff;"/>
+                                    </div>
+                                    <p style="margin:0 0 8px;color:#3a4d67;"><strong>QR tokens:</strong></p>
+                                    %s
+                                </td></tr>
+                            </table>
+                        </td></tr>
+                    </table>
+                </body>
+                </html>
+                """.formatted(
+                escapeHtml(displayName),
+                safeEventTitle,
+                safeVenue,
+                escapeHtml(eventDate),
+                safeReservation,
+                qrListHtml
+        );
+
+        String plain = "Hi " + displayName + ",\n\n"
+                + "Your event reservation is confirmed.\n"
+                + "Event: " + (eventTitle == null ? "Event" : eventTitle) + "\n"
+                + "Reservation ID: " + reservationId + "\n"
+                + "Venue: " + (venue == null ? "TBA" : venue) + "\n"
+                + "Date: " + eventDate + "\n";
+
+        MimeMessage message = userMailSender.createMimeMessage();
+        try {
+            MimeMessageHelper helper = new MimeMessageHelper(
+                    message,
+                    MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED,
+                    "UTF-8");
+            helper.setFrom(userFromAddress);
+            helper.setTo(toEmail);
+            helper.setSubject("YallaTN+ - Ticket confirmation");
+            helper.setText(plain, html);
+
+            if (primaryQrPng != null && primaryQrPng.length > 0) {
+                InputStreamSource source = () -> new ByteArrayInputStream(primaryQrPng);
+                helper.addInline("event-ticket-qr", source, "image/png");
+            }
+
+            userMailSender.send(message);
+        } catch (MessagingException ex) {
+            throw new MailSendException("Failed to build or send event ticket email", ex);
+        } catch (MailException ex) {
+            throw ex;
+        }
     }
 }

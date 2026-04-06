@@ -17,6 +17,8 @@ import Swal from 'sweetalert2';
 })
 export class EventCalendarComponent implements OnInit {
 
+  private readonly todayIso = this.toIsoDate(new Date());
+
   calendarOptions: CalendarOptions = {
     initialView: 'dayGridMonth',
     plugins: [dayGridPlugin, interactionPlugin],
@@ -27,6 +29,7 @@ export class EventCalendarComponent implements OnInit {
       right: 'dayGridMonth,dayGridWeek'
     },
     selectable: true, // PERMET DE CLIQUER SUR UNE CASE VIDE
+    selectAllow: this.allowFutureSelection.bind(this),
     select: this.handleDateSelect.bind(this), // FONCTION POUR CRÉATION
     eventClick: this.handleEventClick.bind(this), // FONCTION POUR ÉDITION
     events: [],
@@ -53,11 +56,48 @@ export class EventCalendarComponent implements OnInit {
     });
   }
 
+  private toIsoDate(value: Date): string {
+    const d = new Date(value);
+    d.setHours(0, 0, 0, 0);
+    return d.toISOString().slice(0, 10);
+  }
+
+  private isFutureOrToday(isoDate: string): boolean {
+    return isoDate >= this.todayIso;
+  }
+
+  private allowFutureSelection(selectInfo: any): boolean {
+    const startIso = (selectInfo?.startStr ?? '').slice(0, 10);
+    return this.isFutureOrToday(startIso);
+  }
+
+  private toInclusiveEndIso(selectInfo: any): string {
+    const end = new Date(selectInfo.end);
+    end.setDate(end.getDate() - 1);
+    return this.toIsoDate(end);
+  }
+
   // --- 1. CLIC SUR UNE CASE VIDE (CRÉATION) ---
   handleDateSelect(selectInfo: any) {
+    const startIso = (selectInfo.startStr ?? '').slice(0, 10);
+    if (!this.isFutureOrToday(startIso)) {
+      void Swal.fire({
+        title: 'Past date not allowed',
+        text: 'You can only create events for today or future dates.',
+        icon: 'warning',
+        confirmButtonColor: '#f59e0b',
+        background: '#1e293b',
+        color: '#fff'
+      });
+      return;
+    }
+
+    const endIso = this.toInclusiveEndIso(selectInfo);
+    const rangeText = startIso === endIso ? startIso : `${startIso} → ${endIso}`;
+
     Swal.fire({
       title: 'Create New Event?',
-      text: `Do you want to add an event on ${selectInfo.startStr}?`,
+      text: `Do you want to add an event for ${rangeText}?`,
       icon: 'question',
       showCancelButton: true,
       confirmButtonText: 'Yes, go to Dashboard',
@@ -68,7 +108,7 @@ export class EventCalendarComponent implements OnInit {
       if (result.isConfirmed) {
         // On redirige vers le dashboard en passant la date en paramètre
         this.router.navigate(['/admin/events/dashboard'], { 
-          queryParams: { date: selectInfo.startStr, action: 'new' } 
+          queryParams: { action: 'new', startDate: startIso, endDate: endIso } 
         });
       }
     });
