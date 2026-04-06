@@ -60,11 +60,6 @@
     <li>
       <a routerLink="/communaute" routerLinkActive="active">Community</a>
     </li>
-    @if (isAuthenticated()) {
-    <li>
-      <a routerLink="/chat" routerLinkActive="active">Chat</a>
-    </li>
-    }
     <li>
       <a routerLink="/games" routerLinkActive="active">Games &amp; quizzes</a>
     </li>
@@ -186,6 +181,6 @@
 </footer>
 }
 
-@if (isAuthenticated()) {
+@if (isAuthenticated() && !isAdminArea()) {
   <app-chat-bubble></app-chat-bubble>
 }

@@ -8,6 +8,8 @@ import {
   ViewChild,
   ElementRef,
   AfterViewChecked,
+  effect,
+  Injector,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -30,6 +32,7 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly alerts = inject(AppAlertsService);
+  private readonly injector = inject(Injector);
 
   @ViewChild('messagesContainer') messagesContainer!: ElementRef;
   @ViewChild('messageInput') messageInput!: ElementRef;
@@ -73,10 +76,26 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
   private recordingTimer: ReturnType<typeof setInterval> | null = null;
   private readonly audioElements = new Map<number, HTMLAudioElement>();
 
+  constructor() {
+    effect(
+      () => {
+        const request = this.chatService.bubbleOpenRequest();
+        if (!request) {
+          return;
+        }
+
+        this.isOpen.set(true);
+        this.openConversationWithUser(request.userId);
+        this.chatService.clearBubbleOpenRequest();
+      },
+      { injector: this.injector, allowSignalWrites: true }
+    );
+  }
+
   ngOnInit() {
-      this.chatService.ensureE2eeReadyForCurrentUser().catch((err) => {
-       console.error('Failed to initialize E2EE keys:', err);
-      });
+    this.chatService.ensureE2eeReadyForCurrentUser().catch((err) => {
+      console.error('Failed to initialize E2EE keys:', err);
+    });
   }
 
   ngAfterViewChecked(): void {
@@ -357,6 +376,39 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
   openFullChat() {
     this.isOpen.set(false); // Close bubble
     this.router.navigate(['/chat']);
+  }
+
+  private openConversationWithUser(targetUserId: number): void {
+    if (!Number.isInteger(targetUserId) || targetUserId <= 0 || targetUserId === this.currentUser()?.id) {
+      return;
+    }
+
+    this.chatService.getConversations().subscribe({
+      next: (convos) => {
+        this.chatService.conversations.set(convos);
+        const existing = convos.find((c) => c.otherUserId === targetUserId);
+        if (existing) {
+          this.selectConversation(existing);
+          return;
+        }
+
+        this.chatService.getOrCreateChatRoom(targetUserId).subscribe({
+          next: (room) => {
+            this.chatService.getConversations().subscribe({
+              next: (updatedConvos) => {
+                this.chatService.conversations.set(updatedConvos);
+                const created = updatedConvos.find(
+                  (c) => c.chatRoomId === room.chatRoomId || c.otherUserId === targetUserId
+                );
+                if (created) {
+                  this.selectConversation(created);
+                }
+              },
+            });
+          },
+        });
+      },
+    });
   }
 
   private scrollToBottom(): void {

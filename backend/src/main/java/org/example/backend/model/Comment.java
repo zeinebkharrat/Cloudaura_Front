@@ -15,6 +15,12 @@ public class Comment {
     // Using plain TEXT instead of @Lob to avoid MySQL/Hibernate LOB binding issues
     @Column(columnDefinition="TEXT")
     private String content;
+    @Column(columnDefinition="TEXT")
+    private String originalContent;
+    @Column(columnDefinition="TEXT")
+    private String sanitizedContent;
+    @Column(columnDefinition = "TEXT")
+    private String abuseCategories;
     private String gifs;
     private Date createdAt;
     private Date updatedAt;

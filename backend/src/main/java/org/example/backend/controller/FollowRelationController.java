@@ -1,6 +1,7 @@
 package org.example.backend.controller;
 
 import org.example.backend.model.User;
+import org.example.backend.repository.UserRepository;
 import org.example.backend.service.CustomUserDetailsService;
 import org.example.backend.service.FollowRelationService;
 import org.springframework.http.HttpStatus;
@@ -21,9 +22,11 @@ import java.util.stream.Collectors;
 public class FollowRelationController {
 
     private final FollowRelationService followRelationService;
+    private final UserRepository userRepository;
 
-    public FollowRelationController(FollowRelationService followRelationService) {
+    public FollowRelationController(FollowRelationService followRelationService, UserRepository userRepository) {
         this.followRelationService = followRelationService;
+        this.userRepository = userRepository;
     }
 
     @PostMapping("/toggle/{targetUserId}")
@@ -74,6 +77,27 @@ public class FollowRelationController {
                 .collect(Collectors.toList());
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("users", users == null ? new ArrayList<>() : users);
+        return ResponseEntity.ok(payload);
+    }
+
+    @GetMapping("/user-summary/{userId}")
+    public ResponseEntity<Map<String, Object>> userSummary(@PathVariable Integer userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("userId", user.getUserId());
+        payload.put("username", user.getUsername() == null ? "" : user.getUsername());
+        payload.put("firstName", user.getFirstName() == null ? "" : user.getFirstName());
+        payload.put("lastName", user.getLastName() == null ? "" : user.getLastName());
+        payload.put("profileImageUrl", user.getProfileImageUrl() == null ? "" : user.getProfileImageUrl());
+        String nationality = user.getNationality() == null ? "" : user.getNationality();
+        payload.put("country", nationality);
+        payload.put("nationality", nationality);
+        payload.put("cityName", user.getCity() != null ? user.getCity().getName() : "");
+        payload.put("age", null);
+        payload.put("followersCount", followRelationService.followersCount(userId));
+        payload.put("followingCount", followRelationService.followingCount(userId));
         return ResponseEntity.ok(payload);
     }
 

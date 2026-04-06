@@ -34,6 +34,7 @@ import { OrdersAdminComponent } from './admin/entities/orders/orders-admin.compo
 import { CartPageComponent } from './shop/cart-page.component';
 import { MyOrdersComponent } from './shop/my-orders.component';
 import { ChatComponent } from './chat/chat.component';
+import { CommunityShellComponent } from './Community/community-shell.component';
 import { AdminGamesComponent } from './admin/games/admin-games.component';
 import { UserGamesComponent } from './games/user-games.component';
 import { QuizPlayerComponent } from './games/quiz-player.component';
@@ -279,12 +280,12 @@ export const routes: Routes = [
   },
   {
     path: 'chat',
-    component: ChatComponent,
-    canActivate: [authGuard],
+    redirectTo: 'communaute/chat',
+    pathMatch: 'full',
   },
   {
     path: 'communaute',
-    component: CommunityComponent,
+    component: CommunityShellComponent,
     data: {
       kicker: 'Voyageurs',
       accent: 'violet',
@@ -318,19 +319,36 @@ export const routes: Routes = [
         },
       ],
     },
-  },
-  {
-    path: 'communaute/my-posts',
-    component: MyPostsComponent,
-    canActivate: [authGuard],
-  },
-  {
-    path: 'communaute/user/:userId',
-    component: UserProfileComponent,
-  },
-  {
-    path: 'communaute/user/:userId/follows',
-    component: FollowListComponent,
+    children: [
+      {
+        path: '',
+        component: CommunityComponent,
+      },
+      {
+        path: 'saved',
+        component: CommunityComponent,
+        canActivate: [authGuard],
+        data: { savedOnly: true },
+      },
+      {
+        path: 'my-posts',
+        component: MyPostsComponent,
+        canActivate: [authGuard],
+      },
+      {
+        path: 'chat',
+        component: ChatComponent,
+        canActivate: [authGuard],
+      },
+      {
+        path: 'user/:userId',
+        component: UserProfileComponent,
+      },
+      {
+        path: 'user/:userId/follows',
+        component: FollowListComponent,
+      },
+    ],
   },
   { path: '**', redirectTo: '' },
 ];

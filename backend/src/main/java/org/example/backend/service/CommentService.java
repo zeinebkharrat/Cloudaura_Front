@@ -32,6 +32,9 @@ public class CommentService implements ICommentService {
     @Autowired
     JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    SightengineCommentModerationService moderationService;
+
     @Override
     @Transactional(readOnly = true)
     public List<Comment> retrieveAllComments() {
@@ -41,6 +44,8 @@ public class CommentService implements ICommentService {
     @Override
     @Transactional
     public Comment addComment(Comment comment) {
+        applyModeration(comment);
+
         // Insert via JDBC to avoid JPA/Lob datatype issues for `content`.
         SimpleJdbcInsert insert = new SimpleJdbcInsert(jdbcTemplate)
                 .withTableName("comments");
@@ -54,6 +59,9 @@ public class CommentService implements ICommentService {
         params.put("author_id", authorId);
         params.put("parent_id", parentId);
         params.put("content", comment.getContent());
+        params.put("original_content", comment.getOriginalContent());
+        params.put("sanitized_content", comment.getSanitizedContent());
+        params.put("abuse_categories", comment.getAbuseCategories());
         params.put("gifs", comment.getGifs());
         params.put("created_at", comment.getCreatedAt());
         params.put("updated_at", comment.getUpdatedAt());
@@ -63,6 +71,9 @@ public class CommentService implements ICommentService {
                 "author_id",
                 "parent_id",
                 "content",
+                "original_content",
+                "sanitized_content",
+                "abuse_categories",
                 "gifs",
                 "created_at",
                 "updated_at"
@@ -91,6 +102,7 @@ public class CommentService implements ICommentService {
 
     @Override
     public Comment updateComment(Comment comment) {
+        applyModeration(comment);
         return commentRepo.save(comment);
     }
 
@@ -160,5 +172,17 @@ public class CommentService implements ICommentService {
         }
 
         return List.copyOf(visited);
+    }
+
+    private void applyModeration(Comment comment) {
+        String incoming = comment.getContent();
+        CommentModerationResult moderation = moderationService.moderateComment(incoming);
+
+        comment.setOriginalContent(moderation.originalContent());
+        comment.setSanitizedContent(moderation.sanitizedContent());
+        comment.setContent(moderation.sanitizedContent());
+
+        List<String> categories = moderation.abuseCategories();
+        comment.setAbuseCategories(categories.isEmpty() ? null : String.join(",", categories));
     }
 }

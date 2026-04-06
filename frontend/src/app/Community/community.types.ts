@@ -6,6 +6,10 @@ export interface UserRef {
   firstName?: string;
   lastName?: string;
   profileImageUrl?: string | null;
+  country?: string | null;
+  nationality?: string | null;
+  cityName?: string | null;
+  age?: number | null;
   // Other fields exist on the backend User, but we only need the above for display + create payloads.
 }
 
@@ -29,6 +33,9 @@ export interface Comment {
   author?: UserRef;
   parent?: { commentId?: number } | null;
   content?: string;
+  originalContent?: string | null;
+  sanitizedContent?: string | null;
+  abuseCategories?: string | null;
   gifs?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;

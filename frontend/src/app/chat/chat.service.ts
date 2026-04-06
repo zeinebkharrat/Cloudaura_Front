@@ -31,6 +31,8 @@ export class ChatService implements OnDestroy {
   readonly conversations = signal<ConversationResponse[]>([]);
   readonly onlineUsers = signal<Set<number>>(new Set());
   readonly connected = signal(false);
+  readonly bubbleOpenRequest = signal<{ userId: number; requestId: number } | null>(null);
+  private bubbleRequestSeq = 0;
 
   // ──────────────────────────────────────────────
   // HTTP Methods
@@ -399,6 +401,17 @@ export class ChatService implements OnDestroy {
       current[idx] = { ...current[idx], unreadCount: 0 };
       this.conversations.set(current);
     }
+  }
+
+  requestOpenBubbleForUser(userId: number): void {
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return;
+    }
+    this.bubbleOpenRequest.set({ userId, requestId: ++this.bubbleRequestSeq });
+  }
+
+  clearBubbleOpenRequest(): void {
+    this.bubbleOpenRequest.set(null);
   }
 
   // ──────────────────────────────────────────────

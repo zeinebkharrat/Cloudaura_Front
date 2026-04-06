@@ -11,7 +11,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, Subscription, debounceTime, distinctUntilChanged } from 'rxjs';
 import { ChatService } from './chat.service';
 import { AuthService } from '../core/auth.service';
@@ -34,6 +34,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   private readonly authService = inject(AuthService);
   private readonly alerts = inject(AppAlertsService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   @ViewChild('messagesContainer') messagesContainer!: ElementRef;
   @ViewChild('messageInput') messageInput!: ElementRef;
@@ -120,6 +121,22 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
             error: () => this.searchLoading.set(false),
           });
         })
+    );
+
+    this.subs.push(
+      this.route.queryParamMap.subscribe((params) => {
+        const raw = params.get('userId');
+        if (!raw) {
+          return;
+        }
+
+        const userId = Number(raw);
+        if (!Number.isInteger(userId) || userId <= 0 || userId === this.currentUser()?.id) {
+          return;
+        }
+
+        this.openConversationWithUser(userId);
+      })
     );
   }
 
@@ -354,6 +371,49 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
         });
       },
       error: () => this.searchLoading.set(false),
+    });
+  }
+
+  private openConversationWithUser(targetUserId: number): void {
+    this.chatService.getConversations().subscribe({
+      next: (convos) => {
+        this.chatService.conversations.set(convos);
+        const existing = convos.find((c) => c.otherUserId === targetUserId);
+        if (existing) {
+          this.selectConversation(existing);
+          this.clearTargetUserParam();
+          return;
+        }
+
+        this.chatService.getOrCreateChatRoom(targetUserId).subscribe({
+          next: (room) => {
+            this.chatService.getConversations().subscribe({
+              next: (updatedConvos) => {
+                this.chatService.conversations.set(updatedConvos);
+                const created = updatedConvos.find(
+                  (c) => c.chatRoomId === room.chatRoomId || c.otherUserId === targetUserId
+                );
+                if (created) {
+                  this.selectConversation(created);
+                }
+                this.clearTargetUserParam();
+              },
+              error: () => this.clearTargetUserParam(),
+            });
+          },
+          error: () => this.clearTargetUserParam(),
+        });
+      },
+      error: () => this.clearTargetUserParam(),
+    });
+  }
+
+  private clearTargetUserParam(): void {
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { userId: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
     });
   }
 
