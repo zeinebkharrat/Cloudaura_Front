@@ -1,0 +1,109 @@
+.community-shell {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+  padding: 96px 3% 34px;
+}
+
+.community-sidebar {
+  position: sticky;
+  top: 86px;
+  border-radius: 18px;
+  padding: 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.74) 0%, rgba(255, 255, 255, 0.58) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow: 0 10px 24px rgba(20, 32, 56, 0.08);
+  backdrop-filter: blur(10px);
+}
+
+.community-sidebar-title {
+  margin: 0 0 12px;
+  color: var(--text-color);
+  font-size: 1.05rem;
+  font-weight: 700;
+  padding: 0 10px 8px;
+  border-bottom: 1px solid rgba(20, 32, 56, 0.08);
+}
+
+.community-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.community-nav-link {
+  display: block;
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  padding: 11px 14px;
+  color: #2b3548;
+  text-decoration: none;
+  font-weight: 700;
+  background: transparent;
+  transition: transform 0.18s ease, background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.community-nav-link:hover {
+  background: rgba(20, 32, 56, 0.06);
+  border-color: rgba(20, 32, 56, 0.08);
+  transform: translateX(2px);
+}
+
+.community-nav-link--active {
+  background: linear-gradient(90deg, rgba(214, 3, 38, 0.16) 0%, rgba(214, 3, 38, 0.05) 100%);
+  border-color: rgba(214, 3, 38, 0.22);
+  color: #d60326;
+  box-shadow: inset 3px 0 0 #d60326;
+}
+
+.community-nav-link-button {
+  text-align: left;
+  cursor: pointer;
+  font-weight: 700;
+  color: #2b3548;
+}
+
+:root[data-theme='dark'] .community-sidebar {
+  background: linear-gradient(180deg, rgba(12, 18, 30, 0.74) 0%, rgba(12, 18, 30, 0.58) 100%);
+  border-color: rgba(148, 163, 184, 0.2);
+  box-shadow: 0 14px 30px rgba(2, 10, 28, 0.3);
+}
+
+:root[data-theme='dark'] .community-sidebar-title {
+  border-bottom-color: rgba(148, 163, 184, 0.2);
+}
+
+:root[data-theme='dark'] .community-nav-link {
+  color: #d5d9e2;
+}
+
+:root[data-theme='dark'] .community-nav-link-button {
+  color: #d5d9e2;
+}
+
+:root[data-theme='dark'] .community-nav-link:hover {
+  background: rgba(148, 163, 184, 0.12);
+  border-color: rgba(148, 163, 184, 0.24);
+}
+
+.community-shell-content {
+  min-width: 0;
+}
+
+@media (max-width: 980px) {
+  .community-shell {
+    grid-template-columns: 1fr;
+    padding: 84px 4% 26px;
+  }
+
+  .community-sidebar {
+    position: static;
+  }
+
+  .community-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}

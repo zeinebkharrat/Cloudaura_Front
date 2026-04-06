@@ -297,6 +297,23 @@ export class MyPostsComponent {
     );
   }
 
+  userAvatarUrl(user?: UserRef): string | null {
+    const raw = (user?.profileImageUrl ?? '').trim();
+    if (!raw) {
+      return null;
+    }
+    if (/^https?:\/\//i.test(raw)) {
+      return raw;
+    }
+    if (raw.startsWith('/')) {
+      return raw;
+    }
+    if (raw.startsWith('uploads/')) {
+      return `/${raw}`;
+    }
+    return `/${raw.replace(/^\/+/, '')}`;
+  }
+
   private parseDate(date?: string | null): number {
     if (!date) return 0;
     const n = Date.parse(date);

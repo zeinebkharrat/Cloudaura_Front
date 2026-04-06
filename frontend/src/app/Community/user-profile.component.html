@@ -60,7 +60,10 @@
       <article class="post-card" *ngFor="let post of visiblePosts()">
         <header class="post-author-row">
           <div class="author-left">
-            <div class="avatar-sm">{{ displayName(post.author).charAt(0).toUpperCase() }}</div>
+            <div class="avatar-sm">
+              <img *ngIf="userAvatarUrl(post.author); else profilePostFallback" [src]="userAvatarUrl(post.author)!" [alt]="displayName(post.author)" class="avatar-sm-img" />
+              <ng-template #profilePostFallback>{{ displayName(post.author).charAt(0).toUpperCase() }}</ng-template>
+            </div>
             <div>
               <button type="button" class="author-link" (click)="goToAuthorProfile(post)">{{ displayName(post.author) }}</button>
               <small>{{ formatDate(post.createdAt) }}</small>

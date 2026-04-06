@@ -6,6 +6,7 @@ import org.example.backend.exception.*;
 import org.example.backend.exception.InvalidTransportException;
 import org.example.backend.exception.VehicleConflictException;
 import org.example.backend.exception.DriverConflictException;
+import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -24,41 +25,41 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private <T> ResponseEntity<T> json(HttpStatus status, T body) {
+        return ResponseEntity.status(status)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body);
+    }
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Void>> handleAccessDenied(AccessDeniedException ex) {
         String message = ex.getMessage() != null ? ex.getMessage() : "Access denied";
-        return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body(ApiResponse.error(message, "ACCESS_DENIED"));
+        return json(HttpStatus.FORBIDDEN, ApiResponse.error(message, "ACCESS_DENIED"));
     }
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleNotFound(ResourceNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(ApiResponse.error(ex.getMessage(), "RESOURCE_NOT_FOUND"));
+        return json(HttpStatus.NOT_FOUND, ApiResponse.error(ex.getMessage(), "RESOURCE_NOT_FOUND"));
     }
 
     @ExceptionHandler(NoSeatsAvailableException.class)
     public ResponseEntity<ApiResponse<Void>> handleNoSeats(NoSeatsAvailableException e) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(e.getMessage(), "NO_SEATS_AVAILABLE"));
+        return json(HttpStatus.BAD_REQUEST, ApiResponse.error(e.getMessage(), "NO_SEATS_AVAILABLE"));
     }
 
     @ExceptionHandler(DuplicateReservationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDuplicate(DuplicateReservationException e) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(ApiResponse.error(e.getMessage(), "DUPLICATE_RESERVATION"));
+        return json(HttpStatus.CONFLICT, ApiResponse.error(e.getMessage(), "DUPLICATE_RESERVATION"));
     }
 
     @ExceptionHandler(RoomNotAvailableException.class)
     public ResponseEntity<ApiResponse<Void>> handleRoomNotAvailable(RoomNotAvailableException e) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(e.getMessage(), "ROOM_NOT_AVAILABLE"));
+        return json(HttpStatus.BAD_REQUEST, ApiResponse.error(e.getMessage(), "ROOM_NOT_AVAILABLE"));
     }
 
     @ExceptionHandler(CancellationNotAllowedException.class)
     public ResponseEntity<ApiResponse<Void>> handleCancellationNotAllowed(CancellationNotAllowedException e) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(e.getMessage(), "CANCELLATION_NOT_ALLOWED"));
+        return json(HttpStatus.BAD_REQUEST, ApiResponse.error(e.getMessage(), "CANCELLATION_NOT_ALLOWED"));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -67,45 +68,39 @@ public class GlobalExceptionHandler {
                 .map(f -> f.getField() + ": " + f.getDefaultMessage())
                 .collect(Collectors.joining(", "));
 
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                .body(ApiResponse.error("Validation failed: " + message, "VALIDATION_ERROR"));
+        return json(HttpStatus.UNPROCESSABLE_ENTITY,
+            ApiResponse.error("Validation failed: " + message, "VALIDATION_ERROR"));
     }
 
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ApiResponse<Void>> handleResponseStatus(ResponseStatusException ex) {
         HttpStatus status = HttpStatus.valueOf(ex.getStatusCode().value());
-        return ResponseEntity.status(status)
-                .body(ApiResponse.error(ex.getReason() != null ? ex.getReason() : "Request failed", status.name()));
+        return json(status, ApiResponse.error(ex.getReason() != null ? ex.getReason() : "Request failed", status.name()));
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ApiResponse<Void>> handleMaxUpload(MaxUploadSizeExceededException ex) {
-        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
-                .body(ApiResponse.error("Uploaded file is too large", "UPLOAD_SIZE_EXCEEDED"));
+        return json(HttpStatus.PAYLOAD_TOO_LARGE, ApiResponse.error("Uploaded file is too large", "UPLOAD_SIZE_EXCEEDED"));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<Void>> handleUnreadable(HttpMessageNotReadableException ex) {
-        return ResponseEntity.badRequest()
-                .body(ApiResponse.error("Invalid request payload", "BAD_REQUEST"));
+        return json(HttpStatus.BAD_REQUEST, ApiResponse.error("Invalid request payload", "BAD_REQUEST"));
     }
 
     @ExceptionHandler(InvalidTransportException.class)
     public ResponseEntity<ApiResponse<Void>> handleInvalidTransport(InvalidTransportException ex) {
-        return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                .body(ApiResponse.error(ex.getMessage(), ex.getErrorCode()));
+        return json(HttpStatus.UNPROCESSABLE_ENTITY, ApiResponse.error(ex.getMessage(), ex.getErrorCode()));
     }
 
     @ExceptionHandler(VehicleConflictException.class)
     public ResponseEntity<ApiResponse<Void>> handleVehicleConflict(VehicleConflictException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(ApiResponse.error(ex.getMessage(), "VEHICLE_CONFLICT"));
+        return json(HttpStatus.CONFLICT, ApiResponse.error(ex.getMessage(), "VEHICLE_CONFLICT"));
     }
 
     @ExceptionHandler(DriverConflictException.class)
     public ResponseEntity<ApiResponse<Void>> handleDriverConflict(DriverConflictException ex) {
-        return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(ApiResponse.error(ex.getMessage(), "DRIVER_CONFLICT"));
+        return json(HttpStatus.CONFLICT, ApiResponse.error(ex.getMessage(), "DRIVER_CONFLICT"));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -118,7 +113,7 @@ public class GlobalExceptionHandler {
                 Map.of()
         );
 
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+        return json(HttpStatus.BAD_REQUEST, body);
     }
 
     @ExceptionHandler(IllegalStateException.class)
@@ -131,12 +126,12 @@ public class GlobalExceptionHandler {
                 Map.of()
         );
 
-        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(body);
+        return json(HttpStatus.BAD_GATEWAY, body);
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleUnhandled(Exception ex) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("Unexpected server error: " + ex.getMessage(), "INTERNAL_SERVER_ERROR"));
+        return json(HttpStatus.INTERNAL_SERVER_ERROR,
+            ApiResponse.error("Unexpected server error: " + ex.getMessage(), "INTERNAL_SERVER_ERROR"));
     }
 }

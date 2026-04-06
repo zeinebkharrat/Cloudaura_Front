@@ -50,7 +50,10 @@
         <!-- Post Header -->
         <header class="post-header">
           <div class="post-author">
-            <div class="avatar">{{ displayName(post.author).charAt(0).toUpperCase() || 'U' }}</div>
+            <div class="avatar">
+              <img *ngIf="userAvatarUrl(post.author); else myPostAvatarFallback" [src]="userAvatarUrl(post.author)!" [alt]="displayName(post.author)" class="avatar-img" />
+              <ng-template #myPostAvatarFallback>{{ displayName(post.author).charAt(0).toUpperCase() || 'U' }}</ng-template>
+            </div>
             <div class="author-info">
               <span class="author-name">{{ displayName(post.author) }}</span>
               <span class="post-time">{{ formatDate(post.createdAt) }}</span>

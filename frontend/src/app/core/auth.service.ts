@@ -1,6 +1,7 @@
 import { inject, Injectable, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { catchError, map, of, tap } from 'rxjs';
+import { ChatE2eeService } from '../chat/chat-e2ee.service';
 import {
   AuthMessageResponse,
   AuthResponse,
@@ -26,6 +27,7 @@ const OAUTH_BACKEND_ORIGIN = 'http://localhost:9091';
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
+  private readonly e2ee = inject(ChatE2eeService);
   /** Relative `/api` so `ng serve` proxies every call (same origin as the Angular app). */
   private readonly apiBase = '/api';
 
@@ -192,6 +194,7 @@ export class AuthService {
       tap((user) => {
         this.currentUser.set(user);
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+        this.bootstrapE2eeForUser(user.id);
       })
     );
   }
@@ -234,11 +237,22 @@ export class AuthService {
     this.isAuthenticated.set(true);
     localStorage.setItem(TOKEN_STORAGE_KEY, response.token);
     localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
+    this.bootstrapE2eeForUser(response.user.id);
   }
 
   private clearSessionState() {
     this.token.set(null);
     this.currentUser.set(null);
     this.isAuthenticated.set(false);
+  }
+
+  private bootstrapE2eeForUser(userId: number): void {
+    if (!Number.isFinite(userId)) {
+      return;
+    }
+
+    this.e2ee.ensureKeyPairReady(userId).catch((err) => {
+      console.error('Failed to bootstrap E2EE keys:', err);
+    });
   }
 }

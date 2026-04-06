@@ -2,7 +2,9 @@ import { Injectable, inject, signal, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, Subject } from 'rxjs';
 import { Client, IFrame, IMessage } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
 import { AuthService } from '../core/auth.service';
+import { ChatE2eeService } from './chat-e2ee.service';
 import {
   ChatRoomResponse,
   ConversationResponse,
@@ -16,18 +18,20 @@ import {
 export class ChatService implements OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
+  private readonly e2eeService = inject(ChatE2eeService);
   private readonly baseUrl = '';
 
   private stompClient: Client | null = null;
   private subscriptions: Map<string, any> = new Map();
   private pendingPublishes: Array<() => void> = [];
   private pendingOnReady: Array<() => void> = [];
-  private readonly wsEndpoint = this.resolveWsEndpoint();
 
   // Reactive state
   readonly conversations = signal<ConversationResponse[]>([]);
   readonly onlineUsers = signal<Set<number>>(new Set());
   readonly connected = signal(false);
+  readonly bubbleOpenRequest = signal<{ userId: number; requestId: number } | null>(null);
+  private bubbleRequestSeq = 0;
 
   // ──────────────────────────────────────────────
   // HTTP Methods
@@ -56,6 +60,25 @@ export class ChatService implements OnDestroy {
     );
   }
 
+  deleteOwnMessage(chatRoomId: number, messageId: number): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(
+      `${this.baseUrl}/chatroom/${chatRoomId}/messages/${messageId}`
+    );
+  }
+
+  sendVoiceMessage(chatRoomId: number, file: File, durationSec?: number): Observable<MessageResponse> {
+    const formData = new FormData();
+    formData.set('file', file);
+    if (durationSec != null && Number.isFinite(durationSec) && durationSec > 0) {
+      formData.set('durationSec', String(Math.floor(durationSec)));
+    }
+
+    return this.http.post<MessageResponse>(
+      `${this.baseUrl}/chatroom/${chatRoomId}/voice`,
+      formData
+    );
+  }
+
   markAsSeen(chatRoomId: number): Observable<any> {
     return this.http.post(`${this.baseUrl}/chatroom/${chatRoomId}/seen`, {});
   }
@@ -76,7 +99,8 @@ export class ChatService implements OnDestroy {
     }
 
     this.stompClient = new Client({
-      webSocketFactory: () => new WebSocket(this.wsEndpoint),
+      // Backend exposes STOMP endpoint at /ws with SockJS.
+      webSocketFactory: () => new SockJS('/ws'),
       connectHeaders: {
         Authorization: `Bearer ${token}`,
       },
@@ -142,11 +166,26 @@ export class ChatService implements OnDestroy {
     }
   }
 
-  sendMessage(chatRoomId: number, content: string): void {
-    const request: SendMessageRequest = { chatRoomId, content };
+  async sendMessage(chatRoomId: number, receiverId: number, plainText: string): Promise<void> {
+    const token = this.authService.token();
+    const senderId = this.authService.currentUser()?.id;
+    if (!senderId) {
+      throw new Error('Cannot send encrypted message without authenticated sender');
+    }
+
+    const encrypted = await this.e2eeService.encryptTextForParticipants(senderId, receiverId, plainText);
+    const request: SendMessageRequest = {
+      chatRoomId,
+      receiverId,
+      encryptedMessage: encrypted.encryptedMessage,
+      encryptedKey: encrypted.encryptedKey,
+      iv: encrypted.iv,
+    };
+
     const publish = () =>
       this.stompClient?.publish({
         destination: '/app/send-message',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         body: JSON.stringify(request),
       });
 
@@ -159,7 +198,21 @@ export class ChatService implements OnDestroy {
     publish();
   }
 
+  async ensureE2eeReadyForCurrentUser(): Promise<void> {
+    const userId = this.authService.currentUser()?.id;
+    if (!userId) {
+      return;
+    }
+    await this.e2eeService.ensureKeyPairReady(userId);
+  }
+
+  async decryptMessageContent(msg: MessageResponse): Promise<string> {
+    const userId = this.authService.currentUser()?.id ?? null;
+    return this.e2eeService.decryptTextMessage(msg, userId);
+  }
+
   sendTyping(chatRoomId: number, typing: boolean): void {
+    const token = this.authService.token();
     const event: TypingEvent = {
       chatRoomId,
       userId: 0, // Server will override with authenticated user
@@ -170,6 +223,7 @@ export class ChatService implements OnDestroy {
     const publish = () =>
       this.stompClient?.publish({
         destination: '/app/typing',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         body: JSON.stringify(event),
       });
 
@@ -297,11 +351,6 @@ export class ChatService implements OnDestroy {
     this.connect();
   }
 
-  private resolveWsEndpoint(): string {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    return `${protocol}//${window.location.host}/ws`;
-  }
-
   isUserOnline(userId: number): boolean {
     return this.onlineUsers().has(userId);
   }
@@ -325,7 +374,7 @@ export class ChatService implements OnDestroy {
       const conv = current[idx];
       current[idx] = {
         ...conv,
-        lastMessage: msg.content,
+        lastMessage: this.previewText(msg),
         lastMessageTime: msg.sentAt,
         unreadCount: conv.unreadCount + 1,
       };
@@ -349,11 +398,32 @@ export class ChatService implements OnDestroy {
     }
   }
 
+  requestOpenBubbleForUser(userId: number): void {
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return;
+    }
+    this.bubbleOpenRequest.set({ userId, requestId: ++this.bubbleRequestSeq });
+  }
+
+  clearBubbleOpenRequest(): void {
+    this.bubbleOpenRequest.set(null);
+  }
+
   // ──────────────────────────────────────────────
   // Helpers
   // ──────────────────────────────────────────────
 
   ngOnDestroy(): void {
     this.disconnect();
+  }
+
+  private previewText(msg: MessageResponse): string {
+    if (msg.messageType === 'VOICE') {
+      return 'Voice message';
+    }
+    if (this.e2eeService.isEncryptedTextPayload(msg.content)) {
+      return 'Encrypted message';
+    }
+    return msg.content;
   }
 }
