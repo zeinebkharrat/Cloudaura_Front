@@ -32,9 +32,8 @@ public interface ActivityReservationRepository extends JpaRepository<ActivityRes
 
 	Page<ActivityReservation> findByUserUserIdOrderByReservationDateDesc(Integer userId, Pageable pageable);
 
-<<<<<<< HEAD
 	void deleteByActivityActivityId(Integer activityId);
-=======
+
 	@Query("""
 		select ar
 		from ActivityReservation ar
@@ -44,5 +43,4 @@ public interface ActivityReservationRepository extends JpaRepository<ActivityRes
 		where ar.activityReservationId = :reservationId
 		""")
 	Optional<ActivityReservation> findByIdWithAssociations(@Param("reservationId") Integer reservationId);
->>>>>>> c835269496d138dee14337dc32e480ae5da41721
 }
