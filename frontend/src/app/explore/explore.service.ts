@@ -177,4 +177,11 @@ export class ExploreService {
     const params = new HttpParams().set('page', page).set('size', size).set('sort', sort);
     return this.http.get<PageResponse<ActivityReservationListItem>>(`${this.base}/my/activity-reservations`, { params });
   }
+  deleteRestaurantReviewMine(restaurantId: number): Observable<void> {
+    return this.http.delete<void>(this.base + '/restaurants/' + restaurantId + '/reviews/mine');
+  }
+
+  deleteActivityReviewMine(activityId: number): Observable<void> {
+    return this.http.delete<void>(this.base + '/activities/' + activityId + '/reviews/mine');
+  }
 }

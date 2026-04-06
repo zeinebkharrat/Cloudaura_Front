@@ -2,7 +2,6 @@ import { Injectable, inject, signal, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, Subject } from 'rxjs';
 import { Client, IFrame, IMessage } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
 import { AuthService } from '../core/auth.service';
 import {
   ChatRoomResponse,
@@ -77,7 +76,7 @@ export class ChatService implements OnDestroy {
     }
 
     this.stompClient = new Client({
-      webSocketFactory: () => new SockJS(this.wsEndpoint),
+      webSocketFactory: () => new WebSocket(this.wsEndpoint),
       connectHeaders: {
         Authorization: `Bearer ${token}`,
       },
@@ -299,8 +298,8 @@ export class ChatService implements OnDestroy {
   }
 
   private resolveWsEndpoint(): string {
-    // Keep WS same-origin and rely on Angular proxy (/ws -> backend).
-    return '/ws';
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}/ws`;
   }
 
   isUserOnline(userId: number): boolean {

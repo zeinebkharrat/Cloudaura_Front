@@ -34,3 +34,5 @@ build/
 
 # Local backend config (contains environment-specific values)
 src/main/resources/application.properties
+src/main/resources/application-local.properties
+src/main/resources/.env

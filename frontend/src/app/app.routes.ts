@@ -32,6 +32,7 @@ import { AdminPostsComponent } from './admin/posts/admin-posts.component';
 import { CityExploreComponent } from './explore/city-explore.component';
 import { RestaurantDetailComponent } from './explore/restaurant-detail.component';
 import { ActivityDetailComponent } from './explore/activity-detail.component';
+import { ActivityPaymentSuccessComponent } from './explore/activity-payment-success.component';
 import { ProductsAdminComponent } from './admin/entities/products/products-admin.component';
 import { OrdersAdminComponent } from './admin/entities/orders/orders-admin.component';
 import { CartPageComponent } from './shop/cart-page.component';
@@ -64,6 +65,7 @@ export const routes: Routes = [
   { path: 'services/restaurants', component: ServicesRestaurantsComponent },
   { path: 'services/activities', component: ServicesActivitiesComponent },
   { path: 'restaurants/:restaurantId', component: RestaurantDetailComponent },
+  { path: 'activities/payment-success', component: ActivityPaymentSuccessComponent },
   { path: 'activities/:activityId', component: ActivityDetailComponent },
   { path: 'panier', component: CartPageComponent, canActivate: [authGuard] },
   { path: 'mes-commandes', component: MyOrdersComponent, canActivate: [authGuard] },
