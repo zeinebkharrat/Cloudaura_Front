@@ -160,7 +160,7 @@
   </div>
 }
 
-@if (loginPrompt.open()) {
+@if (loginPrompt.open() && !isAuthenticated()) {
   <div class="login-gate" (click)="closeLoginPrompt()">
     <div class="login-gate__panel" (click)="$event.stopPropagation()">
       <button type="button" class="login-gate__close" (click)="closeLoginPrompt()" aria-label="Close">×</button>
