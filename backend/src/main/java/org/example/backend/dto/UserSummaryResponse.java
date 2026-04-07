@@ -15,6 +15,7 @@ public record UserSummaryResponse(
         Set<String> roles,
         String status,
         Boolean artisanRequestPending,
-        String profileImageUrl
+        String profileImageUrl,
+        Integer points
 ) {
 }

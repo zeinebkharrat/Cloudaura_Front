@@ -39,7 +39,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 || path.equals("/api/auth/captcha-config")
                 || path.startsWith("/auth/")
                 || path.startsWith("/public/")
-                || path.startsWith("/ws/");
+                || path.startsWith("/ws");
     }
 
     @Override

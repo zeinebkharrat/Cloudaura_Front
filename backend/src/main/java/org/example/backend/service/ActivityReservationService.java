@@ -271,7 +271,7 @@ public class ActivityReservationService {
         }
 
         String username = authentication.getName();
-        return userRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(username, username)
+        return userRepository.findFirstByUsernameIgnoreCaseOrEmailIgnoreCaseOrderByUserIdAsc(username, username)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Utilisateur authentifié introuvable"));
     }
 }

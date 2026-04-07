@@ -39,7 +39,7 @@ public class FavoriteController {
         }
 
         String username = authentication.getName();
-        User user = userRepository.findByUsernameIgnoreCase(username)
+        User user = userRepository.findFirstByUsernameIgnoreCaseOrderByUserIdAsc(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         Product product = productRepository.findById(productId)
@@ -70,7 +70,7 @@ public class FavoriteController {
         }
 
         String username = authentication.getName();
-        User user = userRepository.findByUsernameIgnoreCase(username)
+        User user = userRepository.findFirstByUsernameIgnoreCaseOrderByUserIdAsc(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         var favs = user.getFavorites();
@@ -88,7 +88,7 @@ public class FavoriteController {
         }
 
         String username = authentication.getName();
-        User user = userRepository.findByUsernameIgnoreCase(username)
+        User user = userRepository.findFirstByUsernameIgnoreCaseOrderByUserIdAsc(username)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         Product product = productRepository.findById(productId)

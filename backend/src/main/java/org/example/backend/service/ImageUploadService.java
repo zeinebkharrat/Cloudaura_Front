@@ -15,7 +15,12 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.Base64;
+import java.util.UUID;
 
 @Service
 public class ImageUploadService {
@@ -31,6 +36,9 @@ public class ImageUploadService {
     @Value("${app.upload.max-image-bytes:5242880}")
     private long maxImageBytes;
 
+    @Value("${app.upload.dir:uploads}")
+    private String uploadDir;
+
     public ImageUploadService(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
     }
@@ -40,14 +48,7 @@ public class ImageUploadService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image file is required");
         }
         if (apiKey == null || apiKey.isBlank()) {
-            try {
-                String contentType = file.getContentType();
-                byte[] bytes = file.getBytes();
-                String base64 = java.util.Base64.getEncoder().encodeToString(bytes);
-                return "data:" + contentType + ";base64," + base64;
-            } catch (java.io.IOException e) {
-                return "/assets/guide-mascot.png";
-            }
+            return saveImageLocally(file);
         }
         if (file.getSize() > maxImageBytes) {
             throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Image exceeds allowed size");
@@ -91,6 +92,39 @@ public class ImageUploadService {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Image upload interrupted");
+        }
+    }
+
+    /**
+     * Sans ImgBB : enregistre le fichier sous {@code uploads/profile-images/} et renvoie une URL courte
+     * (évite les data URLs énormes en base — quiz cover, profil, etc.).
+     */
+    private String saveImageLocally(MultipartFile file) {
+        if (file.getSize() > maxImageBytes) {
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Image exceeds allowed size");
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.toLowerCase().startsWith("image/")) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "Only image files are accepted");
+        }
+        try {
+            String original = file.getOriginalFilename() == null ? "" : file.getOriginalFilename();
+            String ext = "";
+            int dot = original.lastIndexOf('.');
+            if (dot >= 0) {
+                ext = original.substring(dot);
+            }
+            if (ext.isEmpty()) {
+                ext = contentType.contains("png") ? ".png" : contentType.contains("gif") ? ".gif" : ".jpg";
+            }
+            String fileName = UUID.randomUUID() + ext;
+            Path targetDir = Paths.get(uploadDir, "profile-images").toAbsolutePath().normalize();
+            Files.createDirectories(targetDir);
+            Path target = targetDir.resolve(fileName);
+            Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
+            return "/uploads/profile-images/" + fileName;
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Could not save image on server");
         }
     }
 }

@@ -10,6 +10,7 @@ import { NotificationService } from './core/notification.service';
 import { LoginRequiredPromptService } from './core/login-required-prompt.service';
 import { SignInComponent } from './sign-in.component';
 import { SignUpComponent } from './sign-up.component';
+import { GamificationService, DailyChallengeRow, GamificationBadgeEntry } from './core/gamification.service';
 
 @Component({
   selector: 'app-root',
@@ -26,6 +27,7 @@ export class AppComponent implements OnInit {
   private readonly chatService = inject(ChatService);
   readonly notifier = inject(NotificationService);
   readonly loginPrompt = inject(LoginRequiredPromptService);
+  private readonly gamification = inject(GamificationService);
 
   isDarkMode = signal(true);
   isUserMenuOpen = signal(false);
@@ -34,6 +36,15 @@ export class AppComponent implements OnInit {
   isScrolled = signal(false);
   isHomeRoute = signal(false);
   isCityRoute = signal(false);
+
+  // Challenges signals
+  readonly activeChallenges = signal<DailyChallengeRow[]>([]);
+  readonly isChallengesPopupOpen = signal(false);
+  readonly challengeCount = signal(0);
+
+  // Score & Badges signals
+  readonly userPoints = signal(0);
+  readonly userBadgeCollection = signal<GamificationBadgeEntry[]>([]);
 
   readonly isAdmin = this.auth.isAdmin;
   readonly isArtisan = this.auth.isArtisan;
@@ -86,6 +97,38 @@ export class AppComponent implements OnInit {
     }
 
     this.syncRouteState();
+    this.loadChallenges();
+    this.loadGamification()
+  }
+
+  loadGamification() {
+    if (this.isAuthenticated()) {
+      this.gamification.me().subscribe(res => {
+        this.userPoints.set(res.points);
+        this.userBadgeCollection.set(res.badges);
+      });
+    }
+  }
+
+  loadChallenges() {
+    if (this.isAuthenticated()) {
+      this.gamification.todayChallenges().subscribe({
+        next: (list) => {
+          this.activeChallenges.set(list);
+          this.challengeCount.set(list.filter(c => !c.completed).length);
+        },
+        error: () => console.log('Could not load challenges.')
+      });
+    }
+  }
+
+  toggleChallengesPopup(event: Event) {
+    event.stopPropagation();
+    this.isChallengesPopupOpen.set(!this.isChallengesPopupOpen());
+  }
+
+  closeChallengesPopup() {
+    this.isChallengesPopupOpen.set(false);
   }
 
   private syncRouteState(): void {
@@ -132,6 +175,7 @@ export class AppComponent implements OnInit {
   onDocumentClick() {
     this.isUserMenuOpen.set(false);
     this.isServicesMenuOpen.set(false);
+    this.isChallengesPopupOpen.set(false);
   }
 
   logout() {

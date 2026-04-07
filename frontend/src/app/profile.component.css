@@ -47,6 +47,19 @@
   color: var(--text-muted);
 }
 
+.points-pill {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary, #f8fafc);
+  background: color-mix(in srgb, var(--accent, #0077b6) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent, #0077b6) 45%, transparent);
+  vertical-align: middle;
+}
+
 .grid-two {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

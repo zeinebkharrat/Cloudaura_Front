@@ -46,11 +46,11 @@ public class UserIdentityResolver {
         }
         String synthetic = "social-" + sanitizeIdentifierPart(registrationId) + "-"
                 + sanitizeIdentifierPart(sub) + "@oauth.local";
-        return userRepository.findByEmailIgnoreCase(synthetic).map(User::getUserId).orElse(null);
+        return userRepository.findFirstByEmailIgnoreCaseOrderByUserIdAsc(synthetic).map(User::getUserId).orElse(null);
     }
 
     private Integer findByEmail(String email) {
-        return userRepository.findByEmailIgnoreCase(email.trim()).map(User::getUserId).orElse(null);
+        return userRepository.findFirstByEmailIgnoreCaseOrderByUserIdAsc(email.trim()).map(User::getUserId).orElse(null);
     }
 
     private static String sanitizeIdentifierPart(String value) {

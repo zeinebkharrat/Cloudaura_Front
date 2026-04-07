@@ -11,12 +11,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.Instant;
 import java.util.Map;
@@ -70,6 +70,29 @@ public class GlobalExceptionHandler {
 
         return json(HttpStatus.UNPROCESSABLE_ENTITY,
             ApiResponse.error("Validation failed: " + message, "VALIDATION_ERROR"));
+    }
+
+    /** Doublon en base (course entre deux inscriptions, contrainte unique, etc.) — évite un 500 générique. */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(DataIntegrityViolationException ex) {
+        String detail = ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : "";
+        String d = detail == null ? "" : detail;
+        String msg;
+        if (d.contains("users") || d.contains("user_roles") || d.contains("email") || d.contains("Email")
+                || d.contains("username") || d.contains("Username")) {
+            msg = "This email or username is already registered.";
+            if (d.contains("email") || d.contains("Email")) {
+                msg = "This email is already registered.";
+            } else if (d.contains("username") || d.contains("Username")) {
+                msg = "This username is already taken.";
+            }
+        } else if (d.contains("quiz") || d.contains("quiz_questions") || d.contains("quizzes")) {
+            msg = "Quiz data conflicts with existing records (duplicate key or constraint). If you were saving a quiz, retry after refreshing the admin page.";
+        } else {
+            msg = "This operation conflicts with existing data (duplicate or constraint).";
+        }
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(msg, "DUPLICATE_ENTRY"));
     }
 
     @ExceptionHandler(ResponseStatusException.class)

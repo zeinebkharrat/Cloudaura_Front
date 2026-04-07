@@ -39,7 +39,8 @@ public class User {
     private Boolean artisanRequestPending;
     private Date artisanRequestedAt;
     private String authProvider;
-    @Column(columnDefinition = "TEXT")
+    /** MEDIUMTEXT (≈16 Mo) — URLs longues ou data URLs base64 pour la photo de profil. */
+    @Column(columnDefinition = "MEDIUMTEXT")
     private String profileImageUrl;
     private String nationality;
     private Boolean emailVerified;

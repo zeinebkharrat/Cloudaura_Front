@@ -18,7 +18,6 @@ import { roleGuard } from './role.guard';
 import { AdminUsersComponent } from './admin-users.component';
 import { AdminLayoutComponent } from './admin/layout/admin-layout.component';
 import { AdminDashboardComponent } from './admin/dashboard/admin-dashboard.component';
-
 import { EventManagementComponent } from './admin/event-management/event-management.component';
 import { EventCalendarComponent } from './admin/event-calendar/event-calendar.component';
 import { ProfileComponent } from './profile.component';
@@ -40,6 +39,7 @@ import { MyOrdersComponent } from './shop/my-orders.component';
 import { ChatComponent } from './chat/chat.component';
 import { CommunityShellComponent } from './Community/community-shell.component';
 import { AdminGamesComponent } from './admin/games/admin-games.component';
+import { AdminGamificationComponent } from './admin/gamification/admin-gamification.component';
 import { AdminTicketsComponent } from './admin/tickets/admin-tickets.component';
 import { UserGamesComponent } from './games/user-games.component';
 import { QuizPlayerComponent } from './games/quiz-player.component';
@@ -77,24 +77,26 @@ export const routes: Routes = [
   { path: 'virtual-tour', component: VirtualTourPageComponent },
   { path: 'jeux', redirectTo: 'games', pathMatch: 'full' },
   { path: 'games', component: UserGamesComponent },
-  { path: 'games/quiz/:id', component: QuizPlayerComponent },
-  { path: 'games/crossword/:id', component: CrosswordPlayerComponent },
-  { path: 'games/puzzle/:id', component: PuzzlePlayerComponent },
-  { path: 'games/ludo', component: LudoPlayerComponent },
+  { path: 'games/quiz/:id', component: QuizPlayerComponent, canActivate: [authGuard] },
+  { path: 'games/crossword/:id', component: CrosswordPlayerComponent, canActivate: [authGuard] },
+  { path: 'games/puzzle/:id', component: PuzzlePlayerComponent, canActivate: [authGuard] },
+  { path: 'games/ludo', component: LudoPlayerComponent, canActivate: [authGuard] },
   {
     path: 'hebergement',
-    loadChildren: () => import('./features/hebergement/hebergement.routes')
-      .then(m => m.HEBERGEMENT_ROUTES)
+    loadChildren: () =>
+      import('./features/hebergement/hebergement.routes').then((m) => m.HEBERGEMENT_ROUTES),
   },
   {
     path: 'transport',
-    loadChildren: () => import('./features/transport/transport.routes')
-      .then(m => m.TRANSPORT_ROUTES)
+    loadChildren: () =>
+      import('./features/transport/transport.routes').then((m) => m.TRANSPORT_ROUTES),
   },
   {
     path: 'confirmation',
-    loadComponent: () => import('./shared/components/booking-confirmation/booking-confirmation.component')
-      .then(m => m.BookingConfirmationComponent)
+    loadComponent: () =>
+      import('./shared/components/booking-confirmation/booking-confirmation.component').then(
+        (m) => m.BookingConfirmationComponent,
+      ),
   },
   {
     path: 'admin',
@@ -102,14 +104,14 @@ export const routes: Routes = [
     data: { roles: ['ROLE_ADMIN'] },
     component: AdminLayoutComponent,
     children: [
-      { path: '', component: AdminDashboardComponent },
+      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+      { path: 'dashboard', component: AdminDashboardComponent },
+      { path: 'games', component: AdminGamesComponent },
+      { path: 'gamification', component: AdminGamificationComponent },
       { path: 'events', component: EventManagementComponent },
       { path: 'events/dashboard', component: EventManagementComponent },
       { path: 'events/calendar', component: EventCalendarComponent },
       { path: 'tickets', component: AdminTicketsComponent },
-      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
-      { path: 'dashboard', component: AdminDashboardComponent },
-      { path: 'games', component: AdminGamesComponent },
       { path: 'audit-logs', component: AuditLogsComponent },
       { path: 'users', component: AdminUsersComponent },
       { path: 'cities', component: AdminCitiesComponent },
@@ -119,9 +121,23 @@ export const routes: Routes = [
       { path: 'orders', component: OrdersAdminComponent },
       { path: 'products', component: ProductsAdminComponent },
       { path: 'activity-reservations', component: AdminActivityReservationsComponent },
-      { path: 'accommodations', loadComponent: () => import('./admin/entities/accommodations/accommodations-admin.component').then(m => m.AccommodationsAdminComponent) },
+      {
+        path: 'accommodations',
+        loadComponent: () =>
+          import('./admin/entities/accommodations/accommodations-admin.component').then(
+            (m) => m.AccommodationsAdminComponent,
+          ),
+      },
       { path: 'hebergements', redirectTo: 'accommodations', pathMatch: 'full' },
-      { path: 'transports', loadComponent: () => import('./admin/entities/transports/transports-admin.component').then(m => m.TransportsAdminComponent) },
+      {
+        path: 'transports',
+        loadComponent: () =>
+          import('./admin/entities/transports/transports-admin.component').then(
+            (m) => m.TransportsAdminComponent,
+          ),
+      },
+      { path: 'crafts', redirectTo: 'products', pathMatch: 'full' },
+      { path: 'settings', redirectTo: 'dashboard', pathMatch: 'full' },
     ],
   },
   { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },
@@ -171,6 +187,89 @@ export const routes: Routes = [
           items: [
             'Seasonal promotions and packages by city.',
             'Partner discounts and alerts for signed-in travellers.',
+          ],
+        },
+      ],
+    },
+  },
+  /** Pages marketing (évite le conflit avec les routes lazy `/transport` et `/hebergement`) */
+  {
+    path: 'presentation-transport',
+    component: FeaturePageComponent,
+    data: {
+      kicker: 'Mobilité',
+      accent: 'coral',
+      title: 'Transport & mobilité',
+      description:
+        'Planifier, suivre et optimiser les déplacements : trajets clairs, informations à jour et suggestions adaptées au profil du voyageur.',
+      blocks: [
+        {
+          icon: '🧭',
+          title: 'Itinéraires & horaires',
+          items: [
+            'Planification de trajets avec routes et horaires fiables.',
+            'Optimisation des correspondances et alternatives (durée, coût, confort).',
+          ],
+        },
+        {
+          icon: '📍',
+          title: 'Suivi de trajet',
+          items: [
+            'Suivi en temps réel du déplacement pour une meilleure gestion du voyage.',
+            'Notifications et rappels sur les étapes clés.',
+          ],
+        },
+        {
+          icon: '🎯',
+          title: 'Recommandations transport',
+          items: [
+            'Suggestions personnalisées selon préférences, historique et contraintes (budget, accessibilité).',
+            'Cohérence avec hébergements et activités réservées.',
+          ],
+        },
+      ],
+    },
+  },
+  {
+    path: 'presentation-hebergement',
+    component: FeaturePageComponent,
+    data: {
+      kicker: 'Séjour',
+      accent: 'gold',
+      title: 'Hébergement',
+      description:
+        'Un catalogue complet des lieux où se poser — de l’hôtel à la maison d’hôtes — avec disponibilité, avis et suggestions sur mesure.',
+      blocks: [
+        {
+          icon: '🛏️',
+          title: 'Hôtels & maisons d’hôtes',
+          items: [
+            'Liste des hébergements avec descriptions, photos, équipements et services.',
+            'Typologies variées (hôtel, guesthouse, maison d’hôte, autre).',
+          ],
+        },
+        {
+          icon: '📅',
+          title: 'Disponibilité en temps réel',
+          items: [
+            'Affichage des disponibilités transport & hébergement pour une réservation instantanée (évolution).',
+            'Synchronisation des flux de réservation (front préparé).',
+          ],
+        },
+        {
+          icon: '⭐',
+          title: 'Avis & réputation',
+          items: [
+            'Notes et commentaires détaillés pour guider les voyageurs.',
+            'Modération et signalement pour garder des avis utiles.',
+          ],
+        },
+        {
+          icon: '✨',
+          title: 'Recommandations hébergement',
+          items: [
+            'Suggestions de logement selon préférences, historique et séjour en cours.',
+            'Alignement avec transports et activités choisies.',
           ],
         },
       ],

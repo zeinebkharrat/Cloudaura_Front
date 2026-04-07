@@ -8,4 +8,8 @@ public record QuizUpsertRequest(
         String description,
         Boolean published,
         Date createdAt,
+        /** URL image de couverture (optionnel). */
+        String coverImageUrl,
+        /** Durée totale en secondes (multiple de 3 pour 3 tiers / 3 étoiles). */
+        Integer timeLimitSeconds,
         List<QuizQuestionInput> questions) {}
