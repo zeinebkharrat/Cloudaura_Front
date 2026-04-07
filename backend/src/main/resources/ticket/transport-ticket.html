@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <title>YallaTN+ — Billet transport</title>
+  <style>
+    @page { size: A4 landscape; margin: 8mm 10mm; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 9px;
+      color: #0f172a;
+      background: #e8ecf1;
+    }
+
+    .wrap {
+      max-width: 100%;
+      margin: 0 auto;
+    }
+
+    /* Boarding-pass shell: landscape card */
+    .bp {
+      display: table;
+      width: 100%;
+      table-layout: fixed;
+      background: #fff;
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 6px 28px rgba(15, 23, 42, 0.1);
+      border-top: 4px solid #c62828;
+      border-left: 4px solid #c62828;
+    }
+    .bp-main {
+      display: table-cell;
+      vertical-align: top;
+      width: 72%;
+      background: #ffffff;
+    }
+    .bp-gap {
+      display: table-cell;
+      width: 14px;
+      vertical-align: stretch;
+      background: linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+      border-left: 2px dashed #94a3b8;
+      border-right: 2px dashed #94a3b8;
+    }
+    .bp-stub {
+      display: table-cell;
+      vertical-align: top;
+      width: 28%;
+      background: linear-gradient(165deg, #1e4b70 0%, #192943 55%, #153050 100%);
+      color: #f8fafc;
+      padding: 0;
+    }
+
+    /* Header band — brand stripes */
+    .bp-head {
+      position: relative;
+      padding: 10px 16px 10px 18px;
+      background: #1e4b70;
+      background-image:
+        repeating-linear-gradient(
+          -28deg,
+          transparent,
+          transparent 6px,
+          rgba(198, 40, 40, 0.22) 6px,
+          rgba(198, 40, 40, 0.22) 7px
+        ),
+        linear-gradient(105deg, #9d121e 0%, #b91c1c 38%, #1e4b70 38%, #1e4b70 100%);
+    }
+    .bp-head-table { width: 100%; border-collapse: collapse; }
+    .bp-head-table td { vertical-align: middle; }
+    .bp-title {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      color: #ffffff;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+    .bp-subtitle {
+      font-size: 8px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.85);
+      margin-top: 3px;
+      letter-spacing: 0.06em;
+    }
+    .bp-logo-cell { text-align: right; }
+    .brand-logo-img { max-height: 38px; max-width: 160px; display: inline-block; }
+    .brand-logo-fallback {
+      display: inline-block;
+      font-size: 16px;
+      font-weight: 800;
+      color: #fff;
+    }
+    .brand-logo-fallback sup { color: #fecaca; font-size: 9px; }
+
+    .bp-main-pad { padding: 14px 18px 16px 20px; }
+
+    .bp-status {
+      display: inline-block;
+      margin-bottom: 10px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 7px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .bp-status.badge--ok { background: #ecfdf5; color: #047857; border: 1px solid #6ee7b7; }
+    .bp-status.badge--pending { background: #fff7ed; color: #c2410c; border: 1px solid #fdba74; }
+    .bp-status.badge--cancel { background: #fef2f2; color: #b91c1c; border: 1px solid #fca5a5; }
+    .bp-status.badge--neutral { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+
+    /* Field grid — label above value bar */
+    .fld-grid { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+    .fld-grid td { width: 33.33%; vertical-align: top; padding: 4px 8px 8px 0; }
+    .fld-lbl {
+      font-size: 7px;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 4px;
+    }
+    .fld-val {
+      font-size: 11px;
+      font-weight: 800;
+      color: #0f172a;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 8px 10px;
+      min-height: 18px;
+    }
+    .fld-val--sm { font-size: 10px; }
+
+    .route-row { margin: 12px 0 10px; }
+    .route-table { width: 100%; border-collapse: collapse; }
+    .route-table td { width: 50%; vertical-align: top; padding-right: 10px; }
+    .route-city { font-size: 13px; font-weight: 800; color: #0f172a; letter-spacing: 0.02em; }
+    .route-code { font-size: 9px; font-weight: 700; color: #297e95; margin-top: 2px; }
+    .ref-row { margin-top: 6px; }
+    .ref-row .fld-lbl { margin-bottom: 4px; }
+    .ref-row .fld-val { font-family: Consolas, monospace; font-size: 10px; letter-spacing: 0.04em; }
+
+    .price-inline {
+      margin-top: 10px;
+      font-size: 10px;
+      font-weight: 800;
+      color: #b91c1c;
+    }
+    .price-inline span { color: #64748b; font-weight: 600; font-size: 8px; margin-right: 6px; }
+
+    .bp-foot {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px dashed #e2e8f0;
+      text-align: center;
+    }
+    .site-url {
+      font-size: 8px;
+      color: #1e4b70;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .bc-wrap { text-align: center; }
+    .bc-img { height: 44px; width: auto; max-width: 92%; }
+    .bc-caption {
+      font-size: 7px;
+      color: #64748b;
+      margin-top: 4px;
+      letter-spacing: 0.12em;
+      font-weight: 600;
+    }
+
+    /* Stub */
+    .stub-pad { padding: 14px 12px 16px; }
+    .stub-brand {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      color: rgba(255,255,255,0.9);
+      border-bottom: 1px solid rgba(255,255,255,0.2);
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+    }
+    .stub-line { margin-bottom: 8px; }
+    .stub-k {
+      font-size: 6px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.55);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    .stub-v {
+      font-size: 9px;
+      font-weight: 800;
+      color: #fff;
+      margin-top: 2px;
+      word-break: break-word;
+    }
+    .stub-v--lg { font-size: 13px; letter-spacing: 0.06em; }
+    .stub-qr {
+      text-align: center;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px dashed rgba(255,255,255,0.25);
+    }
+    .stub-qr img {
+      width: 112px;
+      height: 112px;
+      display: block;
+      margin: 0 auto;
+      background: #fff;
+      padding: 6px;
+      border-radius: 10px;
+    }
+    .stub-hint {
+      font-size: 6px;
+      color: rgba(255,255,255,0.65);
+      line-height: 1.45;
+      margin-top: 8px;
+      text-align: center;
+    }
+    .stub-meta {
+      font-size: 5px;
+      color: rgba(255,255,255,0.45);
+      margin-top: 10px;
+      text-align: center;
+      font-style: italic;
+    }
+
+    .gen-footer {
+      margin-top: 8px;
+      font-size: 6px;
+      color: #94a3b8;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bp">
+    <div class="bp-main">
+      <div class="bp-head">
+        <table class="bp-head-table">
+          <tr>
+            <td>
+              <div class="bp-title">BILLET TRANSPORT</div>
+              <div class="bp-subtitle">YallaTN+ — Your journey to Tunisia</div>
+            </td>
+            <td class="bp-logo-cell">__LOGO_HTML__</td>
+          </tr>
+        </table>
+      </div>
+      <div class="bp-main-pad">
+        __STATUS_BADGE_HTML__
+
+        <table class="fld-grid">
+          <tr>
+            <td>
+              <div class="fld-lbl">Nom du passager</div>
+              <div class="fld-val">__PASSENGER__</div>
+            </td>
+            <td>
+              <div class="fld-lbl">Date de départ</div>
+              <div class="fld-val fld-val--sm">__TRAVEL_DATE__</div>
+            </td>
+            <td>
+              <div class="fld-lbl">Heure</div>
+              <div class="fld-val fld-val--sm">__TRAVEL_TIME__</div>
+            </td>
+          </tr>
+          <tr>
+            <td>
+              <div class="fld-lbl">Type de service</div>
+              <div class="fld-val fld-val--sm">__TRANSPORT_TYPE__</div>
+            </td>
+            <td>
+              <div class="fld-lbl">Référence</div>
+              <div class="fld-val fld-val--sm">__BOOKING_REF__</div>
+            </td>
+            <td>
+              <div class="fld-lbl">Places</div>
+              <div class="fld-val fld-val--sm">__SEATS__</div>
+            </td>
+          </tr>
+        </table>
+
+        <div class="route-row">
+          <table class="route-table">
+            <tr>
+              <td>
+                <div class="fld-lbl">Départ <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#c62828" stroke-width="2" style="vertical-align:middle;"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg></div>
+                <div class="route-city">__DEP_U__</div>
+                <div class="route-code">(__DEP_CODE__)</div>
+              </td>
+              <td>
+                <div class="fld-lbl">Destination <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#c62828" stroke-width="2" style="vertical-align:middle;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+                <div class="route-city">__ARR_U__</div>
+                <div class="route-code">(__ARR_CODE__)</div>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <div class="ref-row">
+          <div class="fld-lbl">N° réservation / trajet</div>
+          <div class="fld-val">__STYLED_REF__</div>
+        </div>
+
+        <div class="price-inline"><span>Total</span>__TOTAL_PRICE__</div>
+        <div style="font-size:8px;color:#64748b;margin-top:4px;">Paiement : __PAYMENT_LINE__</div>
+
+        <div class="bp-foot">
+          <div class="site-url">__SITE_DISPLAY__</div>
+          <div class="bc-wrap">
+            <img class="bc-img" src="__BARCODE_DATA_URI__" alt="code-barres"/>
+            <div class="bc-caption">__BARCODE_TEXT__</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bp-gap"></div>
+
+    <div class="bp-stub">
+      <div class="stub-pad">
+        <div class="stub-brand">YALLATN+</div>
+        <div class="stub-line">
+          <div class="stub-k">Nom</div>
+          <div class="stub-v stub-v--lg">__PASSENGER_LAST_STUB__</div>
+        </div>
+        <div class="stub-line">
+          <div class="stub-k">Prénom</div>
+          <div class="stub-v">__PASSENGER_FIRST_STUB__</div>
+        </div>
+        <div class="stub-line">
+          <div class="stub-k">De</div>
+          <div class="stub-v">__DEP_CODE__</div>
+        </div>
+        <div class="stub-line">
+          <div class="stub-k">Vers</div>
+          <div class="stub-v">__ARR_CODE__</div>
+        </div>
+        <div class="stub-line">
+          <div class="stub-k">Réf.</div>
+          <div class="stub-v">__BOOKING_REF__</div>
+        </div>
+        <div class="stub-line">
+          <div class="stub-k">Places</div>
+          <div class="stub-v">__SEATS__</div>
+        </div>
+
+        <div class="stub-qr">
+          <img src="__QR_DATA_URI__" alt="QR"/>
+          <div class="stub-hint">
+            Pour modification ou annulation, contactez le support.<br/>
+            __STUB_SUPPORT_CONTACT__
+          </div>
+          <div class="stub-meta">Généré le __GENERATED_AT__</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="gen-footer">Document généré automatiquement par le système YallaTN+ — valable avec pièce d&apos;identité.</div>
+</div>
+</body>
+</html>

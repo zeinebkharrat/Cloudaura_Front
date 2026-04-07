@@ -27,9 +27,13 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        String[] origins = allowedOrigins.split(",");
         registry.addEndpoint("/ws")
-                .setAllowedOrigins(allowedOrigins.split(","))
+                .setAllowedOrigins(origins)
                 .withSockJS();
+        // Plain WebSocket for STOMP clients (e.g. tracking map); SockJS cannot share this path.
+        registry.addEndpoint("/ws-native")
+                .setAllowedOrigins(origins);
     }
 
     @Override

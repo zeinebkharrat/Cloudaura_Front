@@ -3,7 +3,8 @@ import { Observable } from 'rxjs';
 import {
   City, Accommodation, Transport, Reservation,
   TransportRecommendation, TransportRecommendationRequest,
-  TransportReservationInput, TransportReservation,
+  TransportReservationInput, TransportReservation, TransportReservationUpdatePayload,
+  TransportCheckoutPayload,
   AccommodationReservation,
   EngineRecommendationRequest, EngineRecommendationResponse
 } from '../models/travel.models';
@@ -14,6 +15,24 @@ export interface TransportSearchParams {
   date?: string;
   transportType?: string;
   passengers?: number;
+}
+
+/** POST /api/transport/payments/checkout-session — absolute Stripe URL or in-app path starting with `/`. */
+export interface TransportCheckoutResult {
+  url: string;
+}
+
+/** POST /api/transport/payments/paypal/create */
+export interface TransportPayPalCreatePayload {
+  transportId: number;
+  seats: number;
+  travelDate: string;
+  routeKm?: number;
+  amountTnd: number;
+  passengerFirstName?: string;
+  passengerLastName?: string;
+  passengerEmail?: string;
+  passengerPhone?: string;
 }
 
 export interface DataSourceAdapter {
@@ -32,6 +51,33 @@ export interface DataSourceAdapter {
 
   createTransportReservation(input: TransportReservationInput): Observable<TransportReservation>;
 
+  createTransportCheckoutSession(payload: TransportCheckoutPayload): Observable<TransportCheckoutResult>;
+
+  /** POST /api/accommodation/payments/checkout-session */
+  createAccommodationCheckoutSession(payload: {
+    roomId: number;
+    userId: number;
+    checkIn: string;
+    checkOut: string;
+    offerId?: number | null;
+  }): Observable<TransportCheckoutResult>;
+
+  confirmTransportStripeSession(sessionId: string): Observable<TransportReservation>;
+
+  createTransportPayPalSession(payload: TransportPayPalCreatePayload): Observable<TransportCheckoutResult>;
+
+  confirmTransportPayPalCapture(token: string, reservationId: number): Observable<TransportReservation>;
+
+  confirmAccommodationStripeSession(sessionId: string): Observable<Reservation>;
+
+  getTransportReservation(reservationId: number, userId: number): Observable<TransportReservation>;
+
+  updateTransportReservation(
+    reservationId: number,
+    userId: number,
+    payload: TransportReservationUpdatePayload
+  ): Observable<TransportReservation>;
+
   getMyTransportReservations(userId: number): Observable<TransportReservation[]>;
 
   cancelTransportReservation(reservationId: number, userId: number): Observable<void>;
@@ -39,6 +85,13 @@ export interface DataSourceAdapter {
   getMyAccommodationReservations(userId: number): Observable<AccommodationReservation[]>;
 
   cancelAccommodationReservation(reservationId: number, userId: number): Observable<void>;
+
+  updateAccommodationReservation(
+    reservationId: number,
+    userId: number,
+    checkIn: string,
+    checkOut: string
+  ): Observable<Reservation>;
 
   createReservation(reservation: Partial<Reservation> & Record<string, unknown>): Observable<Reservation>;
 

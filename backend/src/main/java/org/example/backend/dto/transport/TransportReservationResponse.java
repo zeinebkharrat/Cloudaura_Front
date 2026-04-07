@@ -18,8 +18,16 @@ public class TransportReservationResponse {
     private double totalPrice;
     private int numberOfSeats;
     private String passengerFullName;
+    private String passengerFirstName;
+    private String passengerLastName;
+    private String passengerEmail;
+    private String passengerPhone;
     private LocalDateTime travelDate;
     private String departureCityName;
     private String arrivalCityName;
+    /** BUS, TAXI, VAN, etc. from the linked transport entity. */
+    private String transportType;
     private LocalDateTime createdAt;
+    /** Payload encoded in the boarding QR (JSON); set when status is CONFIRMED. */
+    private String qrCodeToken;
 }

@@ -6,6 +6,7 @@ import org.example.backend.exception.*;
 import org.example.backend.exception.InvalidTransportException;
 import org.example.backend.exception.VehicleConflictException;
 import org.example.backend.exception.DriverConflictException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -17,11 +18,14 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.time.Instant;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
@@ -108,6 +112,18 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage(), "DRIVER_CONFLICT"));
     }
 
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(DataIntegrityViolationException ex) {
+        Throwable cause = ex.getMostSpecificCause();
+        String detail = cause != null ? cause.getMessage() : "";
+        boolean fk = detail != null && detail.toLowerCase().contains("foreign key");
+        String message = fk
+                ? "This record cannot be removed because other data still references it (for example bookings). Cancel or unlink them first, or deactivate instead."
+                : "This action conflicts with existing data. Please refresh and try again.";
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(message, fk ? "FK_CONSTRAINT" : "DATA_INTEGRITY"));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
         ApiErrorResponse body = new ApiErrorResponse(
@@ -123,20 +139,24 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ApiErrorResponse> handleIllegalState(IllegalStateException ex) {
+        String message = ex.getMessage() != null ? ex.getMessage() : "Operation could not be completed";
         ApiErrorResponse body = new ApiErrorResponse(
-                HttpStatus.BAD_GATEWAY.value(),
-                HttpStatus.BAD_GATEWAY.getReasonPhrase(),
-                ex.getMessage() != null ? ex.getMessage() : "Service externe indisponible",
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(),
+                message,
                 Instant.now(),
                 Map.of()
         );
 
-        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(body);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleUnhandled(Exception ex) {
+        log.error("Unhandled server error", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error("Unexpected server error: " + ex.getMessage(), "INTERNAL_SERVER_ERROR"));
+                .body(ApiResponse.error(
+                        "An unexpected error occurred. Please try again later.",
+                        "INTERNAL_SERVER_ERROR"));
     }
 }

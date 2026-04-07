@@ -23,6 +23,16 @@ public class ApiResponse<T> {
                 .build();
     }
 
+    /** Success with a user-visible message (e.g. soft-delete / alternate outcome). */
+    public static <T> ApiResponse<T> success(T data, String message) {
+        return ApiResponse.<T>builder()
+                .success(true)
+                .data(data)
+                .message(message != null && !message.isBlank() ? message : "OK")
+                .timestamp(LocalDateTime.now())
+                .build();
+    }
+
     public static <T> ApiResponse<T> error(String message, String errorCode) {
         return ApiResponse.<T>builder()
                 .success(false)

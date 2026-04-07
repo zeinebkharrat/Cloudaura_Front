@@ -51,6 +51,11 @@ import { EventCalendarComponent } from './admin/event-calendar/event-calendar.co
 export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'destination-map', component: DestinationMapComponent },
+  {
+    path: 'planifier-voyage',
+    loadComponent: () =>
+      import('./trip-planning-wizard/trip-planning-wizard.component').then((m) => m.TripPlanningWizardComponent),
+  },
   { path: 'login', component: SignInComponent },
   { path: 'signin', component: SignInComponent },
   { path: 'signup', component: SignUpComponent },
@@ -83,8 +88,7 @@ export const routes: Routes = [
   },
   {
     path: 'transport',
-    loadChildren: () => import('./features/transport/transport.routes')
-      .then(m => m.TRANSPORT_ROUTES)
+    loadChildren: () => import('./features/transport/transport.module').then(m => m.TransportModule),
   },
   {
     path: 'confirmation',

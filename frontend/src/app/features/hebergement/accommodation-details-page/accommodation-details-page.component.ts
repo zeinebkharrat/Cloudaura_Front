@@ -1,10 +1,20 @@
-import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule, Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TripContextStore } from '../../../core/stores/trip-context.store';
 import { DATA_SOURCE_TOKEN } from '../../../core/adapters/data-source.adapter';
 import { Accommodation } from '../../../core/models/travel.models';
+import {
+  AccommodationRoomCategory,
+  maxGuestsForCategory,
+  maxSelectableGuests,
+  minCategoryForGuests,
+  nightlyRateForCategory,
+  quoteRoomId,
+  suiteEligible,
+} from '../../../core/utils/accommodation-quote.util';
 
 @Component({
   standalone: true,
@@ -92,30 +102,30 @@ import { Accommodation } from '../../../core/models/travel.models';
             <div class="card">
               <h3 class="rooms-title"><i class="pi pi-home rooms-title-pi" aria-hidden="true"></i> Available rooms</h3>
               <div class="rooms-list">
-                <div class="room-item" (click)="selectRoom('SINGLE')">
+                <div class="room-item" [class.selected]="store.accommodationRoomCategory() === 'SINGLE'" (click)="selectRoom('SINGLE')">
                   <div class="room-icon" aria-hidden="true"><i class="pi pi-user"></i></div>
                   <div class="room-info">
                     <strong>Single room</strong>
                     <span>1 guest · Garden view</span>
                   </div>
-                  <div class="room-price">{{ acc.pricePerNight | number:'1.0-0' }} TND / night</div>
+                  <div class="room-price">{{ roomNightly(acc, 'SINGLE') | number:'1.0-0' }} TND / night</div>
                 </div>
-                <div class="room-item" (click)="selectRoom('DOUBLE')">
+                <div class="room-item" [class.selected]="store.accommodationRoomCategory() === 'DOUBLE'" (click)="selectRoom('DOUBLE')">
                   <div class="room-icon" aria-hidden="true"><i class="pi pi-users"></i></div>
                   <div class="room-info">
                     <strong>Double room</strong>
                     <span>2 guests · Sea view available</span>
                   </div>
-                  <div class="room-price">{{ acc.pricePerNight | number:'1.0-0' }} TND / night</div>
+                  <div class="room-price">{{ roomNightly(acc, 'DOUBLE') | number:'1.0-0' }} TND / night</div>
                 </div>
-                @if (acc.rating >= 4) {
-                  <div class="room-item suite" (click)="selectRoom('SUITE')">
+                @if (eligibleSuite(acc)) {
+                  <div class="room-item suite" [class.selected]="store.accommodationRoomCategory() === 'SUITE'" (click)="selectRoom('SUITE')">
                     <div class="room-icon" aria-hidden="true"><i class="pi pi-star-fill"></i></div>
                     <div class="room-info">
                       <strong>Luxury suite</strong>
                       <span>4 guests · Terrace · Panoramic view</span>
                     </div>
-                    <div class="room-price">{{ (acc.pricePerNight * 2) | number:'1.0-0' }} TND / night</div>
+                    <div class="room-price">{{ roomNightly(acc, 'SUITE') | number:'1.0-0' }} TND / night</div>
                   </div>
                 }
               </div>
@@ -126,7 +136,7 @@ import { Accommodation } from '../../../core/models/travel.models';
           <div class="booking-widget">
             <div class="widget-card">
               <div class="widget-price">
-                <span class="price-big">{{ acc.pricePerNight | number:'1.0-0' }}</span>
+                <span class="price-big">{{ effectiveNightly() | number:'1.0-0' }}</span>
                 <span class="price-unit">TND / night</span>
               </div>
               <div class="rating-small">{{ getStars(acc.rating) }} {{ acc.rating }}/5</div>
@@ -149,7 +159,9 @@ import { Accommodation } from '../../../core/models/travel.models';
                 <div class="pax-field">
                   <label><i class="pi pi-users widget-label-pi" aria-hidden="true"></i> Guests</label>
                   <select formControlName="guests">
-                    <option *ngFor="let i of [1,2,3,4,5,6]" [value]="i">{{ i }} guest(s)</option>
+                    @for (i of guestOptions(); track i) {
+                      <option [value]="i">{{ i }} guest(s)</option>
+                    }
                   </select>
                 </div>
               </form>
@@ -158,7 +170,7 @@ import { Accommodation } from '../../../core/models/travel.models';
               @if (nightCount() > 0) {
                 <div class="price-breakdown">
                   <div class="breakdown-row">
-                    <span>{{ acc.pricePerNight | number:'1.0-0' }} TND × {{ nightCount() }} night(s)</span>
+                    <span>{{ effectiveNightly() | number:'1.0-0' }} TND × {{ nightCount() }} night(s)</span>
                     <span>{{ totalPrice() | number:'1.0-0' }} TND</span>
                   </div>
                   <div class="breakdown-row">
@@ -231,8 +243,10 @@ import { Accommodation } from '../../../core/models/travel.models';
     .rooms-list { display: flex; flex-direction: column; gap: 1rem; }
     .room-item { display: flex; align-items: center; gap: 1rem; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 1rem 1.5rem; cursor: pointer; transition: all 0.2s; }
     .room-item:hover { border-color: rgba(241,37,69,0.4); background: rgba(241,37,69,0.05); }
+    .room-item.selected { border-color: rgba(241,37,69,0.85); background: rgba(241,37,69,0.12); box-shadow: 0 0 0 1px rgba(241,37,69,0.35); }
     .room-item.suite { border-color: rgba(255,202,40,0.3); }
     .room-item.suite:hover { border-color: rgba(255,202,40,0.6); background: rgba(255,202,40,0.05); }
+    .room-item.suite.selected { border-color: rgba(255,202,40,0.9); background: rgba(255,202,40,0.12); box-shadow: 0 0 0 1px rgba(255,202,40,0.45); }
     .room-icon { font-size: 1.75rem; color: #f12545; display: flex; align-items: center; justify-content: center; width: 2.5rem; }
     .room-info { flex: 1; }
     .room-info strong { display: block; color: #fff; margin-bottom: 2px; }
@@ -291,9 +305,12 @@ export class AccommodationDetailsPageComponent implements OnInit {
   store = inject(TripContextStore);
   dataSource = inject(DATA_SOURCE_TOKEN);
   fb = inject(FormBuilder);
+  private destroyRef = inject(DestroyRef);
 
   accommodation = signal<Accommodation | null>(null);
   loading = signal(true);
+  /** Bumps when the date/guest form changes so night-based computeds stay fresh (OnPush). */
+  private formRevision = signal(0);
 
   today = new Date().toISOString().split('T')[0];
   tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
@@ -301,10 +318,20 @@ export class AccommodationDetailsPageComponent implements OnInit {
   dateForm = this.fb.group({
     checkIn: [this.store.dates().checkIn || this.today, Validators.required],
     checkOut: [this.store.dates().checkOut || this.tomorrow, Validators.required],
-    guests: [this.store.pax().adults || 2, Validators.required]
+    guests: [this.store.pax().adults || 2, Validators.required],
+  });
+
+  guestOptions = computed(() => {
+    const acc = this.accommodation();
+    if (!acc) {
+      return [1, 2, 3, 4, 5, 6];
+    }
+    const n = maxSelectableGuests(acc);
+    return Array.from({ length: n }, (_, i) => i + 1);
   });
 
   nightCount = computed(() => {
+    this.formRevision();
     const ci = this.dateForm.get('checkIn')?.value;
     const co = this.dateForm.get('checkOut')?.value;
     if (!ci || !co) return 0;
@@ -312,28 +339,94 @@ export class AccommodationDetailsPageComponent implements OnInit {
     return Math.max(0, Math.floor(diff / 86400000));
   });
 
-  totalPrice = computed(() =>
-    (this.accommodation()?.pricePerNight || 0) * this.nightCount()
-  );
+  effectiveNightly = computed(() => {
+    this.formRevision();
+    const acc = this.accommodation();
+    if (!acc) return 0;
+    return nightlyRateForCategory(acc, this.store.accommodationRoomCategory());
+  });
+
+  totalPrice = computed(() => this.effectiveNightly() * this.nightCount());
   taxAmount = computed(() => Math.round(this.totalPrice() * 0.1));
   grandTotal = computed(() => this.totalPrice() + this.taxAmount());
 
   ngOnInit() {
+    this.dateForm.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      this.formRevision.update((v) => v + 1);
+      this.onFormGuestsChanged();
+    });
+    this.formRevision.update((v) => v + 1);
+
     const id = Number(this.route.snapshot.paramMap.get('id'));
     if (id) {
       this.dataSource.getAccommodationDetails(id).subscribe({
         next: (data) => {
           this.accommodation.set(data);
           this.store.selectedAccommodation.set(data);
+          this.initPricingForProperty(data);
           this.loading.set(false);
         },
-        error: () => this.loading.set(false)
+        error: () => this.loading.set(false),
       });
     }
   }
 
-  selectRoom(type: string) {
-    // Pre-fill and scroll to booking widget
+  eligibleSuite(acc: Accommodation): boolean {
+    return suiteEligible(acc);
+  }
+
+  roomNightly(acc: Accommodation, cat: AccommodationRoomCategory): number {
+    return nightlyRateForCategory(acc, cat);
+  }
+
+  /** After load or when guest count exceeds the selected room capacity, align category + quote. */
+  private initPricingForProperty(acc: Accommodation): void {
+    const maxG = maxSelectableGuests(acc);
+    let g = Number(this.dateForm.get('guests')?.value) || this.store.pax().adults || 2;
+    if (g > maxG) {
+      g = maxG;
+      this.dateForm.patchValue({ guests: g }, { emitEvent: false });
+    }
+    let cat = this.store.accommodationRoomCategory();
+    if (cat === 'SUITE' && !suiteEligible(acc)) {
+      cat = 'DOUBLE';
+    }
+    if (g > maxGuestsForCategory(cat, acc)) {
+      cat = minCategoryForGuests(g, acc);
+    }
+    this.store.setAccommodationRoomQuote(cat, quoteRoomId(acc, cat));
+    this.formRevision.update((v) => v + 1);
+  }
+
+  /** When guests change: cap to property max; upgrade room category if current room is too small. */
+  private onFormGuestsChanged(): void {
+    const acc = this.accommodation();
+    if (!acc) return;
+    const maxG = maxSelectableGuests(acc);
+    let g = Number(this.dateForm.get('guests')?.value) || 1;
+    if (g > maxG) {
+      this.dateForm.patchValue({ guests: maxG }, { emitEvent: false });
+      g = maxG;
+    }
+    const cat = this.store.accommodationRoomCategory();
+    if (g > maxGuestsForCategory(cat, acc)) {
+      const next = minCategoryForGuests(g, acc);
+      this.store.setAccommodationRoomQuote(next, quoteRoomId(acc, next));
+    }
+  }
+
+  selectRoom(type: AccommodationRoomCategory): void {
+    const acc = this.accommodation();
+    if (!acc) return;
+    if (type === 'SUITE' && !suiteEligible(acc)) return;
+    let g = Number(this.dateForm.get('guests')?.value) || 1;
+    const cap = maxGuestsForCategory(type, acc);
+    if (g > cap) {
+      this.dateForm.patchValue({ guests: cap });
+      g = cap;
+    }
+    this.store.setAccommodationRoomQuote(type, quoteRoomId(acc, type));
+    this.formRevision.update((v) => v + 1);
     document.querySelector('.booking-widget')?.scrollIntoView({ behavior: 'smooth' });
   }
 
@@ -341,11 +434,16 @@ export class AccommodationDetailsPageComponent implements OnInit {
     const ci = this.dateForm.value.checkIn!;
     const co = this.dateForm.value.checkOut!;
     const guests = this.dateForm.value.guests!;
+    const acc = this.accommodation();
 
     this.store.setDates({ checkIn: ci, checkOut: co });
     this.store.setPax({ adults: Number(guests), children: 0 });
+    if (acc) {
+      const cat = this.store.accommodationRoomCategory();
+      this.store.setAccommodationRoomQuote(cat, quoteRoomId(acc, cat));
+    }
 
-    const accId = this.accommodation()?.id;
+    const accId = acc?.id;
     this.router.navigate(['/hebergement', accId, 'book']);
   }
 

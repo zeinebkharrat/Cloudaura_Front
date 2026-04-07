@@ -1,4 +1,6 @@
 HELP.md
+# Secrets Spring (copie locale, jamais versionnée)
+src/main/resources/application-local.properties
 target/
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/

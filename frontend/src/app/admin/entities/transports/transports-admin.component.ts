@@ -7,11 +7,16 @@ import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { DropdownModule } from 'primeng/dropdown';
-import { ToastModule } from 'primeng/toast';
-import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { TabViewModule } from 'primeng/tabview';
-import { MessageService, ConfirmationService } from 'primeng/api';
+import { AppAlertsService } from '../../../core/services/app-alerts.service';
+
+interface AdminApiEnvelope<T> {
+  success: boolean;
+  data: T;
+  message?: string;
+  errorCode?: string;
+}
 
 interface Transport {
   transportId: number;
@@ -103,18 +108,15 @@ interface TransportReservation {
   imports: [
     CommonModule, FormsModule, ReactiveFormsModule,
     DialogModule, ButtonModule, InputTextModule,
-    DropdownModule, ToastModule, ConfirmDialogModule,
-    InputNumberModule, TabViewModule,
+    DropdownModule, InputNumberModule, TabViewModule,
   ],
-  providers: [MessageService, ConfirmationService],
   templateUrl: './transports-admin.component.html',
   styleUrl: './transports-admin.component.css'
 })
 export class TransportsAdminComponent {
   private http = inject(HttpClient);
   private fb = inject(FormBuilder);
-  private messageService = inject(MessageService);
-  private confirmService = inject(ConfirmationService);
+  private alerts = inject(AppAlertsService);
 
   readonly PAGE_SIZE = 7;
 
@@ -372,8 +374,12 @@ export class TransportsAdminComponent {
 
     let url = `/api/admin/transports/available-vehicles?type=${type}`;
     if (departureTime && arrivalTime) {
-      url += `&departure=${encodeURIComponent(new Date(departureTime).toISOString())}`;
-      url += `&arrival=${encodeURIComponent(new Date(arrivalTime).toISOString())}`;
+      const d = this.toBackendLocalDateTime(departureTime);
+      const a = this.toBackendLocalDateTime(arrivalTime);
+      if (d && a) {
+        url += `&departure=${encodeURIComponent(d)}`;
+        url += `&arrival=${encodeURIComponent(a)}`;
+      }
     }
     this.http.get<any>(url).pipe(catchError(() => of({ data: [] }))).subscribe(r => {
       this.availableVehicles.set(r?.data ?? []);
@@ -386,8 +392,12 @@ export class TransportsAdminComponent {
 
     let url = `/api/admin/transports/available-drivers`;
     if (departureTime && arrivalTime) {
-      url += `?departure=${encodeURIComponent(new Date(departureTime).toISOString())}`;
-      url += `&arrival=${encodeURIComponent(new Date(arrivalTime).toISOString())}`;
+      const d = this.toBackendLocalDateTime(departureTime);
+      const a = this.toBackendLocalDateTime(arrivalTime);
+      if (d && a) {
+        url += `?departure=${encodeURIComponent(d)}`;
+        url += `&arrival=${encodeURIComponent(a)}`;
+      }
     }
     this.http.get<any>(url).pipe(catchError(() => of({ data: [] }))).subscribe(r => {
       this.availableDrivers.set(r?.data ?? []);
@@ -427,25 +437,36 @@ export class TransportsAdminComponent {
   }
 
   // ── Dynamic form logic ────────────────────────────────
-  onTypeChange(event: any) {
-    const type = event?.value ?? event;
+  /**
+   * Align validators and field visibility with transport type.
+   * When the user changes type in the dropdown, clear incompatible fields.
+   * When opening edit, pass clearIncompatibleFields=false so patchValue is kept.
+   */
+  private applyTransportTypeValidators(type: string, clearIncompatibleFields: boolean): void {
     this.showVehicleField  = type !== 'PLANE';
     this.showDriverField   = type !== 'PLANE';
     this.showAirlineField  = type === 'PLANE';
     this.showCapacityField = type === 'PLANE';
-    this.selectedVehicleCapacity = null;
-    this.durationWarning = null;
+
+    if (clearIncompatibleFields) {
+      this.selectedVehicleCapacity = null;
+      this.durationWarning = null;
+    }
 
     if (type === 'PLANE') {
-      this.transportForm.get('vehicleId')!.reset();
-      this.transportForm.get('driverId')!.reset();
+      if (clearIncompatibleFields) {
+        this.transportForm.get('vehicleId')!.reset();
+        this.transportForm.get('driverId')!.reset();
+      }
       this.transportForm.get('vehicleId')!.clearValidators();
       this.transportForm.get('driverId')!.clearValidators();
       this.transportForm.get('operatorName')!.setValidators([Validators.required]);
       this.transportForm.get('capacity')!.setValidators([Validators.required, Validators.min(1)]);
     } else {
-      this.transportForm.get('operatorName')!.reset();
-      this.transportForm.get('flightCode')!.reset();
+      if (clearIncompatibleFields) {
+        this.transportForm.get('operatorName')!.reset();
+        this.transportForm.get('flightCode')!.reset();
+      }
       this.transportForm.get('vehicleId')!.setValidators([Validators.required]);
       this.transportForm.get('driverId')!.setValidators([Validators.required]);
       this.transportForm.get('operatorName')!.clearValidators();
@@ -455,6 +476,11 @@ export class TransportsAdminComponent {
     this.transportForm.get('driverId')!.updateValueAndValidity();
     this.transportForm.get('operatorName')!.updateValueAndValidity();
     this.transportForm.get('capacity')!.updateValueAndValidity();
+  }
+
+  onTypeChange(event: any) {
+    const type = event?.value ?? event;
+    this.applyTransportTypeValidators(type, true);
     this.loadAvailableVehicles();
     this.loadAvailableDrivers();
   }
@@ -543,6 +569,7 @@ export class TransportsAdminComponent {
         departureTime: this.toDateTimeLocal(transport.departureTime),
         arrivalTime:   this.toDateTimeLocal(transport.arrivalTime),
       });
+      this.applyTransportTypeValidators(type, false);
       if (transport.vehicleId) {
         this.selectedVehicleCapacity = transport.vehicleCapacity ?? null;
       }
@@ -555,12 +582,7 @@ export class TransportsAdminComponent {
       this.showAirlineField  = false;
       this.showCapacityField = false;
       this.transportForm.reset({ type: 'BUS', price: 0, isActive: true });
-      this.transportForm.get('vehicleId')!.setValidators([Validators.required]);
-      this.transportForm.get('driverId')!.setValidators([Validators.required]);
-      this.transportForm.get('operatorName')!.clearValidators();
-      this.transportForm.get('capacity')!.clearValidators();
-      this.transportForm.get('vehicleId')!.updateValueAndValidity();
-      this.transportForm.get('driverId')!.updateValueAndValidity();
+      this.applyTransportTypeValidators('BUS', false);
       this.availableVehicles.set([]);
       this.availableDrivers.set([]);
     }
@@ -570,17 +592,54 @@ export class TransportsAdminComponent {
   saveTransport() {
     if (this.transportForm.invalid) { this.transportForm.markAllAsTouched(); return; }
 
-    const raw = this.transportForm.value;
+    const raw = this.transportForm.getRawValue();
+    const type = String(raw.type ?? '');
     const fromCity = this.cities().find(c => c.cityId === raw.departureCityId)?.name ?? '';
     const toCity   = this.cities().find(c => c.cityId === raw.arrivalCityId)?.name ?? '';
     const id = this.selectedTransport()?.transportId;
 
-    // Convert datetime-local strings to ISO
-    const payload = {
-      ...raw,
-      departureTime: raw.departureTime ? new Date(raw.departureTime).toISOString() : null,
-      arrivalTime:   raw.arrivalTime   ? new Date(raw.arrivalTime).toISOString()   : null,
+    const departureTime = this.toBackendLocalDateTime(raw.departureTime);
+    const arrivalTime = this.toBackendLocalDateTime(raw.arrivalTime);
+    if (!departureTime || !arrivalTime) {
+      void this.alerts.warning('Validation', 'Departure and arrival times are required.');
+      return;
+    }
+
+    const priceNum = Number(raw.price ?? 0);
+    const price = Number.isFinite(priceNum) ? priceNum : 0;
+
+    const base = {
+      type,
+      departureCityId: raw.departureCityId != null ? Number(raw.departureCityId) : null,
+      arrivalCityId: raw.arrivalCityId != null ? Number(raw.arrivalCityId) : null,
+      departureTime,
+      arrivalTime,
+      price,
+      description: (raw.description ?? '').toString(),
+      isActive: raw.isActive !== false,
     };
+
+    const op = raw.operatorName != null ? String(raw.operatorName).trim() : '';
+    const fc = raw.flightCode != null ? String(raw.flightCode).trim() : '';
+
+    const payload =
+      type === 'PLANE'
+        ? {
+            ...base,
+            capacity: raw.capacity != null ? Number(raw.capacity) : null,
+            operatorName: op || null,
+            flightCode: fc || null,
+            vehicleId: null,
+            driverId: null,
+          }
+        : {
+            ...base,
+            capacity: raw.capacity != null ? Number(raw.capacity) : null,
+            operatorName: op || null,
+            flightCode: fc || null,
+            vehicleId: raw.vehicleId != null ? Number(raw.vehicleId) : null,
+            driverId: raw.driverId != null ? Number(raw.driverId) : null,
+          };
 
     const req = id
       ? this.http.put<any>(`/api/admin/transports/${id}`, payload)
@@ -591,80 +650,84 @@ export class TransportsAdminComponent {
         this.loadTransports();
         this.loadStats();
         this.showTransportDialog = false;
-        this.messageService.add({
-          severity: 'success',
-          summary: id ? 'Transport updated' : 'Transport created',
-          detail: id
+        void this.alerts.success(
+          id ? 'Transport updated' : 'Transport created',
+          id
             ? `Route ${fromCity} → ${toCity} was updated successfully.`
             : `New route ${fromCity} → ${toCity} was created successfully.`,
-          life: 4500,
-        });
+        );
       },
       error: (err) => {
-        const msg = err?.error?.message ?? 'Could not complete this operation.';
-        this.messageService.add({ severity: 'warn', summary: 'Validation', detail: msg, life: 6000 });
+        const msg = this.friendlyApiMessage(err, 'Could not complete this operation.');
+        void this.alerts.warning('Validation', msg);
       },
     });
   }
 
   deleteTransport(transport: Transport) {
-    this.confirmService.confirm({
-      header: 'Confirm deletion',
-      message: `Delete transport <strong>${this.getTypeLabel(transport.type)}</strong> — <strong>${transport.departureCityName} → ${transport.arrivalCityName}</strong>? This cannot be undone.`,
-      icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Yes, delete',
-      rejectLabel: 'Cancel',
-      acceptButtonStyleClass: 'p-button-danger',
-      accept: () => {
-        this.http.delete<any>(`/api/admin/transports/${transport.transportId}`).subscribe({
-          next: () => {
+    void this.alerts
+      .confirm({
+        title: 'Confirm deletion',
+        text: `Delete ${this.getTypeLabel(transport.type)} — ${transport.departureCityName} → ${transport.arrivalCityName}? If there are no linked bookings it will be removed; otherwise it will be deactivated only.`,
+        confirmText: 'Yes, delete',
+        cancelText: 'Cancel',
+        icon: 'warning',
+      })
+      .then((r) => {
+        if (!r.isConfirmed) return;
+        this.http.delete<AdminApiEnvelope<null>>(`/api/admin/transports/${transport.transportId}`).subscribe({
+          next: (res) => {
             this.loadTransports();
             this.loadStats();
-            this.messageService.add({
-              severity: 'warn',
-              summary: 'Transport deleted',
-              detail: `Route ${transport.departureCityName} → ${transport.arrivalCityName} was removed.`,
-              life: 4500,
-            });
+            const msg = res?.message;
+            if (msg && msg !== 'OK') {
+              void this.alerts.info('Transport deactivated', msg);
+            } else {
+              void this.alerts.success(
+                'Transport removed',
+                `Route ${transport.departureCityName} → ${transport.arrivalCityName} was deleted.`,
+              );
+            }
           },
           error: (err) => {
-            const msg = err?.error?.message ?? 'Deletion failed.';
-            this.messageService.add({ severity: 'error', summary: 'Could not delete', detail: msg, life: 6000 });
+            const msg = this.friendlyApiMessage(err, 'Deletion failed.');
+            void this.alerts.error('Could not delete', msg);
           },
         });
-      },
-    });
+      });
   }
 
   toggleTransportStatus(transport: Transport) {
     const willActivate = !transport.isActive;
-    this.confirmService.confirm({
-      header: willActivate ? 'Activate transport' : 'Deactivate transport',
-      message: willActivate
-        ? `Activate route <strong>${transport.departureCityName} → ${transport.arrivalCityName}</strong>?`
-        : `Deactivate route <strong>${transport.departureCityName} → ${transport.arrivalCityName}</strong>? New bookings will be blocked.`,
-      icon: willActivate ? 'pi pi-check-circle' : 'pi pi-ban',
-      acceptLabel: willActivate ? 'Yes, activate' : 'Yes, deactivate',
-      rejectLabel: 'Cancel',
-      accept: () => {
-        this.http.patch<any>(`/api/admin/transports/${transport.transportId}/status`, { isActive: willActivate }).subscribe({
-          next: () => {
-            this.loadTransports();
-            this.loadStats();
-            this.messageService.add({
-              severity: willActivate ? 'success' : 'warn',
-              summary: willActivate ? 'Transport activated' : 'Transport deactivated',
-              detail: `Route ${transport.departureCityName} → ${transport.arrivalCityName} is now ${willActivate ? 'active' : 'inactive'}.`,
-              life: 4500,
-            });
-          },
-          error: (err) => {
-            const msg = err?.error?.message ?? 'Could not change status.';
-            this.messageService.add({ severity: 'error', summary: 'Error', detail: msg, life: 6000 });
-          },
-        });
-      },
-    });
+    void this.alerts
+      .confirm({
+        title: willActivate ? 'Activate transport' : 'Deactivate transport',
+        text: willActivate
+          ? `Activate route ${transport.departureCityName} → ${transport.arrivalCityName}?`
+          : `Deactivate route ${transport.departureCityName} → ${transport.arrivalCityName}? New bookings will be blocked.`,
+        confirmText: willActivate ? 'Yes, activate' : 'Yes, deactivate',
+        cancelText: 'Cancel',
+        icon: willActivate ? 'question' : 'warning',
+      })
+      .then((r) => {
+        if (!r.isConfirmed) return;
+        this.http
+          .patch<AdminApiEnvelope<unknown>>(`/api/admin/transports/${transport.transportId}/status`, { isActive: willActivate })
+          .subscribe({
+            next: () => {
+              this.loadTransports();
+              this.loadStats();
+              void this.alerts.success(
+                willActivate ? 'Transport activated' : 'Transport deactivated',
+                `Route ${transport.departureCityName} → ${transport.arrivalCityName} is now ${willActivate ? 'active' : 'inactive'}.`,
+              );
+            },
+            error: (err) => {
+              const msg = this.friendlyApiMessage(err, 'Could not change status.');
+              void this.alerts.error('Error', msg);
+            },
+          });
+      });
   }
 
   // ── Vehicle CRUD ──────────────────────────────────────
@@ -686,40 +749,41 @@ export class TransportsAdminComponent {
         this.loadVehicles();
         this.loadStats();
         this.showVehicleDialog = false;
-        this.messageService.add({
-          severity: 'success',
-          summary: id ? 'Vehicle updated' : 'Vehicle added',
-          detail: `${data.brand} ${data.model} (${data.plateNumber}) ${id ? 'updated' : 'added to the fleet'}.`,
-          life: 4500,
-        });
+        void this.alerts.success(
+          id ? 'Vehicle updated' : 'Vehicle added',
+          `${data.brand} ${data.model} (${data.plateNumber}) ${id ? 'updated' : 'added to the fleet'}.`,
+        );
       },
       error: (err) => {
-        const msg = err?.error?.message ?? 'Could not save this vehicle.';
-        this.messageService.add({ severity: 'warn', summary: 'Validation', detail: msg, life: 6000 });
+        const msg = this.friendlyApiMessage(err, 'Could not save this vehicle.');
+        void this.alerts.warning('Validation', msg);
       },
     });
   }
 
   deleteVehicle(vehicle: Vehicle) {
-    this.confirmService.confirm({
-      header: 'Delete vehicle',
-      message: `Remove <strong>${vehicle.brand} ${vehicle.model}</strong> (${vehicle.plateNumber}) from the fleet?`,
-      icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Yes, delete', rejectLabel: 'Cancel', acceptButtonStyleClass: 'p-button-danger',
-      accept: () => {
-        this.http.delete<any>(`/api/admin/vehicles/${vehicle.vehicleId}`).subscribe({
+    void this.alerts
+      .confirm({
+        title: 'Delete vehicle',
+        text: `Remove ${vehicle.brand} ${vehicle.model} (${vehicle.plateNumber}) from the fleet?`,
+        confirmText: 'Yes, delete',
+        cancelText: 'Cancel',
+        icon: 'warning',
+      })
+      .then((r) => {
+        if (!r.isConfirmed) return;
+        this.http.delete<AdminApiEnvelope<null>>(`/api/admin/vehicles/${vehicle.vehicleId}`).subscribe({
           next: () => {
             this.loadVehicles();
             this.loadStats();
-            this.messageService.add({ severity: 'warn', summary: 'Vehicle removed', detail: `${vehicle.brand} ${vehicle.model} removed from the fleet.`, life: 4500 });
+            void this.alerts.success('Vehicle removed', `${vehicle.brand} ${vehicle.model} removed from the fleet.`);
           },
           error: (err) => {
-            const msg = err?.error?.message ?? 'This vehicle may be assigned to an active route.';
-            this.messageService.add({ severity: 'error', summary: 'Could not delete', detail: msg, life: 6000 });
+            const msg = this.friendlyApiMessage(err, 'This vehicle may be assigned to an active route.');
+            void this.alerts.error('Could not delete', msg);
           },
         });
-      },
-    });
+      });
   }
 
   // ── Driver CRUD ───────────────────────────────────────
@@ -741,40 +805,41 @@ export class TransportsAdminComponent {
         this.loadDrivers();
         this.loadStats();
         this.showDriverDialog = false;
-        this.messageService.add({
-          severity: 'success',
-          summary: id ? 'Driver updated' : 'Driver added',
-          detail: `${data.firstName} ${data.lastName} ${id ? 'updated' : 'added to the team'}.`,
-          life: 4500,
-        });
+        void this.alerts.success(
+          id ? 'Driver updated' : 'Driver added',
+          `${data.firstName} ${data.lastName} ${id ? 'updated' : 'added to the team'}.`,
+        );
       },
       error: (err) => {
-        const msg = err?.error?.message ?? 'Could not save this driver.';
-        this.messageService.add({ severity: 'warn', summary: 'Validation', detail: msg, life: 6000 });
+        const msg = this.friendlyApiMessage(err, 'Could not save this driver.');
+        void this.alerts.warning('Validation', msg);
       },
     });
   }
 
   deleteDriver(driver: Driver) {
-    this.confirmService.confirm({
-      header: 'Delete driver',
-      message: `Remove <strong>${driver.firstName} ${driver.lastName}</strong> from the team?`,
-      icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Yes, delete', rejectLabel: 'Cancel', acceptButtonStyleClass: 'p-button-danger',
-      accept: () => {
-        this.http.delete<any>(`/api/admin/drivers/${driver.driverId}`).subscribe({
+    void this.alerts
+      .confirm({
+        title: 'Delete driver',
+        text: `Remove ${driver.firstName} ${driver.lastName} from the team?`,
+        confirmText: 'Yes, delete',
+        cancelText: 'Cancel',
+        icon: 'warning',
+      })
+      .then((r) => {
+        if (!r.isConfirmed) return;
+        this.http.delete<AdminApiEnvelope<null>>(`/api/admin/drivers/${driver.driverId}`).subscribe({
           next: () => {
             this.loadDrivers();
             this.loadStats();
-            this.messageService.add({ severity: 'warn', summary: 'Driver removed', detail: `${driver.firstName} ${driver.lastName} was removed from the team.`, life: 4500 });
+            void this.alerts.success('Driver removed', `${driver.firstName} ${driver.lastName} was removed from the team.`);
           },
           error: (err) => {
-            const msg = err?.error?.message ?? 'This driver may be assigned to an active route.';
-            this.messageService.add({ severity: 'error', summary: 'Could not delete', detail: msg, life: 6000 });
+            const msg = this.friendlyApiMessage(err, 'This driver may be assigned to an active route.');
+            void this.alerts.error('Could not delete', msg);
           },
         });
-      },
-    });
+      });
   }
 
   // ── Reservations ──────────────────────────────────────
@@ -785,39 +850,56 @@ export class TransportsAdminComponent {
   }
 
   confirmReservation(res: TransportReservation) {
-    this.confirmService.confirm({
-      header: 'Confirm booking',
-      message: `Confirm <strong>${res.reservationRef}</strong> for <strong>${res.passengerFirstName} ${res.passengerLastName}</strong> — ${res.numberOfSeats} seat(s)?`,
-      icon: 'pi pi-check-circle',
-      acceptLabel: 'Yes, confirm', rejectLabel: 'Cancel',
-      accept: () => {
-        this.http.patch<any>(`/api/admin/transport-reservations/${res.transportReservationId}/confirm`, {}).subscribe({
+    void this.alerts
+      .confirm({
+        title: 'Confirm booking',
+        text: `Confirm ${res.reservationRef} for ${res.passengerFirstName} ${res.passengerLastName} — ${res.numberOfSeats} seat(s)?`,
+        confirmText: 'Yes, confirm',
+        cancelText: 'Cancel',
+        icon: 'question',
+      })
+      .then((r) => {
+        if (!r.isConfirmed) return;
+        this.http.patch<AdminApiEnvelope<unknown>>(`/api/admin/transport-reservations/${res.transportReservationId}/confirm`, {}).subscribe({
           next: () => {
             if (this.selectedTransport()) this.loadReservations(this.selectedTransport()!.transportId);
-            this.messageService.add({ severity: 'success', summary: 'Booking confirmed', detail: `${res.reservationRef} — ${res.passengerFirstName} ${res.passengerLastName}`, life: 4500 });
+            void this.alerts.success(
+              'Booking confirmed',
+              `${res.reservationRef} — ${res.passengerFirstName} ${res.passengerLastName}`,
+            );
           },
-          error: () => this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Could not confirm this booking.', life: 5000 }),
+          error: (err) => {
+            const msg = this.friendlyApiMessage(err, 'Could not confirm this booking.');
+            void this.alerts.error('Error', msg);
+          },
         });
-      },
-    });
+      });
   }
 
   cancelReservation(res: TransportReservation) {
-    this.confirmService.confirm({
-      header: 'Cancel booking',
-      message: `Cancel <strong>${res.reservationRef}</strong> for <strong>${res.passengerFirstName} ${res.passengerLastName}</strong>?`,
-      icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Yes, cancel', rejectLabel: 'Keep', acceptButtonStyleClass: 'p-button-danger',
-      accept: () => {
-        this.http.patch<any>(`/api/admin/transport-reservations/${res.transportReservationId}/cancel`, { reason: 'Admin' }).subscribe({
-          next: () => {
-            if (this.selectedTransport()) this.loadReservations(this.selectedTransport()!.transportId);
-            this.messageService.add({ severity: 'warn', summary: 'Booking cancelled', detail: `${res.reservationRef} was cancelled.`, life: 4500 });
-          },
-          error: () => this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Could not cancel this booking.', life: 5000 }),
-        });
-      },
-    });
+    void this.alerts
+      .confirm({
+        title: 'Cancel booking',
+        text: `Cancel ${res.reservationRef} for ${res.passengerFirstName} ${res.passengerLastName}?`,
+        confirmText: 'Yes, cancel',
+        cancelText: 'Keep',
+        icon: 'warning',
+      })
+      .then((r) => {
+        if (!r.isConfirmed) return;
+        this.http
+          .patch<AdminApiEnvelope<unknown>>(`/api/admin/transport-reservations/${res.transportReservationId}/cancel`, { reason: 'Admin' })
+          .subscribe({
+            next: () => {
+              if (this.selectedTransport()) this.loadReservations(this.selectedTransport()!.transportId);
+              void this.alerts.success('Booking cancelled', `${res.reservationRef} was cancelled.`);
+            },
+            error: (err) => {
+              const msg = this.friendlyApiMessage(err, 'Could not cancel this booking.');
+              void this.alerts.error('Error', msg);
+            },
+          });
+      });
   }
 
   // ── Pagination display helpers ────────────────────────
@@ -837,6 +919,33 @@ export class TransportsAdminComponent {
 
   private toDateTimeLocal(dt: string): string {
     if (!dt) return '';
-    return new Date(dt).toISOString().slice(0, 16);
+    const d = new Date(dt);
+    if (Number.isNaN(d.getTime())) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  /** Format datetime-local value as yyyy-MM-ddTHH:mm:ss for Spring LocalDateTime (no timezone). */
+  private toBackendLocalDateTime(value: string | null | undefined): string | null {
+    if (value == null || value === '') return null;
+    const v = String(value).trim();
+    if (!v) return null;
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v)) return `${v}:00`;
+    return v;
+  }
+
+  /** Avoid showing raw SQL / JDBC text in modals. */
+  private friendlyApiMessage(err: unknown, fallback: string): string {
+    const body = (err as { error?: { message?: string } })?.error;
+    const m = typeof body?.message === 'string' ? body.message.trim() : '';
+    if (!m) return fallback;
+    const lower = m.toLowerCase();
+    if (lower.includes('could not execute statement') || lower.includes('foreign key')) {
+      return 'This action is blocked because related bookings or other records still exist.';
+    }
+    if (lower.startsWith('unexpected server error')) {
+      return 'Something went wrong on the server. Please try again.';
+    }
+    return m;
   }
 }

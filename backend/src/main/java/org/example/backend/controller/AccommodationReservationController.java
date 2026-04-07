@@ -3,6 +3,7 @@ package org.example.backend.controller;
 import org.example.backend.dto.ApiResponse;
 import org.example.backend.dto.accommodation.AccommodationReservationRequest;
 import org.example.backend.dto.accommodation.AccommodationReservationResponse;
+import org.example.backend.dto.accommodation.AccommodationReservationUpdateRequest;
 import org.example.backend.service.AccommodationReservationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,6 +25,14 @@ public class AccommodationReservationController {
     @GetMapping("/user/{userId}")
     public ApiResponse<List<AccommodationReservationResponse>> getByUser(@PathVariable int userId) {
         return ApiResponse.success(reservationService.getUserReservations(userId));
+    }
+
+    @PatchMapping("/{id}")
+    public ApiResponse<AccommodationReservationResponse> update(
+            @PathVariable int id,
+            @RequestParam int userId,
+            @RequestBody AccommodationReservationUpdateRequest body) {
+        return ApiResponse.success(reservationService.updateReservation(id, userId, body));
     }
 
     @PatchMapping("/{id}/cancel")
