@@ -312,8 +312,7 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   }
 
   openBookingModal(): void {
-    const token = localStorage.getItem('token') || localStorage.getItem('access_token');
-    if (!token) {
+    if (!this.authService.isAuthenticated()) {
       this.loginPrompt.show({
         title: 'Sign in to reserve this activity',
         message: 'Please sign in or create an account to complete your activity reservation.',

@@ -84,14 +84,43 @@ public class ActivityReceiptLinkService {
     }
 
     private String resolvePublicBaseUrl() {
-        String configured;
-        if (explicitPublicBaseUrl != null && !explicitPublicBaseUrl.isBlank()) {
-            configured = explicitPublicBaseUrl.trim();
-        } else if (backendBaseUrl != null && !backendBaseUrl.isBlank()) {
-            configured = backendBaseUrl.trim();
-        } else {
-            configured = publicBaseUrl;
+        String explicit = normalizeBaseUrl(explicitPublicBaseUrl);
+        String frontend = normalizeBaseUrl(publicBaseUrl);
+        String backend = normalizeBaseUrl(backendBaseUrl);
+
+        if (!isBlank(explicit) && !isLocalAddress(explicit)) {
+            return explicit;
         }
-        return normalizeBaseUrl(configured);
+        if (!isBlank(frontend) && !isLocalAddress(frontend)) {
+            return frontend;
+        }
+        if (!isBlank(backend) && !isLocalAddress(backend)) {
+            return backend;
+        }
+
+        if (!isBlank(explicit)) {
+            return explicit;
+        }
+        if (!isBlank(frontend)) {
+            return frontend;
+        }
+        if (!isBlank(backend)) {
+            return backend;
+        }
+        return "http://localhost:4200";
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
+    private boolean isLocalAddress(String baseUrl) {
+        if (isBlank(baseUrl)) {
+            return true;
+        }
+        String lower = baseUrl.toLowerCase();
+        return lower.contains("localhost")
+            || lower.contains("127.0.0.1")
+            || lower.contains("0.0.0.0");
     }
 }
