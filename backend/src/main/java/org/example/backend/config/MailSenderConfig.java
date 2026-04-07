@@ -47,10 +47,10 @@ public class MailSenderConfig {
     /** Shop / artisan emails only — always uses {@code app.shop.mail.*} (ignores global {@code mailer.dsn}). */
     @Bean(name = "shopMailSender")
     public JavaMailSender shopMailSender(
-            @Value("${app.shop.mail.host:smtp.gmail.com}") String host,
-            @Value("${app.shop.mail.port:587}") int port,
-            @Value("${app.shop.mail.username:}") String username,
-            @Value("${app.shop.mail.password:}") String password) {
+            @Value("${app.shop.mail.host:${spring.mail.host:smtp.gmail.com}}") String host,
+            @Value("${app.shop.mail.port:${spring.mail.port:587}}") int port,
+            @Value("${app.shop.mail.username:${spring.mail.username:}}") String username,
+            @Value("${app.shop.mail.password:${spring.mail.password:}}") String password) {
 
         JavaMailSenderImpl sender = new JavaMailSenderImpl();
         sender.setHost(host);

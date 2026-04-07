@@ -301,6 +301,40 @@ public class EmailService {
         sendEmail(shopMailSender, shopFromAddress, toEmail, subject, plain, html);
     }
 
+    public void sendArtisanRequestDecision(String toEmail, String firstName, boolean approved) {
+        String displayName = (firstName == null || firstName.isBlank()) ? "traveler" : firstName;
+        String subject = approved
+                ? "YallaTN+ - Artisan request approved"
+                : "YallaTN+ - Artisan request update";
+        String title = approved ? "Welcome to the artisan space" : "Artisan request update";
+        String preheader = approved
+                ? "Your artisan profile has been approved."
+                : "Your artisan request was reviewed.";
+        String ctaLabel = approved ? "Open artisan dashboard" : "Update my profile";
+        String ctaPath = approved ? "/artisan" : "/profile";
+        String bodyHtml = approved
+                ? "Great news! Your artisan request has been <strong>approved</strong>.<br/>"
+                    + "You can now publish products and manage your artisan orders from your dashboard."
+                : "Your artisan request was reviewed and is currently <strong>not approved</strong>.<br/>"
+                    + "Please update your profile information and contact support if you need help.";
+        String plain = approved
+                ? "Hi " + displayName + ", your artisan request is approved. You can now access the artisan dashboard."
+                : "Hi " + displayName + ", your artisan request was reviewed and is not approved for now. Please update your profile and retry.";
+
+        String targetUrl = frontendBaseUrl + ctaPath;
+        String html = buildTravelEmailHtml(
+                title,
+                "Your YallaTN+ artisan management status has changed.",
+                bodyHtml,
+                true,
+                ctaLabel,
+                targetUrl,
+                "If you need assistance, contact YallaTN+ support.",
+                displayName,
+                preheader);
+        sendEmail(userMailSender, userFromAddress, toEmail, subject, plain, html);
+    }
+
         public void sendEventJoinConfirmation(String toEmail, String firstName, String eventTitle, java.util.Date startDate, String venue) {
         String displayName = (firstName == null || firstName.isBlank()) ? "traveler" : firstName;
         String subject = "YallaTN+ - Event registration confirmed";

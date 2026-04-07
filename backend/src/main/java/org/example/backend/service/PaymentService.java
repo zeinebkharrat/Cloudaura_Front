@@ -29,6 +29,7 @@ public class PaymentService {
 
     private final OrderEntityRepository orderEntityRepository;
     private final OrderItemRepository orderItemRepository;
+    private final EmailService emailService;
     private final String stripeApiKey;
     private final String frontendBaseUrl;
 
@@ -45,10 +46,12 @@ public class PaymentService {
     public PaymentService(
             OrderEntityRepository orderEntityRepository,
             OrderItemRepository orderItemRepository,
+            EmailService emailService,
             @Value("${stripe.api.key:disabled}") String stripeApiKey,
             @Value("${app.frontend.base-url:http://localhost:4200}") String frontendBaseUrl) {
         this.orderEntityRepository = orderEntityRepository;
         this.orderItemRepository = orderItemRepository;
+        this.emailService = emailService;
         this.stripeApiKey = stripeApiKey;
         this.frontendBaseUrl = frontendBaseUrl;
     }
@@ -391,6 +394,17 @@ public class PaymentService {
                 if (item.getStatus() == OrderStatus.PENDING) {
                     item.setStatus(OrderStatus.PROCESSING);
                     orderItemRepository.save(item);
+                }
+            }
+
+            if (order.getUser() != null && order.getUser().getEmail() != null && !order.getUser().getEmail().isBlank()) {
+                try {
+                    emailService.sendOrderConfirmation(
+                            order.getUser().getEmail(),
+                            String.valueOf(order.getOrderId()),
+                            order.getTotalAmount());
+                } catch (Exception ex) {
+                    log.warn("Order paid but confirmation email failed for orderId={}: {}", orderId, ex.getMessage());
                 }
             }
         }

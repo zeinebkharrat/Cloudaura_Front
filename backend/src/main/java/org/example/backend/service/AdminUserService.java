@@ -13,6 +13,7 @@ import org.example.backend.repository.BanRepository;
 import org.example.backend.repository.CityRepository;
 import org.example.backend.repository.RoleRepository;
 import org.example.backend.repository.UserRepository;
+import org.springframework.mail.MailException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,17 +34,20 @@ public class AdminUserService {
     private final BanRepository banRepository;
     private final CityRepository cityRepository;
     private final AuditService auditService;
+    private final EmailService emailService;
 
     public AdminUserService(UserRepository userRepository,
                             RoleRepository roleRepository,
                             BanRepository banRepository,
                             CityRepository cityRepository,
-                            AuditService auditService) {
+                            AuditService auditService,
+                            EmailService emailService) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.banRepository = banRepository;
         this.cityRepository = cityRepository;
         this.auditService = auditService;
+        this.emailService = emailService;
     }
 
     @Transactional(readOnly = true)
@@ -125,7 +129,15 @@ public class AdminUserService {
         }
 
         user.setArtisanRequestPending(false);
-        return toAdminUserResponse(userRepository.save(user));
+        User saved = userRepository.save(user);
+        if (saved.getEmail() != null && !saved.getEmail().isBlank()) {
+            try {
+                emailService.sendArtisanRequestDecision(saved.getEmail(), saved.getFirstName(), approved);
+            } catch (MailException ex) {
+                System.err.println("Failed to send artisan review email: " + ex.getMessage());
+            }
+        }
+        return toAdminUserResponse(saved);
     }
 
     @Transactional

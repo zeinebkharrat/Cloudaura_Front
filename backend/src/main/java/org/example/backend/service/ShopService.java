@@ -74,6 +74,7 @@ public class ShopService {
         this.paymentService = paymentService;
     }
 
+    @Transactional(readOnly = true)
     public ShopCartDto getCart(String username) {
         if (username == null || username.isBlank()) {
             return newEmptyCart();
@@ -338,7 +339,9 @@ public class ShopService {
         // Emails (récap + code promo si créé)
         try {
             if (user.getEmail() != null && !user.getEmail().isBlank()) {
-                emailService.sendOrderConfirmation(user.getEmail(), order.getOrderId().toString(), order.getTotalAmount());
+                if (!"CARD".equals(pm)) {
+                    emailService.sendOrderConfirmation(user.getEmail(), order.getOrderId().toString(), order.getTotalAmount());
+                }
                 if (autoPromo != null) {
                     emailService.sendPromoCode(user.getEmail(), user.getFirstName(), autoPromo);
                 }
