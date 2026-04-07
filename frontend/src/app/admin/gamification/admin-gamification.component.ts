@@ -284,9 +284,21 @@ export class AdminGamificationComponent implements OnInit {
 
   private pickRandomGame(): { kind: LudificationGameKind; id: number; title: string } {
     const pool: { kind: LudificationGameKind; id: number; title: string }[] = [];
-    this.allQuizzes().forEach(q => pool.push({ kind: 'QUIZ', id: q.quizId, title: q.title }));
-    this.allCrosswords().forEach(c => pool.push({ kind: 'CROSSWORD', id: c.crosswordId, title: c.title }));
-    this.allPuzzles().forEach(p => pool.push({ kind: 'PUZZLE', id: p.puzzleId, title: p.title }));
+    this.allQuizzes().forEach((q) => {
+      if (q.quizId != null) {
+        pool.push({ kind: 'QUIZ', id: q.quizId, title: String(q.title ?? '') });
+      }
+    });
+    this.allCrosswords().forEach((c) => {
+      if (c.crosswordId != null) {
+        pool.push({ kind: 'CROSSWORD', id: c.crosswordId, title: String(c.title ?? '') });
+      }
+    });
+    this.allPuzzles().forEach((p) => {
+      if (p.puzzleId != null) {
+        pool.push({ kind: 'PUZZLE', id: p.puzzleId, title: String(p.title ?? '') });
+      }
+    });
 
     if (pool.length === 0) return { kind: 'QUIZ', id: 0, title: 'No games available' };
     const idx = Math.floor(Math.random() * pool.length);
