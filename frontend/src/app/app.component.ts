@@ -146,6 +146,12 @@ export class AppComponent implements OnInit {
     return this.router.url.startsWith('/admin');
   }
 
+  /** Stays entry is the trip questionnaire; highlight when browsing stays listings too. */
+  isStaysNavActive(): boolean {
+    const path = this.router.url.split('?')[0].split('#')[0];
+    return path === '/planifier-voyage' || path.startsWith('/hebergement');
+  }
+
   toggleTheme() {
     this.isDarkMode.set(!this.isDarkMode());
     const theme = this.isDarkMode() ? 'dark' : 'light';

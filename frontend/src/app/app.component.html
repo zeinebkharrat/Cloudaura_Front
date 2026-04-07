@@ -29,7 +29,7 @@
       <a routerLink="/transport" routerLinkActive="active">Transport</a>
     </li>
     <li>
-      <a routerLink="/hebergement" routerLinkActive="active">Stays</a>
+      <a routerLink="/planifier-voyage" [class.active]="isStaysNavActive()">Stays</a>
     </li>
     <li class="services-menu-wrap" (click)="$event.stopPropagation()">
       <button

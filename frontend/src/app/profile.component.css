@@ -60,6 +60,67 @@
   vertical-align: middle;
 }
 
+.profile-bookings-cta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  text-decoration: none;
+  color: inherit;
+  background: linear-gradient(135deg, rgba(0, 119, 182, 0.14), rgba(232, 0, 45, 0.1));
+  border: 1px solid color-mix(in srgb, var(--mediterranean-blue, #0077b6) 35%, transparent);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.profile-bookings-cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.18);
+  border-color: color-mix(in srgb, var(--tunisia-red, #e8002d) 45%, transparent);
+}
+
+.profile-bookings-ico {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface-1) 70%, transparent);
+  color: var(--mediterranean-blue, #0077b6);
+  flex-shrink: 0;
+}
+
+.profile-bookings-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.profile-bookings-title {
+  font-family: 'Outfit', sans-serif;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.profile-bookings-desc {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.35;
+}
+
+.profile-bookings-chev {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--tunisia-red, #e8002d);
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
 .grid-two {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -175,6 +236,13 @@ select {
   color: #e11d48;
   font-size: 0.8rem;
   font-weight: 600;
+}
+
+.field-hint {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.78rem;
+  line-height: 1.35;
 }
 
 .upload-row {

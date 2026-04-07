@@ -1,4 +1,6 @@
 HELP.md
+# Secrets Spring (copie locale, jamais versionnée)
+src/main/resources/application-local.properties
 target/
 
 # Secrets locaux (Stripe, etc.) — ne pas committer

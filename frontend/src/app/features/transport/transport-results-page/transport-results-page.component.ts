@@ -1,5 +1,4 @@
 import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
@@ -11,12 +10,9 @@ import { AppAlertsService } from '../../../core/services/app-alerts.service';
 import { Transport, City, TransportType, TRANSPORT_TYPE_META } from '../../../core/models/travel.models';
 
 @Component({
-  standalone: true,
+  selector: 'app-transport-results-page',
+  standalone: false,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    CommonModule,
-    TagModule, ButtonModule, SkeletonModule, RippleModule,
-  ],
   template: `
     <div class="rp">
       <!-- Header -->
@@ -32,7 +28,7 @@ import { Transport, City, TransportType, TRANSPORT_TYPE_META } from '../../../co
         </div>
 
         <div class="rp-badges">
-          <span class="rp-badge"><i class="pi pi-calendar"></i> {{ queryParams.date }}</span>
+          <span class="rp-badge"><i class="pi pi-calendar"></i> {{ formatSearchDateTime(queryParams.date) }}</span>
           <span class="rp-badge"><i class="pi pi-users"></i> {{ queryParams.passengers }} passager(s)</span>
           <span class="rp-badge rp-badge-accent">{{ getTypeEmoji(queryParams.transportType) }} {{ getTypeLabel(queryParams.transportType) }}</span>
         </div>
@@ -341,6 +337,9 @@ export class TransportResultsPageComponent implements OnInit {
     this.dataSource.getCities().subscribe(data => this.cities.set(data));
     this.route.queryParams.subscribe(params => {
       this.queryParams = params;
+      if (params['date']) {
+        this.store.setDates({ travelDate: params['date'] });
+      }
       this.loadResults();
     });
   }
@@ -389,6 +388,21 @@ export class TransportResultsPageComponent implements OnInit {
   formatTime(dateStr: string): string {
     if (!dateStr) return '';
     return new Date(dateStr).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  formatSearchDateTime(raw: string | undefined): string {
+    if (!raw) return '';
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) {
+      return raw;
+    }
+    return d.toLocaleString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   }
 
   formatDuration(minutes: number): string {

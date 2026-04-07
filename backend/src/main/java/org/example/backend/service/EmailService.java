@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.InputStreamSource;
 import org.springframework.mail.MailException;
 import org.springframework.mail.MailSendException;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
@@ -167,6 +168,114 @@ public class EmailService {
                 preheader);
         String plain = "Your product " + productName + " " + statusEnglish + ".\n— Cloudaura";
         sendEmail(shopMailSender, shopFromAddress, toEmail, subject, plain, html);
+    }
+
+    public void sendTransportOneHourReminder(
+            String toEmail,
+            String firstName,
+            String reservationRef,
+            String routeLabel,
+            String departureWhenLabel,
+            byte[] qrPng) {
+        String displayName = (firstName == null || firstName.isBlank()) ? "traveler" : firstName;
+        String subject = "YallaTN+ — Départ dans 1 heure (" + reservationRef + ")";
+        String preheader = "Votre trajet " + routeLabel + " commence bientôt.";
+        String safeRoute = escapeHtml(routeLabel);
+        String safeWhen = escapeHtml(departureWhenLabel);
+        String safeRef = escapeHtml(reservationRef);
+        String bodyHtml = "Votre départ est prévu dans environ <strong>une heure</strong>.<br/><br/>"
+                + "<strong>Référence</strong> : " + safeRef + "<br/>"
+                + "<strong>Trajet</strong> : " + safeRoute + "<br/>"
+                + "<strong>Départ</strong> : " + safeWhen + "<br/><br/>"
+                + "Votre billet QR est joint à cet e-mail. Présentez-le à l'embarquement.";
+        String plain = "Bonjour " + displayName + ",\n\n"
+                + "Rappel : votre transport (" + reservationRef + ") part dans environ une heure.\n"
+                + "Trajet : " + routeLabel + "\n"
+                + "Départ : " + departureWhenLabel + "\n\n"
+                + "Le QR code est en pièce jointe (ticket-qr.png).\n\n"
+                + "— YallaTN+";
+        String tripsUrl = frontendBaseUrl + "/mes-reservations?tab=transport";
+        String html = buildTravelEmailHtml(
+                "Départ bientôt",
+                "Préparez-vous pour votre trajet en Tunisie.",
+                bodyHtml,
+                true,
+                "Voir mes réservations",
+                tripsUrl,
+                "Bon voyage avec YallaTN+.",
+                displayName,
+                preheader);
+
+        MimeMessage message = userMailSender.createMimeMessage();
+        try {
+            MimeMessageHelper helper = new MimeMessageHelper(
+                    message, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED, "UTF-8");
+            helper.setFrom(userFromAddress);
+            helper.setTo(toEmail);
+            helper.setSubject(subject);
+            helper.setText(plain, html);
+            helper.addAttachment("ticket-qr.png", new ByteArrayResource(qrPng), "image/png");
+            userMailSender.send(message);
+        } catch (MessagingException ex) {
+            throw new MailSendException("Failed to build or send transport reminder email", ex);
+        } catch (MailException ex) {
+            throw ex;
+        }
+    }
+
+    /** Confirmation after transport booking is paid (e.g. PayPal capture); includes boarding QR PNG. */
+    public void sendTransportBookingConfirmation(
+            String toEmail,
+            String firstName,
+            String reservationRef,
+            String routeLabel,
+            String amountTndLabel,
+            byte[] qrPng) {
+        String displayName = (firstName == null || firstName.isBlank()) ? "traveler" : firstName;
+        String subject = "YallaTN+ — Transport confirmé (" + reservationRef + ")";
+        String preheader = "Votre réservation transport est payée et confirmée.";
+        String safeRoute = escapeHtml(routeLabel);
+        String safeRef = escapeHtml(reservationRef);
+        String safeAmount = escapeHtml(amountTndLabel);
+        String bodyHtml = "Votre paiement a bien été enregistré.<br/><br/>"
+                + "<strong>Référence</strong> : " + safeRef + "<br/>"
+                + "<strong>Trajet</strong> : " + safeRoute + "<br/>"
+                + "<strong>Total</strong> : " + safeAmount + " TND<br/><br/>"
+                + "Votre billet QR est joint à cet e-mail. Présentez-le à l'embarquement.";
+        String plain = "Bonjour " + displayName + ",\n\n"
+                + "Votre réservation transport est confirmée.\n"
+                + "Référence : " + reservationRef + "\n"
+                + "Trajet : " + routeLabel + "\n"
+                + "Total : " + amountTndLabel + " TND\n\n"
+                + "Le QR code est en pièce jointe (ticket-qr.png).\n\n"
+                + "— YallaTN+";
+        String tripsUrl = frontendBaseUrl + "/mes-reservations?tab=transport";
+        String html = buildTravelEmailHtml(
+                "Réservation confirmée",
+                "Merci d'avoir réservé avec YallaTN+.",
+                bodyHtml,
+                true,
+                "Voir mes réservations",
+                tripsUrl,
+                "Conservez ce billet sur votre téléphone.",
+                displayName,
+                preheader);
+
+        MimeMessage message = userMailSender.createMimeMessage();
+        try {
+            MimeMessageHelper helper =
+                    new MimeMessageHelper(message, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED, "UTF-8");
+            helper.setFrom(userFromAddress);
+            helper.setTo(toEmail);
+            helper.setSubject(subject);
+            helper.setText(plain, html);
+            helper.addAttachment("ticket-qr.png", new ByteArrayResource(qrPng), "image/png");
+            userMailSender.send(message);
+        } catch (MessagingException ex) {
+            throw new MailSendException("Failed to build or send transport booking confirmation email", ex);
+        } catch (MailException ex) {
+            throw ex;
+        }
     }
 
     public void sendPromoCode(String toEmail, String firstName, String code) {

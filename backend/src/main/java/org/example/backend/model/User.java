@@ -27,6 +27,8 @@ public class User {
 
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String passwordHash;
+
+    @Column(name = "phone", length = 20)
     private String phone;
     private Integer points;
 

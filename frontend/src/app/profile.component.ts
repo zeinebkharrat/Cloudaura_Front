@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import Swal from 'sweetalert2';
@@ -11,7 +12,7 @@ import { CityOption } from './core/auth.types';
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.css',
 })
@@ -32,7 +33,7 @@ export class ProfileComponent {
     firstName: ['', [Validators.required, Validators.minLength(2)]],
     lastName: ['', [Validators.required, Validators.minLength(2)]],
     email: ['', [Validators.required, Validators.email]],
-    phone: ['', [Validators.pattern(/^\+?[0-9\s-]{8,20}$/)]],
+    phone: ['', [Validators.pattern(/^$|^(\+216)?[0-9]{8}$/)]],
     nationality: [''],
     cityId: [null as number | null],
     profileImageUrl: [''],
@@ -85,7 +86,7 @@ export class ProfileComponent {
   }
 
   phoneErrorMessage(): string {
-    return 'Invalid phone number (8–20 digits; spaces or hyphens allowed).';
+    return 'Format: 8 chiffres ou +216 suivi de 8 chiffres (WhatsApp).';
   }
 
   private normalizePhone(value: string): string | null {

@@ -7,6 +7,7 @@ import org.example.backend.exception.InvalidTransportException;
 import org.example.backend.exception.VehicleConflictException;
 import org.example.backend.exception.DriverConflictException;
 import org.springframework.http.MediaType;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -16,13 +17,15 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.dao.DataIntegrityViolationException;
+
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     private <T> ResponseEntity<T> json(HttpStatus status, T body) {
@@ -77,8 +80,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(DataIntegrityViolationException ex) {
         String detail = ex.getMostSpecificCause() != null ? ex.getMostSpecificCause().getMessage() : "";
         String d = detail == null ? "" : detail;
+        String dl = d.toLowerCase();
         String msg;
-        if (d.contains("users") || d.contains("user_roles") || d.contains("email") || d.contains("Email")
+        String code;
+        if (dl.contains("foreign key")) {
+            msg = "This record cannot be removed because other data still references it (for example bookings). Cancel or unlink them first, or deactivate instead.";
+            code = "FK_CONSTRAINT";
+        } else if (d.contains("users") || d.contains("user_roles") || d.contains("email") || d.contains("Email")
                 || d.contains("username") || d.contains("Username")) {
             msg = "This email or username is already registered.";
             if (d.contains("email") || d.contains("Email")) {
@@ -86,13 +94,16 @@ public class GlobalExceptionHandler {
             } else if (d.contains("username") || d.contains("Username")) {
                 msg = "This username is already taken.";
             }
+            code = "DUPLICATE_ENTRY";
         } else if (d.contains("quiz") || d.contains("quiz_questions") || d.contains("quizzes")) {
             msg = "Quiz data conflicts with existing records (duplicate key or constraint). If you were saving a quiz, retry after refreshing the admin page.";
+            code = "DUPLICATE_ENTRY";
         } else {
             msg = "This operation conflicts with existing data (duplicate or constraint).";
+            code = "DATA_INTEGRITY";
         }
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(ApiResponse.error(msg, "DUPLICATE_ENTRY"));
+                .body(ApiResponse.error(msg, code));
     }
 
     @ExceptionHandler(ResponseStatusException.class)
@@ -141,20 +152,24 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ApiErrorResponse> handleIllegalState(IllegalStateException ex) {
+        String message = ex.getMessage() != null ? ex.getMessage() : "Operation could not be completed";
         ApiErrorResponse body = new ApiErrorResponse(
-                HttpStatus.BAD_GATEWAY.value(),
-                HttpStatus.BAD_GATEWAY.getReasonPhrase(),
-                ex.getMessage() != null ? ex.getMessage() : "Service externe indisponible",
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                HttpStatus.INTERNAL_SERVER_ERROR.getReasonPhrase(),
+                message,
                 Instant.now(),
                 Map.of()
         );
 
-        return json(HttpStatus.BAD_GATEWAY, body);
+    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleUnhandled(Exception ex) {
-        return json(HttpStatus.INTERNAL_SERVER_ERROR,
-            ApiResponse.error("Unexpected server error: " + ex.getMessage(), "INTERNAL_SERVER_ERROR"));
+        log.error("Unhandled server error", ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(
+                        "An unexpected error occurred. Please try again later.",
+                        "INTERNAL_SERVER_ERROR"));
     }
 }

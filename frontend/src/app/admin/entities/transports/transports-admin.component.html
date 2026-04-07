@@ -1,6 +1,3 @@
-<p-toast position="top-right" />
-<p-confirmDialog [style]="{width:'460px'}" />
-
 <div class="admin-container">
   <p-tabView [(activeIndex)]="activeTabIndex">
 
@@ -372,7 +369,8 @@
 
 <!-- ═══ Transport Dialog ═══ -->
 <p-dialog [header]="selectedTransport() ? 'Edit transport' : 'New transport'"
-          [(visible)]="showTransportDialog" [modal]="true" [style]="{width:'720px'}" [closable]="true">
+          [(visible)]="showTransportDialog" [modal]="true" [style]="{width:'720px'}" [closable]="true"
+          appendTo="body">
   <form [formGroup]="transportForm" class="dialog-form">
     <div class="form-grid">
 

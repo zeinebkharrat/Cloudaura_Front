@@ -25,17 +25,45 @@ public class JwtService {
     @Value("${jwt.expiration-ms:86400000}")
     private long expirationMs;
 
+    private static final int MIN_HMAC_KEY_BYTES = 32; // HS256 requires >= 256 bits (JJWT)
+
     private SecretKey signingKey;
 
     @PostConstruct
     public void init() {
-        byte[] keyBytes;
-        try {
-            keyBytes = Decoders.BASE64.decode(secret);
-        } catch (Exception ex) {
-            keyBytes = secret.getBytes(StandardCharsets.UTF_8);
+        String trimmed = secret == null ? "" : secret.trim();
+        if (trimmed.isEmpty()) {
+            throw new IllegalStateException("jwt.secret must not be empty (set jwt.secret or JWT_SECRET).");
+        }
+        byte[] keyBytes = resolveHmacKeyBytes(trimmed);
+        if (keyBytes.length < MIN_HMAC_KEY_BYTES) {
+            throw new IllegalStateException(
+                    "jwt.secret must be at least "
+                            + MIN_HMAC_KEY_BYTES
+                            + " bytes for HS256. After resolving (Base64 or UTF-8), length is "
+                            + keyBytes.length
+                            + ". Use a longer plain secret or a Base64 value that decodes to at least "
+                            + MIN_HMAC_KEY_BYTES
+                            + " bytes.");
         }
         this.signingKey = Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    /**
+     * If the value is valid Base64 and decodes to a long enough key, use decoded bytes; otherwise use UTF-8
+     * of the string. This avoids startup failure when someone sets a short secret that happens to be valid
+     * Base64 (decoded length under 32), which previously made {@link Keys#hmacShaKeyFor(byte[])} throw.
+     */
+    private static byte[] resolveHmacKeyBytes(String trimmed) {
+        try {
+            byte[] decoded = Decoders.BASE64.decode(trimmed);
+            if (decoded.length >= MIN_HMAC_KEY_BYTES) {
+                return decoded;
+            }
+        } catch (Exception ignored) {
+            // Not Base64 — use UTF-8 below
+        }
+        return trimmed.getBytes(StandardCharsets.UTF_8);
     }
 
     public String generateToken(UserDetails userDetails) {
