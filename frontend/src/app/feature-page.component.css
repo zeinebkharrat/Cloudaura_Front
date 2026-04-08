@@ -54,6 +54,18 @@
 }
 .back-home:hover { color: var(--tunisia-red); transform: translateX(-4px); }
 
+.back-home--inline {
+  margin-bottom: 0;
+  padding: 0;
+  white-space: nowrap;
+}
+
+.back-home--event {
+  margin-bottom: 10px;
+  padding: 0;
+  font-size: 0.95rem;
+}
+
 /* ── Hero Header ── */
 .feature-page__hero {
   padding: 40px 44px;
@@ -70,6 +82,13 @@
   border-radius: 0;
   background: transparent;
   box-shadow: none;
+  width: min(1520px, 96vw);
+  margin-left: 50%;
+  transform: translateX(-50%);
+}
+
+.feature-page__hero--events .feature-page__title {
+  margin: 0 0 10px;
 }
 
 .feature-page__hero--events .feature-page__title {
@@ -207,6 +226,12 @@
 @media (max-width: 640px) {
   .feature-page__hero {
     padding: 28px 22px;
+  }
+
+  .feature-page__hero--events {
+    width: 100%;
+    margin-left: 0;
+    transform: none;
   }
 }
 

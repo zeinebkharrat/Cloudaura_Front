@@ -2,11 +2,14 @@
   <div class="feature-page__bg" aria-hidden="true"></div>
   <div class="feature-page__mesh" aria-hidden="true"></div>
 
-  <a routerLink="/" class="back-home">
+  <a routerLink="/" class="back-home" *ngIf="!isEventFeed">
     <i class="pi pi-arrow-left"></i> Home
   </a>
 
   <header class="feature-page__hero glass-panel" [class.feature-page__hero--events]="isEventFeed">
+    <a routerLink="/" class="back-home back-home--event" *ngIf="isEventFeed">
+      <i class="pi pi-arrow-left"></i> Home
+    </a>
     <h1 class="feature-page__title">{{ title }}</h1>
     <p class="feature-page__lead">{{ description }}</p>
     <div class="feature-page__divider" aria-hidden="true"></div>
