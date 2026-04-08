@@ -77,6 +77,10 @@ export class FeaturePageComponent implements OnInit {
   highlights: string[] = [];
   blocks: FeatureBlock[] = [];
   events: TravelEvent[] = [];
+  eventFilterCity = 'ALL';
+  eventFilterType = 'ALL';
+  eventMaxPriceCap = 300;
+  eventMaxPrice = 300;
   isEventFeed = false;
   isLoadingEvents = false;
   eventsLoadError: string | null = null;
@@ -353,6 +357,7 @@ export class FeaturePageComponent implements OnInit {
     const shouldLoadEvents = d['eventFeed'] === true || this.title === 'Events';
     this.isEventFeed = shouldLoadEvents;
     if (shouldLoadEvents) {
+      this.loadCities();
       this.loadEvents();
     } else {
       this.events = [];
@@ -708,6 +713,7 @@ export class FeaturePageComponent implements OnInit {
           status: this.normalizeEventStatus(event.status),
           imageUrl: this.normalizeEventImageUrl(event.imageUrl),
         })).filter((event) => this.shouldDisplayInFrontOffice(event.status));
+        this.resetEventFilters();
         this.isLoadingEvents = false;
       },
       error: (err) => {
@@ -741,6 +747,104 @@ export class FeaturePageComponent implements OnInit {
   private shouldDisplayInFrontOffice(status: unknown): boolean {
     const normalized = this.normalizeEventStatus(status);
     return normalized === 'UPCOMING' || normalized === 'ONGOING';
+  }
+
+  private toEventCityLabel(event: TravelEvent): string {
+    const fromCity = event.city?.name?.trim();
+    if (fromCity) {
+      return fromCity;
+    }
+    const venue = String(event.venue ?? '').trim();
+    if (!venue) {
+      return 'Unknown';
+    }
+    const firstChunk = venue.split(',')[0]?.trim();
+    return firstChunk || venue;
+  }
+
+  get eventCityOptions(): string[] {
+    const allCities = this.cities().map((c) => String(c?.name ?? '').trim()).filter((v) => !!v);
+    if (allCities.length > 0) {
+      return [...new Set(allCities)].sort((a, b) => a.localeCompare(b));
+    }
+    return [...new Set(this.events.map((event) => this.toEventCityLabel(event)).filter((v) => !!v))]
+      .sort((a, b) => a.localeCompare(b));
+  }
+
+  get eventTypeOptions(): string[] {
+    return [...new Set(this.events.map((event) => String(event.eventType ?? '').trim()).filter((v) => !!v))]
+      .sort((a, b) => a.localeCompare(b));
+  }
+
+  get filteredEvents(): TravelEvent[] {
+    return this.events.filter((event) => {
+      const cityOk = this.eventFilterCity === 'ALL' || this.toEventCityLabel(event) === this.eventFilterCity;
+      const typeOk = this.eventFilterType === 'ALL' || String(event.eventType ?? '').trim() === this.eventFilterType;
+      const price = this.eventPriceAmount(event);
+      const budgetOk = price <= this.eventMaxPrice;
+      return cityOk && typeOk && budgetOk;
+    });
+  }
+
+  get activeEventFilterCount(): number {
+    let count = 0;
+    if (this.eventFilterCity !== 'ALL') {
+      count += 1;
+    }
+    if (this.eventFilterType !== 'ALL') {
+      count += 1;
+    }
+    if (this.eventMaxPrice < this.eventMaxPriceCap) {
+      count += 1;
+    }
+    return count;
+  }
+
+  get activeEventFilterTokens(): string[] {
+    const tokens: string[] = [];
+    if (this.eventFilterCity !== 'ALL') {
+      tokens.push(`City: ${this.eventFilterCity}`);
+    }
+    if (this.eventFilterType !== 'ALL') {
+      tokens.push(`Type: ${this.eventFilterType}`);
+    }
+    if (this.eventMaxPrice < this.eventMaxPriceCap) {
+      tokens.push(`Budget <= ${Math.round(this.eventMaxPrice)} TND`);
+    }
+    return tokens;
+  }
+
+  eventDisplayDate(event: TravelEvent): string {
+    const raw = String(event.startDate ?? '').trim();
+    if (!raw) {
+      return 'Date TBA';
+    }
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) {
+      return raw;
+    }
+    return date.toLocaleDateString(undefined, {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  }
+
+  eventStatusClass(status: unknown): string {
+    const normalized = this.normalizeEventStatus(status);
+    if (normalized === 'ONGOING') {
+      return 'event-status-badge--ongoing';
+    }
+    return 'event-status-badge--upcoming';
+  }
+
+  resetEventFilters(): void {
+    const maxDetected = this.events.reduce((max, event) => Math.max(max, this.eventPriceAmount(event)), 0);
+    const normalizedCap = Math.max(300, Math.ceil(maxDetected / 50) * 50);
+    this.eventMaxPriceCap = normalizedCap;
+    this.eventMaxPrice = normalizedCap;
+    this.eventFilterCity = 'ALL';
+    this.eventFilterType = 'ALL';
   }
 
   private normalizeEventImageUrl(url: string | undefined): string | undefined {
