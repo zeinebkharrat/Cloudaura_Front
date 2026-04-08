@@ -10,6 +10,7 @@ import org.example.backend.model.ReservationStatus;
 import org.example.backend.repository.ActivityReservationRepository;
 import org.example.backend.repository.ActivityMediaRepository;
 import org.example.backend.repository.ActivityRepository;
+import org.example.backend.repository.ActivityReviewRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -36,6 +37,7 @@ public class ActivityService {
     private final ActivityRepository activityRepository;
     private final ActivityMediaRepository activityMediaRepository;
     private final ActivityReservationRepository activityReservationRepository;
+    private final ActivityReviewRepository activityReviewRepository;
     private final CityService cityService;
 
     public Page<ActivityResponse> list(String q, Pageable pageable) {
@@ -117,6 +119,8 @@ public class ActivityService {
     @Transactional
     public void delete(Integer id) {
         Activity activity = findActivity(id);
+        activityReservationRepository.deleteByActivityActivityId(activity.getActivityId());
+        activityReviewRepository.deleteByActivityActivityId(activity.getActivityId());
         activityMediaRepository.deleteByActivityActivityId(activity.getActivityId());
         activityRepository.delete(activity);
     }

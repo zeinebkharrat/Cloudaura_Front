@@ -32,6 +32,8 @@ public interface ActivityReservationRepository extends JpaRepository<ActivityRes
 
 	Page<ActivityReservation> findByUserUserIdOrderByReservationDateDesc(Integer userId, Pageable pageable);
 
+	void deleteByActivityActivityId(Integer activityId);
+
 	@Query("""
 		select ar
 		from ActivityReservation ar

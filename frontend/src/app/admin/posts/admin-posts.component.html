@@ -1,0 +1,201 @@
+<div class="admin-page">
+  <header class="page-head">
+    <div>
+      <h1>Posts management</h1>
+    </div>
+  </header>
+
+  <section class="stats-grid">
+    <article class="stat-card">
+      <span>Total posts</span>
+      <strong>{{ totalElements }}</strong>
+    </article>
+    <article class="stat-card">
+      <span>Posts shown</span>
+      <strong>{{ posts.length }}</strong>
+    </article>
+    <article class="stat-card">
+      <span>Results per page</span>
+      <strong>{{ size }}</strong>
+    </article>
+  </section>
+
+  @if (error) {
+    <div class="alert">{{ error }}</div>
+  }
+
+  <section class="card surface">
+    <div class="toolbar search-shell">
+      <div class="search-input-wrap">
+        <span class="search-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+        </span>
+        <input type="text" [(ngModel)]="q" (ngModelChange)="onSearchInputChange()" placeholder="Search text, hashtags, user, city..." />
+      </div>
+      <input type="text" [(ngModel)]="tag" (ngModelChange)="onSearchInputChange()" placeholder="Filter by tag (ex: #travel)" />
+      <select [(ngModel)]="sort" (change)="onSearchInputChange()">
+        <option value="createdAt,desc">Newest first</option>
+        <option value="createdAt,asc">Oldest first</option>
+        <option value="likesCount,desc">Most liked</option>
+        <option value="commentsCount,desc">Most commented</option>
+      </select>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Author</th>
+            <th>Content</th>
+            <th>Tags</th>
+            <th>Location</th>
+            <th>Likes</th>
+            <th>Comments</th>
+            <th>Created</th>
+            <th>Type</th>
+            <th class="actions-head">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (post of posts; track post.postId) {
+            <tr>
+              <td>{{ post.postId }}</td>
+              <td>
+                <div>{{ post.authorUsername || 'User' }}</div>
+              </td>
+              <td>
+                <div class="desc-cell">{{ (post.content || '—') | slice:0:120 }}{{ post.content && post.content.length > 120 ? '…' : '' }}</div>
+              </td>
+              <td>
+                @if (getTagList(post.hashtags).length) {
+                  <div class="tags-row">
+                    @for (item of getTagList(post.hashtags); track item) {
+                      <span class="tag-chip">{{ item }}</span>
+                    }
+                  </div>
+                } @else {
+                  —
+                }
+              </td>
+              <td>
+                @if (post.location) {
+                  <span class="location-pill">{{ post.location }}</span>
+                } @else {
+                  —
+                }
+              </td>
+              <td>{{ post.likesCount }}</td>
+              <td>{{ post.commentsCount }}</td>
+              <td>{{ formatDate(post.createdAt) }}</td>
+              <td>
+                @if (post.repostOfPostId) {
+                  <span class="chip repost">Repost of #{{ post.repostOfPostId }}</span>
+                } @else {
+                  <span class="chip original">Original</span>
+                }
+              </td>
+              <td class="actions table-actions">
+                <button class="btn icon-btn icon-view" (click)="openDetails(post)" title="View details" aria-label="View details">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+                <button class="btn icon-btn icon-delete" (click)="deletePost(post)" title="Delete" aria-label="Delete">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pager">
+      <span>Total: {{ totalElements }}</span>
+      <div>
+        <button class="btn ghost" [disabled]="page === 0" (click)="changePage(false)">Previous</button>
+        <span>Page {{ page + 1 }} / {{ totalPages || 1 }}</span>
+        <button class="btn ghost" [disabled]="page + 1 >= totalPages" (click)="changePage(true)">Next</button>
+      </div>
+    </div>
+  </section>
+
+  @if (showDetailsModal && detailsPost) {
+    <div class="modal-backdrop" (click)="closeDetailsModal()"></div>
+    <section class="modal-card details-card" role="dialog" aria-modal="true">
+      <header class="modal-head">
+        <div>
+          <h2>Post details</h2>
+          <p class="modal-subtitle">{{ detailsPost.authorUsername || 'User' }} • {{ formatDate(detailsPost.createdAt) }}</p>
+        </div>
+        <button class="btn ghost" (click)="closeDetailsModal()">Close</button>
+      </header>
+
+      <div class="details-meta-grid">
+        <article class="meta-tile">
+          <span>Post ID</span>
+          <strong>#{{ detailsPost.postId }}</strong>
+        </article>
+        <article class="meta-tile">
+          <span>Likes</span>
+          <strong>{{ detailsPost.likesCount }}</strong>
+        </article>
+        <article class="meta-tile">
+          <span>Comments</span>
+          <strong>{{ detailsPost.commentsCount }}</strong>
+        </article>
+        <article class="meta-tile">
+          <span>Type</span>
+          <strong>{{ detailsPost.repostOfPostId ? ('Repost of #' + detailsPost.repostOfPostId) : 'Original' }}</strong>
+        </article>
+        <article class="meta-tile full">
+          <span>Location</span>
+          <strong>{{ detailsPost.location || 'No location provided' }}</strong>
+        </article>
+      </div>
+
+      <article class="details-body">
+        <h3>Content</h3>
+        <p>{{ detailsPost.content || '—' }}</p>
+        <h3>Hashtags</h3>
+        @if (getTagList(detailsPost.hashtags).length) {
+          <div class="tags-row details-tags">
+            @for (item of getTagList(detailsPost.hashtags); track item) {
+              <span class="tag-chip">{{ item }}</span>
+            }
+          </div>
+        } @else {
+          <p>—</p>
+        }
+      </article>
+
+      <article class="details-body media-section">
+        <h3>Post media</h3>
+
+        @if (detailsMediaLoading) {
+          <p>Loading media...</p>
+        } @else if (detailsMediaError) {
+          <p class="media-error">{{ detailsMediaError }}</p>
+        } @else if (!detailsMedia.length) {
+          <p>No media attached to this post.</p>
+        } @else {
+          <div class="media-grid">
+            @for (media of detailsMedia; track trackByMedia($index, media)) {
+              <article class="media-card">
+                @if (isVideo(media)) {
+                  <video class="media-item" controls [src]="media.fileUrl || ''"></video>
+                } @else {
+                  <img class="media-item" [src]="media.fileUrl || ''" alt="Post media" />
+                }
+
+                <div class="media-meta">
+                  <span>{{ media.mediaType || 'MEDIA' }}</span>
+                  <a class="media-open" [href]="media.fileUrl || ''" target="_blank" rel="noopener">Open</a>
+                </div>
+              </article>
+            }
+          </div>
+        }
+      </article>
+    </section>
+  }
+</div>

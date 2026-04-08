@@ -17,6 +17,8 @@ public interface ActivityReviewRepository extends JpaRepository<ActivityReview, 
 
     long countByActivityActivityId(Integer activityId);
 
+    void deleteByActivityActivityId(Integer activityId);
+
     @Query("select avg(r.stars) from ActivityReview r where r.activity.activityId = :activityId")
     Double averageStarsByActivityId(@Param("activityId") Integer activityId);
 }

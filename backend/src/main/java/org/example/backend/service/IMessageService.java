@@ -16,6 +16,15 @@ public interface IMessageService {
     List<Message> getMessagesByChatRoom(Integer chatRoomId);
 
     // DM messaging methods
-    MessageResponse sendMessage(Integer chatRoomId, Integer senderId, String content);
+    MessageResponse sendMessage(Integer chatRoomId,
+                                Integer senderId,
+                                Integer receiverId,
+                                String encryptedMessage,
+                                String encryptedKey,
+                                String iv,
+                                String legacyContent);
+    MessageResponse sendVoiceMessage(Integer chatRoomId, Integer senderId, String voiceUrl, Integer durationSec);
     List<MessageResponse> getMessagesByChatRoomOrdered(Integer chatRoomId);
+    void deleteOwnMessage(Integer chatRoomId, Integer messageId, Integer userId);
+    int purgeMessagesOlderThanHours(int hours);
 }

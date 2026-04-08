@@ -1,7 +1,9 @@
-import { Component, signal, OnInit } from '@angular/core';
+import { Component, signal, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
+import { finalize } from 'rxjs';
 import {
   LudificationService,
   Quiz,
@@ -20,6 +22,8 @@ import {
   styleUrl: './admin-games.component.css'
 })
 export class AdminGamesComponent implements OnInit {
+  private readonly http = inject(HttpClient);
+
   activeTab = signal<'QUIZ' | 'CROSSWORD' | 'ROADMAP' | 'PUZZLE' | 'LUDO'>('QUIZ');
   
   quizzes = signal<Quiz[]>([]);
@@ -30,6 +34,8 @@ export class AdminGamesComponent implements OnInit {
 
   creationMode = signal<boolean>(false);
   isEditMode = signal<boolean>(false);
+  /** Évite les doubles POST quiz (409 duplicate) */
+  quizSaving = signal<boolean>(false);
   newQuiz = signal<Partial<Quiz>>({ published: false, title: '', description: '', questions: [] });
   newCrossword = signal<Partial<Crossword>>({ published: false, title: '', description: '', gridJson: '{"words":[]}' });
   crosswordWords = signal<{ word: string, clue: string, x: number, y: number, dir: 'H' | 'V' }[]>([]);
@@ -79,7 +85,18 @@ export class AdminGamesComponent implements OnInit {
   openCreate() {
     this.creationMode.set(true);
     this.isEditMode.set(false);
-    if (this.activeTab() === 'QUIZ') this.newQuiz.set({ published: false, title: '', description: '', questions: [{ questionText: '', optionsJson: '', correctOptionIndex: 0, _tempOptions: ['','','',''], orderIndex: 1 }] });
+    if (this.activeTab() === 'QUIZ') {
+      this.newQuiz.set({
+        published: false,
+        title: '',
+        description: '',
+        coverImageUrl: '',
+        timeLimitSeconds: 60,
+        questions: [
+          { questionText: '', optionsJson: '', correctOptionIndex: 0, _tempOptions: ['', '', '', ''], orderIndex: 1 },
+        ],
+      });
+    }
     else if (this.activeTab() === 'CROSSWORD') {
       this.newCrossword.set({ published: false, title: '', description: '', gridJson: '{"words":[]}' });
       this.crosswordWords.set([]);
@@ -134,7 +151,44 @@ export class AdminGamesComponent implements OnInit {
     }
   }
 
-  closeCreate() { this.creationMode.set(false); }
+  closeCreate() {
+    this.creationMode.set(false);
+  }
+
+  /** Upload couverture quiz (même endpoint public que la photo de profil). */
+  uploadQuizCover(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) {
+      return;
+    }
+    const body = new FormData();
+    body.append('file', file);
+    this.http.post<{ url: string }>('/api/public/uploads/profile-image', body).subscribe({
+      next: (res) => {
+        const qz = this.newQuiz();
+        qz.coverImageUrl = res.url;
+        this.newQuiz.set({ ...qz });
+      },
+      error: () => alert('Échec de l’upload. Vérifiez la taille du fichier et le backend.'),
+    });
+    input.value = '';
+  }
+
+  /** Force un multiple de 3 pour le chrono (3 tiers = 3 étoiles côté joueur). */
+  snapQuizTimeSeconds(): void {
+    const qz = this.newQuiz();
+    let t = Math.floor(Number(qz.timeLimitSeconds ?? 60));
+    if (!Number.isFinite(t) || t < 3) {
+      t = 60;
+    }
+    const mod = t % 3;
+    if (mod !== 0) {
+      t += 3 - mod;
+    }
+    qz.timeLimitSeconds = Math.min(3600, t);
+    this.newQuiz.set({ ...qz });
+  }
 
   addQuestion() {
     const qz = this.newQuiz();
@@ -162,36 +216,46 @@ export class AdminGamesComponent implements OnInit {
 
   save() {
     if (this.activeTab() === 'QUIZ') {
+      if (this.quizSaving()) {
+        return;
+      }
+      this.quizSaving.set(true);
       const qz = this.newQuiz();
       const title = String(qz.title ?? '').trim();
       if (!title) {
+        this.quizSaving.set(false);
         alert('Enter a title for the quiz.');
         return;
       }
       const questions = qz.questions ?? [];
       if (questions.length === 0) {
+        this.quizSaving.set(false);
         alert('Ajoutez au moins une question.');
         return;
       }
       for (let i = 0; i < questions.length; i++) {
         const q = questions[i];
         if (!String(q.questionText ?? '').trim()) {
+          this.quizSaving.set(false);
           alert(`Question ${i + 1}: enter the question text.`);
           return;
         }
         const opts = q._tempOptions ?? ['', '', '', ''];
         for (let j = 0; j < 4; j++) {
           if (!String(opts[j] ?? '').trim()) {
+            this.quizSaving.set(false);
             alert(`Question ${i + 1}: fill in all 4 answer options.`);
             return;
           }
         }
         const ci = q.correctOptionIndex ?? 0;
         if (ci < 0 || ci > 3) {
+          this.quizSaving.set(false);
           alert(`Question ${i + 1} : choisissez la bonne réponse (une des 4 options).`);
           return;
         }
       }
+      this.snapQuizTimeSeconds();
       const qzToSave = JSON.parse(JSON.stringify(this.newQuiz()));
       if (qzToSave.questions) {
         qzToSave.questions.forEach((q: QuizQuestion) => {
@@ -199,10 +263,27 @@ export class AdminGamesComponent implements OnInit {
         });
       }
       qzToSave.title = title;
+      const ci = String(qzToSave.coverImageUrl ?? '').trim();
+      qzToSave.coverImageUrl = ci.length ? ci : null;
+      const done = () => {
+        this.refreshAll();
+        this.closeCreate();
+      };
+      const onErr = (err: unknown) => {
+        const body = err && typeof err === 'object' && 'error' in err ? (err as { error?: { message?: string } }).error : undefined;
+        const msg = body?.message ?? 'Could not save the quiz.';
+        alert(msg);
+      };
       if (this.isEditMode() && qzToSave.quizId) {
-        this.api.updateQuiz(qzToSave.quizId, qzToSave).subscribe(() => { this.refreshAll(); this.closeCreate(); });
+        this.api
+          .updateQuiz(qzToSave.quizId, qzToSave)
+          .pipe(finalize(() => this.quizSaving.set(false)))
+          .subscribe({ next: done, error: onErr });
       } else {
-        this.api.createQuiz(qzToSave).subscribe(() => { this.refreshAll(); this.closeCreate(); });
+        this.api
+          .createQuiz(qzToSave)
+          .pipe(finalize(() => this.quizSaving.set(false)))
+          .subscribe({ next: done, error: onErr });
       }
     } else if (this.activeTab() === 'CROSSWORD') {
       const c = this.newCrossword();

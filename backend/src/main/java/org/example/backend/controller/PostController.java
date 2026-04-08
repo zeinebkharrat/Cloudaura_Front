@@ -84,9 +84,10 @@ public class PostController {
     }
 
     @PostMapping("/repost/{id}")
-    public ResponseEntity<?> repost(@PathVariable Integer id) {
+    public ResponseEntity<?> repost(@PathVariable Integer id, @RequestBody(required = false) Map<String, String> payload) {
         User currentUser = getCurrentUser();
-        Post repost = postService.repost(id, currentUser.getUserId());
+        String caption = payload != null ? payload.get("caption") : null;
+        Post repost = postService.repost(id, currentUser.getUserId(), caption);
         if (repost == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Original post not found"));
         }

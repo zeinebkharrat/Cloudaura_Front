@@ -1386,7 +1386,7 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: linear-gradient(160deg, rgba(255, 255, 255, 0.05) 0%, rgba(11, 12, 16, 0.4) 100%);
   transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), border-color 0.35s, box-shadow 0.35s;
-  animation: featureBlockIn 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeSlideUp 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   opacity: 0;
   display: flex;
   flex-direction: column;
@@ -1539,6 +1539,7 @@
 .event-detail-scroll {
   flex: 1 1 auto;
   min-height: 0;
+  max-height: calc(85vh - 96px);
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
@@ -1616,21 +1617,20 @@
   height: 100vh !important;
   background: rgba(0, 0, 0, 0.8) !important;
   backdrop-filter: blur(15px) !important; /* Flou très fort */
-  z-index: 99999 !important;
+  z-index: 9999 !important;
 }
 
-/* Le conteneur qui centre la carte */
+/* Keep modal as full-screen flex container so inner card can scroll correctly */
 .event-detail-modal {
   position: fixed !important;
-  top: 50% !important;
-  left: 50% !important;
-  transform: translate(-50%, -50%) !important; /* Centrage absolu */
-  width: min(95%, 600px) !important;
-  z-index: 100000 !important;
-  display: block !important; /* On force l'affichage */
+  inset: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 16px !important;
+  z-index: 10000 !important;
 }
 
-/* La carte elle-même */
 .event-detail-card {
   background: #1a1a24 !important;
   border-radius: 20px !important;
@@ -1638,6 +1638,7 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 1) !important;
   display: flex !important;
   flex-direction: column !important;
+  width: min(92vw, 650px) !important;
   max-height: 85vh !important;
   overflow: hidden !important;
   color: white !important;

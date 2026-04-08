@@ -50,7 +50,7 @@
               <span class="conv-name" [class.unread]="conv.unreadCount > 0">{{ conv.otherUsername }}</span>
             </div>
             <span class="conv-last-message" [class.unread]="conv.unreadCount > 0">
-              {{ conv.lastMessage || 'Nouvelle conversation' }}
+              {{ conversationPreview(conv) }}
             </span>
           </div>
           <div class="conv-meta">
@@ -75,7 +75,56 @@
 
         <div class="message-wrapper" *ngFor="let msg of messages()" [class.own]="isOwnMessage(msg)">
           <div class="message-bubble">
-            <span class="message-text">{{ msg.content }}</span>
+            <div *ngIf="isOwnMessage(msg)" class="message-actions" [class.open]="openedMessageMenuId() === msg.messageId">
+              <button
+                class="message-actions-toggle"
+                type="button"
+                (click)="toggleMessageMenu(msg.messageId)"
+                [disabled]="deletingMessageId() === msg.messageId"
+                title="Message actions"
+                aria-label="Message actions"
+              >
+                <span></span><span></span><span></span>
+              </button>
+              <button
+                *ngIf="openedMessageMenuId() === msg.messageId"
+                class="message-action-item danger"
+                type="button"
+                (click)="deleteOwnMessage(msg)"
+                [disabled]="deletingMessageId() === msg.messageId"
+              >
+                Delete
+              </button>
+            </div>
+            <ng-container *ngIf="isVoiceMessage(msg); else textMessage">
+              <div class="voice-message-wrap" [class.own]="isOwnMessage(msg)">
+                <button
+                  class="voice-play-btn"
+                  [class.playing]="playingVoiceMessageId() === msg.messageId"
+                  (click)="toggleVoicePlayback(msg.messageId)"
+                  type="button"
+                >
+                  {{ playingVoiceMessageId() === msg.messageId ? '❚❚' : '▶' }}
+                </button>
+                <div class="voice-wave" aria-hidden="true">
+                  <span></span><span></span><span></span><span></span><span></span>
+                  <span></span><span></span><span></span>
+                </div>
+                <div class="voice-meta">
+                  <span class="voice-label">Voice</span>
+                  <span class="voice-time">{{ formatVoiceDuration(msg.voiceDurationSec) }}</span>
+                </div>
+                <audio
+                  class="voice-audio-hidden"
+                  [src]="msg.voiceUrl!"
+                  preload="metadata"
+                  (loadedmetadata)="registerVoiceAudio(msg.messageId, $event)"
+                ></audio>
+              </div>
+            </ng-container>
+            <ng-template #textMessage>
+              <span class="message-text">{{ msg.content }}</span>
+            </ng-template>
             <span class="message-time">{{ formatMessageTime(msg.sentAt) }}</span>
           </div>
         </div>
@@ -92,17 +141,53 @@
       </div>
 
       <div class="chat-input-area">
-        <input type="text" #messageInput [(ngModel)]="newMessage" 
-               (keydown)="onMessageKeydown($event)" 
-               (input)="onTyping()" 
-               placeholder="Votre message..." />
-        <button class="send-btn" (click)="sendMessage()" [disabled]="!newMessage().trim()">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="22" y1="2" x2="11" y2="13"></line>
-            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-          </svg>
-        </button>
+        <div class="composer-wrap" [class.recording-mode]="isRecording()">
+          <ng-container *ngIf="!isRecording(); else recordingState">
+            <input
+              type="text"
+              #messageInput
+              [ngModel]="newMessage()"
+              (ngModelChange)="newMessage.set($event)"
+              (keydown)="onMessageKeydown($event)"
+              (input)="onTyping()"
+              placeholder="Votre message..."
+            />
+          </ng-container>
+          <ng-template #recordingState>
+            <div class="recording-shell">
+              <span class="recording-dot"></span>
+              <span class="recording-title">Recording</span>
+              <div class="recording-wave" aria-hidden="true">
+                <span></span><span></span><span></span><span></span><span></span>
+              </div>
+              <span class="recording-time">{{ formatVoiceDuration(recordingSeconds()) }}</span>
+            </div>
+          </ng-template>
+
+          <ng-container *ngIf="isRecording(); else normalActions">
+            <button class="recording-action cancel" (click)="cancelVoiceRecording()" [disabled]="uploadingVoice()" type="button">✕</button>
+            <button class="recording-action send" (click)="toggleVoiceRecording()" [disabled]="uploadingVoice()" type="button">
+              <span *ngIf="!uploadingVoice(); else uploading">➤</span>
+            </button>
+          </ng-container>
+
+          <ng-template #normalActions>
+            <button class="voice-btn" (click)="toggleVoiceRecording()" [disabled]="uploadingVoice() || !activeChatRoomId()" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a1 1 0 1 1 2 0 7 7 0 0 1-6 6.93V20h3a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2h3v-2.07A7 7 0 0 1 5 11a1 1 0 1 1 2 0 5 5 0 1 0 10 0z"/>
+              </svg>
+            </button>
+            <button class="send-btn" (click)="sendMessage()" [disabled]="!newMessage().trim()" type="button">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </ng-template>
+
+          <ng-template #uploading>...</ng-template>
+        </div>
       </div>
     </div>
   </div>

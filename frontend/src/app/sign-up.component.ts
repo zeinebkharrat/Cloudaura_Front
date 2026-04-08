@@ -2,7 +2,10 @@ import { CommonModule } from '@angular/common';
 import {
   afterNextRender,
   Component,
+  EventEmitter,
   ElementRef,
+  Input,
+  Output,
   inject,
   Injector,
   signal,
@@ -40,6 +43,10 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
   styleUrls: ['./sign-up.component.css', './auth-pages.shared.css'],
 })
 export class SignUpComponent {
+    @Input() embedded = false;
+    @Output() switchMode = new EventEmitter<'signin'>();
+    @Output() signupCompleted = new EventEmitter<void>();
+
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
@@ -297,6 +304,11 @@ export class SignUpComponent {
       next: (response) => {
         this.formSuccess.set(response.message || 'Account created. Check your email.');
         resetRecaptchaWidget(this.recaptchaWidgetId);
+        if (this.embedded) {
+          this.signupCompleted.emit();
+          this.switchMode.emit('signin');
+          return;
+        }
         setTimeout(() => {
           this.router.navigateByUrl('/signin');
         }, 2800);

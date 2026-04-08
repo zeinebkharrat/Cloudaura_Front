@@ -1,9 +1,11 @@
-<section class="auth-page">
+<section class="auth-page" [class.auth-page--embedded]="embedded">
   <div class="auth-bg-orb auth-bg-orb-left"></div>
   <div class="auth-bg-orb auth-bg-orb-right"></div>
 
   <article class="auth-card auth-card-entrance animate-in">
-    <div class="auth-hero-icon" aria-hidden="true">🧭</div>
+    <div class="auth-brand-mark" aria-hidden="true">
+      <img src="assets/logo/yallatn-logo.png" alt="" class="auth-brand-mark__img" />
+    </div>
     <p class="auth-kicker">YallaTN+ · Welcome</p>
     <h1>Sign in</h1>
     <p class="auth-subtitle">Access your itineraries, bookings, and personalized recommendations.</p>
@@ -122,8 +124,15 @@
       }
     </div>
 
-    <p class="auth-switch">
-      No account yet? <a routerLink="/signup">Create an account</a>
-    </p>
+    @if (embedded) {
+      <p class="auth-switch">
+        No account yet?
+        <button type="button" class="inline-link-btn" (click)="switchMode.emit('signup')">Create an account</button>
+      </p>
+    } @else {
+      <p class="auth-switch">
+        No account yet? <a routerLink="/signup">Create an account</a>
+      </p>
+    }
   </article>
 </section>

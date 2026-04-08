@@ -36,6 +36,7 @@
               "node_modules/primeng/resources/primeng.min.css",
               "node_modules/primeicons/primeicons.css",
               "src/styles.css",
+              "node_modules/leaflet/dist/leaflet.css",
               "node_modules/pannellum/build/pannellum.css"
             ],
             "scripts": [
@@ -44,6 +45,9 @@
           },
           "configurations": {
             "production": {
+              "optimization": {
+                "fonts": false
+              },
               "budgets": [
                 {
                   "type": "initial",
@@ -52,7 +56,7 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "30kB",
+                  "maximumWarning": "28kB",
                   "maximumError": "40kB"
                 }
               ],
@@ -61,7 +65,13 @@
             "development": {
               "optimization": false,
               "extractLicenses": false,
-              "sourceMap": true
+              "sourceMap": true,
+              "fileReplacements": [
+                {
+                  "replace": "src/environments/environment.ts",
+                  "with": "src/environments/environment.development.ts"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"

@@ -45,30 +45,89 @@ export class EventManagementComponent implements OnInit {
   filterStatus: string = '';
   filterCity: string = '';
   filteredEvents: Event[] = [];
+  currentPage = 1;
+  readonly pageSize = 10;
+
+  private pendingEditId: number | null = null;
 
 
-  ngOnInit(): void { this.loadEvents();
+  ngOnInit(): void {
+    this.loadEvents();
     this.route.queryParams.subscribe(params => {
-    if (params['editId']) {
-      // Si on vient du calendrier pour éditer
-      const eventToEdit = this.events.find(e => e.eventId == params['editId']);
-      if (eventToEdit) this.openEditModal(eventToEdit);
-    } else if (params['action'] === 'new') {
-      // Si on vient du calendrier pour créer
-      this.openAddModal();
-      if (params['date']) {
-        this.currentEvent.startDate = params['date']; // Pré-remplit la date
+      if (params['editId']) {
+        const editId = Number(params['editId']);
+        if (!Number.isNaN(editId)) {
+          const eventToEdit = this.events.find(e => e.eventId === editId);
+          if (eventToEdit) {
+            this.openEditModal(eventToEdit);
+          } else {
+            this.pendingEditId = editId;
+          }
+        }
+        return;
       }
+
+      if (params['action'] === 'new') {
+        this.openAddModal();
+        const startDate = params['startDate'] ?? params['date'] ?? '';
+        const endDate = params['endDate'] ?? startDate;
+        if (startDate) {
+          this.currentEvent.startDate = startDate;
+          this.currentEvent.endDate = endDate;
+        }
+      }
+    });
+  }
+
+  get totalItems(): number {
+    return this.filteredEvents.length;
+  }
+
+  get totalPages(): number {
+    return Math.max(1, Math.ceil(this.totalItems / this.pageSize));
+  }
+
+  get paginatedEvents(): Event[] {
+    const start = (this.currentPage - 1) * this.pageSize;
+    return this.filteredEvents.slice(start, start + this.pageSize);
+  }
+
+  goToPreviousPage(): void {
+    if (this.currentPage > 1) {
+      this.currentPage -= 1;
     }
-  });
-   }
+  }
+
+  goToNextPage(): void {
+    if (this.currentPage < this.totalPages) {
+      this.currentPage += 1;
+    }
+  }
+
+  private clampCurrentPage(): void {
+    if (this.currentPage < 1) {
+      this.currentPage = 1;
+      return;
+    }
+    if (this.currentPage > this.totalPages) {
+      this.currentPage = this.totalPages;
+    }
+  }
 
  loadEvents() {
   this.eventService.getEvents().subscribe({
     next: (data) => {
       this.events = data;
       this.filteredEvents = data; // <--- TRÈS IMPORTANT
+      this.currentPage = 1;
       this.applyFilters(); // Force un premier tri si des filtres sont déjà remplis
+      if (this.pendingEditId != null) {
+        const eventToEdit = this.events.find(e => e.eventId === this.pendingEditId);
+        if (eventToEdit) {
+          this.openEditModal(eventToEdit);
+          this.pendingEditId = null;
+        }
+      }
     },
     error: (err) => console.error("Erreur chargement:", err)
   });
@@ -94,6 +153,8 @@ applyFilters() {
 
     return matchesSearch && matchesType && matchesStatus && matchesCity;
   });
+  this.currentPage = 1;
+  this.clampCurrentPage();
 }
 
 resetFilters() {
@@ -102,6 +163,7 @@ resetFilters() {
   this.filterStatus = '';
   this.filterCity = '';
   this.filteredEvents = this.events;
+  this.currentPage = 1;
 }
 
   initEmptyEvent(): Event {

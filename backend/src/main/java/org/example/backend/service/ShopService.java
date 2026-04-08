@@ -74,11 +74,12 @@ public class ShopService {
         this.paymentService = paymentService;
     }
 
+    @Transactional(readOnly = true)
     public ShopCartDto getCart(String username) {
         if (username == null || username.isBlank()) {
             return newEmptyCart();
         }
-        return userRepository.findByUsernameIgnoreCase(username.trim())
+        return userRepository.findFirstByUsernameIgnoreCaseOrderByUserIdAsc(username.trim())
             .flatMap(u -> cartRepository.findByUser_UserId(u.getUserId()))
             .map(this::toCartDto)
             .orElseGet(this::newEmptyCart);
@@ -490,8 +491,8 @@ public class ShopService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Utilisateur requis");
         }
         String identifier = username.trim();
-        return userRepository.findByUsernameIgnoreCase(identifier)
-            .or(() -> userRepository.findByEmailIgnoreCase(identifier))
+        return userRepository.findFirstByUsernameIgnoreCaseOrderByUserIdAsc(identifier)
+            .or(() -> userRepository.findFirstByEmailIgnoreCaseOrderByUserIdAsc(identifier))
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur inconnu"));
     }
 

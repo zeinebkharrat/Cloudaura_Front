@@ -248,9 +248,13 @@
     </article>
   </div>
 
-  <section class="events-section" *ngIf="title === 'Events' && events.length > 0" [class.events-section--blurred]="selectedEvent">
+  <section class="events-section" *ngIf="isEventFeed" [class.events-section--blurred]="selectedEvent">
     <h2 class="events-title">Our Events</h2>
-    <div class="events-grid">
+    <p class="feature-page__empty" *ngIf="isLoadingEvents">Loading events...</p>
+    <p class="feature-page__empty" *ngIf="!isLoadingEvents && eventsLoadError">{{ eventsLoadError }}</p>
+    <p class="feature-page__empty" *ngIf="!isLoadingEvents && !eventsLoadError && events.length === 0">No events created yet.</p>
+
+    <div class="events-grid" *ngIf="!isLoadingEvents && !eventsLoadError && events.length > 0">
       <article 
         class="event-card glass-panel" 
         *ngFor="let event of events; let i = index" 
@@ -309,8 +313,6 @@
             </p>
             <p class="detail-row"><strong>Status:</strong> <span class="status-badge">{{ selectedEvent.status }}</span></p>
           </div>
-          <p class="join-hint join-hint--paid" *ngIf="isPaidEvent(selectedEvent)">Paid event — use <strong>Pay &amp; join</strong> below for secure Stripe checkout.</p>
-          <p class="join-hint join-hint--free" *ngIf="!isPaidEvent(selectedEvent)">Free event — no payment. Set a price in admin if you need Stripe checkout.</p>
           <p class="event-join-error" *ngIf="eventJoinError() as err">{{ err }}</p>
         </div>
       </div>
@@ -324,14 +326,6 @@
       </div>
     </article>
   </div>
-
-  <p class="feature-page__empty" *ngIf="isLoadingEvents">
-    Loading events...
-  </p>
-
-  <p class="feature-page__empty" *ngIf="title === 'Events' && !isLoadingEvents && events.length === 0">
-    No events created yet.
-  </p>
 
   <div class="modal-root" *ngIf="showProductForm()">
     <div class="modal-overlay" (click)="closeProductForm()">

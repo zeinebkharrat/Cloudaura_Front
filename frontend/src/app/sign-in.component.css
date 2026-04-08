@@ -7,6 +7,56 @@
   overflow: hidden;
 }
 
+.auth-page.auth-page--embedded {
+  min-height: auto;
+  padding: 0;
+}
+
+.auth-page.auth-page--embedded .auth-bg-orb {
+  display: none;
+}
+
+.auth-page.auth-page--embedded .auth-card {
+  width: min(740px, 100%);
+  margin: 0;
+}
+
+.auth-page.auth-page--embedded .auth-card {
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.22);
+}
+
+.auth-brand-mark {
+  margin-bottom: 10px;
+}
+
+.auth-brand-mark__img {
+  height: 34px;
+  width: auto;
+  object-fit: contain;
+}
+
+:root[data-theme='light'] .auth-page.auth-page--embedded .auth-card {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(148, 163, 184, 0.42);
+}
+
+:root[data-theme='light'] .auth-page.auth-page--embedded .auth-subtitle,
+:root[data-theme='light'] .auth-page.auth-page--embedded .auth-kicker,
+:root[data-theme='light'] .auth-page.auth-page--embedded .auth-links-row a,
+:root[data-theme='light'] .auth-page.auth-page--embedded .inline-link-btn {
+  color: #64748b;
+}
+
+:root[data-theme='light'] .auth-page.auth-page--embedded label {
+  color: #334155;
+}
+
+:root[data-theme='light'] .auth-page.auth-page--embedded input {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
 .auth-bg-orb {
   position: absolute;
   width: 420px;

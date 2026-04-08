@@ -1,124 +1,187 @@
 <div class="dash">
-  <header class="dash-head">
-    <div>
-      <h1 class="dash-h1">Global dashboard</h1>
-      <p class="dash-p">Welcome, <strong class="user-pill">{{ user()?.username }} 👋</strong> — activity overview for YallaTN</p>
+  <header class="dash-head glass-card">
+    <div class="dash-head__text">
+      <p class="dash-kicker">Admin Intelligence</p>
+      <h1 class="dash-h1">YallaTN Executive Dashboard</h1>
+      <p class="dash-p">
+        Welcome, <strong>{{ user()?.username || 'admin' }}</strong>.
+        Track platform health with live database-backed KPIs and trends.
+      </p>
     </div>
-    <div class="dash-actions">
-      <button class="btn-refresh" title="Refresh data">🔄 Refresh</button>
-      <button class="btn-export">⬇ Export PDF</button>
+
+    <div class="dash-controls">
+      <div class="period-filter" role="group" aria-label="Period filter">
+        <button
+          type="button"
+          *ngFor="let p of availablePeriods"
+          class="period-btn"
+          [class.period-btn--active]="selectedPeriod() === p.value"
+          (click)="setPeriod(p.value)"
+        >
+          {{ p.label }}
+        </button>
+      </div>
+
+      <button class="btn-refresh" type="button" (click)="refresh()" [disabled]="loading()">
+        {{ loading() ? 'Loading...' : 'Refresh' }}
+      </button>
     </div>
   </header>
 
-  <!-- Big KPIs -->
-  <div class="kpi-grid">
-    <div class="kpi-card glass-card">
-      <div class="kpi-icon icon-users">👥</div>
+  <p class="dash-error" *ngIf="error()">{{ error() }}</p>
+
+  <section class="kpi-grid">
+    <article class="kpi-card glass-card">
+      <span class="kpi-icon icon-users">US</span>
       <div class="kpi-info">
-        <span class="kpi-lbl">Registered users</span>
-        <span class="kpi-val">12,450</span>
-        <span class="kpi-trend pos">↑ +12.5%</span>
+        <span class="kpi-lbl">Total users</span>
+        <strong class="kpi-val">{{ overview().registeredUsers | number }}</strong>
       </div>
-    </div>
-    
-    <div class="kpi-card glass-card">
-      <div class="kpi-icon icon-bookings">📅</div>
+    </article>
+
+    <article class="kpi-card glass-card">
+      <span class="kpi-icon icon-bookings">BK</span>
       <div class="kpi-info">
         <span class="kpi-lbl">Total bookings</span>
-        <span class="kpi-val">3,245</span>
-        <span class="kpi-trend pos">↑ +8.2%</span>
+        <strong class="kpi-val">{{ overview().totalBookings | number }}</strong>
       </div>
-    </div>
+    </article>
 
-    <div class="kpi-card glass-card">
-      <div class="kpi-icon icon-revenue">💰</div>
+    <article class="kpi-card glass-card">
+      <span class="kpi-icon icon-revenue">RV</span>
       <div class="kpi-info">
-        <span class="kpi-lbl">Monthly revenue</span>
-        <span class="kpi-val">45,820 DT</span>
-        <span class="kpi-trend pos">↑ +21.4%</span>
+        <span class="kpi-lbl">Total revenue</span>
+        <strong class="kpi-val">{{ currency(overview().totalRevenue) }}</strong>
       </div>
-    </div>
+    </article>
 
-    <div class="kpi-card glass-card">
-      <div class="kpi-icon icon-alert">⚠️</div>
+    <article class="kpi-card glass-card">
+      <span class="kpi-icon icon-listings">LS</span>
       <div class="kpi-info">
-        <span class="kpi-lbl">Reports</span>
-        <span class="kpi-val">12</span>
-        <span class="kpi-trend neg">↓ -2.5%</span>
+        <span class="kpi-lbl">Active listings</span>
+        <strong class="kpi-val">{{ overview().activeListings | number }}</strong>
       </div>
-    </div>
-  </div>
+    </article>
+  </section>
 
-  <!-- Charts Layout -->
-  <div class="charts-layout">
-    
-    <!-- Left: Line Chart -->
-    <div class="chart-panel main-chart glass-card">
-      <div class="panel-head">
-        <h2 class="panel-title">Booking trend (last 6 months)</h2>
-        <div class="btn-group">
-          <button class="bt-mini active">Monthly</button>
-          <button class="bt-mini">Yearly</button>
+  <section class="period-kpis-grid">
+    <article class="period-card glass-card">
+      <p class="period-title">New users ({{ selectedPeriod() }} days)</p>
+      <strong class="period-value">{{ periodStats().newUsers | number }}</strong>
+      <span class="period-trend" [class]="pctClass(growth().usersPct)">{{ pctLabel(growth().usersPct) }}</span>
+    </article>
+
+    <article class="period-card glass-card">
+      <p class="period-title">Bookings ({{ selectedPeriod() }} days)</p>
+      <strong class="period-value">{{ periodStats().bookings | number }}</strong>
+      <span class="period-trend" [class]="pctClass(growth().bookingsPct)">{{ pctLabel(growth().bookingsPct) }}</span>
+    </article>
+
+    <article class="period-card glass-card">
+      <p class="period-title">Revenue ({{ selectedPeriod() }} days)</p>
+      <strong class="period-value">{{ currency(periodStats().revenue) }}</strong>
+      <span class="period-trend" [class]="pctClass(growth().revenuePct)">{{ pctLabel(growth().revenuePct) }}</span>
+    </article>
+
+    <article class="period-card glass-card">
+      <p class="period-title">Orders</p>
+      <strong class="period-value">{{ periodStats().orders | number }}</strong>
+      <span class="period-note">Shop orders included in revenue</span>
+    </article>
+  </section>
+
+  <section class="status-and-inventory">
+    <article class="status-card glass-card">
+      <h2 class="panel-title">Booking status breakdown</h2>
+      <div class="status-bars">
+        <div class="status-row">
+          <span>Confirmed</span>
+          <span>{{ statusStats().confirmed | number }}</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill bar-fill--confirmed" [style.width.%]="share(statusStats().confirmed, totalStatus())"></div>
+        </div>
+
+        <div class="status-row">
+          <span>Pending</span>
+          <span>{{ statusStats().pending | number }}</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill bar-fill--pending" [style.width.%]="share(statusStats().pending, totalStatus())"></div>
+        </div>
+
+        <div class="status-row">
+          <span>Cancelled</span>
+          <span>{{ statusStats().cancelled | number }}</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill bar-fill--cancelled" [style.width.%]="share(statusStats().cancelled, totalStatus())"></div>
         </div>
       </div>
-      <div class="chart-container-line">
-        <canvas #lineChart id="lineChart"></canvas>
-      </div>
-    </div>
+    </article>
 
-    <!-- Right: Doughnut Chart -->
-    <div class="chart-panel side-chart glass-card">
+    <article class="inventory-card glass-card">
+      <h2 class="panel-title">Inventory totals</h2>
+      <div class="inventory-grid">
+        <div><span>Activities</span><strong>{{ inventory().activities | number }}</strong></div>
+        <div><span>Events</span><strong>{{ inventory().events | number }}</strong></div>
+        <div><span>Accommodations</span><strong>{{ inventory().accommodations | number }}</strong></div>
+        <div><span>Transports</span><strong>{{ inventory().transports | number }}</strong></div>
+        <div><span>Restaurants</span><strong>{{ inventory().restaurants | number }}</strong></div>
+        <div><span>Audit logs</span><strong>{{ overview().reports | number }}</strong></div>
+      </div>
+    </article>
+  </section>
+
+  <section class="charts-layout">
+    <article class="chart-panel glass-card chart-panel--large">
       <div class="panel-head">
-        <h2 class="panel-title">Global split</h2>
-        <button class="bt-more">⋮</button>
+        <h2 class="panel-title">Trend: bookings + revenue</h2>
+        <span class="panel-chip">{{ selectedPeriod() }}D window</span>
       </div>
-      <div class="chart-container-doughnut">
-        <canvas #doughnutChart id="doughnutChart"></canvas>
+      <div class="chart-wrap chart-wrap--large" [class.chart-loading]="loading()">
+        <canvas #trendChart></canvas>
       </div>
-      
-      <div class="chart-meta">
-        <p class="meta-label">Top category</p>
-        <p class="meta-value">Accommodations (45%)</p>
-      </div>
-    </div>
-    
-  </div>
+    </article>
 
-  <!-- Bottom: Activity feed or generic table placeholder -->
-  <div class="bottom-layout">
-    <div class="glass-card feed-card">
-      <h2 class="panel-title mb-4">Latest sign-ups &amp; activity</h2>
-      <ul class="activity-list">
-        <li>
-          <div class="av">JS</div>
-          <div class="act-det">
-            <span class="txt"><strong>Jean Dupont</strong> booked activity <em>Tabarka diving</em></span>
-            <span class="time">12 min ago</span>
+    <article class="chart-panel glass-card">
+      <div class="panel-head">
+        <h2 class="panel-title">Catalog split</h2>
+      </div>
+      <div class="chart-wrap" [class.chart-loading]="loading()">
+        <canvas #catalogChart></canvas>
+      </div>
+    </article>
+
+    <article class="chart-panel glass-card">
+      <div class="panel-head">
+        <h2 class="panel-title">Booking source mix</h2>
+      </div>
+      <div class="chart-wrap" [class.chart-loading]="loading()">
+        <canvas #bookingSourceChart></canvas>
+      </div>
+    </article>
+  </section>
+
+  <section class="feed-layout">
+    <article class="feed-card glass-card">
+      <h2 class="panel-title">Latest platform activity</h2>
+      <ul class="activity-list" *ngIf="recentActivity().length; else noActivityTpl">
+        <li *ngFor="let item of recentActivity()">
+          <div class="av" [class.av-order]="item.type === 'order'" [class.av-user]="item.type === 'user'">
+            {{ item.type === 'order' ? 'OD' : 'US' }}
           </div>
-        </li>
-        <li>
-          <div class="av hotel">H</div>
           <div class="act-det">
-            <span class="txt">New listing: <strong>Dar El Medina</strong> (Tunis)</span>
-            <span class="time">2 hours ago</span>
-          </div>
-        </li>
-        <li>
-          <div class="av trans">T</div>
-          <div class="act-det">
-            <span class="txt"><strong>Louage Premium</strong> updated its schedule.</span>
-            <span class="time">5 hours ago</span>
-          </div>
-        </li>
-        <li>
-          <div class="av alert">!</div>
-          <div class="act-det">
-            <span class="txt">Out of stock: crafts <em>Kairouan rug XXL</em></span>
-            <span class="time">1 day ago</span>
+            <span class="txt"><strong>{{ item.title }}</strong></span>
+            <span class="txt txt-sub">{{ item.subtitle }}</span>
+            <span class="time">{{ item.timeAgo }}</span>
           </div>
         </li>
       </ul>
-    </div>
-  </div>
 
+      <ng-template #noActivityTpl>
+        <p class="feed-empty">No recent activity available yet.</p>
+      </ng-template>
+    </article>
+  </section>
 </div>

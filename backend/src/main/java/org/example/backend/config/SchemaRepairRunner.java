@@ -8,12 +8,13 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * Runs once at startup to ensure the `status` columns in `orders` and
- * `order_items` are VARCHAR(20) instead of MySQL ENUM.
- *
- * Hibernate's ddl-auto=update never changes an existing column type,
- * so this runner performs the ALTER TABLE idempotently (safe to run
- * on every restart – it is a no-op if the column is already VARCHAR).
+ * Runs once at startup to ensure selected columns are VARCHAR instead of MySQL ENUM.
+ * <ul>
+ *   <li>{@code orders.status}, {@code order_items.status}</li>
+ *   <li>{@code transport_reservations.payment_method}, {@code transport_reservations.payment_status}
+ *       — required so values like {@code STRIPE} are accepted (ENUMs created before Stripe often omit it)</li>
+ * </ul>
+ * Hibernate's ddl-auto=update never changes an existing column type, so this runner alters idempotently.
  */
 @Component
 @Order(1)
@@ -31,6 +32,49 @@ public class SchemaRepairRunner implements CommandLineRunner {
     public void run(String... args) {
         fixStatusColumn("orders");
         fixStatusColumn("order_items");
+        ensureTicketTypeColumns();
+        ensureEventReservationItemQrTokenColumn();
+        ensureEventReservationItemScanColumns();
+        ensureMessageVoiceColumns();
+        ensureMessageE2eeColumns();
+        ensureUserE2eeColumns();
+        fixTransportReservationEnumColumn("payment_method", 20);
+        fixTransportReservationEnumColumn("payment_status", 20);
+    }
+
+    private void ensureMessageVoiceColumns() {
+        ensureColumnExists("messages", "message_type", "VARCHAR(20) NULL");
+        ensureColumnExists("messages", "voice_url", "VARCHAR(1024) NULL");
+        ensureColumnExists("messages", "voice_duration_sec", "INT NULL");
+    }
+
+    private void ensureMessageE2eeColumns() {
+        ensureColumnExists("messages", "encrypted_key", "VARCHAR(4096) NULL");
+        ensureColumnExists("messages", "encryption_iv", "VARCHAR(512) NULL");
+    }
+
+    private void ensureUserE2eeColumns() {
+        ensureColumnExists("users", "e2ee_public_key", "TEXT NULL");
+    }
+
+    private void ensureColumnExists(String tableName, String columnName, String columnDefinition) {
+        try {
+            String sql = "SELECT COUNT(*) FROM information_schema.COLUMNS "
+                    + "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?";
+
+            Integer count = jdbcTemplate.queryForObject(sql, Integer.class, tableName, columnName);
+            if (count != null && count > 0) {
+                return;
+            }
+
+            log.warn("Adding missing column `{}.{}`", tableName, columnName);
+            jdbcTemplate.execute(
+                    "ALTER TABLE `" + tableName + "` ADD COLUMN `" + columnName + "` " + columnDefinition
+            );
+            log.info("Added column `{}.{}`", tableName, columnName);
+        } catch (Exception e) {
+            log.error("SchemaRepairRunner: failed to ensure column `{}.{}` – {}", tableName, columnName, e.getMessage());
+        }
     }
 
     private void fixStatusColumn(String tableName) {
@@ -63,6 +107,161 @@ public class SchemaRepairRunner implements CommandLineRunner {
 
         } catch (Exception e) {
             log.error("SchemaRepairRunner: failed to check/fix `{}`.`status` – {}", tableName, e.getMessage());
+        }
+    }
+
+    private void ensureEventReservationItemQrTokenColumn() {
+        try {
+            Integer count = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.COLUMNS " +
+                            "WHERE TABLE_SCHEMA = DATABASE() " +
+                            "AND TABLE_NAME = 'event_reservation_items' " +
+                            "AND COLUMN_NAME = 'qr_code_token'",
+                    Integer.class
+            );
+
+            if (count == null || count == 0) {
+                log.warn("Adding missing column event_reservation_items.qr_code_token");
+                jdbcTemplate.execute(
+                        "ALTER TABLE event_reservation_items " +
+                                "ADD COLUMN qr_code_token VARCHAR(64) NULL, " +
+                                "ADD UNIQUE INDEX uk_event_res_item_qr_token (qr_code_token)"
+                );
+                log.info("Column event_reservation_items.qr_code_token added");
+            }
+        } catch (Exception e) {
+            log.error("SchemaRepairRunner: failed to ensure qr_code_token column - {}", e.getMessage());
+        }
+    }
+
+    private void ensureTicketTypeColumns() {
+        try {
+            Integer hasTicketNomevent = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.COLUMNS " +
+                            "WHERE TABLE_SCHEMA = DATABASE() " +
+                            "AND TABLE_NAME = 'ticket_types' " +
+                            "AND COLUMN_NAME = 'ticket_nomevent'",
+                    Integer.class
+            );
+            Integer hasLegacyName = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.COLUMNS " +
+                            "WHERE TABLE_SCHEMA = DATABASE() " +
+                            "AND TABLE_NAME = 'ticket_types' " +
+                            "AND COLUMN_NAME = 'name'",
+                    Integer.class
+            );
+
+            if ((hasTicketNomevent == null || hasTicketNomevent == 0)
+                    && hasLegacyName != null && hasLegacyName > 0) {
+                log.warn("Renaming ticket_types.name to ticket_types.ticket_nomevent");
+                jdbcTemplate.execute("ALTER TABLE ticket_types CHANGE COLUMN name ticket_nomevent VARCHAR(255)");
+                log.info("ticket_types.ticket_nomevent is now in place");
+            }
+
+            Integer hasTotalQuantity = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.COLUMNS " +
+                            "WHERE TABLE_SCHEMA = DATABASE() " +
+                            "AND TABLE_NAME = 'ticket_types' " +
+                            "AND COLUMN_NAME = 'total_quantity'",
+                    Integer.class
+            );
+
+            if (hasTotalQuantity != null && hasTotalQuantity > 0) {
+                log.warn("Dropping legacy ticket_types.total_quantity column");
+                jdbcTemplate.execute("ALTER TABLE ticket_types DROP COLUMN total_quantity");
+                log.info("ticket_types.total_quantity dropped");
+            }
+        } catch (Exception e) {
+            log.error("SchemaRepairRunner: failed to ensure ticket_types columns - {}", e.getMessage());
+        }
+    }
+
+    private void ensureEventReservationItemScanColumns() {
+        try {
+            Integer hasIsScanned = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.COLUMNS " +
+                            "WHERE TABLE_SCHEMA = DATABASE() " +
+                            "AND TABLE_NAME = 'event_reservation_items' " +
+                            "AND COLUMN_NAME = 'is_scanned'",
+                    Integer.class
+            );
+            if (hasIsScanned == null || hasIsScanned == 0) {
+                log.warn("Adding missing column event_reservation_items.is_scanned");
+                jdbcTemplate.execute("ALTER TABLE event_reservation_items ADD COLUMN is_scanned TINYINT(1) NOT NULL DEFAULT 0");
+                log.info("Column event_reservation_items.is_scanned added");
+            }
+
+            Integer hasScannedAt = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.COLUMNS " +
+                            "WHERE TABLE_SCHEMA = DATABASE() " +
+                            "AND TABLE_NAME = 'event_reservation_items' " +
+                            "AND COLUMN_NAME = 'scanned_at'",
+                    Integer.class
+            );
+            if (hasScannedAt == null || hasScannedAt == 0) {
+                log.warn("Adding missing column event_reservation_items.scanned_at");
+                jdbcTemplate.execute("ALTER TABLE event_reservation_items ADD COLUMN scanned_at DATETIME NULL");
+                log.info("Column event_reservation_items.scanned_at added");
+            }
+        } catch (Exception e) {
+            log.error("SchemaRepairRunner: failed to ensure scan columns - {}", e.getMessage());
+        }
+    }
+
+    /**
+     * MySQL ENUM on {@code transport_reservations} rejects new enum labels (e.g. STRIPE) → error 1265
+     * "Data truncated for column 'payment_method'".
+     */
+    private void fixTransportReservationEnumColumn(String columnName, int varcharLength) {
+        final String tableName = "transport_reservations";
+        try {
+            String sql =
+                    "SELECT DATA_TYPE, CHARACTER_MAXIMUM_LENGTH FROM information_schema.COLUMNS "
+                            + "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?";
+            jdbcTemplate.query(
+                    sql,
+                    rs -> {
+                        String dataType = rs.getString("DATA_TYPE");
+                        int maxLen = rs.getInt("CHARACTER_MAXIMUM_LENGTH");
+                        boolean needsFix =
+                                "enum".equalsIgnoreCase(dataType)
+                                        || ("varchar".equalsIgnoreCase(dataType) && maxLen < varcharLength);
+                        if (needsFix) {
+                            log.warn(
+                                    "Fixing column `{}`.`{}` (was {} – altering to VARCHAR({}))",
+                                    tableName,
+                                    columnName,
+                                    dataType,
+                                    varcharLength);
+                            jdbcTemplate.execute(
+                                    "ALTER TABLE `"
+                                            + tableName
+                                            + "` MODIFY COLUMN `"
+                                            + columnName
+                                            + "` VARCHAR("
+                                            + varcharLength
+                                            + ")");
+                            log.info(
+                                    "Column `{}`.`{}` successfully set to VARCHAR({})",
+                                    tableName,
+                                    columnName,
+                                    varcharLength);
+                        } else {
+                            log.debug(
+                                    "Column `{}`.`{}` is already {} – no fix needed",
+                                    tableName,
+                                    columnName,
+                                    dataType);
+                        }
+                    },
+                    tableName,
+                    columnName);
+        } catch (Exception e) {
+            log.error(
+                    "SchemaRepairRunner: failed to check/fix `{}`.`{}` – {}",
+                    tableName,
+                    columnName,
+                    e.getMessage());
         }
     }
 }

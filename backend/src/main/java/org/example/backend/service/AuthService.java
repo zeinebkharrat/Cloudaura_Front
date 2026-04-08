@@ -156,7 +156,14 @@ public class AuthService {
         String token = createToken(savedUser, TOKEN_TYPE_EMAIL_VERIFICATION, EMAIL_VERIFICATION_EXPIRATION_MS);
         String verificationLink = buildFrontendLink("/verify-email", token);
         try {
-            emailService.sendVerificationEmail(savedUser.getEmail(), savedUser.getFirstName(), verificationLink);
+            emailService.sendVerificationEmail(
+                    savedUser.getEmail(),
+                    savedUser.getFirstName(),
+                    savedUser.getLastName(),
+                    savedUser.getUsername(),
+                    savedUser.getPhone(),
+                    savedUser.getNationality(),
+                    verificationLink);
         } catch (MailException ex) {
             return new AuthMessageResponse(
                     "Account created. Verification email could not be sent (SMTP). "
@@ -191,7 +198,7 @@ public class AuthService {
         }
 
         UserDetails principal = (UserDetails) authentication.getPrincipal();
-        User user = userRepository.findByUsernameIgnoreCase(principal.getUsername())
+        User user = userRepository.findFirstByUsernameIgnoreCaseOrderByUserIdAsc(principal.getUsername())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
 
         resetFailedSigninState(user);
@@ -214,7 +221,7 @@ public class AuthService {
         String lastName = extractLastName(oauth2User);
         String usernameSeed = extractUsernameSeed(oauth2User, provider, normalizedEmail);
 
-        User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
+        User user = userRepository.findFirstByEmailIgnoreCaseOrderByUserIdAsc(normalizedEmail)
                 .orElseGet(() -> createSocialUser(normalizedEmail, firstName, lastName, provider, usernameSeed));
 
         ensureNotBanned(user);
@@ -311,7 +318,7 @@ public class AuthService {
     @Transactional
     public AuthMessageResponse resendVerification(ResendVerificationRequest request) {
         String normalizedIdentifier = request.identifier().trim().toLowerCase(Locale.ROOT);
-        userRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(normalizedIdentifier, normalizedIdentifier)
+        userRepository.findFirstByUsernameIgnoreCaseOrEmailIgnoreCaseOrderByUserIdAsc(normalizedIdentifier, normalizedIdentifier)
                 .ifPresent(user -> {
                     if (Boolean.TRUE.equals(user.getEmailVerified())) {
                         return;
@@ -319,7 +326,14 @@ public class AuthService {
                     String token = createToken(user, TOKEN_TYPE_EMAIL_VERIFICATION, EMAIL_VERIFICATION_EXPIRATION_MS);
                     String verificationLink = buildFrontendLink("/verify-email", token);
                     try {
-                        emailService.sendVerificationEmail(user.getEmail(), user.getFirstName(), verificationLink);
+                        emailService.sendVerificationEmail(
+                                user.getEmail(),
+                                user.getFirstName(),
+                                user.getLastName(),
+                                user.getUsername(),
+                                user.getPhone(),
+                                user.getNationality(),
+                                verificationLink);
                     } catch (MailException ex) {
                         throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Email service unavailable. Check SMTP credentials.");
                     }
@@ -343,7 +357,7 @@ public class AuthService {
         }
 
         String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
-        userRepository.findByEmailIgnoreCase(normalizedEmail)
+        userRepository.findFirstByEmailIgnoreCaseOrderByUserIdAsc(normalizedEmail)
                 .ifPresent(user -> {
                     if (!"LOCAL".equalsIgnoreCase(user.getAuthProvider())) {
                         return;
@@ -530,7 +544,7 @@ public class AuthService {
         if (normalized.isBlank()) {
             return Optional.empty();
         }
-        return userRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(normalized, normalized);
+        return userRepository.findFirstByUsernameIgnoreCaseOrEmailIgnoreCaseOrderByUserIdAsc(normalized, normalized);
     }
 
     private void handleFailedSignin(User user) {
@@ -634,6 +648,7 @@ public class AuthService {
         if (cityId == null) {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "cityId is required for Tunisian users");
         }
+        // Plus besoin de Long.valueOf() si cityRepository accepte les Integer
         return cityRepository.findById(cityId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid cityId"));
     }
@@ -643,7 +658,11 @@ public class AuthService {
             return false;
         }
         String normalized = nationality.trim().toLowerCase(Locale.ROOT);
-        return normalized.equals("tunisia") || normalized.equals("tunisian") || normalized.equals("tunisie");
+        return normalized.equals("tunisia")
+                || normalized.equals("tunisian")
+                || normalized.equals("tunisie")
+                || normalized.equals("tunisien")
+                || normalized.equals("tunisienne");
     }
 
     private User currentUser() {
@@ -653,8 +672,8 @@ public class AuthService {
         }
 
         String username = authentication.getName();
-        return userRepository.findByUsernameIgnoreCase(username)
-                .or(() -> userRepository.findByEmailIgnoreCase(username))
+        return userRepository.findFirstByUsernameIgnoreCaseOrderByUserIdAsc(username)
+                .or(() -> userRepository.findFirstByEmailIgnoreCaseOrderByUserIdAsc(username))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
@@ -684,12 +703,13 @@ public class AuthService {
                 user.getLastName(),
                 user.getPhone(),
                 user.getNationality(),
-                user.getCity() != null ? user.getCity().getCityId() : null,
+                user.getCity() != null ? user.getCity().getCityId().intValue() : null,
                 user.getCity() != null ? user.getCity().getName() : null,
                 roles,
                 user.getStatus(),
                 Boolean.TRUE.equals(user.getArtisanRequestPending()),
-                user.getProfileImageUrl()
+                user.getProfileImageUrl(),
+                user.getPoints()
         );
     }
 }

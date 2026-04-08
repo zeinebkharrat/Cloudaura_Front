@@ -7,7 +7,7 @@
 export const API_BASE_URL = '';
 
 /**
- * Direct backend origin for emergency fallback only (e.g. proxy misconfigured).
- * Must match `server.port` in backend application.properties (default 9091).
+ * Origine backend directe pour secours (ex. proxy mal configuré).
+ * Doit correspondre à `server.port` dans application.properties (souvent 9091).
  */
 export const API_FALLBACK_ORIGIN = 'http://localhost:9091';

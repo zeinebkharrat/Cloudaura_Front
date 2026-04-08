@@ -1,5 +1,6 @@
 import { Injectable, signal, computed, effect } from '@angular/core';
 import { City, Accommodation, Transport } from '../models/travel.models';
+import { AccommodationRoomCategory } from '../utils/accommodation-quote.util';
 
 @Injectable({ providedIn: 'root' })
 export class TripContextStore {
@@ -16,6 +17,17 @@ export class TripContextStore {
   
   selectedAccommodation = signal<Accommodation | null>(null);
   selectedTransport = signal<Transport | null>(null);
+
+  /** Room category chosen on the property details page (drives quote + checkout). */
+  accommodationRoomCategory = signal<AccommodationRoomCategory>('DOUBLE');
+  /** Concrete room id for API when it matches the selected category (null = let checkout pick). */
+  accommodationQuoteRoomId = signal<number | null>(null);
+
+  /** Driving route distance (km) for taxi pricing / Stripe checkout. */
+  transportRouteKm = signal<number | null>(null);
+  transportRouteDurationSec = signal<number | null>(null);
+  /** Car rental duration in days (CAR pricing). */
+  transportRentalDays = signal<number>(1);
 
   constructor() {
     this.loadFromSession();
@@ -38,6 +50,20 @@ export class TripContextStore {
     this.pax.set(pax);
   }
 
+  setAccommodationRoomQuote(category: AccommodationRoomCategory, roomId: number | null) {
+    this.accommodationRoomCategory.set(category);
+    this.accommodationQuoteRoomId.set(roomId);
+  }
+
+  setTransportRouteMetrics(distanceKm: number | null, durationSeconds: number | null) {
+    this.transportRouteKm.set(distanceKm);
+    this.transportRouteDurationSec.set(durationSeconds);
+  }
+
+  setTransportRentalDays(days: number) {
+    this.transportRentalDays.set(Math.max(1, Math.floor(days)));
+  }
+
   calculateNights = computed(() => {
     const { checkIn, checkOut } = this.dates();
     if (!checkIn || !checkOut) return 0;
@@ -52,7 +78,12 @@ export class TripContextStore {
       sessionStorage.setItem('yalla_trip_context', JSON.stringify({
         selectedCityId: this.selectedCityId(),
         dates: this.dates(),
-        pax: this.pax()
+        pax: this.pax(),
+        accommodationRoomCategory: this.accommodationRoomCategory(),
+        accommodationQuoteRoomId: this.accommodationQuoteRoomId(),
+        transportRouteKm: this.transportRouteKm(),
+        transportRouteDurationSec: this.transportRouteDurationSec(),
+        transportRentalDays: this.transportRentalDays(),
       }));
     }
   }
@@ -65,6 +96,21 @@ export class TripContextStore {
         this.selectedCityId.set(parsed.selectedCityId);
         this.dates.set(parsed.dates);
         this.pax.set(parsed.pax);
+        if (parsed.accommodationRoomCategory) {
+          this.accommodationRoomCategory.set(parsed.accommodationRoomCategory);
+        }
+        if (parsed.accommodationQuoteRoomId !== undefined) {
+          this.accommodationQuoteRoomId.set(parsed.accommodationQuoteRoomId);
+        }
+        if (parsed.transportRouteKm !== undefined) {
+          this.transportRouteKm.set(parsed.transportRouteKm);
+        }
+        if (parsed.transportRouteDurationSec !== undefined) {
+          this.transportRouteDurationSec.set(parsed.transportRouteDurationSec);
+        }
+        if (parsed.transportRentalDays != null) {
+          this.transportRentalDays.set(parsed.transportRentalDays);
+        }
       }
     }
   }

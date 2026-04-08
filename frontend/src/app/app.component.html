@@ -1,5 +1,5 @@
 @if (!isAdminArea()) {
-<nav class="navbar animate-in" [class.navbar--scrolled]="isScrolled()">
+<nav class="navbar animate-in" [class.navbar--scrolled]="isScrolled()" [class.navbar--overlay]="isHeroRoute() && !isScrolled()">
   <div class="logo">
     <a routerLink="/" class="logo-link" aria-label="Yalla TN — home">
       <img
@@ -29,7 +29,7 @@
       <a routerLink="/transport" routerLinkActive="active">Transport</a>
     </li>
     <li>
-      <a routerLink="/hebergement" routerLinkActive="active">Stays</a>
+      <a routerLink="/planifier-voyage" [class.active]="isStaysNavActive()">Stays</a>
     </li>
     <li class="services-menu-wrap" (click)="$event.stopPropagation()">
       <button
@@ -60,11 +60,6 @@
     <li>
       <a routerLink="/communaute" routerLinkActive="active">Community</a>
     </li>
-    @if (isAuthenticated()) {
-    <li>
-      <a routerLink="/chat" routerLinkActive="active">Chat</a>
-    </li>
-    }
     <li>
       <a routerLink="/games" routerLinkActive="active">Games &amp; quizzes</a>
     </li>
@@ -89,6 +84,10 @@
             <span class="user-avatar fallback">{{ (currentUser()?.firstName || currentUser()?.username || 'U').charAt(0).toUpperCase() }}</span>
           }
           <span class="nav-user">Hi, {{ currentUser()?.firstName || currentUser()?.username }}</span>
+          <div class="user-score-badge">
+            <span class="coin-icon">💰</span>
+            <span class="score-value">{{ userPoints() }}</span>
+          </div>
           <svg class="user-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="m6 9 6 6 6-6" />
           </svg>
@@ -96,6 +95,23 @@
 
         @if (isUserMenuOpen()) {
           <div class="user-dropdown">
+            @if (userBadgeCollection().length > 0) {
+              <div class="badges-mini-shelf">
+                <span class="shelf-label">My Badges</span>
+                <div class="shelf-grid">
+                  @for (b of userBadgeCollection(); track b.badgeId) {
+                    <div class="mini-badge" [title]="b.name + ': ' + b.description">
+                      @if (b.iconUrl) {
+                        <img [src]="b.iconUrl" alt="Badge" />
+                      } @else {
+                        <span class="badge-placeholder">🏅</span>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+              <div class="dd-divider"></div>
+            }
             <a class="user-dd-item" [routerLink]="isArtisan() ? '/mes-ordres' : '/mes-commandes'" (click)="closeUserMenu()">
               <i class="pi pi-box"></i>
               <span>{{ isArtisan() ? 'Seller orders' : 'My purchases' }}</span>
@@ -137,6 +153,65 @@
       </a>
     }
 
+    @if (isAuthenticated() && !isArtisan()) {
+      <div class="challenges-wrap" (click)="$event.stopPropagation()">
+        <button type="button" class="nav-icon-btn challenges-btn" (click)="toggleChallengesPopup($event)" aria-label="Daily Challenges" title="Daily Challenges">
+          <i class="pi pi-bell nav-icon"></i>
+          @if (challengeCount() > 0) {
+            <span class="nav-badge pulse-badge">{{ challengeCount() }}</span>
+          }
+        </button>
+
+        @if (isChallengesPopupOpen()) {
+          <div class="challenges-popup animate-up">
+            <div class="cp-header">
+              <h3>Daily Challenges</h3>
+              <button class="btn-close-sm" (click)="closeChallengesPopup()">✕</button>
+            </div>
+            <div class="cp-body">
+              @if (activeChallenges().length === 0) {
+                <p class="empty-msg">No active challenges for today. Check back later!</p>
+              } @else {
+                @for (c of activeChallenges(); track c.challengeId) {
+                  <div class="challenge-item" [class.completed]="c.completed">
+                    <div class="ci-left">
+                      <div class="ci-icon">
+                        @if (c.gameKind === 'QUIZ') { 🧪 }
+                        @else if (c.gameKind === 'CROSSWORD') { 🧩 }
+                        @else { 🎯 }
+                      </div>
+                    </div>
+                    <div class="ci-right">
+                      <h4 class="ci-title">{{ c.title }}</h4>
+                      <p class="ci-desc">{{ c.description || 'Complete the target to earn points!' }}</p>
+                      <div class="ci-foot">
+                        <span class="ci-points">💰 {{ c.pointsReward }} pts</span>
+                        @if (c.completed) {
+                          <span class="ci-status done">✓ Completed</span>
+                        } @else {
+                          @if (c.gameKind === 'QUIZ' && c.targetId) {
+                            <a [routerLink]="['/games/quiz', c.targetId]" (click)="closeChallengesPopup()" class="ci-link">Play now →</a>
+                          } @else if (c.gameKind === 'CROSSWORD' && c.targetId) {
+                            <a [routerLink]="['/games/crossword', c.targetId]" (click)="closeChallengesPopup()" class="ci-link">Play now →</a>
+                          } @else if (c.gameKind === 'PUZZLE' && c.targetId) {
+                            <a [routerLink]="['/games/puzzle', c.targetId]" (click)="closeChallengesPopup()" class="ci-link">Play now →</a>
+                          } @else if (c.gameKind === 'LUDO') {
+                            <a [routerLink]="['/games/ludo']" (click)="closeChallengesPopup()" class="ci-link">Play now →</a>
+                          } @else {
+                            <a [routerLink]="['/games']" (click)="closeChallengesPopup()" class="ci-link">View Games →</a>
+                          }
+                        }
+                      </div>
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+
     <button type="button" class="theme-toggle-btn" (click)="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">
       @if (isDarkMode()) {
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -165,6 +240,49 @@
   </div>
 }
 
+@if (loginPrompt.open() && !isAuthenticated()) {
+  <div class="login-gate" (click)="closeLoginPrompt()">
+    <div class="login-gate__panel" (click)="$event.stopPropagation()">
+      <button type="button" class="login-gate__close" (click)="closeLoginPrompt()" aria-label="Close">×</button>
+      <div class="login-gate__head">
+        <div class="login-gate__brand">
+          <img src="assets/logo/yallatn-logo.png" alt="YallaTN" class="login-gate__logo" />
+          <div class="login-gate__travel" aria-hidden="true">
+            <span class="login-gate__pill"><img src="icones/city.png" alt="" width="14" height="14" /> Cities</span>
+            <span class="login-gate__pill"><img src="icones/actitvity.png" alt="" width="14" height="14" /> Activities</span>
+            <span class="login-gate__pill"><img src="icones/bus.png" alt="" width="14" height="14" /> Transport</span>
+          </div>
+        </div>
+        <h3>{{ loginPrompt.title() }}</h3>
+        <p>{{ loginPrompt.message() }}</p>
+      </div>
+
+      <div class="auth-switch" [class.auth-switch--signup]="authModalMode() === 'signup'">
+        <span class="auth-switch__thumb" aria-hidden="true"></span>
+        <button type="button" class="auth-switch__btn" [class.active]="authModalMode() === 'signin'" (click)="goToSignInFromPrompt()">Sign in</button>
+        <button type="button" class="auth-switch__btn" [class.active]="authModalMode() === 'signup'" (click)="goToSignUpFromPrompt()">Create account</button>
+      </div>
+
+      <div class="auth-stage" [class.auth-stage--signup]="authModalMode() === 'signup'">
+        @if (authModalMode() === 'signin') {
+          <app-sign-in
+            [embedded]="true"
+            [returnUrlOverride]="loginPrompt.returnUrl()"
+            (switchMode)="goToSignUpFromPrompt()"
+            (authenticated)="handlePopupAuthSuccess()"
+          ></app-sign-in>
+        } @else {
+          <app-sign-up
+            [embedded]="true"
+            (switchMode)="goToSignInFromPrompt()"
+            (signupCompleted)="handlePopupSignupDone()"
+          ></app-sign-up>
+        }
+      </div>
+    </div>
+  </div>
+}
+
 <router-outlet />
 
 @if (!isAdminArea()) {
@@ -186,6 +304,6 @@
 </footer>
 }
 
-@if (isAuthenticated()) {
+@if (isAuthenticated() && !isAdminArea()) {
   <app-chat-bubble></app-chat-bubble>
 }

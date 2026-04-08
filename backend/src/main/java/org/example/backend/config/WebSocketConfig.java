@@ -9,6 +9,10 @@ import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBr
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
@@ -27,9 +31,25 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        // Jamais de tableau vide (SockJS peut répondre 500). Dev : localhost / 127.0.0.1 sur tous ports.
+        List<String> patterns = new ArrayList<>();
+        patterns.add("http://localhost:*");
+        patterns.add("http://127.0.0.1:*");
+        patterns.add("https://localhost:*");
+        Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .forEach(patterns::add);
+        String[] origins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toArray(String[]::new);
         registry.addEndpoint("/ws")
-                .setAllowedOrigins(allowedOrigins.split(","))
+                .setAllowedOriginPatterns(patterns.toArray(new String[0]))
                 .withSockJS();
+        // Plain WebSocket for STOMP clients (e.g. tracking map); SockJS cannot share this path.
+        registry.addEndpoint("/ws-native")
+                .setAllowedOrigins(origins);
     }
 
     @Override
