@@ -21,18 +21,15 @@
 
         <label class="filter-field" [class.filter-detected]="voiceDetectedFilters().cuisine">
           <span>Cuisine type</span>
-          <input type="text" [ngModel]="cuisineType()" (ngModelChange)="onCuisineTypeChange($event)" placeholder="e.g. Tunisian, Italian" />
+          <select [ngModel]="cuisineType()" (ngModelChange)="onCuisineTypeChange($event)">
+            <option value="">All cuisines</option>
+            @for (cuisine of cuisineOptions(); track cuisine) {
+              <option [ngValue]="cuisine">{{ cuisine }}</option>
+            }
+          </select>
         </label>
 
-        <label class="filter-field" [class.filter-detected]="voiceDetectedFilters().location">
-          <span>Location keyword</span>
-          <input
-            type="text"
-            [ngModel]="locationKeyword()"
-            (ngModelChange)="onLocationKeywordChange($event)"
-            placeholder="e.g. lac 2, medina"
-          />
-        </label>
+        <button class="ghost-filter-btn" type="button" (click)="clearAvailabilityFilter()">Clear availability</button>
       </aside>
 
       <div class="services-content">
@@ -50,7 +47,7 @@
             >
               🎤
             </button>
-            <span class="voice-counter" [class.active]="voiceListening()">{{ (voiceDetectedFilters().city ? 1 : 0) + (voiceDetectedFilters().cuisine ? 1 : 0) + (voiceDetectedFilters().location ? 1 : 0) }}</span>
+            <span class="voice-counter" [class.active]="voiceListening()">{{ (voiceDetectedFilters().city ? 1 : 0) + (voiceDetectedFilters().cuisine ? 1 : 0) }}</span>
           </div>
           <select [ngModel]="sort()" (ngModelChange)="onSortChange($event)">
             <option value="restaurantId,desc">Newest</option>

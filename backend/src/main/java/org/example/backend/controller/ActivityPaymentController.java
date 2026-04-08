@@ -261,6 +261,9 @@ public class ActivityPaymentController {
                 String cityName = reservation.getActivity() != null && reservation.getActivity().getCity() != null
                         ? reservation.getActivity().getCity().getName()
                         : "Tunisia";
+                String address = reservation.getActivity() != null && reservation.getActivity().getAddress() != null
+                    ? reservation.getActivity().getAddress()
+                    : "N/A";
 
                 String imageUrl = reservation.getActivity() == null
                         ? null
@@ -271,7 +274,7 @@ public class ActivityPaymentController {
                                 .findFirst()
                                 .orElse(null);
 
-                String downloadUrl = "/api/public/activity-receipts/" + reservationId + "/pdf?sig=" + signature;
+                String downloadUrl = activityReceiptLinkService.buildPublicPdfUrl(reservationId);
                 String imageBlock = (imageUrl != null)
                         ? "<img class=\"hero\" src=\"" + esc(imageUrl) + "\" alt=\"Activity image\"/>"
                         : "<div class=\"hero-fallback\">" + esc(activityName) + "</div>";
@@ -307,14 +310,14 @@ public class ActivityPaymentController {
                                     </div>
                                     %s
                                     <div class="body">
-                                        <p class="meta"><strong>Activity:</strong> %s<br/><strong>City:</strong> %s</p>
+                                        <p class="meta"><strong>Activity:</strong> %s<br/><strong>City:</strong> %s<br/><strong>Address:</strong> %s</p>
                                         <a class="btn" href="%s">Download PDF</a>
                                     </div>
                                 </div>
                             </div>
                         </body>
                         </html>
-                        """.formatted(imageBlock, esc(activityName), esc(cityName), esc(downloadUrl));
+                        """.formatted(imageBlock, esc(activityName), esc(cityName), esc(address), esc(downloadUrl));
 
                 return ResponseEntity.ok()
                         .contentType(MediaType.TEXT_HTML)

@@ -68,6 +68,9 @@ public class ActivityReceiptPdfService {
         String cityName = reservation.getActivity() != null && reservation.getActivity().getCity() != null
             ? reservation.getActivity().getCity().getName()
             : "N/A";
+        String address = reservation.getActivity() != null && reservation.getActivity().getAddress() != null
+            ? reservation.getActivity().getAddress().trim()
+            : "N/A";
 
         String customer = buildTravelerName(reservation.getUser());
         String customerEmail = reservation.getUser() != null && reservation.getUser().getEmail() != null
@@ -132,6 +135,7 @@ public class ActivityReceiptPdfService {
                         <table>
                             <tr><td class="label">Activity</td><td class="value">%s</td></tr>
                             <tr><td class="label">City</td><td class="value">%s</td></tr>
+                            <tr><td class="label">Address</td><td class="value">%s</td></tr>
                             <tr><td class="label">Traveler</td><td class="value">%s</td></tr>
                             <tr><td class="label">Email</td><td class="value">%s</td></tr>
                             <tr><td class="label">Date</td><td class="value">%s</td></tr>
@@ -153,6 +157,7 @@ public class ActivityReceiptPdfService {
             heroImageBlock,
             esc(activityName),
             esc(cityName),
+            esc(address),
             esc(customer),
             esc(customerEmail),
             esc(date),

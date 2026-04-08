@@ -21,7 +21,7 @@
             <button class="btn ghost" type="button" (click)="goToMapZoomOut(); $event.stopPropagation()">Back to map</button>
           </div>
 
-          <div class="weather-box" (click)="$event.stopPropagation()">
+          <button class="weather-box" type="button" (click)="openWeatherDrawer(); $event.stopPropagation()">
             @if (weatherLoading()) {
               <p class="weather-line">Loading weather...</p>
             } @else if (weatherError()) {
@@ -37,8 +37,9 @@
                   <span> • Wind {{ weatherWind() }} km/h</span>
                 }
               </p>
+              <p class="weather-line weather-hint">Tap for weekly forecast →</p>
             }
-          </div>
+          </button>
         </div>
         @if (hasMultipleImages()) {
           <div class="hero-nav hero-nav-left">◀</div>
@@ -164,5 +165,41 @@
       }
     </section>
   </section>
+
+  @if (weatherDrawerOpen()) {
+    <div class="weather-drawer-backdrop" (click)="closeWeatherDrawer()"></div>
+    <aside class="weather-drawer" aria-label="Weekly weather panel">
+      <header class="weather-drawer-head">
+        <div>
+          <h3>Weekly Weather</h3>
+          <p>{{ vm.city.name }}</p>
+        </div>
+        <button type="button" class="weather-close-btn" (click)="closeWeatherDrawer()">×</button>
+      </header>
+
+      @if (weeklyWeatherLoading()) {
+        <p class="weather-drawer-state">Loading weekly forecast...</p>
+      } @else if (weeklyWeatherError()) {
+        <p class="weather-drawer-state error">{{ weeklyWeatherError() }}</p>
+      } @else if (weeklyForecast().length === 0) {
+        <p class="weather-drawer-state">No weekly data available.</p>
+      } @else {
+        <div class="weather-week-list">
+          @for (day of weeklyForecast(); track day.date) {
+            <article class="weather-week-item">
+              <div class="weather-day-main">
+                <strong>{{ weeklyDayLabel(day.date) }}</strong>
+                <span>{{ weeklyDaySummary(day.weatherCode).icon }} {{ weeklyDaySummary(day.weatherCode).label }}</span>
+              </div>
+              <div class="weather-day-meta">
+                <span>{{ day.minTemp ?? '—' }}°C / {{ day.maxTemp ?? '—' }}°C</span>
+                <span>Wind {{ day.windMax ?? '—' }} km/h</span>
+              </div>
+            </article>
+          }
+        </div>
+      }
+    </aside>
+  }
   }
 }
