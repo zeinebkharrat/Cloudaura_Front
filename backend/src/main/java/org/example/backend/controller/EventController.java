@@ -10,14 +10,17 @@ import org.example.backend.repository.EventReservationRepository;
 import org.example.backend.repository.TicketTypeRepository;
 import org.example.backend.repository.UserRepository;
 import org.example.backend.service.EventService;
+import org.example.backend.service.EventPosterAiService;
 import org.example.backend.service.EmailService;
 import org.example.backend.service.QrCodeService;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
@@ -40,6 +43,7 @@ public class EventController {
     private final UserRepository userRepository;
     private final QrCodeService qrCodeService;
     private final EmailService emailService;
+    private final EventPosterAiService eventPosterAiService;
 
     @Value("${app.frontend.base-url:http://localhost:4200}")
     private String frontendBaseUrl;
@@ -57,7 +61,8 @@ public class EventController {
             TicketTypeRepository ticketTypeRepository,
             UserRepository userRepository,
             QrCodeService qrCodeService,
-            EmailService emailService
+            EmailService emailService,
+            EventPosterAiService eventPosterAiService
     ) {
         this.eventService = eventService;
         this.reservationRepository = reservationRepository;
@@ -66,6 +71,7 @@ public class EventController {
         this.userRepository = userRepository;
         this.qrCodeService = qrCodeService;
         this.emailService = emailService;
+        this.eventPosterAiService = eventPosterAiService;
     }
 
     private String normalizeFrontendBase() {
@@ -80,7 +86,7 @@ public class EventController {
         return eventService.getAllEvents();
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:\\d+}")
     public ResponseEntity<Event> getEvent(@PathVariable Integer id) {
         return eventService.getEventById(id)
                 .map(ResponseEntity::ok)
@@ -102,7 +108,7 @@ public class EventController {
         }
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id:\\d+}")
     public ResponseEntity<Event> updateEvent(@PathVariable Integer id, @RequestBody Event eventDetails) {
         return eventService.getEventById(id).map(event -> {
             event.setTitle(eventDetails.getTitle());
@@ -123,8 +129,35 @@ public class EventController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
+        @PostMapping(
+            value = {"/extract-from-image", "/extract-from-image/", "/admin/extract-from-image", "/admin/extract-from-image/"},
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+        )
+    public ResponseEntity<?> extractFromImage(
+            @RequestParam("file") MultipartFile file,
+            Authentication authentication
+    ) {
+        requireAdmin(authentication);
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Image file is required", "text", ""));
+        }
+
+        try {
+            String text = eventPosterAiService.extractText(file);
+            return ResponseEntity.ok(Map.of("text", text == null ? "" : text));
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("message", ex.getMessage(), "text", ""));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage(), "text", ""));
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                    .body(Map.of("message", "AI extraction failed", "text", ""));
+        }
+    }
+
     // --- DELETE ---
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:\\d+}")
     public ResponseEntity<Void> deleteEvent(@PathVariable Integer id) {
         eventService.deleteEvent(id);
         return ResponseEntity.noContent().build();

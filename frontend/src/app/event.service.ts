@@ -108,4 +108,28 @@ export class EventService {
   createReservation(data: any): Observable<any> {
     return this.http.post(`${this.apiUrl}/reservations`, data);
   }
+
+  extractEventFromImage(file: File): Observable<{ text: string; message?: string }> {
+    const createFormData = () => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return formData;
+    };
+
+    const adminUrl = `${this.apiUrl}/admin/extract-from-image`;
+    const legacyUrl = `${this.apiUrl}/extract-from-image`;
+
+    return this.http.post<{ text: string; message?: string }>(adminUrl, createFormData()).pipe(
+      catchError((err) => {
+        const message = String(err?.error?.message ?? err?.error?.error ?? '').toLowerCase();
+        const shouldFallback = err?.status === 404 || message.includes('no static resource');
+
+        if (!shouldFallback) {
+          return throwError(() => err);
+        }
+
+        return this.http.post<{ text: string; message?: string }>(legacyUrl, createFormData());
+      })
+    );
+  }
 }

@@ -8,9 +8,8 @@
       </div>
       
       <div class="header-actions">
-        <button (click)="toggleDarkMode()" class="btn-mode">
-          {{ isDarkMode ? '☀️ Light Mode' : '🌙 Dark Mode' }}
-        </button>
+        <input #createFromImageInput type="file" accept="image/*" hidden (change)="onCreateFromImageSelected($event)">
+        <button type="button" class="btn-ai" (click)="createFromImageInput.click()">✨ Create from image</button>
         <button class="btn-primary" (click)="openAddModal()">+ New Event</button>
       </div>
     </div>
@@ -111,6 +110,7 @@
   <div class="modal-backdrop" *ngIf="showModal">
     <div class="modal-content">
       <h2 class="modal-title">{{ isEditMode ? 'Edit Event' : 'New Event' }}</h2>
+      <div *ngIf="aiExtracting" class="ai-status">Reading poster and filling fields automatically...</div>
       
       <form (ngSubmit)="saveEvent()" #eventForm="ngForm" novalidate>
         
@@ -183,6 +183,12 @@
         <div class="form-group">
           <label>Event Image (Upload)</label>
           <input type="file" (change)="onFileSelected($event)" class="file-input">
+          <div *ngIf="currentEvent.imageUrl" class="image-linked-note">
+            <div><strong>Image linked:</strong> Yes</div>
+            <div *ngIf="selectedImageFileName"><strong>Source file:</strong> {{ selectedImageFileName }}</div>
+            <div *ngIf="imageOriginLabel"><strong>Origin:</strong> {{ imageOriginLabel }}</div>
+            <img [src]="currentEvent.imageUrl" alt="Linked event image" class="linked-image-preview">
+          </div>
           <div *ngIf="uploading" class="upload-status">⌛ Uploading image...</div>
         </div>
 
