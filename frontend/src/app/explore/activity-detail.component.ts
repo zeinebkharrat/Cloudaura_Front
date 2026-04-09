@@ -1,5 +1,5 @@
 import { CommonModule, Location } from '@angular/common';
-import { AfterViewInit, Component, OnDestroy, inject } from '@angular/core';
+import { AfterViewInit, Component, HostListener, OnDestroy, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
@@ -82,7 +82,37 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     commentText: '',
   };
   editingReviewId: number | null = null;
-  readonly commentEmojis = ['😊', '😍', '😋', '👍', '🔥', '🎉', '👏', '🤩', '💯', '❤️'];
+  readonly maxReviewCommentLength = 1500;
+  emojiPickerOpen = false;
+  emojiSearchQuery = '';
+  activeEmojiCategory = 'smileys';
+  readonly emojiCategories: Array<{ id: string; icon: string; emojis: string[] }> = [
+    {
+      id: 'smileys',
+      icon: '😀',
+      emojis: ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😋', '😜', '🤪', '🤗', '😎', '🥳', '😌', '😢', '😭', '😡', '😱', '😷', '🤒', '🤢'],
+    },
+    {
+      id: 'gestures',
+      icon: '👍',
+      emojis: ['👍', '👎', '👌', '✌️', '🤟', '🤘', '🤙', '👏', '🙌', '👐', '🤲', '🙏', '💪', '👋', '🤝', '☝️', '👆', '👇', '👉', '👈'],
+    },
+    {
+      id: 'travel',
+      icon: '✈️',
+      emojis: ['✈️', '🧳', '🗺️', '🧭', '🏝️', '🏖️', '🏜️', '🏕️', '🏛️', '🕌', '🗼', '🎡', '🚗', '🚕', '🚌', '🚆', '🚇', '⛵', '🚤', '🛳️'],
+    },
+    {
+      id: 'food',
+      icon: '🍽️',
+      emojis: ['🍽️', '☕', '🍵', '🥤', '🍕', '🍔', '🌮', '🥙', '🍟', '🍜', '🍝', '🍣', '🥗', '🥘', '🍲', '🍛', '🍰', '🍩', '🍎', '🍉'],
+    },
+    {
+      id: 'symbols',
+      icon: '❤️',
+      emojis: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '💯', '✅', '❌', '⚠️', '⭐', '🔥', '✨', '💬', '📍', '📸'],
+    },
+  ];
 
   ngAfterViewInit(): void {
     this.viewReady = true;
@@ -349,7 +379,48 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   }
 
   appendEmoji(emoji: string): void {
+    if (this.reviewForm.commentText.length >= this.maxReviewCommentLength) {
+      return;
+    }
     this.reviewForm.commentText = `${this.reviewForm.commentText}${emoji}`;
+  }
+
+  get visibleReviewEmojis(): string[] {
+    const category = this.emojiCategories.find((entry) => entry.id === this.activeEmojiCategory) ?? this.emojiCategories[0];
+    const source = category?.emojis ?? [];
+    const query = this.emojiSearchQuery.trim();
+    if (!query) {
+      return source;
+    }
+    return source.filter((emoji) => emoji.includes(query));
+  }
+
+  toggleEmojiPicker(): void {
+    this.emojiPickerOpen = !this.emojiPickerOpen;
+    if (!this.emojiPickerOpen) {
+      this.emojiSearchQuery = '';
+    }
+  }
+
+  selectEmojiCategory(categoryId: string): void {
+    this.activeEmojiCategory = categoryId;
+    this.emojiSearchQuery = '';
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    this.emojiPickerOpen = false;
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement | null;
+    if (!target) {
+      return;
+    }
+    if (!target.closest('.emoji-picker-wrap')) {
+      this.emojiPickerOpen = false;
+    }
   }
 
   startEditReview(review: PublicReview): void {

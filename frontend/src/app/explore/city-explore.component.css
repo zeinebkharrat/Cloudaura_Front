@@ -106,6 +106,14 @@
   gap: 10px;
 }
 
+.weather-cluster {
+  margin-top: 4px;
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  max-width: 100%;
+}
+
 .weather-box {
   margin-top: 4px;
   width: fit-content;
@@ -152,45 +160,35 @@
   font-size: 0.8rem;
 }
 
-.weather-drawer-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(6, 18, 35, 0.4);
-  z-index: 1490;
-}
-
-.weather-drawer {
-  position: fixed;
-  top: 0;
-  right: 0;
-  width: min(420px, 92vw);
-  height: 100vh;
-  background: #f8fafc;
-  border-left: 1px solid rgba(148, 163, 184, 0.35);
-  box-shadow: -12px 0 32px rgba(15, 23, 42, 0.22);
-  z-index: 1500;
-  padding: 18px 16px;
+.weather-inline-panel {
+  width: min(760px, calc(100vw - 40px));
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 12px;
+  padding: 12px 12px 10px;
+  backdrop-filter: blur(6px);
   display: grid;
-  align-content: start;
-  gap: 14px;
-  animation: weatherSlideIn 0.32s ease;
+  gap: 10px;
+  animation: weatherInlineReveal 0.28s ease;
 }
 
-.weather-drawer-head {
+.weather-inline-head {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 10px;
 }
 
-.weather-drawer-head h3 {
+.weather-inline-head h3 {
   margin: 0;
-  color: #0f172a;
+  color: #ffffff;
+  font-size: 1rem;
 }
 
-.weather-drawer-head p {
+.weather-inline-head p {
   margin: 2px 0 0;
-  color: #475569;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.85rem;
 }
 
 .weather-close-btn {
@@ -207,28 +205,43 @@
 
 .weather-drawer-state {
   margin: 0;
-  color: #334155;
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .weather-week-list {
-  display: grid;
+  display: flex;
+  overflow-x: auto;
   gap: 10px;
+  padding-bottom: 6px;
 }
 
 .weather-week-item {
-  border: 1px solid rgba(148, 163, 184, 0.28);
+  min-width: 190px;
+  flex: 0 0 auto;
+  border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 12px;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.16);
   padding: 10px 12px;
   display: grid;
   gap: 6px;
+}
+
+@media (max-width: 980px) {
+  .weather-cluster {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .weather-inline-panel {
+    width: min(100%, 1000px);
+  }
 }
 
 .weather-day-main {
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  color: #0f172a;
+  color: #ffffff;
   font-size: 0.9rem;
 }
 
@@ -236,16 +249,18 @@
   display: flex;
   justify-content: space-between;
   gap: 8px;
-  color: #475569;
+  color: rgba(255, 255, 255, 0.86);
   font-size: 0.82rem;
 }
 
-@keyframes weatherSlideIn {
+@keyframes weatherInlineReveal {
   from {
-    transform: translateX(100%);
+    transform: translateY(16px);
+    opacity: 0;
   }
   to {
-    transform: translateX(0);
+    transform: translateY(0);
+    opacity: 1;
   }
 }
 
@@ -794,6 +809,10 @@
   .weather-day-meta {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .weather-week-item {
+    min-width: 180px;
   }
 
   .related-carousel.with-controls {
