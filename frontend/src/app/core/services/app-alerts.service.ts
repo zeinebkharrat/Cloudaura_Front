@@ -42,18 +42,24 @@ export class AppAlertsService {
   confirm(options: {
     title: string;
     text?: string;
+    html?: string;
     confirmText?: string;
     cancelText?: string;
     icon?: SweetAlertOptions['icon'];
   }): Promise<SweetAlertResult> {
-    return this.mixin.fire({
+    const base: SweetAlertOptions = {
       icon: options.icon ?? 'warning',
       title: options.title,
-      text: options.text,
       showCancelButton: true,
       confirmButtonText: options.confirmText ?? 'Yes',
       cancelButtonText: options.cancelText ?? 'Cancel',
-    });
+    };
+    if (options.html) {
+      base.html = options.html;
+    } else {
+      base.text = options.text;
+    }
+    return this.mixin.fire(base);
   }
 
   /** Fire fully custom options (still uses mixin styling). */

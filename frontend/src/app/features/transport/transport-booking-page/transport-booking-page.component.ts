@@ -14,7 +14,13 @@ import { TripContextStore } from '../../../core/stores/trip-context.store';
 import { AppAlertsService } from '../../../core/services/app-alerts.service';
 import { DATA_SOURCE_TOKEN } from '../../../core/adapters/data-source.adapter';
 import { AuthService } from '../../../core/auth.service';
-import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } from '../../../core/models/travel.models';
+import {
+  Transport,
+  TransportReservation,
+  TRANSPORT_TYPE_META,
+  TransportType,
+  ReservationStatus,
+} from '../../../core/models/travel.models';
 import { TransportTrackingSseService } from '../transport-tracking-sse.service';
 
 @Component({
@@ -23,44 +29,102 @@ import { TransportTrackingSseService } from '../transport-tracking-sse.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './transport-booking-page.component.html',
   styles: [`
-    .bp { min-height: 100vh; padding: 1rem 1rem 4rem; }
+    .bp { min-height: 100vh; padding: 1rem 1rem 4rem; background: var(--bg-color); }
     .bp-wrap { max-width: 740px; margin: 0 auto; }
     .bp-edit-banner {
       display: flex; align-items: flex-start; gap: 0.6rem;
       padding: 0.85rem 1rem; margin-bottom: 1rem; border-radius: 14px;
-      background: rgba(0, 119, 182, 0.12); border: 1px solid rgba(0, 119, 182, 0.28);
-      font-size: 0.88rem; color: var(--text-color, #e5e7eb); line-height: 1.45;
+      background: color-mix(in srgb, var(--tunisia-red) 7%, var(--surface-1));
+      border: 1px solid color-mix(in srgb, var(--tunisia-red) 22%, var(--glass-border));
+      font-size: 0.88rem; color: var(--text-color); line-height: 1.45;
     }
-    .bp-edit-banner .pi { color: #38bdf8; margin-top: 2px; }
+    .bp-edit-banner .pi { color: var(--tunisia-red); margin-top: 2px; }
 
     .trip-inline {
       display: flex; align-items: center; gap: 0.85rem;
-      background: rgba(241,37,69,0.04);
-      border: 1px solid rgba(241,37,69,0.1);
+      background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--tunisia-red) 8%, var(--surface-1)) 0%,
+        color-mix(in srgb, var(--tunisia-red) 3%, var(--surface-1)) 100%
+      );
+      border: 1px solid color-mix(in srgb, var(--tunisia-red) 16%, var(--glass-border));
       border-radius: 14px; padding: 0.9rem 1.25rem;
       margin-bottom: 1.75rem;
     }
     .trip-emoji { font-size: 1.6rem; flex-shrink: 0; }
     .trip-detail { display: flex; flex-direction: column; flex: 1; min-width: 0; }
     .trip-route { font-weight: 700; font-size: 0.95rem; color: var(--text-color); }
-    .trip-meta { font-size: 0.78rem; color: var(--text-muted, #a8b3c7); margin-top: 1px; }
+    .trip-meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 1px; }
     .trip-price {
       font-family: 'Outfit', sans-serif; font-size: 1.35rem;
-      font-weight: 800; color: #f12545; white-space: nowrap; flex-shrink: 0;
+      font-weight: 800; color: var(--tunisia-red); white-space: nowrap; flex-shrink: 0;
     }
-    .trip-price small { font-size: 0.7rem; font-weight: 500; opacity: 0.6; }
+    .trip-price small { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); }
 
     .stepper-wrap {
-      background: var(--surface-1, #111827);
-      border: 1px solid var(--glass-border, rgba(255,255,255,0.08));
+      background: var(--surface-1);
+      border: 1px solid var(--glass-border);
       border-radius: 20px; padding: 2rem 2.25rem;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+      box-shadow: var(--shadow-card);
     }
 
     :host ::ng-deep {
-      .p-stepper .p-stepper-header .p-stepper-number { width: 2.2rem; height: 2.2rem; font-weight: 700; font-size: 0.85rem; }
-      .p-stepper .p-stepper-panels { padding: 0; }
-      .p-inputtext { width: 100%; }
+      .bp .p-stepper .p-stepper-header .p-stepper-number {
+        width: 2.2rem; height: 2.2rem; font-weight: 700; font-size: 0.85rem;
+      }
+      .bp .p-stepper .p-stepper-panels { padding: 0; }
+      .bp .p-stepper .p-stepper-header:not(.p-highlight) .p-stepper-number {
+        background: var(--surface-2) !important;
+        border: 2px solid var(--glass-border) !important;
+        color: var(--text-muted) !important;
+      }
+      .bp .p-stepper .p-stepper-header.p-highlight .p-stepper-number,
+      .bp .p-stepper .p-stepper-header .p-stepper-number.p-highlight {
+        background: var(--tunisia-red) !important;
+        border-color: var(--tunisia-red) !important;
+        color: #fff !important;
+      }
+      .bp .p-stepper .p-stepper-title {
+        color: var(--text-muted) !important;
+        font-weight: 600 !important;
+      }
+      .bp .p-stepper .p-stepper-header.p-highlight .p-stepper-title {
+        color: var(--text-color) !important;
+      }
+      .bp .p-stepper .p-stepper-separator {
+        background: var(--glass-border) !important;
+      }
+      .bp .p-stepper .p-stepper-header.p-highlight ~ .p-stepper-separator,
+      .bp .p-stepper .p-stepper-separator.p-stepper-separator-active {
+        background: var(--tunisia-red) !important;
+      }
+      .bp .p-stepper .p-stepper-action.p-button {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: inherit !important;
+        padding: 0.35rem 0.5rem !important;
+        gap: 0.5rem !important;
+      }
+      .bp .p-stepper .p-stepper-action.p-button:not(:disabled):hover {
+        background: color-mix(in srgb, var(--tunisia-red) 6%, transparent) !important;
+      }
+      .bp .p-inputtext {
+        width: 100%;
+        background: var(--input-bg) !important;
+        color: var(--text-color) !important;
+        border: none !important;
+        box-shadow: none !important;
+      }
+      .bp .p-inputtext::placeholder {
+        color: var(--text-muted) !important;
+        opacity: 0.55 !important;
+      }
+      .bp .p-inputtext:enabled:focus {
+        outline: none !important;
+        box-shadow: none !important;
+        border: none !important;
+      }
     }
 
     .step { padding: 1.5rem 0 0; }
@@ -69,7 +133,7 @@ import { TransportTrackingSseService } from '../transport-tracking-sse.service';
       font-family: 'Outfit', sans-serif;
       font-size: 1.4rem; font-weight: 700; margin: 0 0 0.3rem; color: var(--text-color);
     }
-    .step-head p { font-size: 0.88rem; color: var(--text-muted, #a8b3c7); margin: 0; }
+    .step-head p { font-size: 0.88rem; color: var(--text-muted); margin: 0; }
 
     .f { display: flex; flex-direction: column; gap: 1.4rem; }
     .f-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.1rem; }
@@ -77,20 +141,20 @@ import { TransportTrackingSseService } from '../transport-tracking-sse.service';
 
     .f-label {
       font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.4px; color: var(--text-muted, #a8b3c7);
+      letter-spacing: 0.4px; color: var(--text-muted);
       display: flex; align-items: center; gap: 0.35rem;
     }
-    .f-label i { font-size: 0.8rem; color: #f12545; }
+    .f-label i { font-size: 0.8rem; color: var(--tunisia-red); }
 
     .f-input-wrap {
-      border: 1.5px solid var(--glass-border, rgba(255,255,255,0.1));
+      border: 1.5px solid var(--glass-border);
       border-radius: 12px; overflow: hidden;
       transition: border-color 0.2s, box-shadow 0.2s;
-      background: rgba(255,255,255,0.02);
+      background: var(--input-bg);
     }
     .f-input-wrap:focus-within {
-      border-color: #f12545;
-      box-shadow: 0 0 0 3px rgba(241,37,69,0.1);
+      border-color: var(--tunisia-red);
+      box-shadow: 0 0 0 3px var(--tunisia-red-glow);
     }
     .f-input-wrap.f-error { border-color: #f87171; }
     .f-input-wrap.f-error:focus-within { box-shadow: 0 0 0 3px rgba(248,113,113,0.12); }
@@ -105,17 +169,20 @@ import { TransportTrackingSseService } from '../transport-tracking-sse.service';
 
     .f-phone {
       display: flex; align-items: stretch;
-      border: 1.5px solid var(--glass-border, rgba(255,255,255,0.1));
+      border: 1.5px solid var(--glass-border);
       border-radius: 12px; overflow: hidden;
       transition: border-color 0.2s, box-shadow 0.2s;
-      background: rgba(255,255,255,0.02);
+      background: var(--input-bg);
     }
-    .f-phone:focus-within { border-color: #f12545; box-shadow: 0 0 0 3px rgba(241,37,69,0.1); }
+    .f-phone:focus-within {
+      border-color: var(--tunisia-red);
+      box-shadow: 0 0 0 3px var(--tunisia-red-glow);
+    }
     .f-phone.f-error { border-color: #f87171; }
     .f-prefix {
       display: flex; align-items: center; padding: 0 0.85rem;
-      font-weight: 700; font-size: 0.88rem; color: #f12545;
-      background: rgba(241,37,69,0.05);
+      font-weight: 700; font-size: 0.88rem; color: var(--tunisia-red);
+      background: color-mix(in srgb, var(--tunisia-red) 6%, var(--surface-1));
       border-right: 1px solid var(--glass-border);
     }
 
@@ -123,13 +190,13 @@ import { TransportTrackingSseService } from '../transport-tracking-sse.service';
 
     .f-seats {
       display: flex; align-items: center; gap: 0.85rem;
-      background: rgba(241,37,69,0.05);
-      border: 1.5px solid rgba(241,37,69,0.12);
+      background: color-mix(in srgb, var(--tunisia-red) 6%, var(--surface-1));
+      border: 1.5px solid color-mix(in srgb, var(--tunisia-red) 18%, var(--glass-border));
       border-radius: 12px; padding: 0.75rem 1.1rem;
     }
     .f-seats-badge {
       width: 38px; height: 38px; border-radius: 10px;
-      background: #f12545; color: #fff;
+      background: var(--tunisia-red); color: #fff;
       display: flex; align-items: center; justify-content: center;
       font-size: 1.1rem; font-weight: 800; flex-shrink: 0;
     }
@@ -138,7 +205,7 @@ import { TransportTrackingSseService } from '../transport-tracking-sse.service';
     .step-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 2.5rem; }
 
     .sum {
-      background: rgba(255,255,255,0.02);
+      background: var(--surface-2);
       border: 1px solid var(--glass-border);
       border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem;
     }
@@ -148,8 +215,14 @@ import { TransportTrackingSseService } from '../transport-tracking-sse.service';
     .sum-city { font-family: 'Outfit', sans-serif; font-size: 1.15rem; font-weight: 700; color: var(--text-color); }
     .sum-time { font-size: 0.8rem; color: var(--text-muted); }
     .sum-track { flex: 1; display: flex; align-items: center; gap: 0; margin: 0 1rem; }
-    .sum-dot { width: 8px; height: 8px; border-radius: 50%; background: #f12545; flex-shrink: 0; box-shadow: 0 0 0 3px rgba(241,37,69,0.12); }
-    .sum-line { flex: 1; height: 2px; background: rgba(241,37,69,0.12); }
+    .sum-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--tunisia-red); flex-shrink: 0;
+      box-shadow: 0 0 0 3px var(--tunisia-red-glow);
+    }
+    .sum-line {
+      flex: 1; height: 2px;
+      background: color-mix(in srgb, var(--tunisia-red) 18%, var(--surface-3));
+    }
     .sum-emoji { font-size: 1rem; margin: 0 0.3rem; }
 
     .sum-divider { height: 1px; background: var(--glass-border); margin: 1.1rem 0; }
@@ -157,13 +230,13 @@ import { TransportTrackingSseService } from '../transport-tracking-sse.service';
     .sum-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; }
     .sum-item { display: flex; flex-direction: column; gap: 2px; }
     .sum-k { font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.3rem; text-transform: uppercase; letter-spacing: 0.3px; font-weight: 600; }
-    .sum-k i { font-size: 0.75rem; color: #f12545; }
+    .sum-k i { font-size: 0.75rem; color: var(--tunisia-red); }
     .sum-v { font-size: 0.92rem; font-weight: 600; color: var(--text-color); }
 
     .sum-pricing { display: flex; flex-direction: column; gap: 0.4rem; }
     .sum-pl { display: flex; justify-content: space-between; font-size: 0.88rem; color: var(--text-muted); }
     .sum-total { font-weight: 700; color: var(--text-color); padding-top: 0.6rem; border-top: 1px dashed var(--glass-border); font-size: 1rem; }
-    .sum-total-val { font-family: 'Outfit', sans-serif; font-size: 1.3rem; font-weight: 800; color: #f12545; }
+    .sum-total-val { font-family: 'Outfit', sans-serif; font-size: 1.3rem; font-weight: 800; color: var(--tunisia-red); }
 
     .pay { margin-bottom: 0.5rem; }
     .pay-title { font-size: 0.92rem; font-weight: 700; color: var(--text-color); margin: 0 0 0.85rem; }
@@ -171,45 +244,85 @@ import { TransportTrackingSseService } from '../transport-tracking-sse.service';
     .pay-opt {
       display: flex; align-items: center; gap: 0.75rem;
       padding: 1rem 1.1rem; border-radius: 14px; cursor: pointer;
-      background: rgba(255,255,255,0.02);
+      background: var(--surface-2);
       border: 1.5px solid var(--glass-border);
       transition: all 0.25s;
     }
-    .pay-opt:hover { border-color: rgba(241,37,69,0.25); }
-    .pay-active { border-color: #f12545 !important; background: rgba(241,37,69,0.05) !important; }
+    .pay-opt:hover { border-color: color-mix(in srgb, var(--tunisia-red) 35%, var(--glass-border)); }
+    .pay-active {
+      border-color: var(--tunisia-red) !important;
+      background: color-mix(in srgb, var(--tunisia-red) 7%, var(--surface-2)) !important;
+    }
 
     .pay-radio {
       width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
       border: 2px solid var(--glass-border); transition: all 0.2s;
       position: relative;
     }
-    .pay-checked { border-color: #f12545; }
+    .pay-checked { border-color: var(--tunisia-red); }
     .pay-checked::after {
       content: ''; position: absolute; top: 3px; left: 3px;
       width: 10px; height: 10px; border-radius: 50%;
-      background: #f12545;
+      background: var(--tunisia-red);
     }
 
-    .pay-icon { font-size: 1.2rem; color: #f12545; }
+    .pay-icon { font-size: 1.2rem; color: var(--tunisia-red); }
     .pay-txt { display: flex; flex-direction: column; }
     .pay-name { font-weight: 700; font-size: 0.88rem; color: var(--text-color); }
     .pay-desc { font-size: 0.72rem; color: var(--text-muted); }
     .pay-paypal.pay-active {
-      border-color: #003087 !important;
-      background: rgba(0, 48, 135, 0.1) !important;
+      border-color: var(--tunisia-red) !important;
+      background: color-mix(in srgb, var(--tunisia-red) 8%, var(--surface-2)) !important;
     }
     .paypal-mark {
       font-weight: 800;
       font-size: 1.05rem;
-      color: #003087;
+      color: var(--text-color);
       letter-spacing: 0.02em;
     }
     .paypal-note {
       font-size: 0.72rem;
-      color: #1D9E75;
+      color: var(--text-muted);
       font-weight: 600;
       margin-top: 0.4rem;
       line-height: 1.35;
+    }
+
+    .conf-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.7rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      border: 1px solid var(--glass-border);
+      background: var(--surface-2);
+      color: var(--text-color);
+    }
+    .conf-pill--pay {
+      text-transform: none;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      background: color-mix(in srgb, var(--tunisia-red) 6%, var(--surface-1));
+      border-color: color-mix(in srgb, var(--tunisia-red) 18%, var(--glass-border));
+      color: var(--text-color);
+    }
+    .conf-pill--ok {
+      background: color-mix(in srgb, var(--tunisia-red) 10%, var(--surface-1));
+      border-color: color-mix(in srgb, var(--tunisia-red) 28%, var(--glass-border));
+      color: var(--tunisia-red);
+    }
+    .conf-pill--pending {
+      background: color-mix(in srgb, var(--tunisia-red) 5%, var(--surface-2));
+      border-color: color-mix(in srgb, #f59e0b 35%, var(--glass-border));
+      color: #b45309;
+    }
+    .conf-pill--cancelled {
+      background: color-mix(in srgb, #f87171 8%, var(--surface-1));
+      border-color: rgba(248,113,113,0.35);
+      color: #b91c1c;
     }
 
     .conf { text-align: center; padding-top: 2rem !important; }
@@ -217,8 +330,8 @@ import { TransportTrackingSseService } from '../transport-tracking-sse.service';
     .conf-circle {
       width: 72px; height: 72px; border-radius: 50%; margin: 0 auto;
       display: flex; align-items: center; justify-content: center;
-      background: linear-gradient(135deg, #f12545, #ff6b6b);
-      box-shadow: 0 8px 30px rgba(241,37,69,0.3);
+      background: linear-gradient(135deg, var(--tunisia-red), #ff6b6b);
+      box-shadow: 0 8px 30px var(--tunisia-red-glow);
       animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     .conf-circle i { font-size: 2rem; color: #fff; }
@@ -227,21 +340,22 @@ import { TransportTrackingSseService } from '../transport-tracking-sse.service';
     .conf-title { font-family: 'Outfit', sans-serif; font-size: 1.5rem; font-weight: 700; margin: 0 0 0.75rem; color: var(--text-color); }
     .conf-welcome-msg {
       display: inline-flex; align-items: center; gap: 0.5rem;
-      background: rgba(241,37,69,0.07); border: 1px solid rgba(241,37,69,0.15);
+      background: color-mix(in srgb, var(--tunisia-red) 8%, var(--surface-1));
+      border: 1px solid color-mix(in srgb, var(--tunisia-red) 22%, var(--glass-border));
       border-radius: 50px; padding: 0.5rem 1.1rem; margin-bottom: 1.75rem;
-      font-size: 0.9rem; color: rgba(255,255,255,0.75);
+      font-size: 0.9rem; color: var(--text-muted);
     }
-    .conf-welcome-msg strong { color: #fff; }
+    .conf-welcome-msg strong { color: var(--text-color); }
 
     .conf-card {
-      background: rgba(255,255,255,0.02);
+      background: var(--surface-2);
       border: 1px solid var(--glass-border);
       border-radius: 16px; padding: 1.5rem;
       text-align: left; max-width: 420px; margin: 0 auto 2rem;
     }
     .conf-ref { text-align: center; }
     .conf-ref-label { display: block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
-    .conf-ref-val { display: block; font-family: 'Outfit', sans-serif; font-size: 1.3rem; font-weight: 800; color: #f12545; letter-spacing: 1px; margin-top: 0.2rem; }
+    .conf-ref-val { display: block; font-family: 'Outfit', sans-serif; font-size: 1.3rem; font-weight: 800; color: var(--tunisia-red); letter-spacing: 1px; margin-top: 0.2rem; }
     .conf-divider { height: 1px; background: var(--glass-border); margin: 1rem 0; }
     .conf-rows { display: flex; flex-direction: column; gap: 0.6rem; }
     .conf-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.88rem; color: var(--text-muted); }
@@ -251,7 +365,8 @@ import { TransportTrackingSseService } from '../transport-tracking-sse.service';
     .conf-qr p { font-size: 0.8rem; color: var(--text-muted); margin: 0 0 0.75rem; }
     .conf-qr-box {
       display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
-      padding: 1.25rem; background: rgba(255,255,255,0.03); border-radius: 12px;
+      padding: 1.25rem; background: var(--surface-2); border-radius: 12px;
+      border: 1px solid var(--glass-border);
     }
     .conf-qr-box i { font-size: 3.5rem; color: var(--text-muted); opacity: 0.3; }
     .conf-qr-img { display: block; border-radius: 8px; background: #fff; padding: 8px; }
@@ -658,6 +773,15 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
       return `Pay & confirm · ${total} TND`;
     }
     return `Confirm · ${total} TND`;
+  }
+
+  /** Status chip on confirmation — brand palette only (no PrimeNG info blue). */
+  statusPillClass(status: ReservationStatus): Record<string, boolean> {
+    return {
+      'conf-pill--ok': status === 'CONFIRMED',
+      'conf-pill--pending': status === 'PENDING',
+      'conf-pill--cancelled': status === 'CANCELLED',
+    };
   }
 
   private maxBookableSeats(t: Transport): number {

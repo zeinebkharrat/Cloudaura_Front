@@ -102,11 +102,15 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
                 [showTime]="true"
                 hourFormat="24"
                 [showSeconds]="false"
+                [stepHour]="1"
                 [stepMinute]="15"
-                [showIcon]="true"
+                [showButtonBar]="true"
+                [showIcon]="false"
+                [touchUI]="true"
                 placeholder="Departure date & time"
                 appendTo="body"
-                styleClass="sb-calendar">
+                styleClass="sb-calendar"
+                panelStyleClass="transport-search-calendar-panel">
               </p-calendar>
             </div>
           </div>
@@ -118,15 +122,17 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
             <span class="sb-icon"><i class="pi pi-users"></i></span>
             <div class="sb-inner">
               <span class="sb-label">Passengers</span>
-              <p-inputNumber
-                formControlName="passengers"
-                [min]="1" [max]="20"
-                [showButtons]="true"
-                buttonLayout="horizontal"
-                incrementButtonIcon="pi pi-plus"
-                decrementButtonIcon="pi pi-minus"
-                styleClass="sb-pax-input">
-              </p-inputNumber>
+              <div class="sb-pax-shell">
+                <p-inputNumber
+                  formControlName="passengers"
+                  [min]="1" [max]="20"
+                  [showButtons]="true"
+                  buttonLayout="horizontal"
+                  incrementButtonIcon="pi pi-plus"
+                  decrementButtonIcon="pi pi-minus"
+                  styleClass="sb-pax-input">
+                </p-inputNumber>
+              </div>
             </div>
           </div>
         </form>
@@ -186,79 +192,141 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
     </div>
   `,
   styles: [`
-    .transport-home { min-height: 100vh; padding-bottom: 4rem; }
+    .transport-home {
+      min-height: 100vh;
+      padding-bottom: 4rem;
+      background: var(--bg-color);
+      transition: background-color 0.3s ease;
+    }
 
     /* ---- Hero ---- */
     .hero { position: relative; text-align: center; padding: 3rem 2rem 2.5rem; overflow: hidden; }
     .hero-glow {
       position: absolute; inset: 0; pointer-events: none;
+      background: radial-gradient(ellipse 55% 45% at 50% 0%, rgba(241,37,69,0.08) 0%, transparent 72%);
+    }
+    :host-context([data-theme="light"]) .hero-glow {
+      background: radial-gradient(ellipse 55% 45% at 50% 0%, rgba(241,37,69,0.05) 0%, transparent 72%);
+    }
+    :host-context([data-theme="dark"]) .hero-glow {
       background:
-        radial-gradient(ellipse 60% 50% at 50% 0%, rgba(241,37,69,0.12) 0%, transparent 70%),
-        radial-gradient(ellipse 40% 40% at 80% 20%, rgba(200,30,60,0.06) 0%, transparent 70%);
+        radial-gradient(ellipse 60% 50% at 50% 0%, rgba(241,37,69,0.14) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 40% at 85% 15%, rgba(241,37,69,0.06) 0%, transparent 70%);
     }
     .hero-content { position: relative; z-index: 1; max-width: 640px; margin: 0 auto; }
     .hero-title {
       font-family: 'Outfit', sans-serif;
       font-size: 2.6rem; font-weight: 800; margin: 0 0 0.6rem;
-      background: linear-gradient(135deg, var(--text-color) 0%, rgba(241,37,69,0.85) 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background: linear-gradient(135deg, var(--text-color) 0%, rgba(241,37,69,0.88) 100%);
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
     }
-    .hero-sub { font-size: 1.05rem; color: var(--text-muted, #a8b3c7); margin: 0; line-height: 1.6; }
+    .hero-sub { font-size: 1.05rem; color: var(--text-muted); margin: 0; line-height: 1.6; }
 
-    /* ---- Search Bar ---- */
+    /* ---- Search bar (white card light / elevated slate dark) ---- */
     .search-section { padding: 0 1.5rem; margin-top: 0.5rem; position: relative; z-index: 5; }
-    .map-section { max-width: 1060px; margin: 1rem auto 0; padding: 0 1.5rem; }
+    .map-section { max-width: 1320px; margin: 1rem auto 0; padding: 0 1.5rem; }
     .search-bar {
-      max-width: 1060px; margin: 0 auto;
+      max-width: 1320px; margin: 0 auto;
       display: flex; align-items: stretch;
-      background: var(--surface-1, #111827);
-      border: 1px solid var(--glass-border, rgba(255,255,255,0.1));
+      overflow: visible;
+      background: var(--surface-1);
+      border: 1px solid var(--border-soft);
       border-radius: 16px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.25), 0 0 0 1px rgba(241,37,69,0.08);
-      transition: box-shadow 0.3s;
+      box-shadow: var(--shadow-card);
+      transition: box-shadow 0.28s ease, border-color 0.22s ease;
+    }
+    :host-context([data-theme="light"]) .search-bar {
+      box-shadow: 0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04), 0 0 0 1px rgba(15,23,42,0.03);
+    }
+    :host-context([data-theme="dark"]) .search-bar {
+      box-shadow: var(--shadow-soft);
     }
     .search-bar:focus-within {
-      box-shadow: 0 4px 32px rgba(241,37,69,0.12), 0 0 0 2px rgba(241,37,69,0.2);
+      border-color: color-mix(in srgb, var(--tunisia-red) 38%, var(--border-soft));
+      box-shadow: var(--shadow-card), 0 0 0 3px rgba(241,37,69,0.12);
     }
 
     .sb-field {
-      display: flex; align-items: center; gap: 0.6rem;
-      padding: 0.85rem 1.1rem; flex: 1; min-width: 0;
-      transition: background 0.2s;
+      display: flex; align-items: flex-start;
+      gap: 0.75rem;
+      padding: 1rem 1.125rem 1.1rem;
+      flex: 1; min-width: 0;
+      border-radius: 12px;
+      transition: background 0.2s ease;
     }
-    .sb-field:hover { background: rgba(255,255,255,0.03); }
-    .sb-city { flex: 1.4; }
-    .sb-date { flex: 1; }
-    .sb-pax { flex: 0.85; }
+    :host-context([data-theme="light"]) .sb-field:hover { background: rgba(15,23,42,0.025); }
+    :host-context([data-theme="dark"]) .sb-field:hover { background: rgba(255,255,255,0.04); }
+    .sb-city { flex: 1.25 1 0; min-width: 0; }
+    .sb-date { flex: 2.4 1 14rem; min-width: 12rem; }
+    .sb-date .sb-inner { min-width: 0; overflow: visible; }
+    .sb-pax {
+      flex: 0 1 15rem;
+      min-width: 12.5rem;
+      max-width: 16rem;
+      padding-right: 1.25rem;
+      padding-bottom: 1.05rem;
+      align-items: center;
+    }
+    .sb-pax .sb-icon {
+      margin-top: 0;
+      align-self: center;
+    }
+    .sb-pax .sb-inner {
+      min-height: 0;
+      justify-content: center;
+    }
 
     .sb-icon {
-      width: 36px; height: 36px; border-radius: 10px;
-      background: rgba(241,37,69,0.1);
+      width: 40px; height: 40px; border-radius: 12px;
+      margin-top: 1.2rem;
+      background: color-mix(in srgb, var(--tunisia-red) 10%, transparent);
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
+      transition: transform 0.2s ease, background 0.2s ease;
     }
-    .sb-icon i { font-size: 0.95rem; color: #f12545; }
+    .sb-field:hover .sb-icon { transform: scale(1.03); background: color-mix(in srgb, var(--tunisia-red) 16%, transparent); }
+    .sb-icon i { font-size: 1rem; color: var(--tunisia-red); opacity: 0.92; }
 
-    .sb-inner { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+    .sb-inner { display: flex; flex-direction: column; min-width: 0; flex: 1; gap: 2px; }
     .sb-label {
-      font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.6px; color: var(--text-muted, #667085); margin-bottom: 1px;
+      font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 0;
     }
 
-    .sb-divider { width: 1px; background: var(--glass-border, rgba(255,255,255,0.08)); margin: 0.6rem 0; flex-shrink: 0; }
+    .sb-divider { width: 1px; background: var(--border-soft); margin: 0.625rem 0; flex-shrink: 0; align-self: stretch; }
 
     .sb-swap {
-      width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
-      background: var(--surface-3, #1f2d44); border: 1px solid var(--glass-border);
+      width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+      background: var(--surface-2);
+      border: 1px solid var(--border-soft);
       color: var(--text-color); cursor: pointer;
       display: flex; align-items: center; justify-content: center;
-      align-self: center; margin: 0 -0.3rem;
-      transition: all 0.3s; z-index: 2;
+      align-self: center;
+      margin-top: 1.85rem;
+      margin-left: -0.25rem;
+      margin-right: -0.25rem;
+      transition: background 0.22s ease, color 0.22s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.22s ease;
+      z-index: 2;
     }
-    .sb-swap:hover { background: #f12545; color: #fff; transform: rotate(180deg); }
-    .sb-swap i { font-size: 0.8rem; }
+    .sb-swap:hover {
+      background: var(--tunisia-red);
+      color: #fff;
+      transform: rotate(180deg);
+      box-shadow: 0 6px 18px var(--tunisia-red-glow);
+    }
+    .sb-swap i { font-size: 0.85rem; }
 
-    /* ---- PrimeNG overrides inside search bar ---- */
+    .sb-pax-shell {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      width: 100%;
+      max-width: 100%;
+      margin-top: 0;
+      box-sizing: border-box;
+    }
+
+    /* ---- PrimeNG inside search bar ---- */
     :host ::ng-deep {
       .sb-dropdown, .sb-calendar, .sb-pax-input { width: 100%; }
 
@@ -266,47 +334,80 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
         background: transparent !important; border: none !important;
         box-shadow: none !important; padding: 0;
       }
-      .sb-dropdown .p-dropdown-label {
-        padding: 0.25rem 0 !important; font-weight: 600;
-        font-size: 0.95rem; color: var(--text-color) !important;
+      :host-context([data-theme="light"]) .sb-dropdown .p-dropdown.p-inputwrapper {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
       }
-      .sb-dropdown .p-dropdown-trigger { color: var(--text-muted) !important; }
-      .sb-dropdown .p-dropdown-clear-icon { color: var(--text-muted) !important; }
+      .sb-dropdown .p-dropdown-label {
+        padding: 0.2rem 0 !important; font-weight: 600;
+        font-size: 0.95rem; color: var(--text-color) !important;
+        transition: color 0.2s ease;
+      }
+      .sb-dropdown .p-dropdown.p-inputwrapper-filled .p-dropdown-label {
+        color: var(--tunisia-red) !important;
+      }
+      .sb-dropdown .p-dropdown.p-inputwrapper-filled .p-dropdown-trigger {
+        color: color-mix(in srgb, var(--tunisia-red) 75%, var(--text-muted)) !important;
+      }
+      .sb-dropdown .p-dropdown-label.p-placeholder { color: var(--text-muted) !important; opacity: 0.9; }
+      .sb-dropdown .p-dropdown-trigger { color: var(--text-muted) !important; transition: color 0.2s ease; }
+      .sb-dropdown .p-dropdown:not(.p-disabled).p-focus .p-dropdown-label { color: var(--text-color) !important; }
+      .sb-dropdown .p-dropdown:not(.p-disabled).p-focus.p-inputwrapper-filled .p-dropdown-label {
+        color: var(--tunisia-red) !important;
+      }
 
-      .sb-calendar .p-calendar { background: transparent !important; }
+      .sb-calendar .p-calendar { background: transparent !important; width: 100%; display: block; }
       .sb-calendar .p-inputtext {
         background: transparent !important; border: none !important;
-        box-shadow: none !important; padding: 0.25rem 0 !important;
+        box-shadow: none !important; padding: 0.2rem 0 !important;
         font-weight: 600; font-size: 0.95rem; color: var(--text-color) !important;
-      }
-      .sb-calendar .p-datepicker-trigger {
-        background: transparent !important; border: none !important;
-        color: var(--text-muted) !important;
+        width: 100% !important; min-width: 0;
       }
 
-      .p-datepicker-panel .p-timepicker,
-      .p-datepicker-panel .p-datepicker-time-picker {
-        border-top: 1px solid var(--glass-border, rgba(255,255,255,0.1));
-        padding-top: 0.5rem;
+      .sb-pax-shell .p-inputnumber {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 0.35rem !important;
+        padding: 0.2rem 0.3rem !important;
+        border-radius: 12px !important;
+        border: 1px solid var(--border-soft) !important;
+        background: var(--input-bg) !important;
+        box-shadow: 0 1px 2px rgba(15,23,42,0.04) !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        flex-wrap: nowrap !important;
       }
-      .p-datepicker-panel .p-timepicker span,
-      .p-datepicker-panel .p-datepicker-time-picker button,
-      .p-datepicker-panel .p-datepicker-time-picker span {
-        color: var(--text-color, #e5e7eb);
+      :host-context([data-theme="dark"]) .sb-pax-shell .p-inputnumber {
+        box-shadow: none !important;
       }
-
-      .sb-pax-input .p-inputnumber { background: transparent !important; }
       .sb-pax-input .p-inputnumber-input {
         background: transparent !important; border: none !important;
-        box-shadow: none !important; padding: 0.25rem 0 !important;
-        font-weight: 700; font-size: 1rem; color: var(--text-color) !important;
-        text-align: center; width: 3rem;
+        box-shadow: none !important; padding: 0.3rem 0.15rem !important;
+        font-weight: 700; font-size: 0.95rem; color: var(--text-color) !important;
+        text-align: center;
+        width: 1.85rem !important;
+        min-width: 1.5rem !important;
+        flex: 1 1 auto !important;
+        max-width: 2.5rem !important;
       }
       .sb-pax-input .p-inputnumber-button {
-        background: rgba(241,37,69,0.12) !important; border: none !important;
-        color: #f12545 !important; width: 28px; height: 28px;
+        background: color-mix(in srgb, var(--tunisia-red) 12%, transparent) !important;
+        border: none !important;
+        color: var(--tunisia-red) !important;
+        width: 30px !important;
+        height: 30px !important;
+        min-width: 30px !important;
+        border-radius: 10px !important;
+        flex-shrink: 0 !important;
+        transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease !important;
       }
-      .sb-pax-input .p-inputnumber-button:hover { background: #f12545 !important; color: #fff !important; }
+      .sb-pax-input .p-inputnumber-button:hover {
+        background: var(--tunisia-red) !important;
+        color: #fff !important;
+        transform: scale(1.05);
+      }
     }
 
     /* ---- Transport Type Cards ---- */
@@ -320,12 +421,13 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
     }
 
     .tcard {
-      display: flex; flex-direction: column; align-items: center; gap: 0.6rem;
+      display: flex; flex-direction: column; align-items: center; gap: 0.65rem;
       padding: 2rem 1rem 1.5rem;
-      background: var(--surface-1, #111827);
-      border: 2px solid var(--glass-border, rgba(255,255,255,0.08));
-      border-radius: 18px; cursor: pointer; position: relative;
-      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      background: var(--surface-1);
+      border: 1px solid var(--border-soft);
+      border-radius: 16px; cursor: pointer; position: relative;
+      box-shadow: var(--shadow-card);
+      transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.25s ease;
     }
     .tcard-icon {
       display: flex; align-items: center; justify-content: center;
@@ -333,7 +435,7 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
     }
     .tcard-img {
       width: 2.8rem; height: 2.8rem; object-fit: contain;
-      filter: drop-shadow(0 2px 6px rgba(0,0,0,0.25));
+      filter: drop-shadow(0 2px 8px color-mix(in srgb, var(--text-color) 12%, transparent));
     }
     .tcard-disabled .tcard-img, .tcard-waiting .tcard-img { opacity: 0.4; filter: grayscale(1); }
     .tcard-name { font-weight: 700; font-size: 0.95rem; color: var(--text-color); }
@@ -367,21 +469,26 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
     .popular { max-width: 900px; margin: 3rem auto 0; padding: 0 1.5rem; }
     .popular-heading {
       text-align: center; font-size: 0.75rem; text-transform: uppercase;
-      letter-spacing: 1.2px; color: var(--text-muted); opacity: 0.5;
+      letter-spacing: 1.2px; color: var(--text-muted);
       margin-bottom: 1rem;
+      font-weight: 700;
     }
     .popular-list { display: flex; justify-content: center; gap: 0.65rem; flex-wrap: wrap; }
     .pop-chip {
-      display: flex; align-items: center; gap: 0.45rem;
-      background: var(--surface-1, #111827);
-      border: 1px solid var(--glass-border);
-      padding: 0.55rem 1.15rem; border-radius: 50px;
+      display: flex; align-items: center; gap: 0.5rem;
+      background: var(--surface-1);
+      border: 1px solid var(--border-soft);
+      padding: 0.55rem 1.2rem; border-radius: 999px;
       color: var(--text-color); cursor: pointer; font-size: 0.88rem;
-      transition: all 0.25s;
+      font-weight: 500;
+      box-shadow: 0 1px 2px rgba(15,23,42,0.04);
+      transition: border-color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease, background 0.22s ease;
     }
     .pop-chip:hover {
-      border-color: rgba(241,37,69,0.3); background: rgba(241,37,69,0.05);
+      border-color: color-mix(in srgb, var(--tunisia-red) 35%, var(--border-soft));
+      background: color-mix(in srgb, var(--tunisia-red) 5%, var(--surface-1));
       transform: translateY(-2px);
+      box-shadow: var(--shadow-card);
     }
     .pop-icon-img { width: 1.2rem; height: 1.2rem; object-fit: contain; }
     .pop-arrow { font-size: 0.6rem; opacity: 0.3; transition: all 0.2s; margin-left: 0.2rem; }
@@ -393,6 +500,12 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
       .search-bar { flex-direction: column; border-radius: 20px; }
       .sb-divider { width: 100%; height: 1px; margin: 0; }
       .sb-swap { align-self: center; margin: -0.6rem 0; }
+      .sb-pax {
+        flex: 1 1 auto;
+        max-width: none;
+        width: 100%;
+        padding-right: 1.125rem;
+      }
       .types-grid { grid-template-columns: repeat(2, 1fr); }
     }
   `]

@@ -423,9 +423,13 @@ export class TransportResultsPageComponent implements OnInit {
     return map[type] ?? '';
   }
 
-  getTypeSeverity(type: string): 'success' | 'info' | 'warning' | 'danger' | undefined {
-    const map: Record<string, 'success' | 'info' | 'warning' | 'danger'> = {
-      BUS: 'success', VAN: 'info', TAXI: 'warning', PLANE: 'danger', CAR: 'info'
+  getTypeSeverity(type: string): 'success' | 'warning' | 'danger' | undefined {
+    const map: Record<string, 'success' | 'warning' | 'danger'> = {
+      BUS: 'success',
+      VAN: 'warning',
+      TAXI: 'warning',
+      PLANE: 'danger',
+      CAR: 'success',
     };
     return map[type];
   }

@@ -220,8 +220,8 @@
                   <div class="conf-divider"></div>
                   <div class="conf-rows">
                     <div class="conf-row"><span>Amount</span><strong>{{ r.totalPrice }} TND</strong></div>
-                    <div class="conf-row"><span>Status</span><p-tag [value]="r.status" severity="success"></p-tag></div>
-                    <div class="conf-row"><span>Payment</span><p-tag [value]="r.paymentMethod" severity="info"></p-tag></div>
+                    <div class="conf-row"><span>Status</span><span class="conf-pill" [ngClass]="statusPillClass(r.status)">{{ r.status }}</span></div>
+                    <div class="conf-row"><span>Payment</span><span class="conf-pill conf-pill--pay">{{ r.paymentMethod }}</span></div>
                   </div>
                   @if (r.status === 'CONFIRMED') {
                     <div class="conf-divider"></div>

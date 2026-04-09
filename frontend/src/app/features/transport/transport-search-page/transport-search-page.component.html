@@ -1,0 +1,171 @@
+<div class="transport-home">
+  <section class="hero">
+    <div class="hero-glow" aria-hidden="true"></div>
+    <div class="hero-content">
+      <h1 class="hero-title">Find your ride</h1>
+      <p class="hero-sub">Compare and book buses, taxis, car rentals and flights across Tunisia</p>
+    </div>
+  </section>
+
+  <section class="search-section">
+    <form [formGroup]="searchForm" class="search-bar">
+      <div class="sb-field sb-city">
+        <span class="sb-icon"><i class="pi pi-map-marker"></i></span>
+        <div class="sb-inner">
+          <span class="sb-label">From</span>
+          <p-dropdown
+            formControlName="from"
+            [options]="cities()"
+            optionLabel="name"
+            optionValue="id"
+            [filter]="true"
+            filterBy="name"
+            placeholder="Departure city"
+            [showClear]="false"
+            appendTo="body"
+            styleClass="sb-dropdown"
+          >
+          </p-dropdown>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        class="sb-swap"
+        (click)="swapCities()"
+        pRipple
+        pTooltip="Swap cities"
+        tooltipPosition="top"
+      >
+        <i class="pi pi-arrows-h"></i>
+      </button>
+
+      <div class="sb-field sb-city">
+        <span class="sb-icon"><i class="pi pi-flag"></i></span>
+        <div class="sb-inner">
+          <span class="sb-label">To</span>
+          <p-dropdown
+            formControlName="to"
+            [options]="cities()"
+            optionLabel="name"
+            optionValue="id"
+            [filter]="true"
+            filterBy="name"
+            placeholder="Arrival city"
+            [showClear]="false"
+            appendTo="body"
+            styleClass="sb-dropdown"
+          >
+          </p-dropdown>
+        </div>
+      </div>
+
+      <div class="sb-divider" aria-hidden="true"></div>
+
+      <div class="sb-field sb-date">
+        <span class="sb-icon"><i class="pi pi-calendar"></i></span>
+        <div class="sb-inner">
+          <span class="sb-label">Date &amp; time</span>
+          <p-calendar
+            formControlName="date"
+            dateFormat="dd/mm/yy"
+            [minDate]="minCalendarDate"
+            [showTime]="true"
+            hourFormat="24"
+            [showSeconds]="false"
+            [stepHour]="1"
+            [stepMinute]="1"
+            [showButtonBar]="true"
+            [showIcon]="false"
+            placeholder="Departure date & time"
+            appendTo="body"
+            styleClass="sb-calendar"
+          >
+          </p-calendar>
+        </div>
+      </div>
+
+      <div class="sb-divider" aria-hidden="true"></div>
+
+      <div class="sb-field sb-pax">
+        <span class="sb-icon"><i class="pi pi-users"></i></span>
+        <div class="sb-inner">
+          <span class="sb-label">Passengers</span>
+          <p-inputNumber
+            formControlName="passengers"
+            [min]="1"
+            [max]="20"
+            [showButtons]="true"
+            buttonLayout="horizontal"
+            incrementButtonIcon="pi pi-plus"
+            decrementButtonIcon="pi pi-minus"
+            styleClass="sb-pax-input"
+          >
+          </p-inputNumber>
+        </div>
+      </div>
+    </form>
+
+    <div class="search-actions">
+      <button type="button" class="ts-cta" pRipple (click)="primarySearch()">
+        <i class="pi pi-search" aria-hidden="true"></i>
+        <span>Search rides</span>
+      </button>
+      <p class="ts-cta-hint">Uses the first available mode for your route, or choose a type below</p>
+    </div>
+  </section>
+
+  @if (hasBothCities()) {
+    <section class="map-section">
+      <app-transport-route-map
+        [fromCity]="cityById(fromCityId())"
+        [toCity]="cityById(toCityId())"
+        (routeSummary)="onRouteSummary($event)"
+      />
+    </section>
+  }
+
+  <section class="types-section">
+    <h2 class="types-title">
+      {{ hasBothCities() ? 'Choose how you want to travel' : 'Select cities to see available modes' }}
+    </h2>
+
+    <div class="types-grid">
+      @for (card of typeCards(); track card.type) {
+        <div
+          class="tcard"
+          [class.tcard-active]="card.available"
+          [class.tcard-disabled]="!card.available && hasBothCities()"
+          [class.tcard-waiting]="!hasBothCities()"
+          [pTooltip]="card.reason ?? ''"
+          tooltipPosition="top"
+          (click)="onTypeClick(card)"
+        >
+          <div class="tcard-icon">
+            <img [src]="card.iconPath" [alt]="card.label" class="tcard-img" />
+          </div>
+          <span class="tcard-name">{{ card.label }}</span>
+
+          @if (card.available) {
+            <span class="tcard-badge tcard-ok">Available</span>
+          } @else if (hasBothCities()) {
+            <span class="tcard-badge tcard-no">Unavailable</span>
+          }
+        </div>
+      }
+    </div>
+  </section>
+
+  <section class="popular">
+    <h3 class="popular-heading">Popular routes</h3>
+    <div class="popular-list">
+      @for (r of popularRoutes; track r.label) {
+        <button type="button" class="pop-chip" pRipple (click)="quickSearch(r)">
+          <img [src]="r.icon" [alt]="r.type" class="pop-icon-img" />
+          {{ r.label }}
+          <i class="pi pi-chevron-right pop-arrow" aria-hidden="true"></i>
+        </button>
+      }
+    </div>
+  </section>
+</div>

@@ -60,8 +60,8 @@ import { Accommodation } from '../../../core/models/travel.models';
   `,
   styles: [`
     .hotel-card {
-      background: #161922;
-      border: 1px solid rgba(255,255,255,0.06);
+      background: var(--surface-1);
+      border: 1px solid var(--border-soft);
       border-radius: 18px;
       overflow: hidden;
       cursor: pointer;
@@ -72,8 +72,8 @@ import { Accommodation } from '../../../core/models/travel.models';
     }
     .hotel-card:hover {
       transform: translateY(-6px);
-      box-shadow: 0 20px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(241,37,69,0.2);
-      border-color: rgba(241,37,69,0.3);
+      box-shadow: var(--shadow-card), 0 0 0 1px color-mix(in srgb, var(--tunisia-red) 22%, transparent);
+      border-color: color-mix(in srgb, var(--tunisia-red) 35%, var(--border-soft));
     }
 
     /* Visual Area */
@@ -148,7 +148,7 @@ import { Accommodation } from '../../../core/models/travel.models';
     .hotel-name {
       font-size: 1.1rem;
       font-weight: 700;
-      color: #fff;
+      color: var(--text-color);
       margin: 0 0 8px 0;
       line-height: 1.3;
       display: -webkit-box;
@@ -160,22 +160,22 @@ import { Accommodation } from '../../../core/models/travel.models';
       display: flex;
       align-items: center;
       gap: 8px;
-      color: rgba(255,255,255,0.5);
+      color: var(--text-muted);
       font-size: 0.85rem;
       margin-bottom: 12px;
     }
     .loc-dot {
       width: 6px; height: 6px;
       border-radius: 50%;
-      background: #f12545;
+      background: var(--tunisia-red);
       flex-shrink: 0;
     }
     .region-tag {
-      background: rgba(255,255,255,0.08);
+      background: var(--surface-2);
       padding: 2px 8px;
       border-radius: 4px;
       font-size: 0.72rem;
-      color: rgba(255,255,255,0.45);
+      color: var(--text-muted);
     }
 
     /* Amenities */
@@ -191,12 +191,12 @@ import { Accommodation } from '../../../core/models/travel.models';
       gap: 5px;
       font-size: 0.72rem;
       padding: 4px 8px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.06);
+      background: var(--surface-2);
+      border: 1px solid var(--border-soft);
       border-radius: 6px;
-      color: rgba(255,255,255,0.6);
+      color: var(--text-muted);
     }
-    .amenity-pi { font-size: 0.78rem; color: rgba(200, 184, 232, 0.95); }
+    .amenity-pi { font-size: 0.78rem; color: var(--tunisia-red); opacity: 0.9; }
 
     /* Footer */
     .card-footer {
@@ -205,23 +205,23 @@ import { Accommodation } from '../../../core/models/travel.models';
       align-items: center;
       margin-top: auto;
       padding-top: 12px;
-      border-top: 1px solid rgba(255,255,255,0.06);
+      border-top: 1px solid var(--border-soft);
     }
     .price-block { display: flex; align-items: baseline; gap: 4px; }
     .price-value {
       font-size: 1.5rem;
       font-weight: 800;
-      color: #fff;
+      color: var(--text-color);
     }
     .price-currency {
       font-size: 0.8rem;
-      color: rgba(255,255,255,0.4);
+      color: var(--text-muted);
     }
     .price-currency small {
       font-size: 0.7rem;
     }
     .btn-voir {
-      background: #f12545;
+      background: var(--tunisia-red);
       border: none;
       color: #fff;
       padding: 10px 18px;
@@ -235,9 +235,9 @@ import { Accommodation } from '../../../core/models/travel.models';
       gap: 6px;
     }
     .btn-voir:hover {
-      background: #ff3355;
+      filter: brightness(1.06);
       transform: translateX(2px);
-      box-shadow: 0 4px 12px rgba(241,37,69,0.3);
+      box-shadow: 0 4px 12px var(--tunisia-red-glow);
     }
     .arrow { transition: transform 0.2s; }
     .hotel-card:hover .arrow { transform: translateX(3px); }
