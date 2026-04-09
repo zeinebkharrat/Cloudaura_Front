@@ -50,6 +50,21 @@ public class PostMediaController {
 
     @DeleteMapping("/deleteMedia/{id}")
     public void deleteMedia(@PathVariable Integer id) {
+        PostMedia media = mediaService.retrieveMediaWithPostAuthor(id);
+        if (media == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Media not found");
+        }
+
+        Post linkedPost = media.getPost();
+        if (linkedPost == null || linkedPost.getAuthor() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Media is not linked to a valid post");
+        }
+
+        User currentUser = getCurrentUser();
+        if (!linkedPost.getAuthor().getUserId().equals(currentUser.getUserId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the post owner can delete media");
+        }
+
         mediaService.removeMedia(id);
     }
 

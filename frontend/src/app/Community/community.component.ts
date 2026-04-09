@@ -1,5 +1,6 @@
 import { Component, ElementRef, HostListener, OnDestroy, ViewChild, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin, firstValueFrom, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -466,7 +467,26 @@ export class CommunityComponent {
       
     } catch (error) {
       console.error('Error creating post:', error);
-      this.loadError.set('Failed to create post');
+
+      const httpError = error as HttpErrorResponse;
+      const backendMessage =
+        (typeof httpError?.error === 'string' && httpError.error.trim().length > 0)
+          ? httpError.error
+          : (typeof httpError?.error?.message === 'string' ? httpError.error.message : '');
+
+      if (
+        httpError?.status === 422 &&
+        /bad words|inappropriate|profanity|cannot be published/i.test(backendMessage)
+      ) {
+        await Swal.fire({
+          icon: 'warning',
+          title: 'Post blocked',
+          text: backendMessage || 'You cannot use bad words in posts.',
+          ...this.swalTheme(),
+        });
+      } else {
+        this.loadError.set('Failed to create post');
+      }
     } finally {
       this.isPosting.set(false);
     }

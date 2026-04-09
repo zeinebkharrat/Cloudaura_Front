@@ -5,6 +5,7 @@ import { VirtualTourPageComponent } from './virtual-tour-page.component';
 import { FeaturePageComponent } from './feature-page.component';
 import { CommunityComponent } from './Community/community.component';
 import { MyPostsComponent } from './Community/my-posts.component';
+import { DigitalPassportComponent } from './Community/digital-passport.component';
 import { UserProfileComponent } from './Community/user-profile.component';
 import { FollowListComponent } from './Community/follow-list.component';
 import { SignInComponent } from './sign-in.component';
@@ -442,6 +443,11 @@ export const routes: Routes = [
       {
         path: 'my-posts',
         component: MyPostsComponent,
+        canActivate: [authGuard],
+      },
+      {
+        path: 'digital-passport',
+        component: DigitalPassportComponent,
         canActivate: [authGuard],
       },
       {

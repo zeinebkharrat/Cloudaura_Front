@@ -6,6 +6,7 @@ import org.example.backend.exception.*;
 import org.example.backend.exception.InvalidTransportException;
 import org.example.backend.exception.VehicleConflictException;
 import org.example.backend.exception.DriverConflictException;
+import org.apache.catalina.connector.ClientAbortException;
 import org.springframework.http.MediaType;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -164,12 +165,18 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 
+    @ExceptionHandler(ClientAbortException.class)
+    public ResponseEntity<Void> handleClientAbort(ClientAbortException ex) {
+        log.debug("Client aborted response stream: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleUnhandled(Exception ex) {
         log.error("Unhandled server error", ex);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error(
-                        "An unexpected error occurred. Please try again later.",
-                        "INTERNAL_SERVER_ERROR"));
+        return json(HttpStatus.INTERNAL_SERVER_ERROR,
+                ApiResponse.error(
+                    "An unexpected error occurred. Please try again later.",
+                    "INTERNAL_SERVER_ERROR"));
     }
 }
