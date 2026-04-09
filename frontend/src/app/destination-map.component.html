@@ -5,10 +5,12 @@
     <div class="image-detect-box">
       <label class="image-upload-btn" [class.disabled]="isImageDetecting()">
         <input type="file" accept="image/*" (change)="onCityImageUpload($event)" [disabled]="isImageDetecting()" />
-        <span class="upload-icon">📷</span>
+        <!-- <span class="upload-pill">AI Vision</span> -->
+        <span class="upload-icon">📸</span>
         <span class="upload-text">
           <strong>{{ isImageDetecting() ? 'Analyzing image...' : 'Search city by image' }}</strong>
-          <small>Drop or choose a photo to auto-detect the matching Tunisian city</small>
+          <small>Drop or choose a photo to auto-detect the matching Tunisian city.</small>
+          <em>Smart landmark detection with instant map highlight.</em>
         </span>
       </label>
       @if (imageDetectionMessage()) {
