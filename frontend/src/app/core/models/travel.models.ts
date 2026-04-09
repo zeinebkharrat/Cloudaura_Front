@@ -3,7 +3,7 @@ export type TransportType = 'BUS' | 'CAR' | 'PLANE' | 'TAXI' | 'VAN' | 'TRAIN' |
 export type AccommodationStatus = 'AVAILABLE' | 'UNAVAILABLE';
 export type ReservationStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED';
 export type PaymentStatus = 'PENDING' | 'PAID' | 'REFUNDED';
-export type PaymentMethod = 'CASH' | 'KONNECT';
+export type PaymentMethod = 'CASH' | 'KONNECT' | 'STRIPE' | 'PAYPAL';
 
 export interface City {
   id: number;
@@ -90,6 +90,32 @@ export interface TransportReservationInput {
   numberOfSeats: number;
   paymentMethod: PaymentMethod;
   idempotencyKey: string;
+  travelDate?: string;
+  routeKm?: number;
+  rentalDays?: number;
+}
+
+export interface TransportCheckoutPayload {
+  transportId: number;
+  numberOfSeats: number;
+  travelDate: string;
+  routeKm?: number;
+  rentalDays?: number;
+  passengerFirstName: string;
+  passengerLastName: string;
+  passengerEmail: string;
+  passengerPhone: string;
+  idempotencyKey: string;
+}
+
+/** PATCH body for updating an existing transport booking. */
+export interface TransportReservationUpdatePayload {
+  numberOfSeats: number;
+  passengerFirstName: string;
+  passengerLastName: string;
+  passengerEmail: string;
+  passengerPhone: string;
+  paymentMethod: PaymentMethod;
 }
 
 export interface TransportReservation {
@@ -118,6 +144,9 @@ export interface TransportReservation {
 /** Stay reservation list item (maps API accommodation reservation DTO). */
 export interface AccommodationReservation {
   id: number;
+  /** Present when API returns it — used to reopen edit flow. */
+  accommodationId?: number;
+  roomId?: number;
   status: ReservationStatus;
   totalPrice: number;
   accommodationName?: string;
@@ -147,6 +176,8 @@ export interface Reservation {
   id: number;
   status: ReservationStatus;
   totalPrice: number;
+  /** Set after accommodation Stripe confirm / list mapping. */
+  accommodationId?: number;
   checkInDate?: string;
   checkOutDate?: string;
   /** API body for accommodation booking (LocalDate strings). */

@@ -25,6 +25,11 @@
              [class.locked]="!isUnlocked(i)"
              (click)="playNode(node, i)">
              
+          @if (!isLoggedIn()) {
+            <div class="node-auth-overlay">
+              <span class="auth-hint">Connectez-vous pour jouer</span>
+            </div>
+          }
           <!-- Right side label for left-shifted nodes -->
           @if (i % 2 === 0) {
             <div class="node-label-right">{{ node.nodeLabel }}</div>
@@ -107,7 +112,11 @@
           <img [src]="p.imageDataUrl" [alt]="p.title" />
           <div class="puzzle-card__meta">
             <h3>{{ p.title }}</h3>
-            <span>Play →</span>
+            @if (isLoggedIn()) {
+              <span>Play →</span>
+            } @else {
+              <span class="ludo-signin-hint">Connexion requise →</span>
+            }
           </div>
         </button>
       }
@@ -124,11 +133,15 @@
       <span class="line"></span>
     </div>
     <div class="puzzle-grid">
-      <button class="puzzle-card" (click)="playLudo()">
+      <button type="button" class="puzzle-card" (click)="playLudo()" [attr.aria-label]="isLoggedIn() ? 'Play Ludo Tunisia' : 'Sign in to play Ludo Tunisia'">
         <div class="ludo-cover">🎲</div>
         <div class="puzzle-card__meta">
           <h3>Ludo Tunisia board</h3>
-          <span>Play →</span>
+          @if (isLoggedIn()) {
+            <span>Play →</span>
+          } @else {
+            <span class="ludo-signin-hint">Connexion requise →</span>
+          }
         </div>
       </button>
       @if (ludoCards().length > 0) {

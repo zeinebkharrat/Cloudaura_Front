@@ -46,6 +46,12 @@ public class ActivityReservationService {
 
     @Transactional
     public ActivityReservationResponse create(Integer activityId, CreateActivityReservationRequest request) {
+        ActivityReservation saved = createPendingReservation(activityId, request);
+        return toResponse(saved);
+    }
+
+    @Transactional
+    public ActivityReservation createPendingReservation(Integer activityId, CreateActivityReservationRequest request) {
         Activity activity = activityRepository.findById(activityId)
             .orElseThrow(() -> new ResourceNotFoundException("Activité introuvable: " + activityId));
 
@@ -87,15 +93,23 @@ public class ActivityReservationService {
         reservation.setTotalPrice(unitPrice * numberOfPeople);
         reservation.setStatus(ReservationStatus.PENDING);
 
-        ActivityReservation saved = reservationRepository.save(reservation);
+        return reservationRepository.save(reservation);
+    }
+
+    public ActivityReservationResponse toResponse(ActivityReservation reservation) {
+        LocalDate date = reservation.getReservationDate()
+            .toInstant()
+            .atOffset(ZoneOffset.UTC)
+            .toLocalDate();
+
         return new ActivityReservationResponse(
-            saved.getActivityReservationId(),
-            activity.getActivityId(),
-            activity.getName(),
+            reservation.getActivityReservationId(),
+            reservation.getActivity().getActivityId(),
+            reservation.getActivity().getName(),
             date.toString(),
-            saved.getNumberOfPeople(),
-            saved.getTotalPrice(),
-            saved.getStatus()
+            reservation.getNumberOfPeople(),
+            reservation.getTotalPrice(),
+            reservation.getStatus()
         );
     }
 
@@ -257,7 +271,7 @@ public class ActivityReservationService {
         }
 
         String username = authentication.getName();
-        return userRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(username, username)
+        return userRepository.findFirstByUsernameIgnoreCaseOrEmailIgnoreCaseOrderByUserIdAsc(username, username)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Utilisateur authentifié introuvable"));
     }
 }

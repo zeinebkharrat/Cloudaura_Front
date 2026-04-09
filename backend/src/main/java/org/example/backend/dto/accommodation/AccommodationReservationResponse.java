@@ -9,6 +9,9 @@ import java.time.LocalDate;
 @Data @Builder @NoArgsConstructor @AllArgsConstructor
 public class AccommodationReservationResponse {
     private int reservationId;
+    /** For reopening the booking flow (edit dates). */
+    private Integer accommodationId;
+    private Integer roomId;
     private String status;
     private LocalDate checkIn;
     private LocalDate checkOut;

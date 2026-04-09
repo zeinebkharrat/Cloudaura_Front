@@ -11,6 +11,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Date;
 import java.util.List;
 
 @RestController
@@ -30,6 +31,9 @@ public class CommentController {
         // Force the author to be the authenticated user
         User currentUser = getCurrentUser();
         comment.setAuthor(currentUser);
+        Date now = new Date();
+        comment.setCreatedAt(now);
+        comment.setUpdatedAt(now);
         return commentService.addComment(comment);
     }
 
@@ -52,6 +56,8 @@ public class CommentController {
         comment.setAuthor(currentUser);
         comment.setPost(existingComment.getPost());
         comment.setParent(existingComment.getParent());
+        comment.setCreatedAt(existingComment.getCreatedAt());
+        comment.setUpdatedAt(new Date());
         return commentService.updateComment(comment);
     }
 

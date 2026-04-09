@@ -12,8 +12,10 @@ import java.util.List;
 public interface UserRepository extends JpaRepository<User, Integer> {
     Optional<User> findByUsername(String username);
     Optional<User> findByEmail(String email);
-    Optional<User> findByUsernameIgnoreCase(String username);
-    Optional<User> findByEmailIgnoreCase(String email);
+    /** En cas de doublons historiques en base, on prend l’utilisateur au plus petit id. */
+    Optional<User> findFirstByUsernameIgnoreCaseOrderByUserIdAsc(String username);
+
+    Optional<User> findFirstByEmailIgnoreCaseOrderByUserIdAsc(String email);
     
     @Query("SELECT u FROM User u WHERE " +
            "LOWER(u.username) LIKE LOWER(CONCAT('%', :term, '%')) OR " +
@@ -26,5 +28,5 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     boolean existsByUsernameIgnoreCase(String username);
     boolean existsByEmailIgnoreCase(String email);
 
-    Optional<User> findByUsernameIgnoreCaseOrEmailIgnoreCase(String username, String email);
+    Optional<User> findFirstByUsernameIgnoreCaseOrEmailIgnoreCaseOrderByUserIdAsc(String username, String email);
 }

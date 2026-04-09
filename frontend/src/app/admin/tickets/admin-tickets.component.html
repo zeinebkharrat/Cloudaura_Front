@@ -1,0 +1,143 @@
+<div class="tickets-page">
+  <header class="tickets-header">
+    <div class="title-wrap">
+      <p class="eyebrow">Ticket Manager</p>
+      <h1>Tickets</h1>
+      <p class="subtitle">Filter tickets, scan QR codes, and validate attendance in real time.</p>
+    </div>
+
+    <div class="header-actions">
+      <button type="button" class="btn btn-scan" (click)="openScanner()">
+        <i class="pi pi-camera"></i>
+        Open Scanner
+      </button>
+    </div>
+  </header>
+
+  <section class="filters-card">
+    <div class="filter-grid">
+      <label class="field">
+        <span>Search</span>
+        <input
+          type="text"
+          [(ngModel)]="searchQuery"
+          placeholder="User name, event name, or ticket name"
+          (keyup.enter)="onFiltersChanged()"
+        />
+      </label>
+
+      <label class="field">
+        <span>Date</span>
+        <input type="date" [(ngModel)]="filterDate" (change)="onFiltersChanged()" />
+      </label>
+
+      <label class="field">
+        <span>Status</span>
+        <select [(ngModel)]="statusFilter" (change)="applyClientFilters()">
+          <option value="ALL">All</option>
+          <option value="UPCOMING">Upcoming</option>
+          <option value="PRESENT">Present</option>
+          <option value="ABSENT">Absent</option>
+        </select>
+      </label>
+
+      <div class="filter-actions">
+        <button type="button" class="btn" (click)="onFiltersChanged()">Apply</button>
+        <button type="button" class="btn btn-ghost" (click)="resetFilters()">Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="table-card">
+    @if (loading) {
+      <div class="state loading">Loading tickets...</div>
+    } @else if (filteredTickets.length === 0) {
+      <div class="state empty">No tickets found.</div>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Ticket Name</th>
+              <th>User Name</th>
+              <th>Event Name</th>
+              <th>Start Date</th>
+              <th>QR Token</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (ticket of filteredTickets; track ticket.reservationItemId) {
+              <tr>
+                <td>{{ ticket.ticketName || '-' }}</td>
+                <td>{{ ticket.userName || '-' }}</td>
+                <td>{{ ticket.eventName || '-' }}</td>
+                <td>{{ ticket.startDate ? (ticket.startDate | date:'mediumDate') : '-' }}</td>
+                <td><code>{{ ticket.qrCodeToken || '-' }}</code></td>
+                <td>
+                  <span class="badge" [ngClass]="statusClass(ticket.attendanceStatus)">
+                    {{ statusLabel(ticket.attendanceStatus) }}
+                  </span>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+
+  @if (scannerOpen) {
+    <div class="scanner-backdrop" (click)="closeScanner()"></div>
+    <section class="scanner-modal" role="dialog" aria-modal="true">
+      <header class="scanner-head">
+        <h2>QR Scanner</h2>
+        <button type="button" class="close-btn" (click)="closeScanner()">
+          <i class="pi pi-times"></i>
+        </button>
+      </header>
+
+      <div class="scanner-body">
+        @if (scannerSupported) {
+          <div class="camera-box">
+            @if (cameraBusy) {
+              <p>Starting camera...</p>
+            }
+            <video id="ticket-scan-video" muted autoplay playsinline></video>
+          </div>
+        } @else {
+          <p class="warning">Camera scanning is unavailable. Please check browser permissions and use manual token input if needed.</p>
+        }
+
+        <div class="manual-input">
+          <label for="manual-token">Manual token input</label>
+          <div class="manual-row">
+            <input
+              id="manual-token"
+              type="text"
+              [(ngModel)]="manualToken"
+              placeholder="Paste QR UUID token"
+              (keyup.enter)="validateManualToken()"
+            />
+            <button type="button" class="btn" [disabled]="scanBusy" (click)="validateManualToken()">
+              {{ scanBusy ? 'Checking...' : 'Validate' }}
+            </button>
+          </div>
+        </div>
+
+        @if (scanResult) {
+          <div class="scan-result" [class.scan-ok]="scanResult.found" [class.scan-fail]="!scanResult.found || scanResult.alreadyScanned">
+            <p>{{ scanResult.message }}</p>
+            @if (scanResult.ticket) {
+              <div class="result-details">
+                <p><strong>Ticket:</strong> {{ scanResult.ticket.ticketName || '-' }}</p>
+                <p><strong>User:</strong> {{ scanResult.ticket.userName || '-' }}</p>
+                <p><strong>Event:</strong> {{ scanResult.ticket.eventName || '-' }}</p>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </section>
+  }
+</div>

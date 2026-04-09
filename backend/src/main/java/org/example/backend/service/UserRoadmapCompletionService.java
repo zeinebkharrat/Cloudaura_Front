@@ -21,12 +21,15 @@ public class UserRoadmapCompletionService {
 
     private final RoadmapNodeRepository roadRepo;
     private final UserRoadmapCompletionRepository roadmapCompletionRepo;
+    private final GamificationService gamificationService;
 
     public UserRoadmapCompletionService(
             RoadmapNodeRepository roadRepo,
-            UserRoadmapCompletionRepository roadmapCompletionRepo) {
+            UserRoadmapCompletionRepository roadmapCompletionRepo,
+            GamificationService gamificationService) {
         this.roadRepo = roadRepo;
         this.roadmapCompletionRepo = roadmapCompletionRepo;
+        this.gamificationService = gamificationService;
     }
 
     @Transactional
@@ -102,6 +105,7 @@ public class UserRoadmapCompletionService {
             }
         }
         roadmapCompletionRepo.save(row);
+        gamificationService.onRoadmapNodeCompleted(user, node, row.getScore(), row.getMaxScore());
         return Map.of("saved", true, "nodeId", nodeId);
     }
 

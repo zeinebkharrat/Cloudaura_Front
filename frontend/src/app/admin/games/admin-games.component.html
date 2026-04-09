@@ -187,6 +187,31 @@
           @if (activeTab() === 'QUIZ') {
             <div class="form-group"><label>Title</label><input type="text" class="g-input" maxlength="200" required [value]="newQuiz().title" (input)="newQuiz().title = $any($event.target).value" /></div>
             <div class="form-group"><label>Description</label><textarea class="g-input" rows="2" [value]="newQuiz().description" (input)="newQuiz().description = $any($event.target).value"></textarea></div>
+            <div class="form-group">
+              <label>Photo de couverture</label>
+              <p class="form-hint">Image affichée en haut du quiz joueur. Collez une URL courte ou uploadez un fichier : sans ImgBB, l’image est stockée sur le serveur (URL courte), pas en base64.</p>
+              <input type="url" class="g-input" placeholder="https://…" [value]="newQuiz().coverImageUrl ?? ''" (input)="newQuiz().coverImageUrl = $any($event.target).value" />
+              <div class="form-row-inline" style="margin-top:8px;">
+                <input type="file" accept="image/*" (change)="uploadQuizCover($event)" />
+              </div>
+              @if (newQuiz().coverImageUrl) {
+                <img [src]="newQuiz().coverImageUrl" alt="Aperçu" class="quiz-cover-preview" />
+              }
+            </div>
+            <div class="form-group">
+              <label>Temps total (secondes)</label>
+              <p class="form-hint">Multiple de 3 (ex. 60 → 3 × 20 s). Le temps est découpé en 3 parties ; chaque partie correspond à une étoile côté joueur.</p>
+              <input
+                type="number"
+                class="g-input sm"
+                min="3"
+                max="3600"
+                step="3"
+                [value]="newQuiz().timeLimitSeconds ?? 60"
+                (input)="newQuiz().timeLimitSeconds = +$any($event.target).value"
+                (blur)="snapQuizTimeSeconds()"
+              />
+            </div>
             <div class="form-group-toggle"><label class="tg-label">Publish immediately</label><label class="switch"><input type="checkbox" [checked]="newQuiz().published" (change)="newQuiz().published = !newQuiz().published"><span class="slider"></span></label></div>
             
             <!-- Questions Section -->
@@ -373,7 +398,14 @@
         
         <div class="md-foot">
           <button class="btn-cancel" (click)="closeCreate()">Cancel</button>
-          <button class="btn-primary" (click)="save()">💾 Save</button>
+          <button
+            class="btn-primary"
+            type="button"
+            [disabled]="activeTab() === 'QUIZ' && quizSaving()"
+            (click)="save()"
+          >
+            {{ activeTab() === 'QUIZ' && quizSaving() ? '…' : '💾 Save' }}
+          </button>
         </div>
       </div>
     </div>

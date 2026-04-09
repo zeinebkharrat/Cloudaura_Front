@@ -17,6 +17,15 @@ export interface FollowUserSummary {
   profileImageUrl?: string;
 }
 
+export interface HoverUserSummary extends FollowUserSummary {
+  country?: string;
+  nationality?: string;
+  cityName?: string;
+  age?: number | null;
+  followersCount?: number;
+  followingCount?: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class FollowService {
   private readonly http = inject(HttpClient);
@@ -45,5 +54,9 @@ export class FollowService {
 
   followingList(userId: number): Observable<{ users: FollowUserSummary[] }> {
     return this.http.get<{ users: FollowUserSummary[] }>(`${this.base}/follow/following-list/${userId}`);
+  }
+
+  userSummary(userId: number): Observable<HoverUserSummary> {
+    return this.http.get<HoverUserSummary>(`${this.base}/follow/user-summary/${userId}`);
   }
 }

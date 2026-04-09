@@ -15,7 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -127,7 +129,7 @@ public class ChatRoomService implements IChatRoomService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         List<ChatRoomParticipant> myParticipations = participantRepo.findByUser(currentUser);
-        List<ConversationResponse> conversations = new ArrayList<>();
+        Map<Integer, ConversationWithFlag> byOtherUser = new HashMap<>();
 
         for (ChatRoomParticipant participation : myParticipations) {
             ChatRoom chatRoom = participation.getChatRoom();
@@ -149,6 +151,7 @@ public class ChatRoomService implements IChatRoomService {
             Message lastMsg = messageRepo.findTopByChatRoomOrderBySentAtDesc(chatRoom);
             String lastMessageContent = lastMsg != null ? lastMsg.getContent() : null;
             Date lastMessageTime = lastMsg != null ? lastMsg.getSentAt() : chatRoom.getCreatedAt();
+            boolean hasMessages = lastMsg != null;
 
             // Calculate unread count
             long unreadCount = 0;
@@ -158,7 +161,7 @@ public class ChatRoomService implements IChatRoomService {
                         chatRoom, currentUser, lastSeenAt);
             }
 
-            conversations.add(new ConversationResponse(
+            ConversationResponse candidate = new ConversationResponse(
                     chatRoom.getChatRoomId(),
                     otherUser.getUserId(),
                     otherUser.getUsername(),
@@ -166,8 +169,17 @@ public class ChatRoomService implements IChatRoomService {
                     lastMessageContent,
                     lastMessageTime,
                     unreadCount
-            ));
+            );
+
+            ConversationWithFlag existing = byOtherUser.get(otherUser.getUserId());
+            if (existing == null || shouldReplace(existing, candidate, hasMessages)) {
+                byOtherUser.put(otherUser.getUserId(), new ConversationWithFlag(candidate, hasMessages));
+            }
         }
+
+        List<ConversationResponse> conversations = byOtherUser.values().stream()
+                .map(ConversationWithFlag::conversation)
+                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
 
         // Sort by lastMessageTime descending (most recent first)
         conversations.sort((a, b) -> {
@@ -178,6 +190,28 @@ public class ChatRoomService implements IChatRoomService {
         });
 
         return conversations;
+    }
+
+    private boolean shouldReplace(ConversationWithFlag existing,
+                                  ConversationResponse candidate,
+                                  boolean candidateHasMessages) {
+        if (candidateHasMessages != existing.hasMessages()) {
+            return candidateHasMessages;
+        }
+
+        Date existingTime = existing.conversation().lastMessageTime();
+        Date candidateTime = candidate.lastMessageTime();
+
+        if (existingTime == null) {
+            return candidateTime != null;
+        }
+        if (candidateTime == null) {
+            return false;
+        }
+        return candidateTime.after(existingTime);
+    }
+
+    private record ConversationWithFlag(ConversationResponse conversation, boolean hasMessages) {
     }
 
     @Override

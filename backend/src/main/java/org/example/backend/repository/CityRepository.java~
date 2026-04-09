@@ -1,0 +1,11 @@
+package org.example.backend.repository;
+
+import org.example.backend.model.City;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+@Repository
+public interface CityRepository extends JpaRepository<City, Long>, JpaSpecificationExecutor<City> {
+    //                                              Ajoute ceci ici ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+}
+

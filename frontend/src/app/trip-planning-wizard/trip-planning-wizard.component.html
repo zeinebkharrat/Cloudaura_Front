@@ -1,0 +1,129 @@
+<div class="tpw-page">
+  <div class="tpw-bg" aria-hidden="true"></div>
+
+  <div class="tpw-shell">
+    <header class="tpw-header">
+      <a routerLink="/" class="tpw-back-home">← Retour à l’accueil</a>
+      <div class="tpw-progress-wrap">
+        <div class="tpw-progress-track">
+          <div class="tpw-progress-fill" [style.width.%]="progressPct()"></div>
+        </div>
+        <span class="tpw-progress-label">Étape {{ step() }} / 3</span>
+      </div>
+    </header>
+
+    <!-- Étape 1 — Hébergement -->
+    @if (step() === 1) {
+      <section class="tpw-card animate-in">
+        <p class="tpw-kicker">Séjours · Question 1 / 2</p>
+        <h2 class="tpw-title tpw-title-sm">Avez-vous déjà un hébergement réservé&nbsp;?</h2>
+        <p class="tpw-hint">Hôtel, location, maison d’hôtes… Si ce n’est pas encore fait, nous vous proposons d’abord les séjours.</p>
+
+        <div class="tpw-choice-grid" role="group" aria-label="Hébergement">
+          <button
+            type="button"
+            class="tpw-choice"
+            [class.tpw-choice--active]="hasAccommodation() === true"
+            (click)="setAccommodation(true)"
+          >
+            <span class="tpw-choice-emoji" aria-hidden="true">✓</span>
+            <span class="tpw-choice-label">Oui, c’est réservé</span>
+            <span class="tpw-choice-sub">Je passe à l’étape transport</span>
+          </button>
+          <button
+            type="button"
+            class="tpw-choice"
+            [class.tpw-choice--active]="hasAccommodation() === false"
+            (click)="setAccommodation(false)"
+          >
+            <span class="tpw-choice-emoji" aria-hidden="true">○</span>
+            <span class="tpw-choice-label">Pas encore</span>
+            <span class="tpw-choice-sub">Trouver un séjour d’abord</span>
+          </button>
+        </div>
+
+        <div class="tpw-actions">
+          <button
+            type="button"
+            class="tpw-btn tpw-btn-primary"
+            [disabled]="!canAdvanceFromStep1()"
+            (click)="continueFromAccommodation()"
+          >
+            Continuer
+          </button>
+        </div>
+      </section>
+    }
+
+    <!-- Étape 2 — Transport (seulement si hébergement oui) -->
+    @if (step() === 2) {
+      <section class="tpw-card animate-in">
+        <button type="button" class="tpw-btn-text" (click)="back()">← Question précédente</button>
+        <p class="tpw-kicker">Séjours · Question 2 / 2</p>
+        <h2 class="tpw-title tpw-title-sm">Avez-vous déjà un transport réservé&nbsp;?</h2>
+        <p class="tpw-hint">Bus, taxi, voiture, vol… Si vous n’avez pas encore votre trajet, nous ouvrons la recherche transport.</p>
+
+        <div class="tpw-choice-grid" role="group" aria-label="Transport">
+          <button
+            type="button"
+            class="tpw-choice"
+            [class.tpw-choice--active]="hasTransport() === true"
+            (click)="setTransport(true)"
+          >
+            <span class="tpw-choice-emoji" aria-hidden="true">✓</span>
+            <span class="tpw-choice-label">Oui, c’est réglé</span>
+            <span class="tpw-choice-sub">Voir la suite du voyage</span>
+          </button>
+          <button
+            type="button"
+            class="tpw-choice"
+            [class.tpw-choice--active]="hasTransport() === false"
+            (click)="setTransport(false)"
+          >
+            <span class="tpw-choice-emoji" aria-hidden="true">○</span>
+            <span class="tpw-choice-label">Pas encore</span>
+            <span class="tpw-choice-sub">Rechercher un transport</span>
+          </button>
+        </div>
+
+        <div class="tpw-actions">
+          <button
+            type="button"
+            class="tpw-btn tpw-btn-primary"
+            [disabled]="!canAdvanceFromStep2()"
+            (click)="continueFromTransport()"
+          >
+            Continuer
+          </button>
+        </div>
+      </section>
+    }
+
+    <!-- Étape 3 — Récap (hébergement + transport OK) -->
+    @if (step() === 3) {
+      <section class="tpw-card tpw-success animate-in">
+        <div class="tpw-success-icon" aria-hidden="true">🎉</div>
+        <p class="tpw-kicker">Parfait</p>
+        <h2 class="tpw-title tpw-title-sm">Hébergement et transport sont en place</h2>
+        <p class="tpw-lead">
+          @if (auth.isAuthenticated()) {
+            Retrouvez vos réservations ou ajoutez des activités pour enrichir votre séjour.
+          } @else {
+            Découvrez des activités et expériences, ou connectez-vous pour voir vos réservations.
+          }
+        </p>
+        <div class="tpw-actions tpw-actions--split">
+          <button type="button" class="tpw-btn tpw-btn-primary" (click)="goToNextExperience()">
+            @if (auth.isAuthenticated()) {
+              Mes réservations
+            } @else {
+              Voir les activités
+            }
+          </button>
+          <a routerLink="/services/restaurants" class="tpw-btn tpw-btn-secondary">Restaurants</a>
+        </div>
+        <button type="button" class="tpw-btn-text tpw-restart" (click)="restart()">Recommencer le questionnaire</button>
+      </section>
+    }
+  </div>
+</div>

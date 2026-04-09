@@ -1,14 +1,24 @@
-import { Component, inject, signal, OnInit, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component,
+  inject,
+  signal,
+  computed,
+  OnInit,
+  ChangeDetectionStrategy,
+  DestroyRef,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Router, ActivatedRoute } from '@angular/router';
-import { forkJoin, of, EMPTY } from 'rxjs';
+import { forkJoin, of, EMPTY, interval } from 'rxjs';
 import { catchError, finalize } from 'rxjs/operators';
 import { DATA_SOURCE_TOKEN } from './core/adapters/data-source.adapter';
 import { AuthService } from './core/auth.service';
 import { AppAlertsService } from './core/services/app-alerts.service';
-import { TripContextStore } from './core/stores/trip-context.store';
 import { UserReservationsLocalStore } from './core/stores/user-reservations-local.store';
+import { NotificationService } from './core/notification.service';
+import { isIsoDateOnly, wallTimeTunisiaToUtcMs } from './core/bookings-visibility-timezone';
 import { TrackingMapComponent } from './shared/components/tracking-map/tracking-map.component';
 import { TransportReservation, AccommodationReservation } from './core/models/travel.models';
 
@@ -110,6 +120,7 @@ type ActiveTab = 'transport' | 'hebergement';
 
         <p class="mr-sync-hint">
           Bookings created on this device are kept here even when the server is unavailable (local list).
+          Same-day cutoffs for hiding past trips/stays use <strong>{{ bookingsTimeZoneLabel }}</strong> (not your PC clock).
         </p>
 
         <!-- Transport Tab -->
@@ -216,7 +227,8 @@ type ActiveTab = 'transport' | 'hebergement';
                         <i class="pi pi-pencil" aria-hidden="true"></i> Edit
                       </button>
                       <button type="button" class="mr-action-btn mr-action-danger" (click)="cancelTransport(res)"
-                              [disabled]="cancellingTransportId() === res.transportReservationId">
+                              [disabled]="cancellingTransportId() === res.transportReservationId || res.status === 'CANCELLED'"
+                              [attr.title]="res.status === 'CANCELLED' ? 'Already cancelled' : null">
                         @if (cancellingTransportId() === res.transportReservationId) {
                           <span class="mr-mini-spin"></span>
                         } @else {
@@ -316,12 +328,13 @@ type ActiveTab = 'transport' | 'hebergement';
                     }
 
                     <div class="mr-card-actions">
-                      <button type="button" class="mr-action-btn mr-action-outline" (click)="goModifyHebergement()"
-                              [disabled]="cancellingHebergementId() === res.id">
+                      <button type="button" class="mr-action-btn mr-action-outline" (click)="goModifyHebergement(res)"
+                              [disabled]="cancellingHebergementId() === res.id || res.status === 'CANCELLED'">
                         <i class="pi pi-pencil"></i> Edit
                       </button>
                       <button type="button" class="mr-action-btn mr-action-danger" (click)="cancelHebergement(res)"
-                              [disabled]="cancellingHebergementId() === res.id">
+                              [disabled]="cancellingHebergementId() === res.id || res.status === 'CANCELLED'"
+                              [attr.title]="res.status === 'CANCELLED' ? 'Already cancelled' : null">
                         @if (cancellingHebergementId() === res.id) {
                           <span class="mr-mini-spin"></span>
                         } @else {
@@ -852,8 +865,12 @@ export class MesReservationsComponent implements OnInit {
   private dataSource = inject(DATA_SOURCE_TOKEN);
   private authService = inject(AuthService);
   private alerts = inject(AppAlertsService);
-  private tripStore = inject(TripContextStore);
   private localStore = inject(UserReservationsLocalStore);
+  private notifier = inject(NotificationService);
+  private destroyRef = inject(DestroyRef);
+
+  /** Incrémenté chaque minute pour recalculer le filtre « départ + 1 h » sans recharger la page. */
+  private visibilityClock = signal(0);
 
   /** QR modal: blob URL + ref for filename */
   qrLightbox = signal<{ blobUrl: string; ref: string } | null>(null);
@@ -863,13 +880,37 @@ export class MesReservationsComponent implements OnInit {
   activeTab = signal<ActiveTab>('transport');
   loading = signal(true);
   error = signal<string | null>(null);
-  transportReservations = signal<TransportReservation[]>([]);
-  accommodationReservations = signal<AccommodationReservation[]>([]);
+
+  private transportSource = signal<TransportReservation[]>([]);
+  private accommodationSource = signal<AccommodationReservation[]>([]);
+
+  /** Réservations encore affichables (masquées 1 h après départ transport ou après fin de séjour hébergement). */
+  transportReservations = computed(() => {
+    this.visibilityClock();
+    return this.transportSource().filter(
+      (r) => r.status !== 'CANCELLED' && !this.isPastVisibilityCutoffTransport(r)
+    );
+  });
+
+  accommodationReservations = computed(() => {
+    this.visibilityClock();
+    return this.accommodationSource().filter(
+      (r) => r.status !== 'CANCELLED' && !this.isPastVisibilityCutoffAccommodation(r)
+    );
+  });
+
   cancellingTransportId = signal<number | null>(null);
   cancellingHebergementId = signal<number | null>(null);
   trackingReservation = signal<TransportReservation | null>(null);
 
-  totalReservations = () => this.transportReservations().length + this.accommodationReservations().length;
+  totalReservations = computed(
+    () => this.transportReservations().length + this.accommodationReservations().length
+  );
+
+  private static readonly VISIBILITY_GRACE_MS = 60 * 60 * 1000;
+
+  /** Affiché dans l’info-bulle : dates « jour seul » = Tunisie. */
+  readonly bookingsTimeZoneLabel = 'Tunisia time (Africa/Tunis)';
 
   ngOnInit() {
     if (!this.authService.isAuthenticated()) {
@@ -886,6 +927,10 @@ export class MesReservationsComponent implements OnInit {
       });
     }
     this.loadReservations();
+
+    interval(60_000)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.visibilityClock.update((n) => n + 1));
   }
 
   goHome(): void {
@@ -914,8 +959,9 @@ export class MesReservationsComponent implements OnInit {
       accommodation: accommodation$,
     }).subscribe({
       next: ({ transport, accommodation }) => {
-        this.transportReservations.set(this.localStore.mergeTransport(transport));
-        this.accommodationReservations.set(this.localStore.mergeAccommodation(accommodation));
+        this.transportSource.set(this.localStore.mergeTransport(transport));
+        this.accommodationSource.set(this.localStore.mergeAccommodation(accommodation));
+        this.visibilityClock.update((n) => n + 1);
         this.loading.set(false);
       },
       error: () => {
@@ -944,10 +990,15 @@ export class MesReservationsComponent implements OnInit {
         const uid = this.authService.currentUser()?.id;
         if (uid == null) return;
         this.cancellingTransportId.set(res.transportReservationId);
+        let alreadyCancelledOnServer = false;
         this.dataSource
           .cancelTransportReservation(res.transportReservationId, uid)
           .pipe(
-            catchError(() => {
+            catchError((err: HttpErrorResponse) => {
+              if (this.isAlreadyCancelledResponse(err)) {
+                alreadyCancelledOnServer = true;
+                return of(undefined);
+              }
               void this.alerts.error(
                 'Cancellation failed',
                 'We could not cancel this booking. Try again or contact support.'
@@ -958,17 +1009,41 @@ export class MesReservationsComponent implements OnInit {
           )
           .subscribe(() => {
             this.localStore.removeTransport(res.transportReservationId);
-            void this.alerts.success('Booking cancelled', 'The list has been updated.');
+            if (alreadyCancelledOnServer) {
+              void this.alerts.info('Already cancelled', 'This trip was already cancelled. Your list is refreshed.');
+              this.notifier.show('This trip was already cancelled.', 'info', 4500);
+            } else {
+              void this.alerts.success('Booking cancelled', 'The list has been updated.');
+              this.notifier.show('Transport booking cancelled — list updated.', 'success', 4500);
+            }
             this.loadReservations();
           });
       });
   }
 
   cancelHebergement(res: AccommodationReservation) {
+    void this.alerts
+      .confirm({
+        title: 'Cancel this stay?',
+        text: res.reservationRef
+          ? `Reference ${res.reservationRef}. You may not be able to undo this close to check-in.`
+          : 'You may not be able to undo this close to check-in.',
+        confirmText: 'Yes, cancel',
+        cancelText: 'Keep booking',
+        icon: 'warning',
+      })
+      .then((choice) => {
+        if (!choice.isConfirmed) return;
+        this.runCancelHebergement(res);
+      });
+  }
+
+  private runCancelHebergement(res: AccommodationReservation) {
     this.cancellingHebergementId.set(res.id);
     if (res.id < 0) {
       this.localStore.removeAccommodation(res.id);
       this.cancellingHebergementId.set(null);
+      this.notifier.show('Local stay booking removed.', 'info', 4500);
       this.loadReservations();
       return;
     }
@@ -977,24 +1052,108 @@ export class MesReservationsComponent implements OnInit {
       this.cancellingHebergementId.set(null);
       return;
     }
+    let alreadyCancelledOnServer = false;
     this.dataSource
       .cancelAccommodationReservation(res.id, uid)
       .pipe(
         catchError((err: HttpErrorResponse) => {
+          if (this.isAlreadyCancelledResponse(err)) {
+            alreadyCancelledOnServer = true;
+            return of(undefined);
+          }
           const body = err?.error;
           const msg =
             (typeof body?.message === 'string' && body.message.trim()) ||
             (typeof body === 'string' ? body : null) ||
             'Could not cancel this accommodation booking right now.';
           this.error.set(msg);
+          void this.alerts.error('Cancellation failed', msg);
           return EMPTY;
         }),
         finalize(() => this.cancellingHebergementId.set(null))
       )
       .subscribe(() => {
         this.localStore.removeAccommodation(res.id);
+        if (alreadyCancelledOnServer) {
+          void this.alerts.info('Already cancelled', 'This stay was already cancelled. Your list is refreshed.');
+          this.notifier.show('This stay was already cancelled.', 'info', 4500);
+        } else {
+          void this.alerts.success('Booking cancelled', 'The list has been updated.');
+          this.notifier.show('Accommodation booking cancelled — list updated.', 'success', 4500);
+        }
         this.loadReservations();
       });
+  }
+
+  /**
+   * Masquer si l’heure actuelle dépasse le départ du trajet + 1 h
+   * (priorité à {@link TransportReservation.departureTime}, sinon {@link TransportReservation.travelDate}).
+   */
+  private isPastVisibilityCutoffTransport(res: TransportReservation): boolean {
+    const ms = this.transportDepartureEpochMs(res);
+    if (ms == null) return false;
+    return Date.now() > ms + MesReservationsComponent.VISIBILITY_GRACE_MS;
+  }
+
+  private transportDepartureEpochMs(res: TransportReservation): number | null {
+    const dep = res.departureTime?.trim();
+    if (dep) {
+      if (isIsoDateOnly(dep)) {
+        const [y, m, d] = dep.split('-').map(Number);
+        if (y && m && d) {
+          return wallTimeTunisiaToUtcMs(y, m, d, 8, 0);
+        }
+      }
+      const t = Date.parse(dep);
+      if (!Number.isNaN(t)) return t;
+    }
+    const travel = res.travelDate?.trim();
+    if (travel) {
+      if (isIsoDateOnly(travel)) {
+        const [y, m, d] = travel.split('-').map(Number);
+        if (y && m && d) {
+          return wallTimeTunisiaToUtcMs(y, m, d, 8, 0);
+        }
+      }
+      const t = Date.parse(travel);
+      if (!Number.isNaN(t)) return t;
+    }
+    return null;
+  }
+
+  /**
+   * Masquer si l’heure actuelle dépasse la fin du séjour + 1 h.
+   * Date de check-out seule (YYYY-MM-DD) → 11:00 à Africa/Tunis (check-out hôtel).
+   */
+  private isPastVisibilityCutoffAccommodation(res: AccommodationReservation): boolean {
+    const ms = this.accommodationCheckoutEpochMs(res);
+    if (ms == null) return false;
+    return Date.now() > ms + MesReservationsComponent.VISIBILITY_GRACE_MS;
+  }
+
+  private accommodationCheckoutEpochMs(res: AccommodationReservation): number | null {
+    const co = res.checkOutDate?.trim();
+    if (!co) return null;
+    if (isIsoDateOnly(co)) {
+      const [y, m, d] = co.split('-').map(Number);
+      if (!y || !m || !d) return null;
+      return wallTimeTunisiaToUtcMs(y, m, d, 11, 0);
+    }
+    const t = Date.parse(co);
+    return Number.isNaN(t) ? null : t;
+  }
+
+  /** Backend returns 400 when status is already CANCELLED — treat as success and refresh. */
+  private isAlreadyCancelledResponse(err: HttpErrorResponse): boolean {
+    if (err.status !== 400) return false;
+    const raw = err.error;
+    const msg = (typeof raw?.message === 'string' ? raw.message : '').toLowerCase();
+    return (
+      msg.includes('déjà') ||
+      msg.includes('deja') ||
+      msg.includes('already cancelled') ||
+      msg.includes('already canceled')
+    );
   }
 
   goModifyTransport(res: TransportReservation) {
@@ -1012,12 +1171,31 @@ export class MesReservationsComponent implements OnInit {
       this.router.navigate(['/transport']);
       return;
     }
-    this.tripStore.selectedTransport.set(null);
-    this.router.navigate(['/transport', tid, 'book']);
+    this.router.navigate(['/transport', tid, 'book'], {
+      queryParams: { edit: res.transportReservationId },
+    });
   }
 
-  goModifyHebergement() {
-    this.router.navigate(['/hebergement']);
+  goModifyHebergement(res: AccommodationReservation) {
+    if (res.status === 'CANCELLED') {
+      void this.alerts.info('Cancelled stay', 'Book a new stay from Stays.');
+      this.router.navigate(['/hebergement']);
+      return;
+    }
+    const accId = res.accommodationId;
+    if (accId == null || !Number.isFinite(accId)) {
+      void this.alerts.warning(
+        'Listing link unavailable',
+        'This booking has no property id. Open Stays and pick your accommodation again.'
+      );
+      this.router.navigate(['/hebergement']);
+      return;
+    }
+    const q: Record<string, string | number> = { edit: res.id };
+    if (res.checkInDate) q['checkIn'] = res.checkInDate.slice(0, 10);
+    if (res.checkOutDate) q['checkOut'] = res.checkOutDate.slice(0, 10);
+    if (res.roomId != null && Number.isFinite(res.roomId)) q['roomId'] = res.roomId;
+    this.router.navigate(['/hebergement', accId, 'book'], { queryParams: q });
   }
 
   isTodayTrip(travelDate?: string): boolean {
@@ -1113,8 +1291,18 @@ export class MesReservationsComponent implements OnInit {
         );
         window.setTimeout(() => URL.revokeObjectURL(url), 180_000);
       },
-      error: () => {
-        void this.alerts.error('PDF ticket', 'Could not generate the PDF. Try again in a moment.');
+      error: async (err: HttpErrorResponse) => {
+        let msg =
+          'Could not generate the PDF. Check that you are signed in, then try again. If it keeps failing, the server may be busy.';
+        if (err.error instanceof Blob) {
+          msg = await this.messageFromErrorBlob(err.error);
+        } else if (err.error && typeof err.error === 'object' && 'message' in err.error) {
+          const m = (err.error as { message?: string }).message;
+          if (m) msg = m;
+        } else if (err.status === 0) {
+          msg = 'Network error — check your connection and that the API is running.';
+        }
+        void this.alerts.error('PDF ticket', msg);
       },
     });
   }
@@ -1122,8 +1310,15 @@ export class MesReservationsComponent implements OnInit {
   private async messageFromErrorBlob(blob: Blob): Promise<string> {
     try {
       const text = await blob.text();
-      const j = JSON.parse(text) as { message?: string };
-      return (j.message ?? text) || 'Request failed';
+      const j = JSON.parse(text) as {
+        message?: string;
+        error?: string;
+        success?: boolean;
+        errorCode?: string;
+      };
+      if (j.message) return j.message;
+      if (j.error && typeof j.error === 'string' && j.error.length < 120) return j.error;
+      return text.trim().slice(0, 240) || 'Request failed';
     } catch {
       return 'Request failed';
     }

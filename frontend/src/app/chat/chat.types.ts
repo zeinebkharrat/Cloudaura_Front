@@ -11,16 +11,30 @@ export interface ConversationResponse {
 export interface MessageResponse {
   messageId: number;
   chatRoomId: number;
-  senderId: number;
+  senderId: number | null;
   senderUsername: string;
   senderImage: string | null;
   content: string;
+  encryptedKey?: string | null;
+  iv?: string | null;
+  messageType?: string | null;
+  voiceUrl?: string | null;
+  voiceDurationSec?: number | null;
   sentAt: string;
 }
 
 export interface SendMessageRequest {
   chatRoomId: number;
-  content: string;
+  receiverId: number;
+  encryptedMessage?: string;
+  encryptedKey?: string;
+  iv?: string;
+  content?: string;
+}
+
+export interface E2eePublicKeyResponse {
+  userId: number;
+  publicKey: string | null;
 }
 
 export interface TypingEvent {

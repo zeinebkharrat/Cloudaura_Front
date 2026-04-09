@@ -121,7 +121,7 @@
               </div>
               <div class="conv-bottom">
                 <span class="conv-last-msg" [class.has-unread]="conv.unreadCount > 0">
-                  {{ conv.lastMessage || 'Nouvelle conversation' }}
+                  {{ conversationPreview(conv) }}
                 </span>
                 @if (conv.unreadCount > 0) {
                   <span class="unread-badge">{{ conv.unreadCount }}</span>
@@ -194,7 +194,11 @@
 
           @if (!messagesLoading() && messages().length === 0) {
             <div class="messages-empty">
-              <p>Envoyez le premier message ! 👋</p>
+              @if (messagesError()) {
+                <p>{{ messagesError() }}</p>
+              } @else {
+                <p>Envoyez le premier message ! 👋</p>
+              }
             </div>
           }
 
@@ -210,7 +214,62 @@
                 </div>
               }
               <div class="message-bubble" [class.own]="isOwnMessage(msg)">
-                <p class="message-text">{{ msg.content }}</p>
+                @if (isOwnMessage(msg)) {
+                  <div class="message-actions" [class.open]="openedMessageMenuId() === msg.messageId">
+                    <button
+                      class="message-actions-toggle"
+                      type="button"
+                      (click)="toggleMessageMenu(msg.messageId)"
+                      [disabled]="deletingMessageId() === msg.messageId"
+                      title="Message actions"
+                      aria-label="Message actions"
+                    >
+                      <span></span><span></span><span></span>
+                    </button>
+                    @if (openedMessageMenuId() === msg.messageId) {
+                      <button
+                        class="message-action-item danger"
+                        type="button"
+                        (click)="deleteOwnMessage(msg)"
+                        [disabled]="deletingMessageId() === msg.messageId"
+                      >
+                        Delete
+                      </button>
+                    }
+                  </div>
+                }
+                @if (isVoiceMessage(msg)) {
+                  <div class="voice-message-wrap" [class.own]="isOwnMessage(msg)">
+                    <button
+                      class="voice-play-btn"
+                      [class.playing]="playingVoiceMessageId() === msg.messageId"
+                      (click)="toggleVoicePlayback(msg.messageId)"
+                      type="button"
+                    >
+                      {{ playingVoiceMessageId() === msg.messageId ? '❚❚' : '▶' }}
+                    </button>
+                    <div class="voice-wave" aria-hidden="true">
+                      <span></span><span></span><span></span><span></span><span></span>
+                      <span></span><span></span><span></span><span></span><span></span>
+                    </div>
+                    <div class="voice-meta">
+                      <span class="voice-label">Voice</span>
+                      @if (msg.voiceDurationSec) {
+                        <span class="voice-time">{{ formatVoiceDuration(msg.voiceDurationSec) }}</span>
+                      } @else {
+                        <span class="voice-time">0:00</span>
+                      }
+                    </div>
+                    <audio
+                      class="voice-audio-hidden"
+                      [src]="msg.voiceUrl!"
+                      preload="metadata"
+                      (loadedmetadata)="registerVoiceAudio(msg.messageId, $event)"
+                    ></audio>
+                  </div>
+                } @else {
+                  <p class="message-text">{{ msg.content }}</p>
+                }
                 <span class="message-time">{{ formatMessageTime(msg.sentAt) }}</span>
               </div>
             </div>
@@ -231,29 +290,79 @@
 
         <!-- Message Input -->
         <div class="message-input-area">
-          <div class="message-input-wrap">
-            <textarea
-              #messageInput
-              class="message-input"
-              placeholder="Écrire un message..."
-              [ngModel]="newMessage()"
-              (ngModelChange)="newMessage.set($event)"
-              (keydown)="onMessageKeydown($event)"
-              (input)="onTyping()"
-              rows="1"
-              id="chatMessageInput"></textarea>
-            <button
-              class="send-btn"
-              (click)="sendMessage()"
-              [disabled]="!newMessage().trim()"
-              title="Envoyer"
-              id="sendMessageBtn">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="22" y1="2" x2="11" y2="13"/>
-                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-              </svg>
-            </button>
+          <div class="message-input-wrap" [class.recording-mode]="isRecording()">
+            @if (!isRecording()) {
+              <textarea
+                #messageInput
+                class="message-input"
+                placeholder="Écrire un message..."
+                [ngModel]="newMessage()"
+                (ngModelChange)="newMessage.set($event)"
+                (keydown)="onMessageKeydown($event)"
+                (input)="onTyping()"
+                rows="1"
+                id="chatMessageInput"></textarea>
+            } @else {
+              <div class="recording-shell">
+                <span class="recording-dot"></span>
+                <span class="recording-title">Recording</span>
+                <div class="recording-wave" aria-hidden="true">
+                  <span></span><span></span><span></span><span></span><span></span><span></span>
+                </div>
+                <span class="recording-time">{{ formatVoiceDuration(recordingSeconds()) }}</span>
+              </div>
+            }
+
+            @if (isRecording()) {
+              <button
+                class="recording-action cancel"
+                (click)="cancelVoiceRecording()"
+                [disabled]="uploadingVoice()"
+                title="Cancel recording"
+                type="button"
+              >
+                ✕
+              </button>
+              <button
+                class="recording-action send"
+                (click)="toggleVoiceRecording()"
+                [disabled]="uploadingVoice()"
+                title="Send voice message"
+                type="button"
+              >
+                @if (uploadingVoice()) { ... } @else { ➤ }
+              </button>
+            } @else {
+              <button
+                class="voice-btn"
+                (click)="toggleVoiceRecording()"
+                [disabled]="uploadingVoice() || !activeChatRoomId()"
+                title="Record voice message"
+                type="button"
+              >
+                @if (uploadingVoice()) {
+                  ...
+                } @else {
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a1 1 0 1 1 2 0 7 7 0 0 1-6 6.93V20h3a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2h3v-2.07A7 7 0 0 1 5 11a1 1 0 1 1 2 0 5 5 0 1 0 10 0z"/>
+                  </svg>
+                }
+              </button>
+
+              <button
+                class="send-btn"
+                (click)="sendMessage()"
+                [disabled]="!newMessage().trim()"
+                title="Envoyer"
+                id="sendMessageBtn"
+                type="button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="22" y1="2" x2="11" y2="13"/>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+              </button>
+            }
           </div>
         </div>
       }

@@ -1,6 +1,5 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { DATA_SOURCE_TOKEN } from '../../../core/adapters/data-source.adapter';
 import {
@@ -32,8 +31,7 @@ const TRANSPORT_TYPE_LABEL_EN: Record<string, string> = {
 
 @Component({
   selector: 'app-transport-ai-recommendation',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  standalone: false,
   template: `
 <div class="ai-page">
   <div class="ai-container">

@@ -18,7 +18,7 @@ public class DataInitializer {
     @Bean
     ApplicationRunner userSeeder(UserRepository userRepository, RoleRepository roleRepository, PasswordEncoder passwordEncoder) {
         return args -> {
-            if (userRepository.findByUsernameIgnoreCase("admin").isEmpty()) {
+            if (userRepository.findFirstByUsernameIgnoreCaseOrderByUserIdAsc("admin").isEmpty()) {
                 Role adminRole = roleRepository.findByName("ROLE_ADMIN")
                         .orElseGet(() -> {
                             Role role = new Role();
@@ -44,7 +44,7 @@ public class DataInitializer {
             }
 
             // Seed demo user "slouma" if absent
-            if (userRepository.findByUsernameIgnoreCase("slouma").isEmpty()) {
+            if (userRepository.findFirstByUsernameIgnoreCaseOrderByUserIdAsc("slouma").isEmpty()) {
                 Role userRole = roleRepository.findByName("ROLE_USER")
                         .orElseGet(() -> {
                             Role role = new Role();

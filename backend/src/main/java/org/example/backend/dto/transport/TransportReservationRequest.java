@@ -14,6 +14,13 @@ public class TransportReservationRequest {
     private String passengerLastName;
     private String passengerEmail;
     private String passengerPhone;
-    private String paymentMethod; // CASH | KONNECT
+    /** CASH | KONNECT — use checkout-session for STRIPE. */
+    private String paymentMethod;
     private String idempotencyKey;
+    /** ISO date or date-time; if omitted, transport departure time is used. */
+    private String travelDate;
+    /** Required for TAXI pricing when using this endpoint. */
+    private Double routeKm;
+    /** CAR rental day count; optional, defaults to 1 server-side. */
+    private Integer rentalDays;
 }

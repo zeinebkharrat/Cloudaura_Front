@@ -1,4 +1,4 @@
-<section class="auth-page">
+<section class="auth-page" [class.auth-page--embedded]="embedded">
   <div class="auth-bg-orb auth-bg-orb-left"></div>
   <div class="auth-bg-orb auth-bg-orb-right"></div>
 
@@ -168,8 +168,15 @@
       </button>
     </form>
 
-    <p class="auth-switch">
-      Already have an account? <a routerLink="/signin">Sign in</a>
-    </p>
+    @if (embedded) {
+      <p class="auth-switch">
+        Already have an account?
+        <button type="button" class="inline-link-btn" (click)="switchMode.emit('signin')">Sign in</button>
+      </p>
+    } @else {
+      <p class="auth-switch">
+        Already have an account? <a routerLink="/signin">Sign in</a>
+      </p>
+    }
   </article>
 </section>

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -14,6 +14,11 @@ import { extractApiErrorMessage } from './api-error.util';
   styleUrls: ['./sign-in.component.css', './auth-pages.shared.css'],
 })
 export class SignInComponent implements OnInit {
+    @Input() embedded = false;
+    @Input() returnUrlOverride: string | null = null;
+    @Output() switchMode = new EventEmitter<'signup'>();
+    @Output() authenticated = new EventEmitter<void>();
+
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
@@ -51,7 +56,7 @@ export class SignInComponent implements OnInit {
 
     const token = this.route.snapshot.queryParamMap.get('token');
     const socialError = this.route.snapshot.queryParamMap.get('error');
-    const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/';
+    const returnUrl = this.getReturnUrl();
 
     if (socialError) {
       this.formError.set('Social sign-in failed. Try another provider.');
@@ -65,11 +70,7 @@ export class SignInComponent implements OnInit {
     this.isLoading.set(true);
     this.authService.completeSocialSignin(token).subscribe({
       next: () => {
-        if (this.authService.hasRole('ROLE_ADMIN')) {
-          this.router.navigateByUrl('/admin/dashboard');
-          return;
-        }
-        this.router.navigateByUrl(returnUrl);
+        this.finishAuthFlow(returnUrl);
       },
       error: (error: HttpErrorResponse) => {
         this.isLoading.set(false);
@@ -91,12 +92,8 @@ export class SignInComponent implements OnInit {
 
     this.authService.signin(this.form.getRawValue()).subscribe({
       next: () => {
-        if (this.authService.hasRole('ROLE_ADMIN')) {
-          this.router.navigateByUrl('/admin/dashboard');
-          return;
-        }
-        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/';
-        this.router.navigateByUrl(returnUrl);
+        const returnUrl = this.getReturnUrl();
+        this.finishAuthFlow(returnUrl);
       },
       error: (error: HttpErrorResponse) => {
         this.isLoading.set(false);
@@ -113,6 +110,22 @@ export class SignInComponent implements OnInit {
       },
       complete: () => this.isLoading.set(false),
     });
+  }
+
+  private getReturnUrl(): string {
+    return this.returnUrlOverride || this.route.snapshot.queryParamMap.get('returnUrl') || '/';
+  }
+
+  private finishAuthFlow(returnUrl: string): void {
+    if (this.embedded) {
+      this.authenticated.emit();
+      return;
+    }
+    if (this.authService.hasRole('ROLE_ADMIN')) {
+      this.router.navigateByUrl('/admin/dashboard');
+      return;
+    }
+    this.router.navigateByUrl(returnUrl);
   }
 
   resendVerificationEmail() {
