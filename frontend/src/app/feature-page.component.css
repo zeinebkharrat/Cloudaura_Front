@@ -2330,6 +2330,178 @@
   transform: translateX(4px);
 }
 
+/* Light mode polish for event details modal */
+:host-context(html:not([data-theme="dark"])) .events-focus-overlay {
+  background: rgba(15, 23, 42, 0.34) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+:host-context(html:not([data-theme="dark"])) .event-detail-card {
+  background: #ffffff !important;
+  border: 1px solid #d8e2f3 !important;
+  box-shadow: 0 28px 55px rgba(15, 23, 42, 0.2) !important;
+  color: #10203d !important;
+}
+
+:host-context(html:not([data-theme="dark"])) .event-detail-content {
+  color: #24395f !important;
+}
+
+:host-context(html:not([data-theme="dark"])) .event-detail-content h2 {
+  color: #10203d !important;
+}
+
+:host-context(html:not([data-theme="dark"])) .detail-row {
+  color: #2f4772;
+}
+
+:host-context(html:not([data-theme="dark"])) .detail-row strong {
+  color: #10203d;
+}
+
+:host-context(html:not([data-theme="dark"])) .detail-price .price-amount {
+  color: #e11d48;
+  font-weight: 800;
+}
+
+:host-context(html:not([data-theme="dark"])) .status-badge {
+  background: #e8f0ff;
+  border: 1px solid #c6d8ff;
+  color: #2c4e8e;
+}
+
+:host-context(html:not([data-theme="dark"])) .event-detail-footer.modal-actions {
+  border-top: 1px solid #e2eaf6;
+  background: linear-gradient(180deg, #f7faff 0%, #f1f6ff 100%);
+}
+
+:host-context(html:not([data-theme="dark"])) .event-detail-close {
+  background: #ffffff !important;
+  color: #1f3a68 !important;
+  border: 1px solid #d8e3f4 !important;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16);
+}
+
+:host-context(html:not([data-theme="dark"])) .event-detail-close:hover {
+  background: #f2f7ff !important;
+}
+
+:host-context(html:not([data-theme="dark"])) .btn-secondary {
+  color: #4a628c;
+}
+
+:host-context(html:not([data-theme="dark"])) .btn-secondary:hover {
+  color: #1c3f78;
+}
+
+/* Premium event details modal surface */
+.event-detail-card {
+  border-radius: 26px !important;
+}
+
+.event-detail-content {
+  padding: 20px 24px 24px !important;
+}
+
+.event-detail-content h2 {
+  font-size: clamp(1.45rem, 2.7vw, 1.9rem) !important;
+  letter-spacing: -0.02em;
+}
+
+.event-detail-content .detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.event-detail-content .detail-row {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.event-detail-content .detail-row.detail-price {
+  background: rgba(232, 0, 45, 0.1);
+  border-color: rgba(255, 77, 109, 0.32);
+}
+
+.event-detail-content .status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.event-detail-footer.modal-actions {
+  padding: 14px 20px 18px;
+}
+
+.btn-secondary {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 12px;
+  padding: 11px 18px;
+}
+
+.btn-join {
+  border-radius: 12px;
+  min-width: 150px;
+  justify-content: center;
+}
+
+:host-context(html:not([data-theme="dark"])) .event-detail-content .detail-grid {
+  gap: 12px;
+}
+
+:host-context(html:not([data-theme="dark"])) .event-detail-content .detail-row {
+  background: linear-gradient(160deg, #ffffff 0%, #f4f8ff 100%);
+  border-color: #d8e3f5;
+  color: #2b4574;
+}
+
+:host-context(html:not([data-theme="dark"])) .event-detail-content .detail-row.detail-price {
+  background: linear-gradient(160deg, #fff0f4 0%, #ffe8ef 100%);
+  border-color: #ffc6d6;
+}
+
+:host-context(html:not([data-theme="dark"])) .event-detail-content .status-badge {
+  background: #edf4ff;
+  border: 1px solid #caddff;
+  color: #2b4f8e;
+}
+
+:host-context(html:not([data-theme="dark"])) .btn-secondary {
+  border-color: #cfddf3;
+  background: #ffffff;
+  color: #48618d;
+}
+
+:host-context(html:not([data-theme="dark"])) .btn-secondary:hover {
+  background: #f2f7ff;
+}
+
+@media (max-width: 760px) {
+  .event-detail-content .detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .event-detail-footer.modal-actions {
+    gap: 10px;
+  }
+
+  .btn-secondary,
+  .btn-join {
+    flex: 1;
+  }
+}
+
 /* Events cards polish: stronger readability and badge contrast */
 .event-card {
   border: 1px solid rgba(255, 255, 255, 0.1);
