@@ -27,6 +27,17 @@ export class EventManagementComponent implements OnInit {
   aiPosterDescription = '';
   selectedImageFileName = '';
   imageOriginLabel = '';
+  citySearchTerm = '';
+  cityFilterTerm = '';
+  cityDropdownOpen = false;
+  categoryDropdownOpen = false;
+
+  eventTypeOptions: Array<{ value: Event['eventType']; label: string }> = [
+    { value: 'CULTURAL', label: 'Cultural' },
+    { value: 'SPORT', label: 'Sport' },
+    { value: 'FESTIVAL', label: 'Festival' },
+    { value: 'TECH', label: 'Technology' }
+  ];
 
   toggleDarkMode() {
     this.isDarkMode = !this.isDarkMode;
@@ -183,6 +194,7 @@ resetFilters() {
   openAddModal() {
     this.isEditMode = false;
     this.currentEvent = this.initEmptyEvent();
+    this.syncCitySearchTermFromCurrentEvent();
     this.aiPosterDescription = '';
     this.selectedImageFileName = '';
     this.imageOriginLabel = '';
@@ -207,10 +219,78 @@ resetFilters() {
   openEditModal(event: Event) {
     this.isEditMode = true;
     this.currentEvent = JSON.parse(JSON.stringify(event)); // Deep copy
+    this.syncCitySearchTermFromCurrentEvent();
     this.aiPosterDescription = '';
     this.selectedImageFileName = '';
     this.imageOriginLabel = this.currentEvent.imageUrl ? 'Saved event image' : '';
     this.showModal = true;
+  }
+
+  get filteredTunisiaCities(): City[] {
+    const query = this.cityFilterTerm.trim().toLowerCase();
+    if (!query) {
+      return this.tunisiaCities;
+    }
+    return this.tunisiaCities.filter((city) => (city.name ?? '').toLowerCase().includes(query));
+  }
+
+  get selectedEventTypeLabel(): string {
+    const option = this.eventTypeOptions.find((item) => item.value === this.currentEvent.eventType);
+    return option?.label ?? 'Select category';
+  }
+
+  openCityDropdown(): void {
+    this.cityDropdownOpen = true;
+    this.cityFilterTerm = '';
+  }
+
+  closeCityDropdownDelayed(): void {
+    setTimeout(() => {
+      this.cityDropdownOpen = false;
+      this.cityFilterTerm = '';
+      this.syncCitySearchTermFromCurrentEvent();
+    }, 120);
+  }
+
+  onCitySearchTermChange(): void {
+    this.cityDropdownOpen = true;
+    this.cityFilterTerm = this.citySearchTerm;
+    const normalized = this.cityFilterTerm.trim().toLowerCase();
+    const exact = this.tunisiaCities.find((city) => (city.name ?? '').toLowerCase() === normalized);
+    if (exact) {
+      this.currentEvent.city.cityId = exact.cityId;
+      this.currentEvent.city.name = exact.name;
+    }
+  }
+
+  selectCityOption(city: City): void {
+    this.currentEvent.city.cityId = city.cityId;
+    this.currentEvent.city.name = city.name;
+    this.citySearchTerm = city.name ?? '';
+    this.cityFilterTerm = '';
+    this.cityDropdownOpen = false;
+  }
+
+  toggleCategoryDropdown(): void {
+    this.categoryDropdownOpen = !this.categoryDropdownOpen;
+  }
+
+  closeCategoryDropdownDelayed(): void {
+    setTimeout(() => {
+      this.categoryDropdownOpen = false;
+    }, 120);
+  }
+
+  selectEventType(value: Event['eventType']): void {
+    this.currentEvent.eventType = value;
+    this.categoryDropdownOpen = false;
+  }
+
+  private syncCitySearchTermFromCurrentEvent(): void {
+    const selectedId = Number(this.currentEvent.city?.cityId);
+    const selected = this.tunisiaCities.find((city) => Number(city.cityId) === selectedId);
+    this.citySearchTerm = selected?.name ?? this.currentEvent.city?.name ?? '';
+    this.cityFilterTerm = '';
   }
 
   generatePosterFromAi(): void {
@@ -407,6 +487,8 @@ resetFilters() {
         this.currentEvent.city.name = inferredCity.name;
       }
     }
+
+    this.syncCitySearchTermFromCurrentEvent();
 
     if (detectedVenue) {
       this.currentEvent.venue = detectedVenue;
@@ -616,6 +698,16 @@ resetFilters() {
       .join(' ');
   }
 
+  getStatusClass(status: string | undefined): string {
+    const normalized = String(status ?? '').toUpperCase();
+    if (normalized === 'COMPLETED') {
+      return 'status-label--completed';
+    }
+    if (normalized === 'ONGOING') {
+      return 'status-label--ongoing';
+    }
+    return 'status-label--upcoming';
+  }
 
   saveEvent() {
   if (!this.validateDates()) return;
@@ -640,7 +732,8 @@ resetFilters() {
       next: () => this.handleResponse('Updated'),
       error: (err) => {
         console.error("Update Error:", err);
-        void this.alerts.error('Error', 'Update failed');
+        const message = this.extractUpdateErrorMessage(err);
+        void this.alerts.error('Error', message);
       }
     });
   } else {
@@ -653,6 +746,27 @@ resetFilters() {
     });
   }
 }
+
+  private extractUpdateErrorMessage(err: any): string {
+    const direct = err?.error?.message;
+    if (typeof direct === 'string' && direct.trim()) {
+      return direct.trim();
+    }
+
+    if (typeof err?.error === 'string' && err.error.trim()) {
+      return err.error.trim();
+    }
+
+    if (err?.status === 401 || err?.status === 403 || err?.status === 302) {
+      return 'Session expired or unauthorized. Please sign in again and retry.';
+    }
+
+    if (err?.status) {
+      return `Update failed (HTTP ${err.status}).`;
+    }
+
+    return 'Update failed';
+  }
 
   validateDates(): boolean {
     const today = new Date();
@@ -674,6 +788,8 @@ resetFilters() {
   handleResponse(msg: string) {
     this.loadEvents();
     this.showModal = false;
+    this.cityDropdownOpen = false;
+    this.categoryDropdownOpen = false;
     void this.alerts.success('Success', `Event ${msg} successfully`);
   }
 

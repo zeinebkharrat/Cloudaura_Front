@@ -71,7 +71,7 @@
             </td>
             <td><span class="badge">{{ ev.eventType }}</span></td>
             <td>
-              <small class="status-label" [style.color]="ev.status === 'COMPLETED' ? '#94a3b8' : '#10b981'">
+              <small class="status-label" [ngClass]="getStatusClass(ev.status)">
                 {{ ev.status }}
               </small>
             </td>
@@ -128,20 +128,53 @@
         </div>
 
         <div class="row">
-          <div class="form-group col">
+          <div class="form-group col city-picker-group">
             <label>City (Tunisia)</label>
-            <select name="cityId" [(ngModel)]="currentEvent.city.cityId" class="form-input" required>
-              <option *ngFor="let c of tunisiaCities" [value]="c.cityId">{{c.name}}</option>
-            </select>
+            <input type="hidden" name="cityId" [(ngModel)]="currentEvent.city.cityId" required>
+            <input
+              type="text"
+              name="citySearchTerm"
+              [(ngModel)]="citySearchTerm"
+              (focus)="openCityDropdown()"
+              (input)="onCitySearchTermChange()"
+              (blur)="closeCityDropdownDelayed()"
+              class="form-input city-picker-input"
+              placeholder="Search city..."
+              autocomplete="off"
+            >
+            <div class="city-picker-menu" *ngIf="cityDropdownOpen">
+              <button
+                type="button"
+                class="city-picker-option"
+                *ngFor="let c of filteredTunisiaCities"
+                (mousedown)="selectCityOption(c); $event.preventDefault()"
+              >
+                {{ c.name }}
+              </button>
+              <div class="city-picker-empty" *ngIf="filteredTunisiaCities.length === 0">
+                No city found
+              </div>
+            </div>
           </div>
           <div class="form-group col">
             <label>Category</label>
-            <select name="type" [(ngModel)]="currentEvent.eventType" class="form-input" required>
-              <option value="CULTURAL">Cultural</option>
-              <option value="SPORT">Sport</option>
-              <option value="FESTIVAL">Festival</option>
-              <option value="TECH">Technology</option>
-            </select>
+            <input type="hidden" name="type" [(ngModel)]="currentEvent.eventType" required>
+            <div class="picker-group" tabindex="0" (blur)="closeCategoryDropdownDelayed()">
+              <button type="button" class="picker-trigger" (click)="toggleCategoryDropdown()">
+                <span>{{ selectedEventTypeLabel }}</span>
+                <span class="picker-caret">▾</span>
+              </button>
+              <div class="picker-menu" *ngIf="categoryDropdownOpen">
+                <button
+                  type="button"
+                  class="picker-option"
+                  *ngFor="let option of eventTypeOptions"
+                  (mousedown)="selectEventType(option.value); $event.preventDefault()"
+                >
+                  {{ option.label }}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -201,7 +234,11 @@
 
         <div class="form-group">
           <label>Event Image (Upload)</label>
-          <input type="file" (change)="onFileSelected($event)" class="file-input">
+          <div class="file-upload-row">
+            <input #eventImageInput type="file" (change)="onFileSelected($event)" class="file-input-hidden" accept="image/*">
+            <button type="button" class="file-upload-btn" (click)="eventImageInput.click()">Choose image</button>
+            <span class="file-upload-name">{{ selectedImageFileName || 'No file selected' }}</span>
+          </div>
           <div *ngIf="currentEvent.imageUrl" class="image-linked-note">
             <div><strong>Image linked:</strong> Yes</div>
             <div *ngIf="selectedImageFileName"><strong>Source file:</strong> {{ selectedImageFileName }}</div>
