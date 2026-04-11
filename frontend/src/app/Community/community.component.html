@@ -162,7 +162,12 @@
 
       <ng-container *ngFor="let post of visiblePosts(); trackBy: trackByPost">
         <ng-container *ngIf="post.postId != null">
-          <article class="post-card glass-panel" [class.post-card--location-hover]="isLocationHoverVisible(post.postId!)">
+          <article
+            class="post-card glass-panel"
+            [attr.id]="'community-post-' + post.postId"
+            [class.post-card--location-hover]="isLocationHoverVisible(post.postId!)"
+            [class.post-card--focus-target]="focusedPostId() === post.postId"
+          >
             <header class="post-header">
               <div class="post-author">
                 <div class="avatar">

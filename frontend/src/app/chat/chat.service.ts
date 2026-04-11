@@ -104,7 +104,7 @@ export class ChatService implements OnDestroy {
       connectHeaders: {
         Authorization: `Bearer ${token}`,
       },
-      reconnectDelay: 30000,
+      reconnectDelay: 5000,
       heartbeatIncoming: 10000,
       heartbeatOutgoing: 10000,
 

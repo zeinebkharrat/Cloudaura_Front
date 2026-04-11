@@ -1,4 +1,5 @@
 import { Component, ElementRef, HostListener, OnDestroy, ViewChild, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin, firstValueFrom, of } from 'rxjs';
@@ -23,6 +24,7 @@ import { SavedPostService } from './saved-post.service';
 import { AuthService } from '../core/auth.service';
 import { OwnershipUtil } from './ownership.util';
 import { ChatService } from '../chat/chat.service';
+import { extractApiErrorMessage } from '../api-error.util';
 import Swal from 'sweetalert2';
 import { GiphyItem, GiphyMediaType, GiphyService } from './giphy.service';
 import { tunisiaGeoJson } from '../tunisia-map';
@@ -182,6 +184,7 @@ export class CommunityComponent {
   readonly hoveredLocationPostId = signal<number | null>(null);
   readonly hoveredLocationCard = signal<LocationHoverCard | null>(null);
   readonly hoveredUserCard = signal<HoverCardState | null>(null);
+  readonly focusedPostId = signal<number | null>(null);
 
   private static miniMapRegistered = false;
   private readonly miniTunisiaGeo = tunisiaGeoWithUniqueRegionIds(tunisiaGeoJson);
@@ -1415,6 +1418,15 @@ export class CommunityComponent {
       }
     } catch (error) {
       console.error('Error adding comment:', error);
+      const message = error instanceof HttpErrorResponse
+        ? extractApiErrorMessage(error, 'Unable to add comment right now.')
+        : 'Unable to add comment right now.';
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Comment blocked',
+        text: message,
+        ...this.swalTheme(),
+      });
     }
   }
 

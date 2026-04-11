@@ -120,9 +120,9 @@
               <i class="pi pi-heart"></i>
               <span>Favorites</span>
             </a>
-            <a class="user-dd-item" routerLink="/profile" (click)="closeUserMenu()">
+            <a class="user-dd-item" routerLink="/settings" (click)="closeUserMenu()">
               <i class="pi pi-user"></i>
-              <span>My profile</span>
+              <span>Settings</span>
             </a>
             @if (isAdmin()) {
               <a class="user-dd-item" routerLink="/admin/dashboard" (click)="closeUserMenu()">

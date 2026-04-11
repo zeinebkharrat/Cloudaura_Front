@@ -365,6 +365,74 @@ public class EmailService {
         sendEmail(userMailSender, userFromAddress, toEmail, subject, plain, html);
         }
 
+        public void sendCommentModerationWarningEmail(
+            String toEmail,
+            String firstName,
+            java.util.Date mutedUntil,
+            String categories) {
+        String displayName = (firstName == null || firstName.isBlank()) ? "traveler" : firstName;
+        String subject = "YallaTN+ - Comment warning";
+        String untilLabel = mutedUntil == null ? "soon" : new SimpleDateFormat("dd/MM/yyyy HH:mm").format(mutedUntil);
+        String safeCategories = (categories == null || categories.isBlank()) ? "abusive language" : categories;
+
+        String plain = "Hi " + displayName + ",\n\n"
+            + "Your latest community comment contained prohibited language.\n"
+            + "Your commenting is temporarily locked until " + untilLabel + ".\n"
+            + "Detected categories: " + safeCategories + "\n\n"
+            + "Please respect community rules to avoid longer bans.\n"
+            + "- YallaTN+";
+
+        String html = buildTravelEmailHtml(
+            "Community warning",
+            "Please keep comments respectful.",
+            "Your latest community comment triggered our moderation policy.<br/>"
+                + "Commenting is temporarily locked until <strong>" + escapeHtml(untilLabel) + "</strong>.<br/>"
+                + "Detected categories: <strong>" + escapeHtml(safeCategories) + "</strong>.<br/><br/>"
+                + "Further violations can result in multi-day account bans.",
+            true,
+            "Open community",
+            frontendBaseUrl + "/community",
+            "Second offense: 15-minute lock applied.",
+            displayName,
+            "Your community commenting is temporarily locked.");
+
+        sendEmail(userMailSender, userFromAddress, toEmail, subject, plain, html);
+        }
+
+        public void sendCommentBanEmail(
+            String toEmail,
+            String firstName,
+            java.util.Date expiresAt,
+            int banDays,
+            String categories) {
+        String displayName = (firstName == null || firstName.isBlank()) ? "traveler" : firstName;
+        String subject = "YallaTN+ - Community ban applied";
+        String untilLabel = expiresAt == null ? "indefinite" : new SimpleDateFormat("dd/MM/yyyy HH:mm").format(expiresAt);
+        String safeCategories = (categories == null || categories.isBlank()) ? "abusive language" : categories;
+
+        String plain = "Hi " + displayName + ",\n\n"
+            + "Because of repeated abusive community comments, your account is banned for " + banDays + " days.\n"
+            + "Ban ends: " + untilLabel + "\n"
+            + "Detected categories: " + safeCategories + "\n\n"
+            + "Please follow community guidelines when access is restored.\n"
+            + "- YallaTN+";
+
+        String html = buildTravelEmailHtml(
+            "Community ban",
+            "Repeated abusive comments detected.",
+            "Your account is now banned from community activity for <strong>" + banDays + " days</strong>.<br/>"
+                + "Ban end date: <strong>" + escapeHtml(untilLabel) + "</strong>.<br/>"
+                + "Detected categories: <strong>" + escapeHtml(safeCategories) + "</strong>.",
+            true,
+            "Review community rules",
+            frontendBaseUrl + "/community",
+            "Future violations will increase ban duration.",
+            displayName,
+            "A temporary community ban has been applied to your account.");
+
+        sendEmail(userMailSender, userFromAddress, toEmail, subject, plain, html);
+        }
+
     private void sendEmail(
             JavaMailSender sender,
             InternetAddress from,

@@ -5,6 +5,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from './core/auth.service';
 import { extractApiErrorMessage } from './api-error.util';
+import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-sign-in',
@@ -69,7 +70,8 @@ export class SignInComponent implements OnInit {
 
     this.isLoading.set(true);
     this.authService.completeSocialSignin(token).subscribe({
-      next: () => {
+      next: async () => {
+        await this.showFirstSigninWelcomeIfNeeded();
         this.finishAuthFlow(returnUrl);
       },
       error: (error: HttpErrorResponse) => {
@@ -91,7 +93,8 @@ export class SignInComponent implements OnInit {
     this.formSuccess.set(null);
 
     this.authService.signin(this.form.getRawValue()).subscribe({
-      next: () => {
+      next: async () => {
+        await this.showFirstSigninWelcomeIfNeeded();
         const returnUrl = this.getReturnUrl();
         this.finishAuthFlow(returnUrl);
       },
@@ -128,6 +131,55 @@ export class SignInComponent implements OnInit {
     this.router.navigateByUrl(returnUrl);
   }
 
+  private async showFirstSigninWelcomeIfNeeded() {
+    const user = this.authService.currentUser();
+    if (!user) {
+      return;
+    }
+
+    const key = `signin-first-welcome-shown-${user.id}`;
+    if (localStorage.getItem(key) === '1') {
+      return;
+    }
+
+    await Swal.fire({
+      background: 'var(--surface-1)',
+      color: 'var(--text-color)',
+      width: 760,
+      customClass: {
+        popup: 'signin-welcome-popup',
+        confirmButton: 'signin-welcome-confirm',
+      },
+      buttonsStyling: false,
+      confirmButtonText: 'Start my journey',
+      html: `
+        <div class="signin-welcome-shell">
+          <img src="assets/guide_welcome.png" alt="YallaTN+ guide" class="signin-welcome-image" />
+          <h3>Welcome back, ${user.firstName || user.username}</h3>
+          <p class="signin-welcome-typed"><span id="signin-welcome-typed-text"></span><span class="signin-welcome-cursor">|</span></p>
+        </div>
+      `,
+      didOpen: () => {
+        const target = document.getElementById('signin-welcome-typed-text');
+        if (!target) {
+          return;
+        }
+
+        const text = 'Are you ready for the best Tunisian visit and unforgettable moments?';
+        let index = 0;
+        const writer = window.setInterval(() => {
+          index += 1;
+          target.textContent = text.slice(0, index);
+          if (index >= text.length) {
+            window.clearInterval(writer);
+          }
+        }, 30);
+      },
+    });
+
+    localStorage.setItem(key, '1');
+  }
+
   resendVerificationEmail() {
     const identifier = this.form.controls.identifier.value.trim();
     if (!identifier) {
@@ -157,14 +209,6 @@ export class SignInComponent implements OnInit {
       return;
     }
     this.authService.startSocialLogin('google');
-  }
-
-  loginWithGithub() {
-    if (!this.socialProviders().github) {
-      this.formError.set('GitHub sign-in is not configured on the server. Set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET.');
-      return;
-    }
-    this.authService.startSocialLogin('github');
   }
 
   loginWithFacebook() {

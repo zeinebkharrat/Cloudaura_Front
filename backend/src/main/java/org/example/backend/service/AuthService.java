@@ -8,7 +8,9 @@ import org.example.backend.dto.LoginRequest;
 import org.example.backend.dto.ProfileUpdateRequest;
 import org.example.backend.dto.ResendVerificationRequest;
 import org.example.backend.dto.ResetPasswordRequest;
+import org.example.backend.dto.RevokeOtherSessionsResponse;
 import org.example.backend.dto.SignupRequest;
+import org.example.backend.dto.UserSessionResponse;
 import org.example.backend.dto.UserSummaryResponse;
 import org.example.backend.model.City;
 import org.example.backend.model.Role;
@@ -39,6 +41,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Date;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -295,6 +298,33 @@ public class AuthService {
         Map<String, Object> details = new HashMap<>();
         details.put("source", "authenticated-user");
         auditService.log(AuditService.ACTION_PASSWORD_CHANGE, user, details);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UserSessionResponse> mySessions(String currentSessionId) {
+        List<UserSessionResponse> sessions = new ArrayList<>();
+        if (currentSessionId != null && !currentSessionId.isBlank()) {
+            Date now = new Date();
+            sessions.add(new UserSessionResponse(currentSessionId, true, now, now, null, null));
+        }
+        return sessions;
+    }
+
+    @Transactional
+    public void revokeSession(String sessionId, String currentSessionId) {
+        if (sessionId == null || sessionId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sessionId is required");
+        }
+        if (currentSessionId != null && currentSessionId.equals(sessionId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot revoke current session from this endpoint");
+        }
+        // Session persistence is not enabled in this build.
+    }
+
+    @Transactional
+    public RevokeOtherSessionsResponse revokeOtherSessions(String currentSessionId) {
+        // Session persistence is not enabled in this build.
+        return new RevokeOtherSessionsResponse(0);
     }
 
     @Transactional

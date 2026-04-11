@@ -108,6 +108,22 @@ export interface ChangePasswordPayload {
   newPassword: string;
 }
 
+export interface UserDeviceSession {
+  sessionId: string;
+  deviceName: string;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  issuedAt?: string | null;
+  lastSeenAt?: string | null;
+  expiresAt?: string | null;
+  current: boolean;
+  active: boolean;
+}
+
+export interface RevokeOtherSessionsResponse {
+  revokedCount: number;
+}
+
 export interface ForgotPasswordPayload {
   email: string;
   captchaToken?: string | null;

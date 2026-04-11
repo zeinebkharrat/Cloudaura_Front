@@ -48,6 +48,9 @@ public class User {
     private Boolean emailVerified;
     private Integer failedLoginAttempts;
     private Date lockedUntil;
+    private Integer commentViolationCount;
+    private Date commentMutedUntil;
+    private Integer commentBanCount;
 
     @Column(columnDefinition = "TEXT")
     private String e2eePublicKey;
@@ -224,6 +227,30 @@ public class User {
 
     public void setLockedUntil(Date lockedUntil) {
         this.lockedUntil = lockedUntil;
+    }
+
+    public Integer getCommentViolationCount() {
+        return commentViolationCount;
+    }
+
+    public void setCommentViolationCount(Integer commentViolationCount) {
+        this.commentViolationCount = commentViolationCount;
+    }
+
+    public Date getCommentMutedUntil() {
+        return commentMutedUntil;
+    }
+
+    public void setCommentMutedUntil(Date commentMutedUntil) {
+        this.commentMutedUntil = commentMutedUntil;
+    }
+
+    public Integer getCommentBanCount() {
+        return commentBanCount;
+    }
+
+    public void setCommentBanCount(Integer commentBanCount) {
+        this.commentBanCount = commentBanCount;
     }
 
     public String getE2eePublicKey() {

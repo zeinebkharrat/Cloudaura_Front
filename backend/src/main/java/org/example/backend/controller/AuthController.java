@@ -95,11 +95,15 @@ public class AuthController {
 
     @GetMapping("/social/providers")
     public SocialProvidersResponse socialProviders() {
-        boolean googleConfigured = isConfigured(googleClientId, googleClientSecret);
-        boolean githubConfigured = isConfigured(githubClientId, githubClientSecret);
-        boolean facebookConfigured = isConfigured(facebookClientId, facebookClientSecret);
-        boolean instagramConfigured = isConfigured(instagramClientId, instagramClientSecret);
-        return new SocialProvidersResponse(googleConfigured, githubConfigured, facebookConfigured, instagramConfigured);
+        try {
+            boolean googleConfigured = isConfigured(googleClientId, googleClientSecret);
+            boolean githubConfigured = isConfigured(githubClientId, githubClientSecret);
+            boolean facebookConfigured = isConfigured(facebookClientId, facebookClientSecret);
+            boolean instagramConfigured = isConfigured(instagramClientId, instagramClientSecret);
+            return new SocialProvidersResponse(googleConfigured, githubConfigured, facebookConfigured, instagramConfigured);
+        } catch (Exception ignored) {
+            return new SocialProvidersResponse(false, false, false, false);
+        }
     }
 
     private boolean isConfigured(String clientId, String clientSecret) {

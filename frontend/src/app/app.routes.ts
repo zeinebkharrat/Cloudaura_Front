@@ -51,6 +51,7 @@ import { ServicesActivitiesComponent } from './explore/services-activities.compo
 import { MockPaymentComponent } from './shop/mock-payment/mock-payment.component';
 import { ArtisanOrdersComponent } from './artisan/artisan-orders.component';
 import { FavoritesComponent } from './shop/favorites.component';
+import { SettingsComponent } from './settings.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -145,6 +146,7 @@ export const routes: Routes = [
     ],
   },
   { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },
+  { path: 'settings', component: SettingsComponent, canActivate: [authGuard] },
   {
     path: 'mes-reservations',
     component: MesReservationsComponent,

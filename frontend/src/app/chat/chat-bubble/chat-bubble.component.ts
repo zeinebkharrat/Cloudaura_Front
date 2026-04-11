@@ -14,11 +14,13 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ChatService } from '../chat.service';
 import { AuthService } from '../../core/auth.service';
 import { ConversationResponse, MessageResponse, TypingEvent } from '../chat.types';
 import { Router } from '@angular/router';
 import { AppAlertsService } from '../../core/services/app-alerts.service';
+import { isBackendLoginRedirectError } from '../../api-error.util';
 
 @Component({
   selector: 'app-chat-bubble',
@@ -94,6 +96,10 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
 
   ngOnInit() {
     this.chatService.ensureE2eeReadyForCurrentUser().catch((err) => {
+      const httpError = err as HttpErrorResponse;
+      if (httpError?.status === 401 || isBackendLoginRedirectError(httpError)) {
+        return;
+      }
       console.error('Failed to initialize E2EE keys:', err);
     });
   }
