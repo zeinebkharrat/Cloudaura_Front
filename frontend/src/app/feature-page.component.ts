@@ -85,9 +85,9 @@ export class FeaturePageComponent implements OnInit {
   readonly eventJoinError = signal<string | null>(null);
 
   catalog: 'none' | 'products' = 'none';
-  catalogProducts: CatalogProduct[] = [];
-  catalogLoading = false;
-  catalogError: string | null = null;
+  catalogProducts = signal<CatalogProduct[]>([]);
+  catalogLoading = signal(false);
+  catalogError = signal<string | null>(null);
 
   searchQuery = signal('');
   selectedCategory = signal<string | null>(null);
@@ -99,7 +99,7 @@ export class FeaturePageComponent implements OnInit {
   readonly filteredCatalogProducts = computed(() => {
     const query = this.searchQuery().toLowerCase().trim();
     const cat = this.selectedCategory();
-    return this.catalogProducts.filter(p => {
+    return this.catalogProducts().filter(p => {
       const matchQuery = !query
         || p.name.toLowerCase().includes(query)
         || (p.description?.toLowerCase().includes(query) ?? false)
@@ -256,10 +256,12 @@ export class FeaturePageComponent implements OnInit {
   // Product Details Modal
   readonly showProductDetails = signal(false);
   readonly selectedItem = signal<CatalogProduct | null>(null);
+  detailImageIndex = 0;
 
   openProductDetails(p: CatalogProduct): void {
     this.detailSelectedColor.set(null);
     this.detailSelectedSize.set(null);
+    this.detailImageIndex = 0;
     this.selectedItem.set(p);
     this.showProductDetails.set(true);
     this.maybePreselectVariant(p);
@@ -298,6 +300,7 @@ export class FeaturePageComponent implements OnInit {
 
   closeProductDetails(): void {
     this.showProductDetails.set(false);
+    this.detailImageIndex = 0;
     this.detailSelectedColor.set(null);
     this.detailSelectedSize.set(null);
     const item = this.selectedItem();
@@ -309,6 +312,18 @@ export class FeaturePageComponent implements OnInit {
       });
     }
     this.selectedItem.set(null);
+  }
+
+  detailImagePrev(p: CatalogProduct): void {
+    const n = this.getGalleryImages(p).length;
+    if (n <= 1) return;
+    this.detailImageIndex = (this.detailImageIndex - 1 + n) % n;
+  }
+
+  detailImageNext(p: CatalogProduct): void {
+    const n = this.getGalleryImages(p).length;
+    if (n <= 1) return;
+    this.detailImageIndex = (this.detailImageIndex + 1) % n;
   }
 
   onCityChange(id: any): void {
@@ -348,8 +363,8 @@ export class FeaturePageComponent implements OnInit {
       this.loadProducts();
       this.loadCities();
     } else {
-      this.catalogProducts = [];
-      this.catalogError = null;
+      this.catalogProducts.set([]);
+      this.catalogError.set(null);
     }
 
     const shouldLoadEvents = d['eventFeed'] === true || this.title === 'Events';
@@ -377,7 +392,8 @@ export class FeaturePageComponent implements OnInit {
   }
 
   loadProducts(): void {
-    this.catalogLoading = true;
+    this.catalogLoading.set(true);
+    this.catalogError.set(null);
     const cityId = this.selectedCityId();
     let primary = `${API_BASE_URL}/api/products`;
     if (cityId) primary += `?cityId=${cityId}`;
@@ -386,28 +402,26 @@ export class FeaturePageComponent implements OnInit {
 
     this.http.get<CatalogProduct[]>(primary).subscribe({
       next: (list) => {
-        this.catalogProducts = list ?? [];
-        this.catalogLoading = false;
+        this.catalogProducts.set(list ?? []);
+        this.catalogLoading.set(false);
         this.catalogImageFailed.set(new Set());
       },
       error: () => {
         if (tryFallback) {
           this.http.get<CatalogProduct[]>(fallback).subscribe({
             next: (list) => {
-              this.catalogProducts = list ?? [];
-              this.catalogLoading = false;
+              this.catalogProducts.set(list ?? []);
+              this.catalogLoading.set(false);
               this.catalogImageFailed.set(new Set());
             },
             error: () => {
-              this.catalogError =
-                'Could not load the catalog. Start the backend (default port 9091) and run `ng serve` with the Angular proxy.';
-              this.catalogLoading = false;
+              this.catalogError.set('Could not load the catalog. Start the backend (default port 9091) and run `ng serve` with the Angular proxy.');
+              this.catalogLoading.set(false);
             },
           });
         } else {
-          this.catalogError =
-            'Could not load the catalog. Check that the backend is running (e.g. port 9091) and that the Angular proxy is configured.';
-          this.catalogLoading = false;
+          this.catalogError.set('Could not load the catalog. Check that the backend is running (e.g. port 9091) and that the Angular proxy is configured.');
+          this.catalogLoading.set(false);
         }
       },
     });
