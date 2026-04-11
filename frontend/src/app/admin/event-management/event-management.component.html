@@ -181,6 +181,25 @@
         </div>
 
         <div class="form-group">
+          <label>Description for AI (optional, not saved)</label>
+          <textarea
+            name="aiPosterDescription"
+            [(ngModel)]="aiPosterDescription"
+            class="form-input ai-description-input"
+            rows="3"
+            placeholder="Ex: energetic crowd, sunrise mood, include city skyline, modern sporty style..."
+          ></textarea>
+          <button
+            type="button"
+            class="btn-ai-generate"
+            (click)="generatePosterFromAi()"
+            [disabled]="generatingPoster"
+          >
+            {{ generatingPoster ? 'Generating poster...' : '✨ Generate Poster' }}
+          </button>
+        </div>
+
+        <div class="form-group">
           <label>Event Image (Upload)</label>
           <input type="file" (change)="onFileSelected($event)" class="file-input">
           <div *ngIf="currentEvent.imageUrl" class="image-linked-note">

@@ -23,6 +23,8 @@ export class EventManagementComponent implements OnInit {
   isEditMode = false;
   uploading = false;
   aiExtracting = false;
+  generatingPoster = false;
+  aiPosterDescription = '';
   selectedImageFileName = '';
   imageOriginLabel = '';
 
@@ -181,6 +183,7 @@ resetFilters() {
   openAddModal() {
     this.isEditMode = false;
     this.currentEvent = this.initEmptyEvent();
+    this.aiPosterDescription = '';
     this.selectedImageFileName = '';
     this.imageOriginLabel = '';
     this.showModal = true;
@@ -204,9 +207,53 @@ resetFilters() {
   openEditModal(event: Event) {
     this.isEditMode = true;
     this.currentEvent = JSON.parse(JSON.stringify(event)); // Deep copy
+    this.aiPosterDescription = '';
     this.selectedImageFileName = '';
     this.imageOriginLabel = this.currentEvent.imageUrl ? 'Saved event image' : '';
     this.showModal = true;
+  }
+
+  generatePosterFromAi(): void {
+    const title = String(this.currentEvent.title ?? '').trim();
+    const category = String(this.currentEvent.eventType ?? '').trim();
+    const city = this.resolveSelectedCityName();
+
+    if (!title || !category || !city) {
+      void this.alerts.warning(
+        'Missing fields',
+        'Please fill Event Name, City and Category before generating a poster.'
+      );
+      return;
+    }
+
+    this.generatingPoster = true;
+    this.eventService.generateEventPoster({
+      title,
+      city,
+      category,
+      description: this.aiPosterDescription.trim() || undefined
+    }).subscribe({
+      next: (res) => {
+        this.currentEvent.imageUrl = res?.imageUrl ?? '';
+        this.selectedImageFileName = 'ai-generated-poster.png';
+        this.imageOriginLabel = 'Generated with AI';
+        this.generatingPoster = false;
+        void this.alerts.success('Poster generated', 'AI poster generated and attached to the event.');
+      },
+      error: (err) => {
+        this.generatingPoster = false;
+        const msg = this.extractAiErrorMessage(err)
+          || (typeof err?.error === 'string' ? err.error : '')
+          || 'Could not generate poster now. Please try again.';
+        void this.alerts.error('Poster generation failed', msg);
+      }
+    });
+  }
+
+  private resolveSelectedCityName(): string {
+    const selectedId = Number(this.currentEvent.city?.cityId);
+    const city = this.tunisiaCities.find((c) => Number(c.cityId) === selectedId);
+    return (city?.name ?? this.currentEvent.city?.name ?? '').trim();
   }
 
 

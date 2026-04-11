@@ -11,6 +11,8 @@ import org.example.backend.repository.TicketTypeRepository;
 import org.example.backend.repository.UserRepository;
 import org.example.backend.service.EventService;
 import org.example.backend.service.EventPosterAiService;
+import org.example.backend.service.HuggingFacePosterService;
+import org.example.backend.service.ImgBbService;
 import org.example.backend.service.EmailService;
 import org.example.backend.service.QrCodeService;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,6 +46,8 @@ public class EventController {
     private final QrCodeService qrCodeService;
     private final EmailService emailService;
     private final EventPosterAiService eventPosterAiService;
+    private final HuggingFacePosterService huggingFacePosterService;
+    private final ImgBbService imgBbService;
 
     @Value("${app.frontend.base-url:http://localhost:4200}")
     private String frontendBaseUrl;
@@ -62,7 +66,9 @@ public class EventController {
             UserRepository userRepository,
             QrCodeService qrCodeService,
             EmailService emailService,
-            EventPosterAiService eventPosterAiService
+            EventPosterAiService eventPosterAiService,
+            HuggingFacePosterService huggingFacePosterService,
+            ImgBbService imgBbService
     ) {
         this.eventService = eventService;
         this.reservationRepository = reservationRepository;
@@ -72,6 +78,8 @@ public class EventController {
         this.qrCodeService = qrCodeService;
         this.emailService = emailService;
         this.eventPosterAiService = eventPosterAiService;
+        this.huggingFacePosterService = huggingFacePosterService;
+        this.imgBbService = imgBbService;
     }
 
     private String normalizeFrontendBase() {
@@ -153,6 +161,53 @@ public class EventController {
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                     .body(Map.of("message", "AI extraction failed", "text", ""));
+        }
+    }
+
+    @PostMapping({"/admin/generate-poster", "/admin/generate-poster/", "/generate-poster", "/generate-poster/"})
+    public ResponseEntity<?> generatePoster(
+            @RequestBody Map<String, Object> payload,
+            Authentication authentication
+    ) {
+        requireAdmin(authentication);
+
+        String title = String.valueOf(payload.getOrDefault("title", "")).trim();
+        String city = String.valueOf(payload.getOrDefault("city", "")).trim();
+        String category = String.valueOf(payload.getOrDefault("category", "")).trim();
+        String description = String.valueOf(payload.getOrDefault("description", "")).trim();
+
+        if (title.isBlank() || city.isBlank() || category.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "message", "title, city and category are required"
+            ));
+        }
+
+        try {
+            String prompt = buildPosterPrompt(title, city, category, description);
+            byte[] posterBytes = huggingFacePosterService.generatePoster(prompt);
+            String uploadedUrl = imgBbService.uploadImageBytes(posterBytes, slugify(title) + "-poster.png");
+
+            return ResponseEntity.ok(Map.of(
+                    "prompt", prompt,
+                    "imageUrl", uploadedUrl
+            ));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("message", ex.getMessage()));
+        } catch (Exception ex) {
+            String details = ex.getMessage();
+            if (details == null || details.isBlank()) {
+                Throwable cause = ex.getCause();
+                if (cause != null && cause.getMessage() != null && !cause.getMessage().isBlank()) {
+                    details = cause.getMessage();
+                }
+            }
+            if (details == null || details.isBlank()) {
+                details = "Unexpected error while generating poster";
+            }
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                    .body(Map.of("message", "Poster generation failed: " + details));
         }
     }
 
@@ -607,6 +662,26 @@ public class EventController {
         } catch (NumberFormatException ex) {
             return null;
         }
+    }
+
+    private String buildPosterPrompt(String title, String city, String category, String description) {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("Create a professional event poster for YallaTN. ")
+                .append("Event type: ").append(category).append(". ")
+                .append("Event name: ").append(title).append(". ")
+                .append("Location: ").append(city).append(", Tunisia. ")
+                .append("Dynamic composition, high resolution, clean typography, modern style.");
+
+        if (!description.isBlank() && !"null".equalsIgnoreCase(description)) {
+            prompt.append(" Additional details: ").append(description).append('.');
+        }
+        return prompt.toString();
+    }
+
+    private String slugify(String value) {
+        String normalized = value == null ? "event" : value.toLowerCase().replaceAll("[^a-z0-9]+", "-");
+        normalized = normalized.replaceAll("^-+|-+$", "");
+        return normalized.isBlank() ? "event" : normalized;
     }
 
     private static Double parseDouble(Object value) {
