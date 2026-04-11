@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, HostListener } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { ActivatedRoute, Data, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -79,8 +79,10 @@ export class FeaturePageComponent implements OnInit {
   events: TravelEvent[] = [];
   eventFilterCity = 'ALL';
   eventFilterType = 'ALL';
-  eventMaxPriceCap = 300;
-  eventMaxPrice = 300;
+  eventMaxPriceCap = 500;
+  eventMaxPrice = 500;
+  eventCityDropdownOpen = false;
+  eventCitySearch = '';
   isEventFeed = false;
   isLoadingEvents = false;
   eventsLoadError: string | null = null;
@@ -776,6 +778,38 @@ export class FeaturePageComponent implements OnInit {
       .sort((a, b) => a.localeCompare(b));
   }
 
+  get filteredEventCityOptions(): string[] {
+    const query = this.eventCitySearch.trim().toLowerCase();
+    if (!query) {
+      return this.eventCityOptions;
+    }
+    return this.eventCityOptions.filter((city) => city.toLowerCase().includes(query));
+  }
+
+  get selectedEventCityLabel(): string {
+    return this.eventFilterCity === 'ALL' ? 'All cities' : this.eventFilterCity;
+  }
+
+  toggleEventCityDropdown(event: MouseEvent): void {
+    event.stopPropagation();
+    this.eventCityDropdownOpen = !this.eventCityDropdownOpen;
+  }
+
+  selectEventCity(city: string): void {
+    this.eventFilterCity = city;
+    this.eventCityDropdownOpen = false;
+    this.eventCitySearch = '';
+  }
+
+  onEventCityPanelClick(event: MouseEvent): void {
+    event.stopPropagation();
+  }
+
+  @HostListener('document:click')
+  closeEventCityDropdown(): void {
+    this.eventCityDropdownOpen = false;
+  }
+
   get filteredEvents(): TravelEvent[] {
     return this.events.filter((event) => {
       const cityOk = this.eventFilterCity === 'ALL' || this.toEventCityLabel(event) === this.eventFilterCity;
@@ -840,11 +874,13 @@ export class FeaturePageComponent implements OnInit {
 
   resetEventFilters(): void {
     const maxDetected = this.events.reduce((max, event) => Math.max(max, this.eventPriceAmount(event)), 0);
-    const normalizedCap = Math.max(300, Math.ceil(maxDetected / 50) * 50);
+    const normalizedCap = Math.max(500, Math.ceil(maxDetected / 50) * 50);
     this.eventMaxPriceCap = normalizedCap;
     this.eventMaxPrice = normalizedCap;
     this.eventFilterCity = 'ALL';
     this.eventFilterType = 'ALL';
+    this.eventCitySearch = '';
+    this.eventCityDropdownOpen = false;
   }
 
   private normalizeEventImageUrl(url: string | undefined): string | undefined {

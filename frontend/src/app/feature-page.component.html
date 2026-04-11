@@ -270,10 +270,49 @@
           <div class="events-filters__grid">
             <label class="events-filter-field">
               <span class="events-filter-label"><i class="pi pi-map-marker"></i> City</span>
-              <select [(ngModel)]="eventFilterCity">
-                <option value="ALL">All cities</option>
-                <option *ngFor="let city of eventCityOptions" [value]="city">{{ city }}</option>
-              </select>
+              <div class="events-city-picker" (click)="onEventCityPanelClick($event)">
+                <button
+                  type="button"
+                  class="events-city-picker__toggle"
+                  [attr.aria-expanded]="eventCityDropdownOpen"
+                  (click)="toggleEventCityDropdown($event)"
+                >
+                  <span>{{ selectedEventCityLabel }}</span>
+                  <i class="pi" [ngClass]="eventCityDropdownOpen ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
+                </button>
+
+                <div class="events-city-picker__panel" *ngIf="eventCityDropdownOpen">
+                  <input
+                    type="text"
+                    class="events-city-picker__search"
+                    placeholder="Search city..."
+                    [(ngModel)]="eventCitySearch"
+                  />
+
+                  <button
+                    type="button"
+                    class="events-city-picker__option"
+                    [class.events-city-picker__option--active]="eventFilterCity === 'ALL'"
+                    (click)="selectEventCity('ALL')"
+                  >
+                    All cities
+                  </button>
+
+                  <button
+                    type="button"
+                    class="events-city-picker__option"
+                    *ngFor="let city of filteredEventCityOptions"
+                    [class.events-city-picker__option--active]="eventFilterCity === city"
+                    (click)="selectEventCity(city)"
+                  >
+                    {{ city }}
+                  </button>
+
+                  <p class="events-city-picker__empty" *ngIf="filteredEventCityOptions.length === 0">
+                    No city found.
+                  </p>
+                </div>
+              </div>
             </label>
 
             <div class="events-filter-field events-filter-field--chips">
