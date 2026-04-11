@@ -12,6 +12,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -22,13 +23,13 @@ public class HuggingFacePosterService {
 
     private final RestTemplate restTemplate;
 
-    @Value("${app.ai.huggingface.api-key:${HUGGINGFACE_API_KEY:}}")
+    @Value("${app.ai.huggingface.api-key:${HUGGINGFACE_API_KEY:${HF_TOKEN:}}}")
     private String huggingFaceApiKey;
 
-    @Value("${app.ai.huggingface.model:stabilityai/stable-diffusion-xl-base-1.0}")
+    @Value("${app.ai.huggingface.model:black-forest-labs/FLUX.1-schnell}")
     private String huggingFaceModel;
 
-    @Value("${app.ai.huggingface.fallback-models:runwayml/stable-diffusion-v1-5,stabilityai/stable-diffusion-2-1}")
+    @Value("${app.ai.huggingface.fallback-models:}")
     private String huggingFaceFallbackModels;
 
     @Value("${app.ai.huggingface.base-url:https://router.huggingface.co/hf-inference/models}")
@@ -36,6 +37,9 @@ public class HuggingFacePosterService {
 
     @Value("${app.ai.huggingface.accept:image/png}")
     private String huggingFaceAccept;
+
+    @Value("${app.ai.huggingface.negative-prompt:text, bad letters, spelling, letters, numbers, watermarks, signature}")
+    private String huggingFaceNegativePrompt;
 
     public HuggingFacePosterService(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
@@ -46,7 +50,7 @@ public class HuggingFacePosterService {
         if (key.isBlank()) {
             throw new IllegalStateException(
                     "Hugging Face API key is missing. Set app.ai.huggingface.api-key " +
-                    "or env var HUGGINGFACE_API_KEY (or HF_TOKEN)."
+                    "or env var HUGGINGFACE_API_KEY / HF_TOKEN."
             );
         }
         if (prompt == null || prompt.isBlank()) {
@@ -54,7 +58,7 @@ public class HuggingFacePosterService {
         }
 
         String primaryModel = huggingFaceModel == null || huggingFaceModel.isBlank()
-            ? "runwayml/stable-diffusion-v1-5"
+            ? "black-forest-labs/FLUX.1-schnell"
             : huggingFaceModel.trim();
 
         HttpHeaders headers = new HttpHeaders();
@@ -65,10 +69,14 @@ public class HuggingFacePosterService {
             : huggingFaceAccept.trim();
         headers.setAccept(Collections.singletonList(MediaType.parseMediaType(accept)));
 
-        Map<String, Object> payload = Map.of(
-                "inputs", prompt,
-                "options", Map.of("wait_for_model", true)
-        );
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("inputs", prompt);
+        payload.put("options", Map.of("wait_for_model", true));
+
+        String negativePrompt = huggingFaceNegativePrompt == null ? "" : huggingFaceNegativePrompt.trim();
+        if (!negativePrompt.isBlank()) {
+            payload.put("parameters", Map.of("negative_prompt", negativePrompt));
+        }
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(payload, headers);
 

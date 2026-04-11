@@ -16,10 +16,13 @@ import { AppAlertsService } from '../../core/services/app-alerts.service';
 })
 export class EventManagementComponent implements OnInit {
   private alerts = inject(AppAlertsService);
+  private readonly aiGeneratedImageStorageKey = 'eventManagement.aiGeneratedImages';
+  private aiGeneratedImageUrls = new Set<string>();
 
   isDarkMode = true;
   events: Event[] = [];
   showModal = false;
+  showDetailsModal = false;
   isEditMode = false;
   uploading = false;
   aiExtracting = false;
@@ -54,6 +57,7 @@ export class EventManagementComponent implements OnInit {
   ];
 
   currentEvent: Event = this.initEmptyEvent();
+  selectedEventDetails: Event | null = null;
 
   constructor(private route: ActivatedRoute,private eventService: EventService, private http: HttpClient) {}
   searchQuery: string = '';
@@ -68,6 +72,7 @@ export class EventManagementComponent implements OnInit {
 
 
   ngOnInit(): void {
+    this.loadAiGeneratedImageUrls();
     this.loadEvents();
     this.route.queryParams.subscribe(params => {
       if (params['editId']) {
@@ -315,10 +320,11 @@ resetFilters() {
     }).subscribe({
       next: (res) => {
         this.currentEvent.imageUrl = res?.imageUrl ?? '';
+        this.markAiGeneratedImage(this.currentEvent.imageUrl);
         this.selectedImageFileName = 'ai-generated-poster.png';
-        this.imageOriginLabel = 'Generated with AI';
+        this.imageOriginLabel = 'Generated with AI background';
         this.generatingPoster = false;
-        void this.alerts.success('Poster generated', 'AI poster generated and attached to the event.');
+        void this.alerts.success('Poster generated', 'AI background generated. Text and logo are shown by UI overlay.');
       },
       error: (err) => {
         this.generatingPoster = false;
@@ -709,6 +715,91 @@ resetFilters() {
     return 'status-label--upcoming';
   }
 
+  isAiGeneratedEventImage(event: Event | null | undefined): boolean {
+    const normalized = this.normalizeImageUrl(event?.imageUrl);
+    if (!normalized) {
+      return false;
+    }
+
+    if (this.aiGeneratedImageUrls.has(normalized)) {
+      return true;
+    }
+
+    return /-poster(?:\.|$)/i.test(normalized);
+  }
+
+  detailsPosterDateRange(event: Event | null | undefined): string {
+    const start = this.formatPosterDisplayDate(event?.startDate);
+    const end = this.formatPosterDisplayDate(event?.endDate);
+    if (!start && !end) {
+      return 'Date TBA';
+    }
+    if (!end || start === end) {
+      return start || end;
+    }
+    return `${start} - ${end}`;
+  }
+
+  private formatPosterDisplayDate(value: string | undefined): string {
+    const raw = String(value ?? '').trim();
+    if (!raw) {
+      return '';
+    }
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) {
+      return raw;
+    }
+    return date.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
+  }
+
+  private loadAiGeneratedImageUrls(): void {
+    try {
+      const raw = localStorage.getItem(this.aiGeneratedImageStorageKey);
+      if (!raw) {
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        return;
+      }
+
+      for (const value of parsed) {
+        const normalized = this.normalizeImageUrl(value);
+        if (normalized) {
+          this.aiGeneratedImageUrls.add(normalized);
+        }
+      }
+    } catch {
+      this.aiGeneratedImageUrls.clear();
+    }
+  }
+
+  private markAiGeneratedImage(url: string | undefined): void {
+    const normalized = this.normalizeImageUrl(url);
+    if (!normalized) {
+      return;
+    }
+
+    this.aiGeneratedImageUrls.add(normalized);
+    try {
+      localStorage.setItem(
+        this.aiGeneratedImageStorageKey,
+        JSON.stringify(Array.from(this.aiGeneratedImageUrls))
+      );
+    } catch {
+      // Ignore storage failures; UI detection still works for current session.
+    }
+  }
+
+  private normalizeImageUrl(url: string | undefined): string {
+    const value = String(url ?? '').trim();
+    return value;
+  }
+
   saveEvent() {
   if (!this.validateDates()) return;
 
@@ -806,5 +897,15 @@ resetFilters() {
           this.eventService.deleteEvent(id).subscribe(() => this.loadEvents());
         }
       });
+  }
+
+  openDetailsModal(event: Event): void {
+    this.selectedEventDetails = JSON.parse(JSON.stringify(event));
+    this.showDetailsModal = true;
+  }
+
+  closeDetailsModal(): void {
+    this.showDetailsModal = false;
+    this.selectedEventDetails = null;
   }
 }

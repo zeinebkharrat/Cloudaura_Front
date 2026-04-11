@@ -666,11 +666,12 @@ public class EventController {
 
     private String buildPosterPrompt(String title, String city, String category, String description) {
         StringBuilder prompt = new StringBuilder();
-        prompt.append("Create a professional event poster for YallaTN. ")
+        prompt.append("Create a cinematic event background image for Tunisia travel content. ")
                 .append("Event type: ").append(category).append(". ")
                 .append("Event name: ").append(title).append(". ")
                 .append("Location: ").append(city).append(", Tunisia. ")
-                .append("Dynamic composition, high resolution, clean typography, modern style.");
+            .append("Dynamic composition, high resolution, modern style, clean space for UI overlay text. ")
+            .append("No typography, no words, no letters, no numbers, no watermark, no signature, no logo.");
 
         if (!description.isBlank() && !"null".equalsIgnoreCase(description)) {
             prompt.append(" Additional details: ").append(description).append('.');

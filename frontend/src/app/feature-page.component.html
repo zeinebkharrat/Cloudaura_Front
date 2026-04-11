@@ -407,12 +407,36 @@
       <button type="button" class="event-detail-close" (click)="closeEventDetails()">×</button>
 
       <div class="event-detail-scroll">
-        <div class="event-detail-image" *ngIf="selectedEvent.imageUrl">
-          <img [src]="selectedEvent.imageUrl" [alt]="selectedEvent.title" referrerpolicy="no-referrer" />
+        <div class="event-poster" [class.event-poster--placeholder]="!selectedEvent.imageUrl">
+          <img
+            [src]="selectedEvent.imageUrl || 'assets/placeholder.png'"
+            [alt]="selectedEvent.title"
+            referrerpolicy="no-referrer"
+            class="event-poster__image"
+          />
+          <div class="event-poster__scrim"></div>
+          <div class="event-poster__gradient"></div>
+
+          <div class="event-poster__brand">
+            <img src="assets/logo/yallatn-logo.png" alt="YallaTN logo" />
+          </div>
+
+          <div class="event-poster__meta">
+            <h2 class="event-poster__title">{{ selectedEvent.title }}</h2>
+            <div class="event-poster__facts">
+              <span class="event-poster__fact">
+                <span class="event-poster__icon" aria-hidden="true">📅</span>
+                {{ eventPosterDateRange(selectedEvent) }}
+              </span>
+              <span class="event-poster__fact event-poster__fact--price">
+                <span class="event-poster__icon" aria-hidden="true">🎟️</span>
+                {{ isPaidEvent(selectedEvent) ? (eventPriceAmount(selectedEvent) | number:'1.2-2') + ' TND' : 'Free' }}
+              </span>
+            </div>
+          </div>
         </div>
 
         <div class="event-detail-content">
-          <h2>{{ selectedEvent.title }}</h2>
           <div class="detail-grid">
             <p class="detail-row">
               <img src="icones/city.png" alt="" class="detail-ico" width="18" height="18" />

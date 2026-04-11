@@ -61,6 +61,7 @@ export interface CatalogProduct {
   styleUrl: './feature-page.component.css',
 })
 export class FeaturePageComponent implements OnInit {
+  private readonly aiGeneratedImageStorageKey = 'eventManagement.aiGeneratedImages';
   private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
   readonly router = inject(Router);
@@ -862,6 +863,71 @@ export class FeaturePageComponent implements OnInit {
       month: 'short',
       year: 'numeric',
     });
+  }
+
+  isAiGeneratedPoster(event: TravelEvent | null): boolean {
+    const normalized = this.normalizePosterImageUrl(event?.imageUrl);
+    if (!normalized) {
+      return false;
+    }
+
+    if (/-poster(?:\.|$)/i.test(normalized)) {
+      return true;
+    }
+
+    return this.getStoredAiGeneratedImages().has(normalized);
+  }
+
+  eventPosterDateRange(event: TravelEvent | null): string {
+    const start = this.formatPosterDisplayDate(event?.startDate);
+    const end = this.formatPosterDisplayDate(event?.endDate);
+    if (!start && !end) {
+      return 'Date TBA';
+    }
+    if (!end || start === end) {
+      return start || end;
+    }
+    return `${start} - ${end}`;
+  }
+
+  private formatPosterDisplayDate(value: string | undefined): string {
+    const raw = String(value ?? '').trim();
+    if (!raw) {
+      return '';
+    }
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) {
+      return raw;
+    }
+    return date.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  }
+
+  private getStoredAiGeneratedImages(): Set<string> {
+    try {
+      const raw = localStorage.getItem(this.aiGeneratedImageStorageKey);
+      if (!raw) {
+        return new Set<string>();
+      }
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        return new Set<string>();
+      }
+
+      const normalized = parsed
+        .map((value) => this.normalizePosterImageUrl(value))
+        .filter((value): value is string => !!value);
+      return new Set<string>(normalized);
+    } catch {
+      return new Set<string>();
+    }
+  }
+
+  private normalizePosterImageUrl(url: unknown): string {
+    return String(url ?? '').trim();
   }
 
   eventStatusClass(status: unknown): string {

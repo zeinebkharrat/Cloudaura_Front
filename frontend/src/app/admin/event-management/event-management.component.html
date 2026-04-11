@@ -84,6 +84,7 @@
             </td>
             <td style="text-align: right;">
               <div class="action-btns">
+                <button class="btn-icon" (click)="openDetailsModal(ev)" title="View details">👁️</button>
                 <button class="btn-icon" (click)="openEditModal(ev)" title="Edit">📝</button>
                 <button class="btn-icon" (click)="deleteEvent(ev.eventId)" title="Delete">🗑️</button>
               </div>
@@ -255,6 +256,70 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <div class="details-backdrop" *ngIf="showDetailsModal && selectedEventDetails" (click)="closeDetailsModal()">
+    <div class="details-modal" (click)="$event.stopPropagation()">
+      <div class="details-modal__header">
+        <h2>{{ selectedEventDetails.title }}</h2>
+        <button type="button" class="details-modal__close" (click)="closeDetailsModal()" aria-label="Close">×</button>
+      </div>
+
+      <div class="details-modal__body">
+        <div class="details-poster" [class.details-poster--placeholder]="!selectedEventDetails.imageUrl">
+          <img
+            [src]="selectedEventDetails.imageUrl || 'assets/placeholder.png'"
+            alt="Event image"
+            class="details-modal__image"
+          >
+          <ng-container *ngIf="isAiGeneratedEventImage(selectedEventDetails)">
+            <div class="details-poster__scrim"></div>
+            <div class="details-poster__gradient"></div>
+
+            <div class="details-poster__brand">
+              <img src="assets/logo/yallatn-logo.png" alt="YallaTN logo" />
+            </div>
+
+            <div class="details-poster__meta">
+              <h3 class="details-poster__title">{{ selectedEventDetails.title }}</h3>
+              <div class="details-poster__facts">
+                <span class="details-poster__fact">
+                  <span class="details-poster__icon" aria-hidden="true">📅</span>
+                  {{ detailsPosterDateRange(selectedEventDetails) }}
+                </span>
+                <span class="details-poster__fact">
+                  <span class="details-poster__icon" aria-hidden="true">📍</span>
+                  {{ selectedEventDetails.venue }}
+                </span>
+                <span class="details-poster__fact details-poster__fact--price">
+                  <span class="details-poster__icon" aria-hidden="true">🎟️</span>
+                  {{ (selectedEventDetails.price ?? 0) > 0 ? (selectedEventDetails.price + ' TN') : 'Free Entry' }}
+                </span>
+              </div>
+            </div>
+          </ng-container>
+        </div>
+
+        <div class="details-grid">
+          <div><strong>Location:</strong> {{ selectedEventDetails.venue }}</div>
+          <div><strong>City:</strong> {{ selectedEventDetails.city.name || 'N/A' }}</div>
+          <div><strong>Type:</strong> {{ selectedEventDetails.eventType }}</div>
+          <div>
+            <strong>Status:</strong>
+            <span class="status-label" [ngClass]="getStatusClass(selectedEventDetails.status)">
+              {{ selectedEventDetails.status }}
+            </span>
+          </div>
+          <div><strong>Start:</strong> {{ selectedEventDetails.startDate | date:'dd/MM/yyyy' }}</div>
+          <div><strong>End:</strong> {{ selectedEventDetails.endDate | date:'dd/MM/yyyy' }}</div>
+          <div><strong>Price:</strong> {{ selectedEventDetails.price ?? 0 }} TN</div>
+        </div>
+      </div>
+
+      <div class="details-modal__footer">
+        <button type="button" class="btn-cancel" (click)="closeDetailsModal()">Close</button>
+      </div>
     </div>
   </div>
 </div>
