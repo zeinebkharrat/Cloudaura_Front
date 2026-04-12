@@ -1,6 +1,303 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
 @import 'sweetalert2/dist/sweetalert2.min.css';
 @import 'leaflet/dist/leaflet.css';
+.swal2-container,
+div:where(.swal2-container) {
+  z-index: 30000 !important;
+}
+
+.swal2-popup.profile-swal-popup {
+  border-radius: 18px !important;
+  border: 1px solid var(--border-soft) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+
+.swal2-popup.profile-swal-popup .profile-swal-title {
+  color: var(--text-color) !important;
+}
+
+.swal2-popup.profile-swal-popup .profile-swal-shell {
+  text-align: left;
+}
+
+.swal2-popup.profile-swal-popup .profile-swal-form {
+  display: grid;
+  gap: 0.72rem;
+  margin-top: 0.45rem;
+}
+
+.swal2-popup.profile-swal-popup .profile-swal-input-wrap {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.swal2-popup.profile-swal-popup .profile-swal-note {
+  color: var(--text-muted);
+}
+
+.swal2-popup.profile-swal-popup .profile-swal-strength {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.swal2-popup.profile-swal-popup .profile-swal-strength-text {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-transform: capitalize;
+  font-weight: 600;
+}
+
+.swal2-popup.profile-swal-popup .profile-swal-strength-track {
+  position: relative;
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tunisia-red) 14%, var(--surface-2));
+  overflow: hidden;
+}
+
+.swal2-popup.profile-swal-popup .profile-swal-strength-bar {
+  display: block;
+  height: 100%;
+  width: 10%;
+  border-radius: 999px;
+  background: #df5163;
+  transition: width 0.32s cubic-bezier(0.2, 0.9, 0.2, 1), background-color 0.2s ease;
+  position: relative;
+}
+
+.swal2-popup.profile-swal-popup .profile-swal-strength-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -40%;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.42), transparent);
+  animation: passwordStrengthShine 1.6s ease-in-out infinite;
+}
+
+.swal2-popup.profile-swal-popup .profile-swal-strength-bar.is-weak {
+  width: 33%;
+  background: #df5163;
+}
+
+.swal2-popup.profile-swal-popup .profile-swal-strength-bar.is-medium {
+  width: 66%;
+  background: #edab2e;
+}
+
+.swal2-popup.profile-swal-popup .profile-swal-strength-bar.is-strong {
+  width: 100%;
+  background: #1ea971;
+}
+
+.swal2-popup.profile-swal-popup .profile-swal-rules {
+  margin: 0.2rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.18rem;
+}
+
+.swal2-popup.profile-swal-popup .profile-swal-rule {
+  font-size: 0.75rem;
+  color: #7290a6;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.swal2-popup.profile-swal-popup .profile-swal-rule::before {
+  content: '•';
+  color: #8aa6ba;
+  font-size: 0.72rem;
+}
+
+.swal2-popup.profile-swal-popup .profile-swal-rule.is-done {
+  color: #19835d;
+  transform: translateX(2px);
+}
+
+.swal2-popup.profile-swal-popup .profile-swal-rule.is-done::before {
+  content: '✓';
+  color: #19835d;
+  font-weight: 700;
+}
+
+.swal2-popup.profile-swal-popup .profile-swal-input {
+  width: 100% !important;
+  margin: 0 !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--border-soft) !important;
+  padding: 0.72rem 0.78rem !important;
+  background: var(--input-bg) !important;
+  color: var(--text-color) !important;
+}
+
+.swal2-popup.profile-swal-popup .profile-swal-input:focus {
+  border-color: color-mix(in srgb, var(--tunisia-red) 55%, #ff7f7f) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tunisia-red) 24%, transparent) !important;
+}
+
+.swal2-popup.profile-swal-popup .swal2-actions {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 0.55rem;
+  margin-top: 0.8rem;
+}
+
+.swal2-popup.profile-swal-popup .profile-swal-confirm,
+.swal2-popup.profile-swal-popup .profile-swal-cancel {
+  border: 0 !important;
+  border-radius: 999px !important;
+  padding: 0.58rem 1rem !important;
+  min-width: 112px;
+  font-weight: 700 !important;
+  margin: 0 !important;
+}
+
+.swal2-popup.profile-swal-popup .profile-swal-confirm {
+  background: linear-gradient(130deg, #ff4b4b, var(--tunisia-red)) !important;
+  color: #fff !important;
+}
+
+.swal2-popup.profile-swal-popup .profile-swal-cancel {
+  background: color-mix(in srgb, var(--tunisia-red) 10%, var(--surface-1)) !important;
+  color: var(--tunisia-red) !important;
+}
+
+.swal2-popup.profile-swal-popup .profile-swal-match {
+  margin: 0;
+  min-height: 1.1rem;
+  font-size: 0.78rem;
+}
+
+.swal2-popup.profile-swal-popup .profile-swal-match.is-match {
+  color: #1c8f62;
+}
+
+.swal2-popup.profile-swal-popup .profile-swal-match.is-mismatch {
+  color: #c63b58;
+}
+
+:root[data-theme='dark'] .swal2-popup.profile-swal-popup {
+  border-color: var(--border-soft) !important;
+  box-shadow: 0 24px 40px rgba(4, 12, 24, 0.5) !important;
+}
+
+:root[data-theme='dark'] .swal2-popup.profile-swal-popup .profile-swal-title,
+:root[data-theme='dark'] .swal2-popup.profile-swal-popup .profile-swal-note {
+  color: var(--text-color) !important;
+}
+
+:root[data-theme='dark'] .swal2-popup.profile-swal-popup .profile-swal-strength-text,
+:root[data-theme='dark'] .swal2-popup.profile-swal-popup .profile-swal-rule {
+  color: var(--text-muted);
+}
+
+:root[data-theme='dark'] .swal2-popup.profile-swal-popup .profile-swal-strength-track {
+  background: color-mix(in srgb, var(--tunisia-red) 22%, var(--surface-2));
+}
+
+:root[data-theme='dark'] .swal2-popup.profile-swal-popup .profile-swal-rule::before {
+  color: var(--text-muted);
+}
+
+:root[data-theme='dark'] .swal2-popup.profile-swal-popup .profile-swal-rule.is-done,
+:root[data-theme='dark'] .swal2-popup.profile-swal-popup .profile-swal-rule.is-done::before {
+  color: #35bf90;
+}
+
+:root[data-theme='dark'] .swal2-popup.profile-swal-popup .profile-swal-input {
+  background: var(--input-bg) !important;
+  color: var(--text-color) !important;
+  border-color: var(--border-soft) !important;
+}
+
+:root[data-theme='dark'] .swal2-popup.profile-swal-popup .profile-swal-cancel {
+  background: color-mix(in srgb, var(--tunisia-red) 20%, var(--surface-2)) !important;
+  color: #ffd5dd !important;
+}
+
+@keyframes passwordStrengthShine {
+  0% {
+    left: -40%;
+  }
+  100% {
+    left: 120%;
+  }
+}
+
+.swal2-popup.password-popup-modern {
+  border-radius: 18px !important;
+  border: 1px solid var(--border-soft) !important;
+  box-shadow: var(--shadow-soft) !important;
+  background: var(--surface-1) !important;
+  color: var(--text-color) !important;
+  width: min(560px, 92vw) !important;
+  padding: 1.1rem 1.1rem 1.2rem !important;
+}
+
+.swal2-popup.password-popup-modern .swal2-title {
+  margin-bottom: 0.6rem !important;
+}
+
+.swal2-popup.password-popup-modern .password-popup-wrap {
+  display: grid;
+  gap: 0.5rem;
+  text-align: left;
+}
+
+.swal2-popup.password-popup-modern .password-popup-wrap label {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.swal2-popup.password-popup-modern .swal2-input {
+  width: 100% !important;
+  margin: 0 0 0.35rem !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--input-bg) !important;
+  color: var(--text-color) !important;
+  padding: 0.72rem 0.82rem !important;
+}
+
+.swal2-popup.password-popup-modern .swal2-input:focus {
+  border-color: #22d3ee !important;
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.2) !important;
+}
+
+.swal2-popup.password-popup-modern .swal2-actions {
+  display: flex !important;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 0.7rem !important;
+}
+
+.swal2-popup.password-popup-modern .password-popup-confirm,
+.swal2-popup.password-popup-modern .password-popup-cancel {
+  border: 0 !important;
+  border-radius: 999px !important;
+  padding: 0.62rem 1rem !important;
+  min-width: 135px;
+  margin: 0 !important;
+  font-weight: 700 !important;
+}
+
+.swal2-popup.password-popup-modern .password-popup-confirm {
+  background: linear-gradient(145deg, #06b6d4, #2563eb) !important;
+  color: #fff !important;
+}
+
+.swal2-popup.password-popup-modern .password-popup-cancel {
+  background: color-mix(in srgb, #38bdf8 15%, var(--surface-2)) !important;
+  color: color-mix(in srgb, var(--text-color) 88%, #2563eb) !important;
+}
 
 :root {
   --bg-color: #f6f8fc;

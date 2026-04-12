@@ -3,8 +3,43 @@
   <div class="auth-bg-orb auth-bg-orb-right"></div>
 
   <article class="profile-card glass-panel">
+    <section class="profile-cover" [style.background-image]="coverBackground()">
+      <div class="profile-cover-overlay">
+        <div class="profile-cover-text">
+          <h2>My Cover</h2>
+          <p>Personalize your profile with your own cover photo.</p>
+        </div>
+        <div class="profile-cover-actions">
+          <label class="cover-btn" for="profile-cover-upload">{{ coverUploadBusy() ? 'Uploading...' : 'Change cover' }}</label>
+          <button class="cover-btn ghost" type="button" (click)="resetCoverPhoto()" [disabled]="coverUploadBusy()">Default</button>
+          <input id="profile-cover-upload" type="file" accept="image/*" (change)="uploadCoverImage($event)" [disabled]="coverUploadBusy()" />
+        </div>
+      </div>
+    </section>
+
     <h1>My profile</h1>
-    <p class="subtitle">Update your personal information and password.</p>
+    <p class="subtitle">
+      Update your personal information and password.
+      @if (currentUser()?.points != null) {
+        <span class="points-pill">Points: {{ currentUser()?.points }}</span>
+      }
+    </p>
+
+    <a routerLink="/mes-reservations" class="profile-bookings-cta">
+      <span class="profile-bookings-ico" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      </span>
+      <span class="profile-bookings-text">
+        <span class="profile-bookings-title">My bookings</span>
+        <span class="profile-bookings-desc">Transport tickets &amp; stays — pay, download QR, edit or cancel.</span>
+      </span>
+      <span class="profile-bookings-chev" aria-hidden="true">→</span>
+    </a>
 
     @if (actionError()) {
       <div class="msg error">{{ actionError() }}</div>
@@ -13,19 +48,26 @@
       <div class="msg success">{{ actionSuccess() }}</div>
     }
 
-    <section class="avatar-card">
+    <section class="avatar-card avatar-card-modern">
       <h2>Profile photo</h2>
-      <div class="avatar-row">
+      <p class="avatar-subtitle">Use a clear image so hosts and travelers can recognize you quickly.</p>
+      <div class="avatar-row avatar-row-modern">
         @if (profileForm.controls.profileImageUrl.value) {
           <img [src]="profileForm.controls.profileImageUrl.value" alt="Profile photo" class="avatar-preview" />
         } @else {
           <div class="avatar-placeholder">No image</div>
         }
 
-        <div class="upload-row">
-          <label class="upload-btn" for="profile-upload">{{ uploadBusy() ? 'Upload...' : 'Upload a photo' }}</label>
+        <div class="upload-row upload-row-modern">
+          <div class="upload-actions-row">
+            <label class="upload-btn" for="profile-upload">{{ uploadBusy() ? 'Upload...' : (profileForm.controls.profileImageUrl.value ? 'Modify profile picture' : 'Upload a photo') }}</label>
+            <button class="camera-btn" type="button" (click)="toggleCameraPanel()" [disabled]="uploadBusy() || cameraBusy()">
+              {{ showCameraPanel() ? 'Close camera' : 'Open camera' }}
+            </button>
+          </div>
           <input id="profile-upload" type="file" accept="image/*" (change)="uploadImage($event)" [disabled]="uploadBusy()" />
-          <span class="muted">{{ uploadBusy() ? 'Upload...' : 'Add a clear image for your profile.' }}</span>
+          <span class="muted">{{ uploadBusy() ? 'Upload...' : 'Add a clear image for your profile or capture one instantly.' }}</span>
+
         </div>
       </div>
     </section>
@@ -57,11 +99,16 @@
           }
         </label>
         <label>
-          Phone
-          <input type="text" formControlName="phone" [class.input-invalid]="controlInvalid('phone')" />
+          Numéro WhatsApp (optionnel)
+          <input
+            type="text"
+            formControlName="phone"
+            placeholder="+216 XX XXX XXX"
+            [class.input-invalid]="controlInvalid('phone')" />
           @if (controlInvalid('phone')) {
             <small class="field-error">{{ phoneErrorMessage() }}</small>
           }
+          <span class="muted field-hint">Pour recevoir vos confirmations sur WhatsApp</span>
         </label>
       </div>
 
@@ -101,9 +148,54 @@
       </div>
     </form>
 
-    <section class="password-form compact-note">
-      <h2>Security</h2>
-      <p class="muted">Password changes use a secure popup so sensitive fields are not always visible on the page.</p>
+    <section class="password-form compact-note security-card-modern">
+      <div class="security-orb security-orb-a"></div>
+      <div class="security-orb security-orb-b"></div>
+
+      <div class="security-content">
+        <h2>Security center</h2>
+        <p class="muted">Keep your account safe with a stronger password. The popup includes live password strength and match indicators.</p>
+
+        <ul class="security-benefits">
+          <li>Live strength indicator</li>
+          <li>Instant confirmation matching</li>
+          <li>Modern encrypted flow</li>
+        </ul>
+
+        <button class="security-main-btn" type="button" (click)="openChangePasswordPopup()" [disabled]="isChangingPassword()">
+          {{ isChangingPassword() ? 'Updating...' : 'Change my password' }}
+        </button>
+      </div>
     </section>
   </article>
+
+  @if (showCameraPanel()) {
+    <div class="camera-modal-backdrop" (click)="toggleCameraPanel()">
+      <div class="camera-modal" (click)="$event.stopPropagation()">
+        <button class="camera-close-btn" type="button" (click)="toggleCameraPanel()" aria-label="Close camera">✕</button>
+        <div class="camera-panel">
+          <div class="camera-cadre">
+            <div class="camera-frame" [class.camera-frame-ready]="cameraReady()">
+              <video #cameraVideo playsinline autoplay muted></video>
+              @if (!cameraReady()) {
+                <div class="camera-overlay">Starting camera...</div>
+              }
+            </div>
+          </div>
+
+          <div class="camera-actions">
+            <button class="btn-outline" type="button" (click)="startCamera()" [disabled]="cameraBusy() || uploadBusy()">Restart</button>
+            <button class="camera-capture-btn" type="button" (click)="captureFromCamera()" [disabled]="!cameraReady() || uploadBusy() || cameraBusy()">
+              {{ uploadBusy() ? 'Saving...' : 'Capture photo' }}
+            </button>
+          </div>
+
+          @if (cameraError()) {
+            <small class="field-error camera-error">{{ cameraError() }}</small>
+          }
+        </div>
+        <canvas #cameraCanvas class="camera-canvas-hidden"></canvas>
+      </div>
+    </div>
+  }
 </section>

@@ -1,0 +1,257 @@
+<section class="passport-page" *ngIf="!loading(); else passportLoading">
+  <div
+    class="passport-book-scene"
+    *ngIf="passport() as p"
+    [class.is-open]="passportOpen()"
+    [class.is-animating]="passportAnimating()"
+  >
+    <button
+      type="button"
+      class="passport-toggle"
+      [disabled]="passportAnimating()"
+      (click)="togglePassport($event)"
+    >
+      {{ passportOpen() ? 'Close passport' : 'Open passport' }}
+    </button>
+
+    <div class="passport-book">
+      <article class="passport-cover">
+        <div class="passport-slide-track" [style.transform]="'translateX(-' + (openedPageIndex() * 100) + '%)'">
+          <section class="passport-slide passport-slide--identity">
+            <div class="passport-cover__overlay">
+              <div class="passport-id-card">
+                <div class="passport-id-card__photo-wrap">
+                  <img
+                    *ngIf="passportPhoto(p) as avatar"
+                    class="passport-id-card__photo"
+                    [src]="avatar"
+                    alt="Passport holder photo"
+                  />
+                  <div *ngIf="!passportPhoto(p)" class="passport-id-card__photo-placeholder">
+                    {{ passportInitials(p) }}
+                  </div>
+                </div>
+
+                <div class="passport-id-card__content">
+                  <div class="passport-id-card__topline">
+                    <div>
+                      <span class="id-label">TYPE</span>
+                      <strong class="id-value">P</strong>
+                    </div>
+                    <div>
+                      <span class="id-label">CODE</span>
+                      <strong class="id-value">TUN</strong>
+                    </div>
+                    <div>
+                      <span class="id-label">PASSPORT NO</span>
+                      <strong class="id-value">{{ p.passportNumber }}</strong>
+                    </div>
+                  </div>
+
+                  <div class="identity-row identity-row--plain">
+                    <span class="identity-label">Full name</span>
+                    <strong class="identity-value">{{ passportHolderName(p) }}</strong>
+                  </div>
+
+                  <div class="identity-row identity-row--plain">
+                    <span class="identity-label">Email</span>
+                    <strong class="identity-value">{{ passportEmail(p) }}</strong>
+                  </div>
+
+                  <div class="passport-id-card__midline">
+                    <div class="identity-row identity-row--plain">
+                      <span class="identity-label">Passport created</span>
+                      <strong class="identity-value">{{ formatDate(p.createdAt) }}</strong>
+                    </div>
+
+                    <div class="identity-row identity-row--plain">
+                      <span class="identity-label">Cities visited</span>
+                      <strong class="identity-value">{{ p.uniqueCitiesVisited || 0 }}</strong>
+                    </div>
+                  </div>
+
+                  <div class="passport-authority">Authority: YallaTN Digital</div>
+                </div>
+              </div>
+
+              <div class="passport-mrz">
+                <p>{{ passportMrzLine1(p) }}</p>
+                <p>{{ passportMrzLine2(p) }}</p>
+              </div>
+
+              <ng-container *ngIf="passportStampEntries(p) as stampEntries">
+                <div class="passport-stamp-board" *ngIf="stampEntries.length > 0">
+                  <div class="passport-stamp-chip" *ngFor="let stampEntry of stampEntries; let i = index" [ngStyle]="stampParachuteStyle(stampEntry, i)">
+                    <img
+                      *ngIf="!isStampImageMissing(stampEntry.imageUrl)"
+                      class="passport-stamp-chip__img"
+                      [src]="stampEntry.imageUrl"
+                      [alt]="stampEntry.cityName + ' stamp'"
+                      (error)="onStampImageError(stampEntry.imageUrl)"
+                    />
+                    <div *ngIf="isStampImageMissing(stampEntry.imageUrl)" class="passport-stamp-chip__fallback">
+                      {{ stampEntry.cityName }}
+                    </div>
+                  </div>
+                </div>
+              </ng-container>
+            </div>
+          </section>
+
+          <section class="passport-slide passport-slide--stamps"></section>
+        </div>
+
+        <div class="passport-slide-nav" *ngIf="passportOpen()">
+          <button type="button" class="passport-slide-btn" [disabled]="openedPageIndex() === 0" (click)="goToPreviousOpenedPage($event)">Previous page</button>
+          <span class="passport-slide-indicator">{{ openedPageIndex() + 1 }} / 2</span>
+          <button type="button" class="passport-slide-btn" [disabled]="openedPageIndex() === 1" (click)="goToNextOpenedPage($event)">Next page</button>
+          </div>
+      </article>
+
+      <div class="passport-front-cover" (click)="togglePassport($event)">
+        <div class="passport-front-cover__shine"></div>
+      </div>
+      <div class="passport-spine"></div>
+    </div>
+  </div>
+
+  <div class="passport-error glass-panel" *ngIf="error()">{{ error() }}</div>
+
+  <div class="passport-grid" *ngIf="passport() as p" [class.passport-grid--hidden]="!passportOpen()">
+    <article class="passport-card glass-panel">
+      <h3>Passport profile</h3>
+      <label class="field-label">
+        <span>Travel style badge</span>
+        <input class="field-input" [ngModel]="profileBadge()" (ngModelChange)="profileBadge.set($event)" />
+      </label>
+      <label class="field-label">
+        <span>Bio note</span>
+        <textarea class="field-textarea" rows="3" [ngModel]="profileBio()" (ngModelChange)="profileBio.set($event)"></textarea>
+      </label>
+      <button type="button" class="btn-primary" [disabled]="busy()" (click)="saveProfile()">Save profile</button>
+    </article>
+
+    <article class="passport-card glass-panel">
+      <h3>Add city stamp</h3>
+      <div class="field-row">
+        <label class="field-label">
+          <span>City</span>
+          <select class="field-input" [ngModel]="stampCityId()" (ngModelChange)="stampCityId.set($event ? +$event : null)">
+            <option [ngValue]="null">Select a city</option>
+            <option *ngFor="let c of cities()" [ngValue]="c.cityId || c.id">{{ c.name }}</option>
+          </select>
+        </label>
+        <label class="field-label">
+          <span>Date visited</span>
+          <input type="date" class="field-input" [ngModel]="stampVisitedAt()" (ngModelChange)="stampVisitedAt.set($event)" />
+        </label>
+      </div>
+      <label class="field-label">
+        <span>Emblem key (example: blue-door, ruins)</span>
+        <input class="field-input" [ngModel]="stampEmblem()" (ngModelChange)="stampEmblem.set($event)" />
+      </label>
+      <label class="field-label">
+        <span>Memory note</span>
+        <textarea class="field-textarea" rows="3" [ngModel]="stampNote()" (ngModelChange)="stampNote.set($event)"></textarea>
+      </label>
+      <label class="field-label">
+        <span>Photo URL (optional)</span>
+        <input class="field-input" [ngModel]="stampPhotoUrl()" (ngModelChange)="stampPhotoUrl.set($event)" />
+      </label>
+      <button type="button" class="btn-primary" [disabled]="busy()" (click)="addStamp()">Add stamp</button>
+    </article>
+
+    <article class="passport-card glass-panel passport-card--wide">
+      <h3>City stamps</h3>
+      <div class="stamp-list" *ngIf="p.stamps.length > 0; else emptyStamps">
+        <div class="stamp-item" *ngFor="let s of p.stamps" [class.stamp-item--frequent]="isFrequent(s)">
+          <div>
+            <strong>{{ s.cityName || 'Unknown city' }}</strong>
+            <p>{{ s.region || 'Tunisia' }} • {{ s.visitCount || 0 }} visit(s)</p>
+            <p>{{ s.memoryNote || 'No memory note yet.' }}</p>
+            <small>Last visit: {{ formatDate(s.lastVisitedAt) }}</small>
+          </div>
+          <button type="button" class="btn-outline-danger" [disabled]="busy()" (click)="deleteStamp(s)">Delete</button>
+        </div>
+      </div>
+      <ng-template #emptyStamps>
+        <p class="empty-note">No city stamps yet. Start with your first city.</p>
+      </ng-template>
+    </article>
+
+    <article class="passport-card glass-panel passport-card--wide">
+      <h3>Tunisia route map (digital)</h3>
+      <div class="map-grid">
+        <div class="map-city" *ngFor="let c of p.cityProgress" [class.map-city--visited]="hasVisited(c)">
+          <span>{{ c.cityName }}</span>
+          <small *ngIf="c.visited">Visited {{ c.visitCount }} time(s)</small>
+          <small *ngIf="!c.visited">Unvisited</small>
+        </div>
+      </div>
+    </article>
+
+    <article class="passport-card glass-panel">
+      <h3>Achievements</h3>
+      <div class="achievements" *ngIf="p.achievements.length > 0; else emptyAchievements">
+        <div class="achievement" *ngFor="let a of p.achievements">
+          <strong>{{ a.title }}</strong>
+          <p>{{ a.description }}</p>
+          <small>{{ formatDate(a.unlockedAt) }}</small>
+        </div>
+      </div>
+      <ng-template #emptyAchievements>
+        <p class="empty-note">No achievements unlocked yet.</p>
+      </ng-template>
+    </article>
+
+    <article class="passport-card glass-panel">
+      <h3>Passport gallery</h3>
+      <label class="field-label">
+        <span>City (optional)</span>
+        <select class="field-input" [ngModel]="photoCityId()" (ngModelChange)="photoCityId.set($event ? +$event : null)">
+          <option [ngValue]="null">No city link</option>
+          <option *ngFor="let c of cities()" [ngValue]="c.cityId || c.id">{{ c.name }}</option>
+        </select>
+      </label>
+      <label class="field-label">
+        <span>Photo URL</span>
+        <input class="field-input" [ngModel]="photoUrl()" (ngModelChange)="photoUrl.set($event)" />
+      </label>
+      <label class="field-label">
+        <span>Caption</span>
+        <input class="field-input" [ngModel]="photoCaption()" (ngModelChange)="photoCaption.set($event)" />
+      </label>
+      <button type="button" class="btn-primary" [disabled]="busy()" (click)="addPhoto()">Add photo</button>
+
+      <div class="photo-list" *ngIf="p.photos.length > 0">
+        <div class="photo-item" *ngFor="let photo of p.photos">
+          <img
+            *ngIf="!isVideoUrl(photo.photoUrl)"
+            [src]="normalizeMediaUrl(photo.photoUrl) || ''"
+            [alt]="photo.caption || 'Passport photo'"
+          />
+          <video
+            *ngIf="isVideoUrl(photo.photoUrl)"
+            class="photo-video"
+            [src]="normalizeMediaUrl(photo.photoUrl) || ''"
+            controls
+            preload="metadata"
+            playsinline
+          ></video>
+          <div>
+            <p>{{ photo.caption || 'Travel memory' }}</p>
+            <small>{{ photo.cityName || 'No city' }} • {{ formatDate(photo.uploadedAt) }}</small>
+          </div>
+          <button type="button" class="btn-outline-danger" [disabled]="busy()" (click)="deletePhoto(photo.photoId)">Delete</button>
+        </div>
+      </div>
+    </article>
+  </div>
+</section>
+
+<ng-template #passportLoading>
+  <div class="passport-loading glass-panel">
+    <span class="loading-spinner"></span>
+    <span>Preparing your digital passport...</span>
+  </div>
+</ng-template>

@@ -1,6 +1,5 @@
 import { Component, inject, signal, computed, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { DropdownModule } from 'primeng/dropdown';
@@ -13,6 +12,7 @@ import { TripContextStore } from '../../../core/stores/trip-context.store';
 import { DATA_SOURCE_TOKEN } from '../../../core/adapters/data-source.adapter';
 import { AppAlertsService } from '../../../core/services/app-alerts.service';
 import { City, TransportType, TRANSPORT_TYPE_META, TransportTypeAvailability } from '../../../core/models/travel.models';
+import { TunisiaCityMatchService } from '../tunisia-city-match.service';
 
 interface TypeCard {
   type: TransportType;
@@ -25,13 +25,9 @@ interface TypeCard {
 const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
 
 @Component({
-  standalone: true,
+  selector: 'app-transport-search-page',
+  standalone: false,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    CommonModule, ReactiveFormsModule,
-    DropdownModule, CalendarModule, InputNumberModule,
-    ButtonModule, RippleModule, TooltipModule,
-  ],
   template: `
     <div class="transport-home">
       <!-- Hero -->
@@ -98,13 +94,17 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
           <div class="sb-field sb-date">
             <span class="sb-icon"><i class="pi pi-calendar"></i></span>
             <div class="sb-inner">
-              <span class="sb-label">Date</span>
+              <span class="sb-label">Date &amp; time</span>
               <p-calendar
                 formControlName="date"
                 dateFormat="dd/mm/yy"
                 [minDate]="today"
+                [showTime]="true"
+                hourFormat="24"
+                [showSeconds]="false"
+                [stepMinute]="15"
                 [showIcon]="true"
-                placeholder="Travel date"
+                placeholder="Departure date & time"
                 appendTo="body"
                 styleClass="sb-calendar">
               </p-calendar>
@@ -131,6 +131,15 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
           </div>
         </form>
       </section>
+
+      @if (hasBothCities()) {
+        <section class="map-section">
+          <app-transport-route-map
+            [fromCity]="cityById(fromCityId())"
+            [toCity]="cityById(toCityId())"
+            (routeSummary)="onRouteSummary($event)" />
+        </section>
+      }
 
       <!-- Transport Types -->
       <section class="types-section">
@@ -198,6 +207,7 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
 
     /* ---- Search Bar ---- */
     .search-section { padding: 0 1.5rem; margin-top: 0.5rem; position: relative; z-index: 5; }
+    .map-section { max-width: 1060px; margin: 1rem auto 0; padding: 0 1.5rem; }
     .search-bar {
       max-width: 1060px; margin: 0 auto;
       display: flex; align-items: stretch;
@@ -272,6 +282,17 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
       .sb-calendar .p-datepicker-trigger {
         background: transparent !important; border: none !important;
         color: var(--text-muted) !important;
+      }
+
+      .p-datepicker-panel .p-timepicker,
+      .p-datepicker-panel .p-datepicker-time-picker {
+        border-top: 1px solid var(--glass-border, rgba(255,255,255,0.1));
+        padding-top: 0.5rem;
+      }
+      .p-datepicker-panel .p-timepicker span,
+      .p-datepicker-panel .p-datepicker-time-picker button,
+      .p-datepicker-panel .p-datepicker-time-picker span {
+        color: var(--text-color, #e5e7eb);
       }
 
       .sb-pax-input .p-inputnumber { background: transparent !important; }
@@ -384,6 +405,7 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
   private dataSource = inject(DATA_SOURCE_TOKEN);
   private cdr = inject(ChangeDetectorRef);
   private alerts = inject(AppAlertsService);
+  private cityMatch = inject(TunisiaCityMatchService);
   private subs = new Subscription();
 
   cities = signal<City[]>([]);
@@ -448,6 +470,27 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
     this.dataSource.getCities().subscribe(data => {
       this.cities.set(data);
 
+      if (typeof navigator !== 'undefined' && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            void this.cityMatch
+              .reverseGeocodeThenNearestCity(pos.coords.latitude, pos.coords.longitude, data)
+              .then((match) => {
+                if (!match || qp['from']) {
+                  return;
+                }
+                this.searchForm.patchValue({ from: match.id });
+                this.fromCityId.set(match.id);
+                this.cdr.markForCheck();
+              });
+          },
+          () => {
+            /* denied */
+          },
+          { maximumAge: 120_000, timeout: 15_000, enableHighAccuracy: false }
+        );
+      }
+
       if (qp['from']) {
         const fromId = Number(qp['from']);
         this.searchForm.patchValue({ from: fromId });
@@ -488,6 +531,18 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
         this.cdr.markForCheck();
       })
     );
+
+  }
+
+  cityById(id: number | null): City | null {
+    if (id == null) {
+      return null;
+    }
+    return this.cities().find((c) => c.id === id) ?? null;
+  }
+
+  onRouteSummary(ev: { distanceKm: number; durationSeconds: number }): void {
+    this.store.setTransportRouteMetrics(ev.distanceKm, ev.durationSeconds);
   }
 
   ngOnDestroy() { this.subs.unsubscribe(); }
@@ -504,7 +559,7 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
     }
 
     const v = this.searchForm.value;
-    const dateStr = v.date ? this.isoDate(v.date) : '';
+    const dateStr = v.date ? this.travelDateTimeLocalIso(v.date) : '';
     this.store.setDates({ travelDate: dateStr });
     this.store.setPax({ adults: v.passengers ?? 1, children: 0 });
 
@@ -527,10 +582,12 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
     this.searchForm.patchValue({ from: route.fromId, to: route.toId });
     const dateVal = this.searchForm.get('date')?.value ?? new Date();
     if (!this.isDateNotInPast(dateVal)) {
-      void this.alerts.warning('Invalid date', 'Travel date cannot be in the past.');
+      void this.alerts.warning('Invalid date', 'Departure date and time cannot be in the past.');
       return;
     }
-    const dateStr = this.isoDate(dateVal);
+    const dateStr = this.travelDateTimeLocalIso(dateVal);
+    this.store.setDates({ travelDate: dateStr });
+    this.store.setPax({ adults: this.searchForm.get('passengers')?.value ?? 1, children: 0 });
     this.router.navigate(['/transport/results'], {
       queryParams: { from: route.fromId, to: route.toId, date: dateStr, transportType: route.type, passengers: this.searchForm.get('passengers')?.value ?? 1 }
     });
@@ -546,10 +603,17 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
     return map[type] ?? '';
   }
 
-  private isoDate(date: Date | null): string {
+  /** Local `YYYY-MM-DDTHH:mm:ss` for store, URL, and booking (Twilio-friendly). */
+  private travelDateTimeLocalIso(date: Date | null): string {
     if (!date) return '';
     const d = new Date(date);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const y = d.getFullYear();
+    const mo = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const h = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    const s = String(d.getSeconds()).padStart(2, '0');
+    return `${y}-${mo}-${day}T${h}:${mi}:${s}`;
   }
 
   private infraLabel(key: string): string {
@@ -567,7 +631,7 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
     const v = this.searchForm.getRawValue();
     if (v.from == null || v.to == null || !v.date) {
       this.searchForm.markAllAsTouched();
-      void this.alerts.warning('Incomplete search', 'Please select departure city, arrival city, and travel date.');
+      void this.alerts.warning('Incomplete search', 'Please select departure city, arrival city, and departure date & time.');
       return false;
     }
     if (v.from === v.to) {
@@ -575,7 +639,7 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
       return false;
     }
     if (!this.isDateNotInPast(v.date)) {
-      void this.alerts.warning('Invalid date', 'Travel date cannot be in the past.');
+      void this.alerts.warning('Invalid date', 'Departure date and time cannot be in the past.');
       return false;
     }
     const p = v.passengers ?? 1;
@@ -587,9 +651,8 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
   }
 
   private isDateNotInPast(d: Date): boolean {
-    const chosen = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return chosen >= today;
+    const now = Date.now();
+    const slackMs = 60_000;
+    return d.getTime() >= now - slackMs;
   }
 }

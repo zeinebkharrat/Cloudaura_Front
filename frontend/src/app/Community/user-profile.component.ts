@@ -73,7 +73,7 @@ export class UserProfileComponent {
       if (first?.author) {
         this.profileName.set(this.displayName(first.author));
         this.profileUsername.set(first.author.username || '');
-        this.profileImageUrl.set(first.author.profileImageUrl || null);
+        this.profileImageUrl.set(this.normalizeProfileImageUrl(first.author.profileImageUrl || null));
       }
 
       try {
@@ -174,6 +174,10 @@ export class UserProfileComponent {
     );
   }
 
+  userAvatarUrl(user?: { profileImageUrl?: string | null }): string | null {
+    return this.normalizeProfileImageUrl(user?.profileImageUrl ?? null);
+  }
+
   authorInitial(): string {
     const name = this.profileName().trim();
     return name ? name.charAt(0).toUpperCase() : 'U';
@@ -214,5 +218,22 @@ export class UserProfileComponent {
       return;
     }
     this.router.navigate(['/communaute/user', id]);
+  }
+
+  private normalizeProfileImageUrl(url?: string | null): string | null {
+    const raw = (url ?? '').trim();
+    if (!raw) {
+      return null;
+    }
+    if (/^https?:\/\//i.test(raw)) {
+      return raw;
+    }
+    if (raw.startsWith('/')) {
+      return raw;
+    }
+    if (raw.startsWith('uploads/')) {
+      return `/${raw}`;
+    }
+    return `/${raw.replace(/^\/+/, '')}`;
   }
 }

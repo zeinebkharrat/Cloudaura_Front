@@ -26,6 +26,20 @@ public class Message {
     @Column(columnDefinition = "TEXT")
     private String content;
 
+    @Column(length = 20)
+    private String messageType;
+
+    @Column(length = 1024)
+    private String voiceUrl;
+
+    @Column(length = 4096)
+    private String encryptedKey;
+
+    @Column(length = 512)
+    private String encryptionIv;
+
+    private Integer voiceDurationSec;
+
     @Temporal(TemporalType.TIMESTAMP)
     private Date sentAt;
 }

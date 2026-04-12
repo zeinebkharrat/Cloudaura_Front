@@ -77,10 +77,28 @@
           @for (review of reviews; track review.reviewId) {
             <article class="review-item">
               <div class="review-top">
-                <strong>{{ review.username }}</strong>
-                <div class="stars compact" aria-label="review stars">
-                  @for (state of starStates(review.stars); track $index) {
-                    <span [class.filled]="state === 'full'">★</span>
+                <div class="review-author">
+                  @if (review.profileImageUrl) {
+                    <img class="review-avatar" [src]="review.profileImageUrl" alt="Reviewer profile" />
+                  } @else {
+                    <span class="review-avatar review-avatar-fallback">{{ reviewAuthorInitial(review) }}</span>
+                  }
+                  <div class="review-meta">
+                    <strong>{{ reviewAuthorEmail(review) }}</strong>
+                    <small>{{ review.username }}</small>
+                  </div>
+                </div>
+                <div class="review-right">
+                  <div class="stars compact" aria-label="review stars">
+                    @for (state of starStates(review.stars); track $index) {
+                      <span [class.filled]="state === 'full'">★</span>
+                    }
+                  </div>
+                  @if (isOwnReview(review)) {
+                    <div class="review-actions">
+                      <button type="button" class="mini-btn" (click)="startEditReview(review)" [disabled]="reviewSubmitting">Edit</button>
+                      <button type="button" class="mini-btn danger" (click)="deleteOwnReview()" [disabled]="reviewSubmitting">Delete</button>
+                    </div>
                   }
                 </div>
               </div>
@@ -103,9 +121,17 @@
           Your comment
           <textarea rows="4" [(ngModel)]="reviewForm.commentText" name="reviewComment" placeholder="Share your experience..."></textarea>
         </label>
+        <div class="emoji-row" aria-label="Emoji shortcuts">
+          @for (emoji of commentEmojis; track emoji) {
+            <button type="button" class="emoji-btn" (click)="appendEmoji(emoji)">{{ emoji }}</button>
+          }
+        </div>
         <button class="primary-btn" type="submit" [disabled]="reviewSubmitting || !reviewForm.commentText.trim()">
-          {{ reviewSubmitting ? 'Sending...' : 'Post comment' }}
+          {{ reviewSubmitting ? 'Sending...' : (editingReviewId ? 'Save changes' : 'Post comment') }}
         </button>
+        @if (editingReviewId) {
+          <button class="mini-btn" type="button" (click)="cancelEditReview()" [disabled]="reviewSubmitting">Cancel edit</button>
+        }
       </form>
     </article>
   </ng-container>

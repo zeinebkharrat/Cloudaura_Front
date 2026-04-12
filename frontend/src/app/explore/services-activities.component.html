@@ -10,7 +10,7 @@
       <aside class="filters-sidebar">
         <h3>Filters</h3>
 
-        <label class="filter-field">
+        <label class="filter-field" [class.filter-detected]="voiceDetectedFilters().city">
           <span>City</span>
           <select [ngModel]="selectedCityId()" (ngModelChange)="onCityFilterChange($event)">
             <option value="all">All cities</option>
@@ -20,7 +20,7 @@
           </select>
         </label>
 
-        <div class="filter-field">
+        <div class="filter-field" [class.filter-detected]="voiceDetectedFilters().budget">
           <span>Price</span>
           <div class="price-inputs">
             <input type="number" [ngModel]="minPrice()" (ngModelChange)="onMinPriceInputChange($event)" />
@@ -34,12 +34,12 @@
           </div>
         </div>
 
-        <label class="filter-field">
+        <label class="filter-field" [class.filter-detected]="voiceDetectedFilters().date">
           <span>Availability date</span>
           <input type="date" [ngModel]="selectedDate()" (ngModelChange)="onDateChange($event)" />
         </label>
 
-        <label class="filter-field">
+        <label class="filter-field" [class.filter-detected]="voiceDetectedFilters().participants">
           <span>Participants</span>
           <input type="number" min="1" [ngModel]="participants()" (ngModelChange)="onParticipantsChange($event)" />
         </label>
@@ -49,8 +49,20 @@
 
       <div class="services-content">
         <div class="toolbar">
-          <div class="search-wrap">
+          <div class="search-wrap modern-voice">
             <input type="text" [ngModel]="q()" (ngModelChange)="onSearchChange($event)" placeholder="Search activity..." />
+            <button
+              class="voice-btn"
+              type="button"
+              (click)="onVoiceSearchClick()"
+              [disabled]="!voiceSupported() || voiceProcessing()"
+              [class.active]="voiceListening()"
+              [attr.aria-label]="voiceListening() ? 'Stop voice recording' : 'Start voice recording'"
+              title="Voice search"
+            >
+              🎤
+            </button>
+            <span class="voice-counter" [class.active]="voiceListening()">{{ (voiceDetectedFilters().city ? 1 : 0) + (voiceDetectedFilters().budget ? 1 : 0) + (voiceDetectedFilters().date ? 1 : 0) + (voiceDetectedFilters().participants ? 1 : 0) }}</span>
           </div>
           <select [ngModel]="sort()" (ngModelChange)="onSortChange($event)">
             <option value="activityId,desc">Newest</option>
@@ -59,6 +71,22 @@
             <option value="price,desc">Price high → low</option>
           </select>
         </div>
+
+        @if (voiceListening()) {
+          <p class="voice-state">Listening... tap microphone again to apply filters.</p>
+        }
+        @if (voiceProcessing()) {
+          <p class="voice-state">Analyzing your voice request...</p>
+        }
+        @if (lastTranscript()) {
+          <p class="voice-state transcript">“{{ lastTranscript() }}”</p>
+        }
+        @if (voiceSuggestion()) {
+          <p class="voice-state">{{ voiceSuggestion() }}</p>
+        }
+        @if (voiceError()) {
+          <p class="voice-state error">{{ voiceError() }}</p>
+        }
 
         @if (loading()) {
           <p class="state">Loading activities...</p>

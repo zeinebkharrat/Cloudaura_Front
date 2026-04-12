@@ -310,6 +310,220 @@
   position: relative;
 }
 
+.activity-card__media-wrap {
+  position: relative;
+}
+
+.personalized-ai-pill {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  border-radius: 999px;
+  border: 1px solid rgba(56, 189, 248, 0.5);
+  background: rgba(15, 23, 42, 0.72);
+  color: #e0f2fe;
+  padding: 4px 10px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  box-shadow: 0 8px 16px rgba(2, 6, 23, 0.3);
+  animation: aiPillGlow 2.4s ease-in-out infinite;
+}
+
+.personalized-ai-pill--city {
+  position: static;
+  top: auto;
+  left: auto;
+  font-size: 0.66rem;
+  padding: 3px 8px;
+}
+
+.activity-ai-pill {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 211, 252, 0.85);
+  background: linear-gradient(120deg, rgba(2, 132, 199, 0.94), rgba(37, 99, 235, 0.93));
+  color: #f8fafc;
+  font-size: 0.85rem;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 7px 12px;
+  box-shadow: 0 14px 24px rgba(2, 132, 199, 0.42);
+  animation: aiBadgePulse 2.1s ease-in-out infinite;
+}
+
+.ai-map-matches {
+  margin-top: 18px;
+  border-radius: 20px;
+  border: 1px solid color-mix(in srgb, var(--glass-border) 76%, #0ea5e9 24%);
+  padding: 18px;
+  background:
+    radial-gradient(circle at 8% 12%, rgba(14, 165, 233, 0.2), transparent 42%),
+    radial-gradient(circle at 88% 0%, rgba(59, 130, 246, 0.16), transparent 36%),
+    color-mix(in srgb, var(--surface-1) 88%, transparent);
+  box-shadow: 0 16px 34px rgba(2, 6, 23, 0.12);
+}
+
+.ai-map-matches--inside {
+  position: absolute;
+  left: 18px;
+  bottom: 18px;
+  width: min(560px, calc(100% - 36px));
+  z-index: 11;
+  margin-top: 0;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-color: rgba(125, 211, 252, 0.55);
+}
+
+.ai-map-matches__kicker {
+  margin: 0 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #0284c7;
+}
+
+.ai-map-matches__head h3 {
+  margin: 0;
+  font-size: 1.14rem;
+  color: #0f172a;
+}
+
+.ai-map-matches__head p {
+  margin: 6px 0 0;
+  color: #475569;
+  font-size: 0.88rem;
+}
+
+.ai-map-matches__list {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ai-map-chip {
+  appearance: none;
+  text-decoration: none;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 211, 252, 0.52);
+  background: rgba(15, 23, 42, 0.9);
+  color: #f8fafc;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  position: relative;
+  overflow: hidden;
+  animation: aiCityPulse 2.3s ease-in-out infinite;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  animation: aiCityPulse 2.3s ease-in-out infinite, aiChipGlow 3.2s ease-in-out infinite;
+}
+
+.ai-map-chip:hover {
+  transform: translateY(-2px);
+  border-color: rgba(125, 211, 252, 0.85);
+  box-shadow: 0 12px 18px rgba(2, 6, 23, 0.25);
+}
+
+.ai-map-chip--active {
+  border-color: rgba(186, 230, 253, 0.9);
+  background: linear-gradient(120deg, rgba(2, 132, 199, 0.92), rgba(37, 99, 235, 0.9));
+  box-shadow: 0 14px 24px rgba(37, 99, 235, 0.34);
+}
+
+.ai-map-chip__pulse {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: #22d3ee;
+  box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.7);
+  animation: pingDot 1.8s ease-out infinite;
+}
+
+.ai-map-chip__name {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.ai-map-chip__score {
+  border-radius: 999px;
+  border: 1px solid rgba(186, 230, 253, 0.64);
+  background: rgba(2, 132, 199, 0.35);
+  padding: 2px 7px;
+  font-size: 0.74rem;
+}
+
+@keyframes aiBadgePulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 14px 24px rgba(2, 132, 199, 0.42);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 18px 28px rgba(37, 99, 235, 0.45);
+  }
+}
+
+@keyframes pingDot {
+  0% {
+    box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.72);
+  }
+  100% {
+    box-shadow: 0 0 0 10px rgba(34, 211, 238, 0);
+  }
+}
+
+@keyframes aiCityPulse {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes aiChipGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(14, 165, 233, 0);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(14, 165, 233, 0.3);
+  }
+}
+
+@media (max-width: 840px) {
+  .activity-ai-pill {
+    font-size: 0.75rem;
+    padding: 6px 10px;
+  }
+
+  .ai-map-matches--inside {
+    position: static;
+    width: auto;
+    margin: 12px;
+  }
+}
+
+@media (max-width: 620px) {
+  .ai-map-matches__list {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
 .section-header {
   text-align: center;
   margin-bottom: 80px;
@@ -1236,59 +1450,16 @@
 }
 
 .restaurants-showcase {
-  padding: 36px 8% 24px;
+  padding-top: 40px;
+  padding-bottom: 30px;
 }
 
-.restaurants-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(220px, 1fr));
-  gap: 14px;
+.restaurants-showcase .slider-card--activity-clean {
+  min-height: 405px;
 }
 
-.restaurant-grid-card {
-  border-radius: 18px;
-  overflow: hidden;
-  background: #ffffff;
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.09);
-  text-decoration: none;
-  color: inherit;
-  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.35s ease;
-}
-
-.restaurant-grid-card:hover {
-  transform: translateY(-10px) rotateY(-4deg);
-  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.18);
-}
-
-.restaurant-grid-card img {
-  width: 100%;
-  height: 180px;
-  object-fit: cover;
-}
-
-.restaurant-grid-card__content {
-  padding: 14px;
-  display: grid;
-  gap: 8px;
-}
-
-.restaurant-grid-card__content h3 {
-  margin: 0;
-}
-
-.restaurant-grid-card__content p {
-  margin: 0;
-  color: #64748b;
-  line-height: 1.5;
-}
-
-.restaurant-grid-card--skeleton {
-  min-height: 290px;
-  border: 1px solid rgba(203, 213, 225, 0.45);
-  background: linear-gradient(100deg, #f8fafc 30%, #e2e8f0 50%, #f8fafc 70%);
-  background-size: 240% 100%;
-  animation: sliderShimmer 1.2s linear infinite;
+.restaurants-showcase .activity-card__media-wrap {
+  height: 230px;
 }
 
 :host-context([data-theme='dark']) .slider-card {
@@ -1653,6 +1824,10 @@
 
 @media (min-width: 701px) and (max-width: 1050px) {
   .slider-track--activities {
+    grid-auto-columns: calc((100% - 16px) / 2);
+  }
+
+  .slider-track--personalized {
     grid-auto-columns: calc((100% - 16px) / 2);
   }
 }

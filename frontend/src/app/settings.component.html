@@ -1,0 +1,355 @@
+<div class="settings-page">
+  <div class="settings-aurora settings-aurora--left"></div>
+  <div class="settings-aurora settings-aurora--right"></div>
+
+  @if (profilePhotoViewerOpen()) {
+    <div class="photo-viewer-backdrop" (click)="closeProfilePhotoViewer()">
+      <div class="photo-viewer-content" (click)="$event.stopPropagation()">
+        <button type="button" class="photo-viewer-close" (click)="closeProfilePhotoViewer()">✕</button>
+        @if (profileForm.controls.profileImageUrl.value) {
+          <img [src]="profileForm.controls.profileImageUrl.value" alt="Profile photo" />
+        } @else {
+          <div class="photo-viewer-fallback">No photo available</div>
+        }
+      </div>
+    </div>
+  }
+
+  <div class="settings-layout">
+    <aside class="settings-sidebar">
+      <div class="settings-user-card">
+        @if (profileForm.controls.profileImageUrl.value) {
+          <img [src]="profileForm.controls.profileImageUrl.value" alt="Profile" class="settings-avatar" />
+        } @else {
+          <div class="settings-avatar settings-avatar--fallback">{{ initials() }}</div>
+        }
+        <div class="settings-user-meta">
+          <h2>{{ currentUser()?.firstName }} {{ currentUser()?.lastName }}</h2>
+          <p>{{ currentUser()?.email }}</p>
+        </div>
+      </div>
+
+      <button type="button" class="settings-nav-btn" [class.active]="section() === 'profile'" (click)="selectSection('profile')">
+        Profile
+      </button>
+      <button type="button" class="settings-nav-btn" [class.active]="section() === 'security'" (click)="selectSection('security')">
+        Security
+      </button>
+      <button type="button" class="settings-nav-btn" [class.active]="section() === 'devices'" (click)="selectSection('devices')">
+        Devices
+      </button>
+      <button type="button" class="settings-nav-btn" [class.active]="section() === 'logs'" (click)="selectSection('logs')">
+        Activity Logs
+      </button>
+      <button type="button" class="settings-nav-btn" [class.active]="section() === 'history'" (click)="selectSection('history')">
+        Reservations &amp; History
+      </button>
+    </aside>
+
+    <main class="settings-main">
+      @if (actionSuccess()) {
+        <div class="flash flash--success">{{ actionSuccess() }}</div>
+      }
+      @if (actionError()) {
+        <div class="flash flash--error">{{ actionError() }}</div>
+      }
+
+      @if (loading()) {
+        <article class="panel panel--loading">
+          <div class="loader"></div>
+          <p>Loading your account center...</p>
+        </article>
+      } @else if (loadingError()) {
+        <article class="panel panel--error">
+          <h3>Could not load settings</h3>
+          <p>{{ loadingError() }}</p>
+        </article>
+      } @else {
+        @if (section() === 'profile') {
+          <article class="panel">
+            <header class="panel-head">
+              <h3>Profile Settings</h3>
+              <button type="button" class="cta-btn cta-btn--ghost" (click)="toggleEditProfile()">
+                {{ editingProfile() ? 'Cancel edit' : 'Edit profile' }}
+              </button>
+            </header>
+
+            <section class="profile-showcase">
+              <div class="profile-cover" [style.background-image]="coverBackground()">
+                <div class="cover-actions-right">
+                  <button type="button" class="cover-action cover-action--secondary" (click)="triggerCoverPicker($event)">
+                    <i class="pi pi-camera"></i>
+                    <span>{{ coverUploadBusy() ? 'Uploading...' : 'Change cover' }}</span>
+                  </button>
+                  <button type="button" class="cover-reset" (click)="resetCoverPhoto()">Reset</button>
+                </div>
+
+                <div class="avatar-shell" (click)="$event.stopPropagation()">
+                  @if (profileForm.controls.profileImageUrl.value) {
+                    <img [src]="profileForm.controls.profileImageUrl.value" alt="Profile" class="hero-avatar" />
+                  } @else {
+                    <div class="hero-avatar hero-avatar--fallback">{{ initials() }}</div>
+                  }
+                  <button type="button" class="avatar-action" (click)="toggleProfilePhotoMenu($event)">
+                    <i class="pi pi-camera"></i>
+                  </button>
+                  @if (profilePhotoMenuOpen()) {
+                    <div class="avatar-menu" (click)="$event.stopPropagation()">
+                      <button type="button" (click)="openProfilePhotoViewer($event)">Voir photo</button>
+                      <button type="button" (click)="triggerAvatarPicker($event)">
+                        {{ avatarUploadBusy() ? 'Uploading...' : 'Changer photo' }}
+                      </button>
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <input #avatarPicker type="file" accept="image/*" hidden (change)="onAvatarFileSelected($event)" />
+              <input #coverPicker type="file" accept="image/*" hidden (change)="onCoverFileSelected($event)" />
+
+              <form class="profile-form" [formGroup]="profileForm" (ngSubmit)="saveProfile()">
+                <div class="profile-info-head">
+                  <h4>Personal information</h4>
+                  <p>Keep your contact details up to date for bookings and notifications.</p>
+                </div>
+                <div class="info-grid">
+                  <label class="info-card info-input info-card--half">
+                    <span class="info-label">First name</span>
+                    <input type="text" formControlName="firstName" [readonly]="!editingProfile()" />
+                  </label>
+                  <label class="info-card info-input info-card--half">
+                    <span class="info-label">Last name</span>
+                    <input type="text" formControlName="lastName" [readonly]="!editingProfile()" />
+                  </label>
+                  <label class="info-card info-input info-card--full">
+                    <span class="info-label">Email</span>
+                    <input type="email" formControlName="email" [readonly]="!editingProfile()" />
+                  </label>
+                  <label class="info-card info-input info-card--third">
+                    <span class="info-label">Phone</span>
+                    <input type="tel" formControlName="phone" [readonly]="!editingProfile()" />
+                  </label>
+                  <label class="info-card info-input info-card--third">
+                    <span class="info-label">Nationality</span>
+                    <select formControlName="nationality" [disabled]="!editingProfile()">
+                      <option value="">Not set</option>
+                      @for (item of nationalities(); track item) {
+                        <option [value]="item">{{ item }}</option>
+                      }
+                    </select>
+                  </label>
+                  <label class="info-card info-input info-card--third">
+                    <span class="info-label">City</span>
+                    <select formControlName="cityId" [disabled]="!editingProfile()">
+                      <option [ngValue]="null">Not set</option>
+                      @for (city of cities(); track city.id) {
+                        <option [ngValue]="city.id">{{ city.name }}</option>
+                      }
+                    </select>
+                  </label>
+                </div>
+
+                @if (editingProfile()) {
+                  <div class="cta-row">
+                    <button type="submit" class="cta-btn" [disabled]="profileSaveBusy() || profileForm.invalid">
+                      {{ profileSaveBusy() ? 'Saving...' : 'Save changes' }}
+                    </button>
+                  </div>
+                }
+              </form>
+            </section>
+          </article>
+        }
+
+        @if (section() === 'security') {
+          <article class="panel">
+            <header class="panel-head">
+              <h3>Security</h3>
+              <button type="button" class="cta-btn" (click)="openChangePasswordPopup()" [disabled]="passwordBusy()">
+                Change password
+              </button>
+            </header>
+
+            <div class="security-box">
+              <h4>Password and account safety</h4>
+              <p>
+                Keep your account safe with a strong password and close old sessions from unknown devices.
+              </p>
+              <ul>
+                <li>Email: {{ currentUser()?.email }}</li>
+                <li>Tip: change your password regularly and avoid reusing old credentials.</li>
+              </ul>
+              <button type="button" class="cta-btn" (click)="openChangePasswordPopup()" [disabled]="passwordBusy()">
+                {{ passwordBusy() ? 'Please wait...' : 'Open password popup' }}
+              </button>
+            </div>
+          </article>
+        }
+
+        @if (section() === 'devices') {
+          <article class="panel">
+            <header class="panel-head">
+              <h3>Connected Devices</h3>
+              <div class="panel-actions">
+                <button type="button" class="cta-btn cta-btn--ghost" (click)="refreshDeviceSessions()">
+                  {{ sessionBusy() ? 'Refreshing...' : 'Refresh' }}
+                </button>
+                <button type="button" class="cta-btn" (click)="revokeOtherSessions()">Close other sessions</button>
+              </div>
+            </header>
+
+            <div class="stats-strip">
+              <div class="stat-pill">
+                <strong>{{ deviceSessions().length }}</strong>
+                <span>Total sessions</span>
+              </div>
+              <div class="stat-pill">
+                <strong>{{ activeSessionsCount() }}</strong>
+                <span>Active now</span>
+              </div>
+            </div>
+
+            @if (deviceSessions().length === 0) {
+              <p class="empty-hint">No session details available right now.</p>
+            } @else {
+              <div class="timeline">
+                @for (session of deviceSessions(); track session.sessionId) {
+                  <div class="timeline-item timeline-item--session" [class.timeline-item--current]="session.current">
+                    <span class="badge">{{ session.current ? 'Current' : 'Device' }}</span>
+                    <div class="timeline-body">
+                      <h4>{{ session.deviceName || 'Unknown device' }}</h4>
+                      <p>Where: {{ whereForSession(session) }}</p>
+                      <p>Opened: {{ formatDateTime(session.issuedAt) }} | Last seen: {{ formatDateTime(session.lastSeenAt) }}</p>
+                    </div>
+                    @if (!session.current) {
+                      <button type="button" class="panel-link btn-link" (click)="revokeSession(session.sessionId)">Close</button>
+                    } @else {
+                      <span class="panel-muted">This device</span>
+                    }
+                  </div>
+                }
+              </div>
+            }
+          </article>
+        }
+
+        @if (section() === 'logs') {
+          <article class="panel">
+            <header class="panel-head">
+              <h3>Action Logs</h3>
+              <span class="panel-muted">Likes, comments, posts</span>
+            </header>
+
+            <div class="stats-strip">
+              <div class="stat-pill">
+                <strong>{{ myPosts().length }}</strong>
+                <span>Posts created</span>
+              </div>
+              <div class="stat-pill">
+                <strong>{{ myLikes().length }}</strong>
+                <span>Posts liked</span>
+              </div>
+              <div class="stat-pill">
+                <strong>{{ myComments().length }}</strong>
+                <span>Comments added</span>
+              </div>
+            </div>
+
+            @if (activityFeed().length === 0) {
+              <p class="empty-hint">No activity yet. Start in the community feed.</p>
+            } @else {
+              <div class="timeline">
+                @for (entry of activityFeed(); track entry.label + entry.timestamp + entry.meta) {
+                  <div class="timeline-item">
+                    <span class="badge">{{ actionBadge(entry.kind) }}</span>
+                    <div class="timeline-body">
+                      <h4>{{ entry.label }}</h4>
+                      <p>{{ entry.meta }}</p>
+                      @if (entry.postId != null) {
+                        <a class="panel-link" [routerLink]="['/communaute']" [fragment]="'community-post-' + entry.postId">
+                          Go to this post
+                        </a>
+                      }
+                    </div>
+                    <time>{{ formatDateTime(entry.timestamp) }}</time>
+                  </div>
+                }
+              </div>
+            }
+
+            <a routerLink="/communaute" class="cta-btn cta-btn--ghost">Open community</a>
+          </article>
+        }
+
+        @if (section() === 'history') {
+          <article class="panel">
+            <header class="panel-head">
+              <h3>Reservations, Events &amp; Artisan History</h3>
+              <span class="panel-muted">Transport, stay, activities, events, artisan</span>
+            </header>
+
+            <div class="stats-strip">
+              <div class="stat-pill">
+                <strong>{{ transportCount() }}</strong>
+                <span>Transport bookings</span>
+              </div>
+              <div class="stat-pill">
+                <strong>{{ accommodationCount() }}</strong>
+                <span>Stay bookings</span>
+              </div>
+              <div class="stat-pill">
+                <strong>{{ activityReservations().length }}</strong>
+                <span>Activity bookings</span>
+              </div>
+              <div class="stat-pill">
+                <strong>{{ orders().length }}</strong>
+                <span>Artisan orders</span>
+              </div>
+            </div>
+
+            <div class="history-filters">
+              <div class="history-filter-type">
+                <span>Type</span>
+                <div class="history-chip-row">
+                  <button type="button" class="history-chip" [class.active]="historyTypeFilter() === 'all'" (click)="setHistoryType('all')">All</button>
+                  <button type="button" class="history-chip" [class.active]="historyTypeFilter() === 'transport'" (click)="setHistoryType('transport')">Transport</button>
+                  <button type="button" class="history-chip" [class.active]="historyTypeFilter() === 'stay'" (click)="setHistoryType('stay')">Stay</button>
+                  <button type="button" class="history-chip" [class.active]="historyTypeFilter() === 'activity'" (click)="setHistoryType('activity')">Activity</button>
+                  <button type="button" class="history-chip" [class.active]="historyTypeFilter() === 'event'" (click)="setHistoryType('event')">Event</button>
+                  <button type="button" class="history-chip" [class.active]="historyTypeFilter() === 'artisan'" (click)="setHistoryType('artisan')">Artisan</button>
+                </div>
+              
+                <label class="history-filter-field history-filter-field--search">
+                <span>Search</span>
+                  <input class="history-search-input" type="text" [ngModel]="historySearch()" (ngModelChange)="setHistorySearch($event)" placeholder="Search by destination, event, booking..." />
+                </label>
+              </div>
+            </div>
+
+            @if (filteredHistory().length === 0) {
+              <p class="empty-hint">No history found for the selected filters.</p>
+            } @else {
+              <ul class="mini-list">
+                @for (entry of filteredHistory(); track entry.type + entry.title + entry.date + entry.subtitle) {
+                  <li>
+                    <div class="history-line">
+                      <span class="badge">{{ historyTypeLabel(entry.type) }}</span>
+                      <div>
+                        <strong>{{ entry.title }}</strong>
+                        <p>{{ entry.subtitle }}</p>
+                      </div>
+                    </div>
+                    <div class="history-actions">
+                      <span>{{ formatDateTime(entry.date) }}</span>
+                      <a class="panel-link" [routerLink]="entry.route">Open</a>
+                    </div>
+                  </li>
+                }
+              </ul>
+            }
+          </article>
+        }
+      }
+    </main>
+  </div>
+</div>

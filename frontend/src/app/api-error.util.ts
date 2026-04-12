@@ -22,6 +22,12 @@ export function extractApiErrorMessage(error: HttpErrorResponse, fallback: strin
     return payload.message;
   }
 
+  // Corps JSON (ex. ApiResponse) parfois sous error.error
+  const nested = (error.error as { error?: { message?: string } })?.error;
+  if (nested?.message && nested.message.trim().length > 0) {
+    return nested.message;
+  }
+
   switch (error.status) {
     case 401:
       return 'Invalid session or incorrect credentials.';
@@ -37,4 +43,19 @@ export function extractApiErrorMessage(error: HttpErrorResponse, fallback: strin
     default:
       return fallback;
   }
+}
+
+export function isBackendLoginRedirectError(error: HttpErrorResponse): boolean {
+  const targetUrl = (error.url ?? '').toLowerCase();
+  const msg = (error.message ?? '').toLowerCase();
+
+  if (targetUrl.includes('/login')) {
+    return true;
+  }
+
+  if (error.status === 0 && msg.includes('unknown error')) {
+    return true;
+  }
+
+  return false;
 }

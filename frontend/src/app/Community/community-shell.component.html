@@ -1,0 +1,66 @@
+<section class="community-shell">
+  <aside class="community-sidebar glass-panel">
+    <h2 class="community-sidebar-title">Community</h2>
+
+    <nav class="community-nav" aria-label="Community navigation">
+      <a
+        routerLink="/communaute"
+        [routerLinkActiveOptions]="{ exact: true }"
+        routerLinkActive="community-nav-link--active"
+        class="community-nav-link"
+      >
+        Fil d'actualite
+      </a>
+
+      <a
+        routerLink="/communaute/saved"
+        routerLinkActive="community-nav-link--active"
+        class="community-nav-link"
+        *ngIf="authService.isAuthenticated()"
+      >
+        Saved
+      </a>
+
+      <a
+        routerLink="/communaute/my-posts"
+        routerLinkActive="community-nav-link--active"
+        class="community-nav-link"
+        *ngIf="authService.isAuthenticated()"
+      >
+        My posts
+      </a>
+
+      <a
+        routerLink="/communaute/digital-passport"
+        routerLinkActive="community-nav-link--active"
+        class="community-nav-link"
+        *ngIf="authService.isAuthenticated()"
+      >
+        Digital Passport
+      </a>
+
+      <a
+        routerLink="/communaute/chat"
+        routerLinkActive="community-nav-link--active"
+        class="community-nav-link"
+        *ngIf="authService.isAuthenticated()"
+      >
+        Chat
+      </a>
+
+      <a
+        *ngIf="authService.isAuthenticated() && authService.currentUser()?.id"
+        [routerLink]="['/communaute/user', authService.currentUser()!.id]"
+        routerLinkActive="community-nav-link--active"
+        class="community-nav-link community-nav-link-button"
+      >
+        My profile
+      </a>
+      
+    </nav>
+  </aside>
+
+  <main class="community-shell-content">
+    <router-outlet></router-outlet>
+  </main>
+</section>

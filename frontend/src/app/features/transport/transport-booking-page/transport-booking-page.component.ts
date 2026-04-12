@@ -1,269 +1,39 @@
-import { Component, inject, signal, OnInit, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import {
+  Component,
+  inject,
+  signal,
+  OnInit,
+  OnDestroy,
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+} from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { FormBuilder, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
-import { StepperModule } from 'primeng/stepper';
-import { ButtonModule } from 'primeng/button';
-import { InputTextModule } from 'primeng/inputtext';
-import { InputMaskModule } from 'primeng/inputmask';
-import { RadioButtonModule } from 'primeng/radiobutton';
-import { DividerModule } from 'primeng/divider';
-import { TagModule } from 'primeng/tag';
-import { RippleModule } from 'primeng/ripple';
 import { TripContextStore } from '../../../core/stores/trip-context.store';
 import { AppAlertsService } from '../../../core/services/app-alerts.service';
 import { DATA_SOURCE_TOKEN } from '../../../core/adapters/data-source.adapter';
 import { AuthService } from '../../../core/auth.service';
 import { LoginRequiredPromptService } from '../../../core/login-required-prompt.service';
 import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } from '../../../core/models/travel.models';
+import { TransportTrackingSseService } from '../transport-tracking-sse.service';
 
 @Component({
-  standalone: true,
+  selector: 'app-transport-booking-page',
+  standalone: false,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    CommonModule, FormsModule, ReactiveFormsModule,
-    StepperModule, ButtonModule, InputTextModule,
-    InputMaskModule, RadioButtonModule, DividerModule,
-    TagModule, RippleModule,
-  ],
-  template: `
-    <div class="bp">
-      <div class="bp-wrap">
-
-        <!-- Stepper -->
-        <div class="stepper-wrap">
-          <p-stepper [linear]="true" [activeStep]="activeStep()">
-
-            <!-- ═══ Step 1: Passenger ═══ -->
-            <p-stepperPanel header="Passengers">
-              <ng-template pTemplate="content" let-nextCallback="nextCallback">
-                <div class="step">
-                  <!-- Inline trip summary -->
-                  @if (transport(); as t) {
-                    <div class="trip-inline">
-                      <span class="trip-emoji">{{ getTypeEmoji(t.type) }}</span>
-                      <div class="trip-detail">
-                        <span class="trip-route">{{ t.departureCityName }} → {{ t.arrivalCityName }}</span>
-                        <span class="trip-meta">{{ getTypeLabel(t.type) }} · {{ formatTime(t.departureTime) }} – {{ formatTime(t.arrivalTime) }} · {{ passengerForm.get('seats')?.value }} seat(s)</span>
-                      </div>
-                      <span class="trip-price">{{ t.price }} <small>TND</small></span>
-                    </div>
-                  }
-
-                  <div class="step-head">
-                    <h2>Passenger details</h2>
-                    <p>Primary traveller contact information</p>
-                  </div>
-
-                  <form [formGroup]="passengerForm" class="f">
-                    <!-- Name Row -->
-                    <div class="f-row">
-                      <div class="f-group">
-                        <label class="f-label"><i class="pi pi-user"></i> First name</label>
-                        <div class="f-input-wrap" [class.f-error]="passengerForm.get('firstName')?.invalid && passengerForm.get('firstName')?.touched">
-                          <input pInputText formControlName="firstName" placeholder="First name" class="f-input" />
-                        </div>
-                        @if (passengerForm.get('firstName')?.invalid && passengerForm.get('firstName')?.touched) {
-                          <small class="f-err-msg">First name is required (min. 2 characters)</small>
-                        }
-                      </div>
-                      <div class="f-group">
-                        <label class="f-label"><i class="pi pi-user"></i> Last name</label>
-                        <div class="f-input-wrap" [class.f-error]="passengerForm.get('lastName')?.invalid && passengerForm.get('lastName')?.touched">
-                          <input pInputText formControlName="lastName" placeholder="Last name" class="f-input" />
-                        </div>
-                        @if (passengerForm.get('lastName')?.invalid && passengerForm.get('lastName')?.touched) {
-                          <small class="f-err-msg">Last name is required (min. 2 characters)</small>
-                        }
-                      </div>
-                    </div>
-
-                    <!-- Email + Phone Row -->
-                    <div class="f-row">
-                      <div class="f-group">
-                        <label class="f-label"><i class="pi pi-envelope"></i> Email</label>
-                        <div class="f-input-wrap" [class.f-error]="passengerForm.get('email')?.invalid && passengerForm.get('email')?.touched">
-                          <input pInputText formControlName="email" placeholder="votre@email.com" class="f-input" />
-                        </div>
-                        @if (passengerForm.get('email')?.invalid && passengerForm.get('email')?.touched) {
-                          <small class="f-err-msg">Enter a valid email address</small>
-                        }
-                      </div>
-                      <div class="f-group">
-                        <label class="f-label"><i class="pi pi-phone"></i> Phone</label>
-                        <div class="f-phone" [class.f-error]="passengerForm.get('phone')?.invalid && passengerForm.get('phone')?.touched">
-                          <span class="f-prefix">+216</span>
-                          <input pInputText formControlName="phone" placeholder="98 765 432" class="f-input" />
-                        </div>
-                        @if (passengerForm.get('phone')?.invalid && passengerForm.get('phone')?.touched) {
-                          <small class="f-err-msg">Enter 8 digits (Tunisia mobile without +216)</small>
-                        }
-                      </div>
-                    </div>
-
-                    <!-- Seats (read-only) -->
-                    <div class="f-seats">
-                      <div class="f-seats-badge">{{ passengerForm.get('seats')?.value }}</div>
-                      <span class="f-seats-txt">seat(s) reserved</span>
-                    </div>
-                  </form>
-
-                  <div class="step-nav">
-                    <span></span>
-                    <button pButton label="Continue" icon="pi pi-arrow-right" iconPos="right"
-                            class="p-button-raised" (click)="goToStep2(nextCallback)"
-                            [disabled]="passengerForm.invalid"></button>
-                  </div>
-                </div>
-              </ng-template>
-            </p-stepperPanel>
-
-            <!-- ═══ Step 2: Payment ═══ -->
-            <p-stepperPanel header="Payment">
-              <ng-template pTemplate="content" let-prevCallback="prevCallback" let-nextCallback="nextCallback">
-                <div class="step">
-                  <div class="step-head">
-                    <h2>Summary & payment</h2>
-                    <p>Review details before you confirm</p>
-                  </div>
-
-                  <!-- Summary -->
-                  <div class="sum">
-                    <div class="sum-route">
-                      <div class="sum-point">
-                        <span class="sum-city">{{ transport()?.departureCityName }}</span>
-                        <span class="sum-time">{{ formatTime(transport()?.departureTime ?? '') }}</span>
-                      </div>
-                      <div class="sum-track">
-                        <span class="sum-dot"></span>
-                        <span class="sum-line"></span>
-                        <span class="sum-emoji">{{ getTypeEmoji(transport()?.type ?? 'BUS') }}</span>
-                        <span class="sum-line"></span>
-                        <span class="sum-dot"></span>
-                      </div>
-                      <div class="sum-point sum-end">
-                        <span class="sum-city">{{ transport()?.arrivalCityName }}</span>
-                        <span class="sum-time">{{ formatTime(transport()?.arrivalTime ?? '') }}</span>
-                      </div>
-                    </div>
-
-                    <div class="sum-divider"></div>
-
-                    <div class="sum-grid">
-                      <div class="sum-item"><span class="sum-k"><i class="pi pi-calendar"></i> Date</span><span class="sum-v">{{ formatTravelDate(store.dates().travelDate) }}</span></div>
-                      <div class="sum-item"><span class="sum-k"><i class="pi pi-user"></i> Passenger</span><span class="sum-v">{{ passengerForm.get('firstName')?.value }} {{ passengerForm.get('lastName')?.value }}</span></div>
-                      <div class="sum-item"><span class="sum-k"><i class="pi pi-users"></i> Seats</span><span class="sum-v">{{ passengerForm.get('seats')?.value }}</span></div>
-                      <div class="sum-item"><span class="sum-k"><i class="pi pi-phone"></i> Phone</span><span class="sum-v">+216 {{ passengerForm.get('phone')?.value }}</span></div>
-                    </div>
-
-                    <div class="sum-divider"></div>
-
-                    <div class="sum-pricing">
-                      <div class="sum-pl"><span>Unit price</span><span>{{ transport()?.price }} TND</span></div>
-                      <div class="sum-pl"><span>Seats</span><span>&times; {{ passengerForm.get('seats')?.value }}</span></div>
-                      <div class="sum-pl sum-total">
-                        <span>Total</span>
-                        <span class="sum-total-val">{{ calculateTotal() }} TND</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Payment Methods -->
-                  <div class="pay">
-                    <h3 class="pay-title">Payment method</h3>
-                    <div class="pay-grid">
-                      <label class="pay-opt" [class.pay-active]="paymentMethod() === 'CASH'"
-                             (click)="paymentMethod.set('CASH'); paymentMethodValue = 'CASH'">
-                        <span class="pay-radio" [class.pay-checked]="paymentMethod() === 'CASH'"></span>
-                        <i class="pi pi-wallet pay-icon"></i>
-                        <div class="pay-txt">
-                          <span class="pay-name">Cash</span>
-                          <span class="pay-desc">Pay the driver directly</span>
-                        </div>
-                      </label>
-                      <label class="pay-opt" [class.pay-active]="paymentMethod() === 'KONNECT'"
-                             (click)="paymentMethod.set('KONNECT'); paymentMethodValue = 'KONNECT'">
-                        <span class="pay-radio" [class.pay-checked]="paymentMethod() === 'KONNECT'"></span>
-                        <i class="pi pi-credit-card pay-icon"></i>
-                        <div class="pay-txt">
-                          <span class="pay-name">Konnect</span>
-                          <span class="pay-desc">Secure online payment</span>
-                        </div>
-                      </label>
-                    </div>
-                  </div>
-
-                  <div class="step-nav">
-                    <button pButton label="Back" icon="pi pi-arrow-left"
-                            class="p-button-text" (click)="prevCallback.emit()"></button>
-                    <button pButton [label]="'Confirm · ' + calculateTotal() + ' TND'"
-                            icon="pi pi-lock" class="p-button-raised"
-                            (click)="confirmBooking(nextCallback)"
-                            [loading]="loading()" [disabled]="loading()"></button>
-                  </div>
-                </div>
-              </ng-template>
-            </p-stepperPanel>
-
-            <!-- ═══ Step 3: Confirmation ═══ -->
-            <p-stepperPanel header="Confirmation">
-              <ng-template pTemplate="content">
-                <div class="step conf">
-                  <div class="conf-icon">
-                    <div class="conf-circle"><i class="pi pi-check"></i></div>
-                  </div>
-                  <h2 class="conf-title">Booking confirmed</h2>
-                  <div class="conf-welcome-msg">
-                    <span>👋</span>
-                    <span>Thank you <strong>{{ authService.currentUser()?.firstName || passengerForm.get('firstName')?.value }}</strong>, your ticket is confirmed.</span>
-                  </div>
-
-                  @if (reservation(); as r) {
-                    <div class="conf-card">
-                      <div class="conf-ref">
-                        <span class="conf-ref-label">Reference</span>
-                        <span class="conf-ref-val">{{ r.reservationRef }}</span>
-                      </div>
-                      <div class="conf-divider"></div>
-                      <div class="conf-rows">
-                        <div class="conf-row"><span>Amount</span><strong>{{ r.totalPrice }} TND</strong></div>
-                        <div class="conf-row"><span>Status</span><p-tag [value]="r.status" severity="success"></p-tag></div>
-                        <div class="conf-row"><span>Payment</span><p-tag [value]="r.paymentMethod" severity="info"></p-tag></div>
-                      </div>
-                      @if (r.qrCodeToken) {
-                        <div class="conf-divider"></div>
-                        <div class="conf-qr">
-                          <p>Show this QR code at boarding</p>
-                          <div class="conf-qr-box">
-                            <i class="pi pi-qrcode"></i>
-                            <small>{{ r.qrCodeToken }}</small>
-                          </div>
-                        </div>
-                      }
-                    </div>
-                  }
-
-                  <div class="conf-btns">
-                    <button pButton label="My bookings" icon="pi pi-list"
-                            class="p-button-raised"
-                            (click)="router.navigate(['/mes-reservations'], { queryParams: { tab: 'transport' } })"></button>
-                    <button pButton label="New search" icon="pi pi-search"
-                            class="p-button-text" (click)="router.navigate(['/transport'])"></button>
-                  </div>
-                </div>
-              </ng-template>
-            </p-stepperPanel>
-
-          </p-stepper>
-        </div>
-      </div>
-    </div>
-  `,
+  templateUrl: './transport-booking-page.component.html',
   styles: [`
     .bp { min-height: 100vh; padding: 1rem 1rem 4rem; }
     .bp-wrap { max-width: 740px; margin: 0 auto; }
+    .bp-edit-banner {
+      display: flex; align-items: flex-start; gap: 0.6rem;
+      padding: 0.85rem 1rem; margin-bottom: 1rem; border-radius: 14px;
+      background: rgba(0, 119, 182, 0.12); border: 1px solid rgba(0, 119, 182, 0.28);
+      font-size: 0.88rem; color: var(--text-color, #e5e7eb); line-height: 1.45;
+    }
+    .bp-edit-banner .pi { color: #38bdf8; margin-top: 2px; }
 
-    /* ═══ Trip Inline Summary ═══ */
     .trip-inline {
       display: flex; align-items: center; gap: 0.85rem;
       background: rgba(241,37,69,0.04);
@@ -281,7 +51,6 @@ import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } f
     }
     .trip-price small { font-size: 0.7rem; font-weight: 500; opacity: 0.6; }
 
-    /* ═══ Stepper Wrap ═══ */
     .stepper-wrap {
       background: var(--surface-1, #111827);
       border: 1px solid var(--glass-border, rgba(255,255,255,0.08));
@@ -295,7 +64,6 @@ import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } f
       .p-inputtext { width: 100%; }
     }
 
-    /* ═══ Step ═══ */
     .step { padding: 1.5rem 0 0; }
     .step-head { text-align: center; margin-bottom: 2rem; }
     .step-head h2 {
@@ -304,7 +72,6 @@ import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } f
     }
     .step-head p { font-size: 0.88rem; color: var(--text-muted, #a8b3c7); margin: 0; }
 
-    /* ═══ Form ═══ */
     .f { display: flex; flex-direction: column; gap: 1.4rem; }
     .f-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.1rem; }
     .f-group { display: flex; flex-direction: column; gap: 0.35rem; }
@@ -355,7 +122,6 @@ import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } f
 
     .f-err-msg { font-size: 0.72rem; color: #f87171; font-weight: 500; padding-left: 2px; }
 
-    /* Seats read-only */
     .f-seats {
       display: flex; align-items: center; gap: 0.85rem;
       background: rgba(241,37,69,0.05);
@@ -370,10 +136,8 @@ import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } f
     }
     .f-seats-txt { font-size: 0.88rem; color: var(--text-muted); font-weight: 500; }
 
-    /* ═══ Step Nav ═══ */
     .step-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 2.5rem; }
 
-    /* ═══ Summary ═══ */
     .sum {
       background: rgba(255,255,255,0.02);
       border: 1px solid var(--glass-border);
@@ -402,10 +166,9 @@ import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } f
     .sum-total { font-weight: 700; color: var(--text-color); padding-top: 0.6rem; border-top: 1px dashed var(--glass-border); font-size: 1rem; }
     .sum-total-val { font-family: 'Outfit', sans-serif; font-size: 1.3rem; font-weight: 800; color: #f12545; }
 
-    /* ═══ Payment ═══ */
     .pay { margin-bottom: 0.5rem; }
     .pay-title { font-size: 0.92rem; font-weight: 700; color: var(--text-color); margin: 0 0 0.85rem; }
-    .pay-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; }
+    .pay-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.85rem; }
     .pay-opt {
       display: flex; align-items: center; gap: 0.75rem;
       padding: 1rem 1.1rem; border-radius: 14px; cursor: pointer;
@@ -432,8 +195,24 @@ import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } f
     .pay-txt { display: flex; flex-direction: column; }
     .pay-name { font-weight: 700; font-size: 0.88rem; color: var(--text-color); }
     .pay-desc { font-size: 0.72rem; color: var(--text-muted); }
+    .pay-paypal.pay-active {
+      border-color: #003087 !important;
+      background: rgba(0, 48, 135, 0.1) !important;
+    }
+    .paypal-mark {
+      font-weight: 800;
+      font-size: 1.05rem;
+      color: #003087;
+      letter-spacing: 0.02em;
+    }
+    .paypal-note {
+      font-size: 0.72rem;
+      color: #1D9E75;
+      font-weight: 600;
+      margin-top: 0.4rem;
+      line-height: 1.35;
+    }
 
-    /* ═══ Confirmation ═══ */
     .conf { text-align: center; padding-top: 2rem !important; }
     .conf-icon { margin-bottom: 1.25rem; }
     .conf-circle {
@@ -476,10 +255,11 @@ import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } f
       padding: 1.25rem; background: rgba(255,255,255,0.03); border-radius: 12px;
     }
     .conf-qr-box i { font-size: 3.5rem; color: var(--text-muted); opacity: 0.3; }
+    .conf-qr-img { display: block; border-radius: 8px; background: #fff; padding: 8px; }
+    .conf-qr-wait { font-size: 0.85rem; color: var(--text-muted); }
 
     .conf-btns { display: flex; justify-content: center; gap: 0.75rem; }
 
-    /* ═══ Responsive ═══ */
     @media (max-width: 640px) {
       .stepper-wrap { padding: 1.25rem; border-radius: 16px; }
       .f-row { grid-template-columns: 1fr; }
@@ -488,25 +268,30 @@ import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } f
       .step-nav button { width: 100%; }
       .trip-inline { flex-wrap: wrap; }
     }
-  `]
+  `],
 })
-export class TransportBookingPageComponent implements OnInit {
+export class TransportBookingPageComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
   private route = inject(ActivatedRoute);
   private alerts = inject(AppAlertsService);
+  private cdr = inject(ChangeDetectorRef);
+  private http = inject(HttpClient);
   authService = inject(AuthService);
   private loginPrompt = inject(LoginRequiredPromptService);
   private dataSource = inject(DATA_SOURCE_TOKEN);
+  private trackingSse = inject(TransportTrackingSseService);
 
   router = inject(Router);
   store = inject(TripContextStore);
 
   transport = signal<Transport | null>(null);
   reservation = signal<TransportReservation | null>(null);
+  qrBoardingImageUrl = signal<string | null>(null);
+  editingReservationId = signal<number | null>(null);
   activeStep = signal(0);
   loading = signal(false);
   showQrDialog = false;
-  paymentMethod = signal<'CASH' | 'KONNECT'>('CASH');
+  paymentMethod = signal<'CASH' | 'KONNECT' | 'STRIPE' | 'PAYPAL'>('CASH');
   paymentMethodValue = 'CASH';
 
   passengerForm = this.fb.group({
@@ -518,6 +303,11 @@ export class TransportBookingPageComponent implements OnInit {
   });
 
   ngOnInit() {
+    const qpDate = this.route.snapshot.queryParamMap.get('date');
+    if (qpDate) {
+      this.store.setDates({ travelDate: qpDate });
+    }
+
     const user = this.authService.currentUser();
     if (user) {
       this.passengerForm.patchValue({
@@ -530,37 +320,145 @@ export class TransportBookingPageComponent implements OnInit {
 
     this.passengerForm.patchValue({ seats: this.store.pax().adults || 1 });
 
+    const routeId = this.route.snapshot.paramMap.get('id');
+    const editParam = this.route.snapshot.queryParamMap.get('edit');
+    const transportIdNum = routeId ? parseInt(routeId, 10) : NaN;
+
     const selected = this.store.selectedTransport();
-    if (selected) {
+    if (selected && Number.isFinite(transportIdNum) && selected.id === transportIdNum) {
       this.transport.set(selected);
       this.applySeatCapacityValidators(selected);
-    } else {
-      const id = this.route.snapshot.paramMap.get('id');
-      if (id) {
-        this.dataSource.getTransportById(parseInt(id)).subscribe({
-          next: t => {
-            this.transport.set(t);
-            this.applySeatCapacityValidators(t);
+    } else if (Number.isFinite(transportIdNum)) {
+      this.dataSource.getTransportById(transportIdNum).subscribe({
+        next: (t) => {
+          this.transport.set(t);
+          this.applySeatCapacityValidators(t);
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          void this.alerts.error('Trip not found', 'We could not load this trip. Returning to search.');
+          this.router.navigate(['/transport']);
+        },
+      });
+    } else if (selected) {
+      this.transport.set(selected);
+      this.applySeatCapacityValidators(selected);
+    }
+
+    const paid = this.route.snapshot.queryParamMap.get('paid');
+    const paidRid = this.route.snapshot.queryParamMap.get('reservationId');
+    const uidEarly = user
+      ? ((user as { id?: number; userId?: number }).id ?? (user as { userId?: number }).userId)
+      : null;
+    if (paid === '1' && paidRid && uidEarly != null) {
+      const prid = Number(paidRid);
+      if (Number.isFinite(prid)) {
+        this.dataSource.getTransportReservation(prid, uidEarly as number).subscribe({
+          next: (existing) => {
+            this.reservation.set(existing);
+            this.activeStep.set(2);
+            if (existing.status === 'CONFIRMED') {
+              this.trackingSse.startJourneyTracking(existing.transportReservationId);
+              this.loadBoardingQrPng(existing.transportReservationId);
+            }
+            this.cdr.markForCheck();
           },
           error: () => {
-            void this.alerts.error('Trip not found', 'We could not load this trip. Returning to search.');
-            this.router.navigate(['/transport']);
+            void this.alerts.error('Booking', 'Could not load paid reservation.');
+          },
+        });
+      }
+    }
+
+    if (editParam && user) {
+      const rid = parseInt(editParam, 10);
+      if (Number.isFinite(rid)) {
+        this.dataSource.getTransportReservation(rid, (user as { id: number }).id).subscribe({
+          next: (existing) => {
+            if (Number.isFinite(transportIdNum) && existing.transportId != null && existing.transportId !== transportIdNum) {
+              void this.alerts.warning('Different trip', 'This booking belongs to another trip. Opening your bookings.');
+              void this.router.navigate(['/mes-reservations'], { queryParams: { tab: 'transport' } });
+              return;
+            }
+            this.editingReservationId.set(existing.transportReservationId);
+            const rawPhone = existing.passengerPhone ?? '';
+            const phoneDigits = rawPhone.replace(/\+216\s*/, '').replace(/\D/g, '').slice(-8);
+            this.passengerForm.patchValue({
+              firstName: existing.passengerFirstName || '',
+              lastName: existing.passengerLastName || '',
+              email: existing.passengerEmail || '',
+              phone: phoneDigits || this.passengerForm.get('phone')?.value,
+              seats: existing.numberOfSeats || 1,
+            });
+            this.paymentMethod.set(existing.paymentMethod);
+            this.paymentMethodValue = existing.paymentMethod;
+            if (existing.travelDate) {
+              this.store.setDates({ travelDate: existing.travelDate });
+            }
+            const t = this.transport();
+            if (t) this.applySeatCapacityValidators(t);
+            if (existing.status === 'CONFIRMED') {
+              this.loadBoardingQrPng(existing.transportReservationId);
+            }
+            this.cdr.markForCheck();
+          },
+          error: () => {
+            void this.alerts.error('Booking not found', 'We could not load this reservation. Try again from My bookings.');
+            void this.router.navigate(['/mes-reservations'], { queryParams: { tab: 'transport' } });
           },
         });
       }
     }
   }
 
-  goToStep2(nextCallback: any) {
+  ngOnDestroy(): void {
+    this.revokeBoardingQrUrl();
+  }
+
+  private revokeBoardingQrUrl(): void {
+    const u = this.qrBoardingImageUrl();
+    if (u) {
+      URL.revokeObjectURL(u);
+      this.qrBoardingImageUrl.set(null);
+    }
+  }
+
+  private loadBoardingQrPng(reservationId: number): void {
+    this.revokeBoardingQrUrl();
+    this.http.get(`/api/tickets/${reservationId}/qr`, { responseType: 'blob' }).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        this.qrBoardingImageUrl.set(url);
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  goToStep2() {
     if (this.passengerForm.valid) {
-      nextCallback.emit();
+      this.activeStep.set(1);
     } else {
       this.passengerForm.markAllAsTouched();
       void this.alerts.warning('Check passenger details', 'Please correct the highlighted fields before continuing.');
     }
   }
 
-  confirmBooking(nextCallback: any) {
+  /**
+   * Events module pattern: POST checkout-session then full-page navigation to the returned URL (Stripe hosted or return path).
+   */
+  private redirectToCheckoutUrl(url: string): void {
+    const trimmed = (url ?? '').trim();
+    if (!trimmed) {
+      void this.alerts.error('Checkout', 'Invalid payment response from server.');
+      return;
+    }
+    window.location.href = new URL(trimmed, window.location.origin).href;
+  }
+
+  confirmBooking() {
     const user = this.authService.currentUser();
     if (!user) {
       this.loginPrompt.show({
@@ -584,33 +482,187 @@ export class TransportBookingPageComponent implements OnInit {
       return;
     }
 
+    const uid = (user as { id?: number; userId?: number }).id ?? (user as { userId?: number }).userId;
+    const editId = this.editingReservationId();
+
     this.loading.set(true);
+
+    if (editId != null) {
+      this.dataSource
+        .updateTransportReservation(editId, uid as number, {
+          numberOfSeats: this.passengerForm.get('seats')?.value ?? 1,
+          passengerFirstName: this.passengerForm.get('firstName')?.value ?? '',
+          passengerLastName: this.passengerForm.get('lastName')?.value ?? '',
+          passengerEmail: this.passengerForm.get('email')?.value ?? '',
+          passengerPhone: '+216 ' + (this.passengerForm.get('phone')?.value ?? ''),
+          paymentMethod: this.paymentMethod(),
+        })
+        .subscribe({
+          next: (res) => {
+            this.loading.set(false);
+            this.reservation.set(res);
+            if (res.status === 'CONFIRMED') {
+              this.loadBoardingQrPng(res.transportReservationId);
+            }
+            this.activeStep.set(2);
+          },
+          error: (err) => {
+            this.loading.set(false);
+            void this.alerts.error(
+              'Update failed',
+              err.error?.message ?? 'We could not update this booking. Try again.'
+            );
+          },
+        });
+      return;
+    }
+
+    if (this.paymentMethod() === 'STRIPE') {
+      const travelDate = this.buildTravelDateTimeIso();
+      if (!travelDate) {
+        this.loading.set(false);
+        void this.alerts.warning('Date', 'Select a travel date from search before paying.');
+        return;
+      }
+      const routeKm = t.type === 'TAXI' ? this.store.transportRouteKm() : undefined;
+      if (t.type === 'TAXI' && (routeKm == null || routeKm <= 0)) {
+        this.loading.set(false);
+        void this.alerts.warning(
+          'Route',
+          'Taxi pricing needs a driving route. Run a search with cities so the map can estimate distance.'
+        );
+        return;
+      }
+      const idempotencyKey = crypto.randomUUID();
+      this.dataSource
+        .createTransportCheckoutSession({
+          transportId: t.id,
+          numberOfSeats: seats,
+          travelDate,
+          routeKm: routeKm ?? undefined,
+          rentalDays: t.type === 'CAR' ? this.store.transportRentalDays() : undefined,
+          passengerFirstName: this.passengerForm.get('firstName')?.value ?? '',
+          passengerLastName: this.passengerForm.get('lastName')?.value ?? '',
+          passengerEmail: this.passengerForm.get('email')?.value ?? '',
+          passengerPhone: '+216 ' + (this.passengerForm.get('phone')?.value ?? ''),
+          idempotencyKey,
+        })
+        .subscribe({
+          next: (checkout) => {
+            this.loading.set(false);
+            this.redirectToCheckoutUrl(checkout.url ?? '');
+          },
+          error: (err: unknown) => {
+            this.loading.set(false);
+            const body = err && typeof err === 'object' && 'error' in err ? (err as { error?: unknown }).error : undefined;
+            const msg =
+              typeof body === 'object' && body !== null && 'message' in body
+                ? String((body as { message?: string }).message)
+                : typeof body === 'string'
+                  ? body
+                  : 'Could not start Stripe checkout.';
+            void this.alerts.error('Checkout', msg);
+          },
+        });
+      return;
+    }
+
+    if (this.paymentMethod() === 'PAYPAL') {
+      const travelDate = this.buildTravelDateTimeIso();
+      if (!travelDate) {
+        this.loading.set(false);
+        void this.alerts.warning('Date', 'Select a travel date from search before paying.');
+        return;
+      }
+      const routeKm = t.type === 'TAXI' ? this.store.transportRouteKm() : undefined;
+      if (t.type === 'TAXI' && (routeKm == null || routeKm <= 0)) {
+        this.loading.set(false);
+        void this.alerts.warning(
+          'Route',
+          'Taxi pricing needs a driving route. Run a search with cities so the map can estimate distance.'
+        );
+        return;
+      }
+      const amountTnd = this.calculateTotal();
+      this.dataSource
+        .createTransportPayPalSession({
+          transportId: t.id,
+          seats,
+          travelDate,
+          routeKm: routeKm ?? undefined,
+          amountTnd,
+          passengerFirstName: this.passengerForm.get('firstName')?.value ?? '',
+          passengerLastName: this.passengerForm.get('lastName')?.value ?? '',
+          passengerEmail: this.passengerForm.get('email')?.value ?? '',
+          passengerPhone: '+216 ' + (this.passengerForm.get('phone')?.value ?? ''),
+        })
+        .subscribe({
+          next: (checkout) => {
+            this.loading.set(false);
+            this.redirectToCheckoutUrl(checkout.url ?? '');
+          },
+          error: (err: unknown) => {
+            this.loading.set(false);
+            const body = err && typeof err === 'object' && 'error' in err ? (err as { error?: unknown }).error : undefined;
+            const msg =
+              typeof body === 'object' && body !== null && 'message' in body
+                ? String((body as { message?: string }).message)
+                : typeof body === 'string'
+                  ? body
+                  : 'Could not start PayPal checkout.';
+            void this.alerts.error('PayPal', msg);
+          },
+        });
+      return;
+    }
+
     const idempotencyKey = crypto.randomUUID();
 
-    this.dataSource.createTransportReservation({
-      transportId: t.id,
-      userId: (user as any).id ?? (user as any).userId,
-      passengerFirstName: this.passengerForm.get('firstName')?.value ?? '',
-      passengerLastName: this.passengerForm.get('lastName')?.value ?? '',
-      passengerEmail: this.passengerForm.get('email')?.value ?? '',
-      passengerPhone: '+216 ' + (this.passengerForm.get('phone')?.value ?? ''),
-      numberOfSeats: this.passengerForm.get('seats')?.value ?? 1,
-      paymentMethod: this.paymentMethod(),
-      idempotencyKey,
-    }).subscribe({
-      next: res => {
-        this.loading.set(false);
-        this.reservation.set(res);
-        nextCallback.emit();
-      },
-      error: err => {
-        this.loading.set(false);
-        void this.alerts.error(
-          'Booking failed',
-          err.error?.message ?? 'We could not complete the reservation. Please try again.'
-        );
-      },
-    });
+    this.dataSource
+      .createTransportReservation({
+        transportId: t.id,
+        userId: uid as number,
+        passengerFirstName: this.passengerForm.get('firstName')?.value ?? '',
+        passengerLastName: this.passengerForm.get('lastName')?.value ?? '',
+        passengerEmail: this.passengerForm.get('email')?.value ?? '',
+        passengerPhone: '+216 ' + (this.passengerForm.get('phone')?.value ?? ''),
+        numberOfSeats: this.passengerForm.get('seats')?.value ?? 1,
+        paymentMethod: this.paymentMethod(),
+        idempotencyKey,
+        travelDate: this.buildTravelDateTimeIso() ?? undefined,
+        routeKm:
+          t.type === 'TAXI' ? (this.store.transportRouteKm() ?? undefined) : undefined,
+        rentalDays: t.type === 'CAR' ? this.store.transportRentalDays() : undefined,
+      })
+      .subscribe({
+        next: (res) => {
+          this.loading.set(false);
+          this.reservation.set(res);
+          if (res.status === 'CONFIRMED') {
+            this.trackingSse.startJourneyTracking(res.transportReservationId);
+            this.loadBoardingQrPng(res.transportReservationId);
+          }
+          this.activeStep.set(2);
+        },
+        error: (err) => {
+          this.loading.set(false);
+          void this.alerts.error(
+            'Booking failed',
+            err.error?.message ?? 'We could not complete the reservation. Please try again.'
+          );
+        },
+      });
+  }
+
+  confirmButtonLabel(): string {
+    const total = this.calculateTotal();
+    if (this.editingReservationId() != null) {
+      return `Update booking · ${total} TND`;
+    }
+    if (this.paymentMethod() === 'STRIPE' || this.paymentMethod() === 'PAYPAL') {
+      return `Pay & confirm · ${total} TND`;
+    }
+    return `Confirm · ${total} TND`;
   }
 
   private maxBookableSeats(t: Transport): number {
@@ -630,9 +682,52 @@ export class TransportBookingPageComponent implements OnInit {
     ctrl.updateValueAndValidity({ emitEvent: false });
   }
 
+  /** PayPal charges in USD; shown for transparency (TND × 0.32). */
+  paypalUsdFromTnd(): number {
+    return Math.round(this.calculateTotal() * 0.32 * 100) / 100;
+  }
+
   calculateTotal(): number {
+    const t = this.transport();
     const seats = this.passengerForm.get('seats')?.value ?? 1;
-    return Math.round((seats * (this.transport()?.price ?? 0)) * 100) / 100;
+    if (!t) {
+      return 0;
+    }
+    if (t.type === 'TAXI') {
+      const km = this.store.transportRouteKm() ?? 0;
+      return Math.round(0.8 * km * seats * 100) / 100;
+    }
+    if (t.type === 'CAR') {
+      const days = this.store.transportRentalDays() ?? 1;
+      return Math.round(t.price * Math.max(1, days) * 100) / 100;
+    }
+    return Math.round(seats * t.price * 100) / 100;
+  }
+
+  private buildTravelDateTimeIso(): string | null {
+    const dateStr = this.store.dates().travelDate;
+    const t = this.transport();
+    if (!dateStr || !t?.departureTime) {
+      return null;
+    }
+    if (dateStr.includes('T')) {
+      const user = new Date(dateStr);
+      if (Number.isNaN(user.getTime())) {
+        return null;
+      }
+      const y = user.getFullYear();
+      const mo = String(user.getMonth() + 1).padStart(2, '0');
+      const day = String(user.getDate()).padStart(2, '0');
+      const h = String(user.getHours()).padStart(2, '0');
+      const m = String(user.getMinutes()).padStart(2, '0');
+      const s = String(user.getSeconds()).padStart(2, '0');
+      return `${y}-${mo}-${day}T${h}:${m}:${s}`;
+    }
+    const dep = new Date(t.departureTime);
+    const h = String(dep.getHours()).padStart(2, '0');
+    const m = String(dep.getMinutes()).padStart(2, '0');
+    const s = String(dep.getSeconds()).padStart(2, '0');
+    return `${dateStr}T${h}:${m}:${s}`;
   }
 
   goBack() { this.router.navigate(['/transport/results'], { queryParams: this.route.snapshot.queryParams }); }

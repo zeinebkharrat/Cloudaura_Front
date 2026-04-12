@@ -9,6 +9,7 @@ public interface IPostMediaService {
     PostMedia addMedia(PostMedia media);
     PostMedia updateMedia(PostMedia media);
     PostMedia retrieveMedia(Integer mediaId);
+    PostMedia retrieveMediaWithPostAuthor(Integer mediaId);
     void removeMedia(Integer mediaId);
 }
 

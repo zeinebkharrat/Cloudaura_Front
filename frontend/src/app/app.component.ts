@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, Renderer2, effect, HostListener } from '@angular/core';
+import { Component, inject, signal, OnInit, Renderer2, effect, HostListener, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NavigationEnd, Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { filter } from 'rxjs';
@@ -10,6 +10,7 @@ import { NotificationService } from './core/notification.service';
 import { LoginRequiredPromptService } from './core/login-required-prompt.service';
 import { SignInComponent } from './sign-in.component';
 import { SignUpComponent } from './sign-up.component';
+import { DailyChallengeRow, GamificationBadgeEntry, GamificationService } from './core/gamification.service';
 
 @Component({
   selector: 'app-root',
@@ -24,6 +25,7 @@ export class AppComponent implements OnInit {
   readonly auth = inject(AuthService);
   readonly shop = inject(ShopService);
   private readonly chatService = inject(ChatService);
+  private readonly gamification = inject(GamificationService);
   readonly notifier = inject(NotificationService);
   readonly loginPrompt = inject(LoginRequiredPromptService);
 
@@ -44,6 +46,17 @@ export class AppComponent implements OnInit {
   readonly toastType = this.notifier.type;
 
   readonly authModalMode = signal<'signin' | 'signup'>('signin');
+  readonly isChallengesPopupOpen = signal(false);
+  readonly activeChallenges = signal<DailyChallengeRow[]>([]);
+  readonly userBadgeCollection = signal<GamificationBadgeEntry[]>([]);
+  readonly userPoints = computed(() => {
+    const fromAuth = this.currentUser()?.points;
+    if (fromAuth != null) {
+      return fromAuth;
+    }
+    return 0;
+  });
+  readonly challengeCount = computed(() => this.activeChallenges().filter((c) => !c.completed).length);
 
   constructor() {
     effect(
@@ -61,6 +74,19 @@ export class AppComponent implements OnInit {
     this.router.events
       .pipe(filter((event) => event instanceof NavigationEnd))
       .subscribe(() => this.syncRouteState());
+
+    effect(
+      () => {
+        if (this.isAuthenticated()) {
+          this.loadGamificationSummary();
+        } else {
+          this.activeChallenges.set([]);
+          this.userBadgeCollection.set([]);
+          this.isChallengesPopupOpen.set(false);
+        }
+      },
+      { allowSignalWrites: true }
+    );
   }
 
   clearToast(): void {
@@ -93,6 +119,11 @@ export class AppComponent implements OnInit {
     this.isHomeRoute.set(path === '' || path === '/');
     this.isCityRoute.set(path.startsWith('/city/'));
     this.onWindowScroll();
+  }
+
+  isStaysNavActive(): boolean {
+    const path = this.router.url.split('?')[0].split('#')[0];
+    return path.startsWith('/planifier-voyage') || path.startsWith('/hebergement') || path.startsWith('/my-bookings');
   }
 
   isHeroRoute(): boolean {
@@ -132,6 +163,30 @@ export class AppComponent implements OnInit {
   onDocumentClick() {
     this.isUserMenuOpen.set(false);
     this.isServicesMenuOpen.set(false);
+    this.isChallengesPopupOpen.set(false);
+  }
+
+  toggleChallengesPopup(event: Event): void {
+    event.stopPropagation();
+    this.isChallengesPopupOpen.set(!this.isChallengesPopupOpen());
+  }
+
+  closeChallengesPopup(): void {
+    this.isChallengesPopupOpen.set(false);
+  }
+
+  private loadGamificationSummary(): void {
+    this.gamification.me().subscribe({
+      next: (me) => {
+        this.userBadgeCollection.set(me.badges ?? []);
+      },
+      error: () => this.userBadgeCollection.set([]),
+    });
+
+    this.gamification.todayChallenges().subscribe({
+      next: (rows) => this.activeChallenges.set(rows ?? []),
+      error: () => this.activeChallenges.set([]),
+    });
   }
 
   logout() {

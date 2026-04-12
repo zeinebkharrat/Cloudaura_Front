@@ -1,6 +1,9 @@
 import { inject, Injectable, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { catchError, map, of, tap } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { ChatE2eeService } from '../chat/chat-e2ee.service';
+import { isBackendLoginRedirectError } from '../api-error.util';
 import {
   AuthMessageResponse,
   AuthResponse,
@@ -10,9 +13,11 @@ import {
   ProfileUpdatePayload,
   ResendVerificationPayload,
   ResetPasswordPayload,
+  RevokeOtherSessionsResponse,
   SignInPayload,
   SignUpPayload,
   SocialProviders,
+  UserDeviceSession,
   UserProfile,
   CaptchaConfig,
 } from './auth.types';
@@ -26,6 +31,7 @@ const OAUTH_BACKEND_ORIGIN = 'http://localhost:9091';
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly http = inject(HttpClient);
+  private readonly e2ee = inject(ChatE2eeService);
   /** Relative `/api` so `ng serve` proxies every call (same origin as the Angular app). */
   private readonly apiBase = '/api';
 
@@ -129,6 +135,18 @@ export class AuthService {
     return this.http.patch<void>(`${this.apiBase}/profile/password`, payload);
   }
 
+  getDeviceSessions() {
+    return this.http.get<UserDeviceSession[]>(`${this.apiBase}/profile/sessions`);
+  }
+
+  revokeDeviceSession(sessionId: string) {
+    return this.http.delete<void>(`${this.apiBase}/profile/sessions/${encodeURIComponent(sessionId)}`);
+  }
+
+  revokeOtherDeviceSessions() {
+    return this.http.delete<RevokeOtherSessionsResponse>(`${this.apiBase}/profile/sessions/revoke-others`);
+  }
+
   uploadProfileImage(file: File) {
     const body = new FormData();
     body.append('file', file);
@@ -190,8 +208,10 @@ export class AuthService {
   fetchMe() {
     return this.http.get<UserProfile>(`${this.apiBase}/auth/me`).pipe(
       tap((user) => {
+        this.isAuthenticated.set(true);
         this.currentUser.set(user);
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+        this.bootstrapE2eeForUser(user.id);
       })
     );
   }
@@ -206,7 +226,7 @@ export class AuthService {
     }
 
     this.token.set(savedToken);
-    this.isAuthenticated.set(true);
+    this.isAuthenticated.set(false);
 
     if (savedUser) {
       this.currentUser.set(JSON.parse(savedUser) as UserProfile);
@@ -234,11 +254,26 @@ export class AuthService {
     this.isAuthenticated.set(true);
     localStorage.setItem(TOKEN_STORAGE_KEY, response.token);
     localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(response.user));
+    this.bootstrapE2eeForUser(response.user.id);
   }
 
   private clearSessionState() {
     this.token.set(null);
     this.currentUser.set(null);
     this.isAuthenticated.set(false);
+  }
+
+  private bootstrapE2eeForUser(userId: number): void {
+    if (!Number.isFinite(userId)) {
+      return;
+    }
+
+    this.e2ee.ensureKeyPairReady(userId).catch((err) => {
+      const httpError = err as HttpErrorResponse;
+      if (httpError?.status === 401 || isBackendLoginRedirectError(httpError)) {
+        return;
+      }
+      console.error('Failed to bootstrap E2EE keys:', err);
+    });
   }
 }

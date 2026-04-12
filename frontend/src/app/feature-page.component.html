@@ -1,4 +1,4 @@
-<main class="feature-page" [attr.data-accent]="accent">
+<div class="feature-page" role="main" [attr.data-accent]="accent">
   <div class="feature-page__bg" aria-hidden="true"></div>
   <div class="feature-page__mesh" aria-hidden="true"></div>
 
@@ -39,199 +39,180 @@
       </button>
     </div>
 
-    <!-- Filters -->
-    <div class="catalog-filters">
-      <div class="filter-search">
-        <i class="pi pi-search filter-search__icon"></i>
-        <input
-          type="text"
-          [ngModel]="searchQuery()"
-          (ngModelChange)="searchQuery.set($event)"
-          placeholder="Search product, artisan, city…"
-          class="filter-search__input"
-        />
-      </div>
-      <div class="filter-selects">
-        <select [ngModel]="selectedCategory()" (ngModelChange)="selectedCategory.set($event)" class="filter-select">
-          <option [value]="null">All categories</option>
-          <option value="BIJOUX">💎 Bijoux</option>
-          <option value="TEXTILE">🧵 Textile</option>
-          <option value="CERAMIQUE">🏺 Céramique</option>
-          <option value="BOIS">🪵 Bois</option>
-          <option value="TAPIS">🪬 Tapis</option>
-          <option value="AUTRE">✦ Autre</option>
-        </select>
-        <select *ngIf="!isArtisan()" [ngModel]="selectedCityId()" (ngModelChange)="onCityChange($event)" class="filter-select">
-          <option [value]="null">All cities</option>
-          <option *ngFor="let c of cities()" [value]="c.cityId">{{ c.name }}</option>
-        </select>
-      </div>
-    </div>
+    <!-- Sidebar + Content layout -->
+    <div class="crafts-layout">
 
+      <!-- ── Filters Sidebar ── -->
+      <aside class="crafts-sidebar">
+        <h3 class="crafts-sidebar__title">Filters</h3>
 
-    <!-- ─── VUE ARTISAN ─── -->
-    <div *ngIf="isArtisan()">
-      <div *ngIf="artisanProductsLoading()" class="catalog-state">
-        <i class="pi pi-spin pi-spinner"></i> Loading your products…
-      </div>
-      <div *ngIf="artisanProductsError()" class="catalog-state catalog-state--error">
-        <i class="pi pi-exclamation-triangle"></i> {{ artisanProductsError() }}
-      </div>
-      <div *ngIf="!artisanProductsLoading() && filteredArtisanProducts().length === 0" class="catalog-empty">
-        <div class="catalog-empty__icon">🎨</div>
-        <h3>No products yet</h3>
-        <p>Add your first handmade piece to get started.</p>
-        <button type="button" class="btn-new-product" (click)="openProductForm()">
-          <i class="pi pi-plus"></i> Create a product
-        </button>
-      </div>
-
-      <div *ngIf="!artisanProductsLoading() && filteredArtisanProducts().length" class="horizontal-scroll-container">
-        <div class="artisan-grid">
-        <div
-          *ngFor="let p of filteredArtisanProducts(); let i = index"
-          class="artisan-card"
-          [style.animation-delay.ms]="i * 60"
-          (click)="openProductDetails(p)"
-        >
-          <!-- Status Badge -->
-          <div class="artisan-card__status" [attr.data-status]="p.status">
-            {{ getStatusLabel(p.status) }}
-          </div>
-
-          <!-- Image -->
-          <div class="artisan-card__media">
-            <img *ngIf="showCatalogImage(p)" [src]="catalogImageUrl(p.imageUrl!)" [alt]="p.name"
-              (error)="onCatalogImageError(p.productId)" class="artisan-card__img" />
-            <div *ngIf="!showCatalogImage(p)" class="artisan-card__placeholder">
-              <span>✦</span>
-              <span class="artisan-card__placeholder-label">No image</span>
-            </div>
-            <!-- Hover overlay -->
-            <div class="artisan-card__overlay">
-              <span><i class="pi pi-eye"></i> View details</span>
-            </div>
-          </div>
-
-          <!-- Body -->
-          <div class="artisan-card__body">
-            <h3 class="artisan-card__name">{{ p.name }}</h3>
-            <span class="artisan-card__category" *ngIf="p.category">{{ p.category }}</span>
-            <div class="artisan-card__meta">
-              <span class="artisan-card__price">{{ formatPrice(p.price) }}</span>
-              <span class="artisan-card__stock" [class.stock--low]="(p.stock ?? 0) < 5">
-                Stock: {{ p.stock ?? 0 }}
-              </span>
-            </div>
-            <div class="artisan-card__actions" (click)="$event.stopPropagation()">
-              <button class="btn-card-edit" (click)="editProduct(p, $event)">
-                <i class="pi pi-pencil"></i> Edit
-              </button>
-              <button class="btn-card-delete" (click)="deleteProduct(p.productId, $event)">
-                <i class="pi pi-trash"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-    <!-- ─── VUE CLIENT / TOURISTE ─── -->
-    <div *ngIf="!isArtisan()">
-      <div *ngIf="catalogLoading" class="catalog-state">
-        <i class="pi pi-spin pi-spinner"></i> Loading catalog…
-      </div>
-      <div *ngIf="catalogError" class="catalog-state catalog-state--error">
-        <i class="pi pi-exclamation-triangle"></i> {{ catalogError }}
-      </div>
-      <div *ngIf="!catalogLoading && !catalogError && filteredCatalogProducts().length === 0" class="catalog-empty">
-        <div class="catalog-empty__icon">🔍</div>
-        <h3>No products found</h3>
-        <p>Try adjusting your filters or search.</p>
-      </div>
-
-      <div *ngIf="!catalogLoading && filteredCatalogProducts().length" class="horizontal-scroll-container">
-        <ul class="products-grid" role="list">
-        <li
-          *ngFor="let p of filteredCatalogProducts(); let i = index"
-          class="product-card"
-          [style.animation-delay.ms]="i * 50"
-          (click)="openProductDetails(p)"
-          role="button"
-          tabindex="0"
-          (keydown.enter)="openProductDetails(p)"
-          [attr.aria-label]="'View details: ' + p.name"
-        >
-          <!-- Favorite Button -->
-          <button
-            type="button"
-            class="product-card__fav"
-            [class.active]="p.isFavorite"
-            (click)="toggleFavorite(p, $event)"
-            [title]="p.isFavorite ? 'Remove from favorites' : 'Add to favorites'"
-          >
-            <i class="pi" [class.pi-heart-fill]="p.isFavorite" [class.pi-heart]="!p.isFavorite"></i>
-          </button>
-
-          <!-- Image -->
-          <div class="product-card__media">
-            <img
-              *ngIf="showCatalogImage(p)"
-              [src]="catalogImageUrl(p.imageUrl!)"
-              [alt]="p.name"
-              (error)="onCatalogImageError(p.productId)"
-              class="product-card__img"
+        <label class="crafts-filter-field">
+          <span>Search</span>
+          <div class="crafts-search-wrap">
+            <i class="pi pi-search"></i>
+            <input
+              type="text"
+              [ngModel]="searchQuery()"
+              (ngModelChange)="searchQuery.set($event)"
+              placeholder="Name, artisan, city…"
             />
-            <div *ngIf="!showCatalogImage(p)" class="product-card__placeholder">
-              <span class="product-card__placeholder-icon">✦</span>
-            </div>
-            <!-- Variant chip preview -->
-            <div class="product-card__variant-hint" *ngIf="p.category === 'TEXTILE' && p.variants && p.variants.length">
-              {{ p.variants.length }} option{{ p.variants.length > 1 ? 's' : '' }} available
-            </div>
+          </div>
+        </label>
+
+        <label class="crafts-filter-field">
+          <span>Category</span>
+          <select [ngModel]="selectedCategory()" (ngModelChange)="selectedCategory.set($event)">
+            <option [value]="null">All categories</option>
+            <option value="BIJOUX">💎 Bijoux</option>
+            <option value="TEXTILE">🧵 Textile</option>
+            <option value="CERAMIQUE">🏺 Céramique</option>
+            <option value="BOIS">🪵 Bois</option>
+            <option value="TAPIS">🪬 Tapis</option>
+            <option value="AUTRE">✦ Autre</option>
+          </select>
+        </label>
+
+        <label class="crafts-filter-field" *ngIf="!isArtisan()">
+          <span>City</span>
+          <select [ngModel]="selectedCityId()" (ngModelChange)="onCityChange($event)">
+            <option [value]="null">All cities</option>
+            <option *ngFor="let c of cities()" [value]="c.cityId">{{ c.name }}</option>
+          </select>
+        </label>
+
+        <div class="crafts-sidebar__count">
+          <i class="pi pi-tag"></i>
+          <span>{{ (isArtisan() ? filteredArtisanProducts() : filteredCatalogProducts()).length }} result{{ (isArtisan() ? filteredArtisanProducts() : filteredCatalogProducts()).length !== 1 ? 's' : '' }}</span>
+        </div>
+      </aside>
+
+      <!-- ── Products Content ── -->
+      <div class="crafts-content">
+
+        <!-- ─── VUE ARTISAN ─── -->
+        <ng-container *ngIf="isArtisan()">
+          <div *ngIf="artisanProductsLoading()" class="catalog-state">
+            <i class="pi pi-spin pi-spinner"></i> Loading your products…
+          </div>
+          <div *ngIf="artisanProductsError()" class="catalog-state catalog-state--error">
+            <i class="pi pi-exclamation-triangle"></i> {{ artisanProductsError() }}
+          </div>
+          <div *ngIf="!artisanProductsLoading() && filteredArtisanProducts().length === 0" class="catalog-empty">
+            <div class="catalog-empty__icon">🎨</div>
+            <h3>No products yet</h3>
+            <p>Add your first handmade piece to get started.</p>
+            <button type="button" class="btn-new-product" (click)="openProductForm()">
+              <i class="pi pi-plus"></i> Create a product
+            </button>
           </div>
 
-          <!-- Body -->
-          <div class="product-card__body">
-            <div class="product-card__category-badge" *ngIf="p.category">{{ p.category }}</div>
-            <h3 class="product-card__name">{{ p.name }}</h3>
-            <p class="product-card__desc" *ngIf="p.description">{{ p.description }}</p>
-            <p *ngIf="p.user?.username" class="product-card__vendor">
-              <i class="pi pi-user"></i> {{ p.user?.username }}
-              <span *ngIf="p.user?.cityName"> · {{ p.user?.cityName }}</span>
-            </p>
-            <div class="product-card__footer">
-              <div class="product-card__price-row">
-                <span class="product-card__price">{{ formatPrice(p.price) }}</span>
-                <span class="product-card__stock-badge stock-badge--none" *ngIf="p.stock != null && p.stock <= 0">Out of stock</span>
-                <span class="product-card__stock-badge" *ngIf="p.stock != null && p.stock > 0">{{ p.stock }} in stock</span>
+          <div *ngIf="!artisanProductsLoading() && filteredArtisanProducts().length" class="artisan-grid">
+            <div
+              *ngFor="let p of filteredArtisanProducts(); let i = index"
+              class="artisan-card"
+              [style.animation-delay.ms]="i * 60"
+              (click)="openProductDetails(p)"
+            >
+              <div class="artisan-card__status" [attr.data-status]="p.status">{{ getStatusLabel(p.status) }}</div>
+              <div class="artisan-card__media">
+                <img *ngIf="showCatalogImage(p)" [src]="catalogImageUrl(p.imageUrl!)" [alt]="p.name"
+                  (error)="onCatalogImageError(p.productId)" class="artisan-card__img" />
+                <div *ngIf="!showCatalogImage(p)" class="artisan-card__placeholder">
+                  <span>✦</span>
+                  <span class="artisan-card__placeholder-label">No image</span>
+                </div>
+                <div class="artisan-card__overlay"><span><i class="pi pi-eye"></i> View details</span></div>
               </div>
-              <button
-                type="button"
-                class="product-card__cta"
-                (click)="onCatalogCardBuy(p, $event)"
-                [disabled]="addingProductId() === p.productId || (p.stock != null && p.stock <= 0)"
-                *ngIf="auth.isAuthenticated() && !needsVariantChoice(p)"
-              >
-                <i class="pi" [class.pi-shopping-cart]="addingProductId() !== p.productId" [class.pi-spin]="addingProductId() === p.productId" [class.pi-spinner]="addingProductId() === p.productId"></i>
-                {{ addingProductId() === p.productId ? '…' : 'Add to cart' }}
-              </button>
-              <a
-                *ngIf="!auth.isAuthenticated()"
-                routerLink="/signin"
-                [queryParams]="{ returnUrl: router.url }"
-                class="product-card__cta product-card__cta--ghost"
-                (click)="$event.stopPropagation()"
-              >
-                Sign in
-              </a>
+              <div class="artisan-card__body">
+                <h3 class="artisan-card__name">{{ p.name }}</h3>
+                <span class="artisan-card__category" *ngIf="p.category">{{ p.category }}</span>
+                <div class="artisan-card__meta">
+                  <span class="artisan-card__price">{{ formatPrice(p.price) }}</span>
+                  <span class="artisan-card__stock" [class.stock--low]="(p.stock ?? 0) < 5">Stock: {{ p.stock ?? 0 }}</span>
+                </div>
+                <div class="artisan-card__actions" (click)="$event.stopPropagation()">
+                  <button class="btn-card-edit" (click)="editProduct(p, $event)"><i class="pi pi-pencil"></i> Edit</button>
+                  <button class="btn-card-delete" (click)="deleteProduct(p.productId, $event)"><i class="pi pi-trash"></i></button>
+                </div>
+              </div>
             </div>
           </div>
-        </li>
-      </ul>
-    </div>
-    </div>
+        </ng-container>
+
+        <!-- ─── VUE CLIENT / TOURISTE ─── -->
+        <ng-container *ngIf="!isArtisan()">
+          <div *ngIf="catalogLoading()" class="catalog-state">
+            <i class="pi pi-spin pi-spinner"></i> Loading catalog…
+          </div>
+          <div *ngIf="catalogError()" class="catalog-state catalog-state--error">
+            <i class="pi pi-exclamation-triangle"></i> {{ catalogError() }}
+          </div>
+          <div *ngIf="!catalogLoading() && !catalogError() && filteredCatalogProducts().length === 0" class="catalog-empty">
+            <div class="catalog-empty__icon">🔍</div>
+            <h3>No products found</h3>
+            <p>Try adjusting your filters or search.</p>
+          </div>
+
+          <ul *ngIf="!catalogLoading() && filteredCatalogProducts().length" class="products-grid" role="list">
+            <li
+              *ngFor="let p of filteredCatalogProducts(); let i = index"
+              class="product-card"
+              [style.animation-delay.ms]="i * 50"
+              (click)="openProductDetails(p)"
+              role="button" tabindex="0"
+              (keydown.enter)="openProductDetails(p)"
+              [attr.aria-label]="'View details: ' + p.name"
+            >
+              <button type="button" class="product-card__fav" [class.active]="p.isFavorite"
+                (click)="toggleFavorite(p, $event)"
+                [title]="p.isFavorite ? 'Remove from favorites' : 'Add to favorites'">
+                <i class="pi" [class.pi-heart-fill]="p.isFavorite" [class.pi-heart]="!p.isFavorite"></i>
+              </button>
+              <div class="product-card__media">
+                <img *ngIf="showCatalogImage(p)" [src]="catalogImageUrl(p.imageUrl!)" [alt]="p.name"
+                  (error)="onCatalogImageError(p.productId)" class="product-card__img" />
+                <div *ngIf="!showCatalogImage(p)" class="product-card__placeholder">
+                  <span class="product-card__placeholder-icon">✦</span>
+                </div>
+                <div class="product-card__variant-hint" *ngIf="p.category === 'TEXTILE' && p.variants && p.variants.length">
+                  {{ p.variants.length }} option{{ p.variants.length > 1 ? 's' : '' }} available
+                </div>
+              </div>
+              <div class="product-card__body">
+                <div class="product-card__category-badge" *ngIf="p.category">{{ p.category }}</div>
+                <h3 class="product-card__name">{{ p.name }}</h3>
+                <p class="product-card__desc" *ngIf="p.description">{{ p.description }}</p>
+                <p *ngIf="p.user?.username" class="product-card__vendor">
+                  <i class="pi pi-user"></i> {{ p.user?.username }}
+                  <span *ngIf="p.user?.cityName"> · {{ p.user?.cityName }}</span>
+                </p>
+                <div class="product-card__footer">
+                  <div class="product-card__price-row">
+                    <span class="product-card__price">{{ formatPrice(p.price) }}</span>
+                    <span class="product-card__stock-badge stock-badge--none" *ngIf="p.stock != null && p.stock <= 0">Out of stock</span>
+                    <span class="product-card__stock-badge" *ngIf="p.stock != null && p.stock > 0">{{ p.stock }} in stock</span>
+                  </div>
+                  <button type="button" class="product-card__cta"
+                    (click)="onCatalogCardBuy(p, $event)"
+                    [disabled]="addingProductId() === p.productId || (p.stock != null && p.stock <= 0)"
+                    *ngIf="auth.isAuthenticated() && !needsVariantChoice(p)">
+                    <i class="pi" [class.pi-shopping-cart]="addingProductId() !== p.productId"
+                      [class.pi-spin]="addingProductId() === p.productId"
+                      [class.pi-spinner]="addingProductId() === p.productId"></i>
+                    {{ addingProductId() === p.productId ? '…' : 'Add to cart' }}
+                  </button>
+                  <a *ngIf="!auth.isAuthenticated()" routerLink="/signin"
+                    [queryParams]="{ returnUrl: router.url }"
+                    class="product-card__cta product-card__cta--ghost"
+                    (click)="$event.stopPropagation()">Sign in</a>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </ng-container>
+
+      </div><!-- /crafts-content -->
+    </div><!-- /crafts-layout -->
 
   </section>
 
@@ -619,164 +600,151 @@
   </div>
 
   <!-- ═══════════════════ MODAL DÉTAIL PRODUIT ═══════════════════ -->
-  <p-dialog
-    [visible]="showProductDetails()"
-    (visibleChange)="onDetailVisibleChange($event)"
-    [modal]="true"
-    [draggable]="false"
-    [resizable]="false"
-    [style]="{ width: '94vw', maxWidth: 'min(640px, 94vw)', margin: '0 auto' }"
-    [header]="selectedItem()?.name || 'Product details'"
-    styleClass="detail-dialog"
-  >
-    <div class="detail-body" *ngIf="selectedItem() as item">
-      <div class="detail-grid">
+  <div class="modal-root" *ngIf="showProductDetails() && selectedItem() as item">
+    <div class="pd-overlay" (click)="closeProductDetails()"></div>
 
-        <!-- Gallery -->
-        <div class="detail-gallery">
-          <p-galleria
-            [value]="getGalleryImages(item)"
-            [containerStyle]="{ 'width': '100%' }"
-            [numVisible]="4"
-            [showThumbnails]="getGalleryImages(item).length > 1"
-            [showItemNavigators]="getGalleryImages(item).length > 1"
-            [circular]="true"
-            [responsiveOptions]="[{breakpoint:'768px',numVisible:3},{breakpoint:'560px',numVisible:1}]"
-          >
-            <ng-template pTemplate="item" let-img>
-              <div class="gallery-main">
-                <img [src]="catalogImageUrl(img.url)" [alt]="item.name" class="gallery-main__img"
-                  onerror="this.src=''" />
-              </div>
-            </ng-template>
-            <ng-template pTemplate="thumbnail" let-img>
-              <div class="gallery-thumb">
-                <img [src]="catalogImageUrl(img.url)" [alt]="item.name" class="gallery-thumb__img" />
-              </div>
-            </ng-template>
-          </p-galleria>
-        </div>
+    <div class="pd-modal" role="dialog" aria-modal="true">
+      <!-- Close -->
+      <button type="button" class="pd-close" (click)="closeProductDetails()" aria-label="Close">
+        <i class="pi pi-times"></i>
+      </button>
 
-        <!-- Info -->
-        <div class="detail-info">
-          <!-- Category + Status -->
-          <div class="detail-tags">
-            <span class="detail-category" *ngIf="item.category">{{ item.category }}</span>
-            <span class="detail-status" [attr.data-status]="item.status" *ngIf="isArtisan()">
-              {{ getStatusLabel(item.status) }}
-            </span>
-          </div>
-
-          <!-- Title -->
-          <h2 class="detail-name">{{ item.name }}</h2>
-
-          <!-- Vendor -->
-          <div class="detail-vendor" *ngIf="item.user?.username">
-            <i class="pi pi-user"></i>
-            <span>{{ item.user?.username }}</span>
-            <span class="detail-vendor__sep" *ngIf="item.user?.cityName"> · </span>
-            <span class="detail-vendor__city" *ngIf="item.user?.cityName">{{ item.user?.cityName }}</span>
-          </div>
-
-          <!-- Price -->
-          <div class="detail-price-box">
-            <span class="detail-price">{{ formatPrice(item.price) }}</span>
-            <span class="detail-stock-badge detail-stock-badge--none" *ngIf="item.stock != null && item.stock <= 0">Out of stock</span>
-            <span class="detail-stock-badge" *ngIf="item.stock != null && item.stock > 0">{{ item.stock }} in stock</span>
-          </div>
-
-          <!-- Description -->
-          <div class="detail-description">
-            <h4 class="detail-section-label">About this product</h4>
-            <p>{{ item.description || 'A unique handmade piece, crafted with care.' }}</p>
-          </div>
-
-          <!-- Artisan: read-only colors / sizes -->
-          <div class="detail-variants-readonly" *ngIf="isArtisan() && item.category === 'TEXTILE' && item.variants && item.variants.length">
-            <h4 class="detail-section-label">Available colors</h4>
-            <div class="detail-chip-row">
-              <span class="detail-chip" *ngFor="let c of distinctColorsInStock(item)">{{ c }}</span>
-            </div>
-            <h4 class="detail-section-label">Available sizes</h4>
-            <div class="detail-chip-row">
-              <span class="detail-chip" *ngFor="let s of distinctSizesInStock(item)">{{ s }}</span>
-            </div>
-            <p class="detail-hint-muted">Open <strong>Edit product</strong> to change variants or stock.</p>
-          </div>
-
-          <!-- Shoppers: color then size (TEXTILE) -->
-          <div class="detail-variants detail-variants--selects" *ngIf="!isArtisan() && item.category === 'TEXTILE' && item.variants && item.variants.length">
-            <h4 class="detail-section-label">Choose options <span class="detail-required">*</span></h4>
-            <div class="variant-selects">
-              <div class="form-group detail-select-group">
-                <label class="form-label-sm" for="detail-color-{{ item.productId }}">Color</label>
-                <select
-                  id="detail-color-{{ item.productId }}"
-                  class="form-select detail-select"
-                  [ngModel]="detailSelectedColor()"
-                  (ngModelChange)="onDetailColorSelect(item, $event)"
-                  [ngModelOptions]="{ standalone: true }"
-                >
-                  <option [ngValue]="null">Select color…</option>
-                  <option *ngFor="let c of distinctColorsInStock(item)" [ngValue]="c">{{ c }}</option>
-                </select>
-              </div>
-              <div class="form-group detail-select-group" *ngIf="detailSelectedColor() != null">
-                <label class="form-label-sm" for="detail-size-{{ item.productId }}">Size</label>
-                <select
-                  id="detail-size-{{ item.productId }}"
-                  class="form-select detail-select"
-                  [ngModel]="detailSelectedSize()"
-                  (ngModelChange)="onDetailSizeSelect(item, $event)"
-                  [ngModelOptions]="{ standalone: true }"
-                >
-                  <option [ngValue]="null">Select size…</option>
-                  <option *ngFor="let s of sizesForSelectedColor(item)" [ngValue]="s">{{ s }}</option>
-                </select>
-              </div>
-            </div>
-            <p class="selection-hint" *ngIf="needsVariantChoice(item) && selectedVariantId()[item.productId] == null">
-              <i class="pi pi-info-circle"></i> Choose color and size to add to cart.
-            </p>
-          </div>
-
-          <!-- Actions -->
-          <div class="detail-actions">
-            <!-- Artisan: edit button -->
-            <ng-container *ngIf="isArtisan()">
-              <button type="button" class="btn-detail-edit" (click)="editProduct(item); closeProductDetails()">
-                <i class="pi pi-pencil"></i> Edit product
-              </button>
-            </ng-container>
-
-            <!-- Client: add to cart -->
-            <ng-container *ngIf="!isArtisan()">
-              <button
-                type="button"
-                class="btn-add-cart"
-                (click)="addToCart(item)"
-                [disabled]="
-                  addingProductId() === item.productId ||
-                  (item.stock ?? 0) <= 0 ||
-                  !!(needsVariantChoice(item) && !selectedVariantId()[item.productId])
-                "
-              >
-                <i class="pi"
-                  [class.pi-shopping-cart]="addingProductId() !== item.productId"
-                  [class.pi-spin]="addingProductId() === item.productId"
-                  [class.pi-spinner]="addingProductId() === item.productId"
-                ></i>
-                {{ addingProductId() === item.productId ? 'Adding…' : 'Add to cart' }}
-              </button>
-              <button type="button" class="btn-detail-fav" [class.active]="item.isFavorite"
-                (click)="toggleFavorite(item)">
-                <i class="pi" [class.pi-heart-fill]="item.isFavorite" [class.pi-heart]="!item.isFavorite"></i>
-              </button>
-            </ng-container>
-          </div>
-        </div>
+    <!-- Left: image gallery -->
+    <div class="pd-gallery">
+      <div class="pd-gallery__main">
+        <img
+          [src]="catalogImageUrl(getGalleryImages(item)[detailImageIndex].url)"
+          [alt]="item.name"
+          class="pd-gallery__img"
+          onerror="this.src=''"
+        />
+        <!-- Nav arrows -->
+        <button *ngIf="getGalleryImages(item).length > 1"
+          type="button" class="pd-gallery__nav pd-gallery__nav--prev"
+          (click)="detailImagePrev(item)"
+          aria-label="Previous image">
+          <i class="pi pi-chevron-left"></i>
+        </button>
+        <button *ngIf="getGalleryImages(item).length > 1"
+          type="button" class="pd-gallery__nav pd-gallery__nav--next"
+          (click)="detailImageNext(item)"
+          aria-label="Next image">
+          <i class="pi pi-chevron-right"></i>
+        </button>
+        <!-- Counter -->
+        <span *ngIf="getGalleryImages(item).length > 1" class="pd-gallery__counter">
+          {{ detailImageIndex + 1 }}&thinsp;/&thinsp;{{ getGalleryImages(item).length }}
+        </span>
+        <!-- Category badge -->
+        <span *ngIf="item.category" class="pd-gallery__badge">{{ item.category }}</span>
+      </div>
+      <!-- Thumbnails -->
+      <div class="pd-gallery__thumbs" *ngIf="getGalleryImages(item).length > 1">
+        <button
+          *ngFor="let img of getGalleryImages(item); let ti = index"
+          type="button"
+          class="pd-gallery__thumb"
+          [class.active]="detailImageIndex === ti"
+          (click)="detailImageIndex = ti"
+        >
+          <img [src]="catalogImageUrl(img.url)" [alt]="item.name" />
+        </button>
       </div>
     </div>
-  </p-dialog>
 
-</main>
+    <!-- Right: info -->
+    <div class="pd-info">
+      <!-- Header row -->
+      <div class="pd-info__header">
+        <div class="pd-info__tags">
+          <span *ngIf="item.category" class="pd-tag pd-tag--cat">{{ item.category }}</span>
+          <span *ngIf="isArtisan()" class="pd-tag" [attr.data-status]="item.status">{{ getStatusLabel(item.status) }}</span>
+        </div>
+        <h2 class="pd-info__name">{{ item.name }}</h2>
+        <div class="pd-info__vendor" *ngIf="item.user?.username">
+          <i class="pi pi-user"></i>
+          <span>{{ item.user?.username }}</span>
+          <span *ngIf="item.user?.cityName" class="pd-info__city">&nbsp;·&nbsp;{{ item.user?.cityName }}</span>
+        </div>
+      </div>
+
+      <!-- Price block -->
+      <div class="pd-price-block">
+        <span class="pd-price">{{ formatPrice(item.price) }}</span>
+        <span class="pd-stock pd-stock--none" *ngIf="item.stock != null && item.stock <= 0">Out of stock</span>
+        <span class="pd-stock" *ngIf="item.stock != null && item.stock > 0">
+          <i class="pi pi-check-circle"></i> {{ item.stock }} in stock
+        </span>
+      </div>
+
+      <!-- Description -->
+      <div class="pd-desc">
+        <p class="pd-desc__label">About this product</p>
+        <p class="pd-desc__text">{{ item.description || 'A unique handmade piece, crafted with care by a Tunisian artisan.' }}</p>
+      </div>
+
+      <!-- Artisan read-only variants -->
+      <div class="pd-variants-ro" *ngIf="isArtisan() && item.category === 'TEXTILE' && item.variants?.length">
+        <p class="pd-desc__label">Available colors</p>
+        <div class="pd-chips">
+          <span class="pd-chip" *ngFor="let c of distinctColorsInStock(item)">{{ c }}</span>
+        </div>
+        <p class="pd-desc__label" style="margin-top:10px">Available sizes</p>
+        <div class="pd-chips">
+          <span class="pd-chip" *ngFor="let s of distinctSizesInStock(item)">{{ s }}</span>
+        </div>
+        <p class="pd-hint">Open <strong>Edit product</strong> to change variants.</p>
+      </div>
+
+      <!-- Tourist variant pickers -->
+      <div class="pd-variants" *ngIf="!isArtisan() && item.category === 'TEXTILE' && item.variants?.length">
+        <p class="pd-desc__label">Choose options <span style="color:var(--tunisia-red)">*</span></p>
+        <div class="pd-variant-selects">
+          <div class="pd-variant-group">
+            <label>Color</label>
+            <select [ngModel]="detailSelectedColor()" (ngModelChange)="onDetailColorSelect(item, $event)" [ngModelOptions]="{standalone:true}">
+              <option [ngValue]="null">Select color…</option>
+              <option *ngFor="let c of distinctColorsInStock(item)" [ngValue]="c">{{ c }}</option>
+            </select>
+          </div>
+          <div class="pd-variant-group" *ngIf="detailSelectedColor() != null">
+            <label>Size</label>
+            <select [ngModel]="detailSelectedSize()" (ngModelChange)="onDetailSizeSelect(item, $event)" [ngModelOptions]="{standalone:true}">
+              <option [ngValue]="null">Select size…</option>
+              <option *ngFor="let s of sizesForSelectedColor(item)" [ngValue]="s">{{ s }}</option>
+            </select>
+          </div>
+        </div>
+        <p class="pd-hint pd-hint--warn" *ngIf="needsVariantChoice(item) && !selectedVariantId()[item.productId]">
+          <i class="pi pi-info-circle"></i> Choose color and size to add to cart.
+        </p>
+      </div>
+
+      <!-- Spacer pushes actions to bottom -->
+      <div class="pd-spacer"></div>
+
+      <!-- Actions -->
+      <div class="pd-actions">
+        <ng-container *ngIf="isArtisan()">
+          <button type="button" class="pd-btn pd-btn--edit" (click)="editProduct(item); closeProductDetails()">
+            <i class="pi pi-pencil"></i> Edit product
+          </button>
+        </ng-container>
+        <ng-container *ngIf="!isArtisan()">
+          <button type="button" class="pd-btn pd-btn--cart"
+            (click)="addToCart(item)"
+            [disabled]="addingProductId() === item.productId || (item.stock ?? 0) <= 0 || !!(needsVariantChoice(item) && !selectedVariantId()[item.productId])">
+            <i class="pi" [class.pi-shopping-cart]="addingProductId() !== item.productId"
+              [class.pi-spin]="addingProductId() === item.productId"
+              [class.pi-spinner]="addingProductId() === item.productId"></i>
+            {{ addingProductId() === item.productId ? 'Adding…' : 'Add to cart' }}
+          </button>
+          <button type="button" class="pd-btn pd-btn--fav" [class.active]="item.isFavorite" (click)="toggleFavorite(item)">
+            <i class="pi" [class.pi-heart-fill]="item.isFavorite" [class.pi-heart]="!item.isFavorite"></i>
+          </button>
+        </ng-container>
+      </div>
+    </div>
+  </div>
+
+</div>

@@ -55,6 +55,9 @@ public class EventController {
     @Value("${stripe.checkout.currency:usd}")
     private String stripeCheckoutCurrency;
 
+    @Value("${stripe.transport.tnd-to-presentment:0.32}")
+    private double stripeTndToPresentment;
+
     @Value("${stripe.api.key:${STRIPE_SECRET_KEY:}}")
     private String stripeApiKey;
 
@@ -384,7 +387,10 @@ public class EventController {
             String currency = stripeCheckoutCurrency == null || stripeCheckoutCurrency.isBlank()
                     ? "usd"
                     : stripeCheckoutCurrency.trim().toLowerCase();
-            long unitAmountMinor = Math.round(ticketPrice * 100);
+            long unitAmountMinor =
+                    "tnd".equals(currency)
+                        ? Math.round(ticketPrice * 100.0)
+                        : Math.round(ticketPrice * stripeTndToPresentment * 100.0);
             if (unitAmountMinor < 1) {
                 return ResponseEntity.badRequest().body("amount too small for Stripe");
             }
@@ -640,7 +646,7 @@ public class EventController {
         if (identifier == null || identifier.isBlank()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Session invalide");
         }
-        return userRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(identifier, identifier)
+        return userRepository.findFirstByUsernameIgnoreCaseOrEmailIgnoreCaseOrderByUserIdAsc(identifier, identifier)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
     }
 

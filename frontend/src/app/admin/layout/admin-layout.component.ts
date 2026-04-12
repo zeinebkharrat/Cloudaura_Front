@@ -7,7 +7,7 @@ import { AuthService } from '../../core/auth.service';
 export interface AdminNavItem {
   label: string;
   route: string;
-  iconImg?: string;
+  section?: 'core' | 'content' | 'commerce' | 'security';
   iconClass?: string;
 }
 
@@ -16,30 +16,33 @@ export interface AdminNavItem {
   standalone: true,
   imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
   templateUrl: './admin-layout.component.html',
-  styleUrl:    './admin-layout.component.css',
+  styleUrl: './admin-layout.component.css',
 })
 export class AdminLayoutComponent {
   open = signal(true);
+  sidebarVisible = signal(true);
   user = computed(() => this.auth.currentUser());
+  readonly logoPath = 'assets/logo/yallatn-logo.png';
 
   isEventsMenuOpen = false;
 
   nav: AdminNavItem[] = [
-    { label: 'Dashboard', route: '/admin/dashboard', iconImg: 'icones/dashboard.png' },
-    { label: 'Games', route: '/admin/games', iconImg: 'icones/game.png' },
-    { label: 'Cities', route: '/admin/cities', iconImg: 'icones/city.png' },
-    { label: 'Restaurants', route: '/admin/restaurants', iconImg: 'icones/restaurant.png' },
-    { label: 'Activities', route: '/admin/activities', iconImg: 'icones/actitvity.png' },
-    { label: 'Posts', route: '/admin/posts', iconClass: 'pi pi-comments' },
-    { label: 'Activity bookings', route: '/admin/activity-reservations', iconClass: 'pi pi-calendar' },
-    { label: 'Accommodations', route: '/admin/accommodations', iconImg: 'icones/hotel.png' },
-    { label: 'Transport', route: '/admin/transports', iconImg: 'icones/bus.png' },
-    { label: 'Events', route: '/admin/events', iconClass: 'pi pi-calendar' },
-    { label: 'Crafts & products', route: '/admin/products', iconImg: 'icones/artisanat.png' },
-    { label: 'Audit logs', route: '/admin/audit-logs', iconClass: 'pi pi-history' },
-    { label: 'Users', route: '/admin/users', iconClass: 'pi pi-users' },
-    { label: 'Settings', route: '/admin/settings', iconClass: 'pi pi-cog' },
-    { label: 'Orders', route: '/admin/orders', iconImg: 'icones/money-bag.png' },
+    { label: 'Dashboard', route: '/admin/dashboard', iconClass: 'pi pi-home', section: 'core' },
+    { label: 'Games', route: '/admin/games', iconClass: 'pi pi-play-circle', section: 'core' },
+    { label: 'Gamification', route: '/admin/gamification', iconClass: 'pi pi-star-fill', section: 'core' },
+    { label: 'Users', route: '/admin/users', iconClass: 'pi pi-users', section: 'core' },
+    { label: 'Cities', route: '/admin/cities', iconClass: 'pi pi-map-marker', section: 'content' },
+    { label: 'Restaurants', route: '/admin/restaurants', iconClass: 'pi pi-shop', section: 'content' },
+    { label: 'Activities', route: '/admin/activities', iconClass: 'pi pi-compass', section: 'content' },
+    { label: 'Posts', route: '/admin/posts', iconClass: 'pi pi-comments', section: 'content' },
+    { label: 'Events', route: '/admin/events', iconClass: 'pi pi-calendar', section: 'content' },
+    { label: 'Accommodations', route: '/admin/accommodations', iconClass: 'pi pi-building', section: 'commerce' },
+    { label: 'Transport', route: '/admin/transports', iconClass: 'pi pi-send', section: 'commerce' },
+    { label: 'Crafts & products', route: '/admin/products', iconClass: 'pi pi-box', section: 'commerce' },
+    { label: 'Orders', route: '/admin/orders', iconClass: 'pi pi-shopping-bag', section: 'commerce' },
+    { label: 'Activity bookings', route: '/admin/activity-reservations', iconClass: 'pi pi-ticket', section: 'commerce' },
+    { label: 'Audit logs', route: '/admin/audit-logs', iconClass: 'pi pi-history', section: 'security' },
+    { label: 'Settings', route: '/admin/settings', iconClass: 'pi pi-cog', section: 'security' },
   ];
 
   constructor(public auth: AuthService, private router: Router) {}
@@ -53,12 +56,34 @@ export class AdminLayoutComponent {
     if (!this.open()) this.isEventsMenuOpen = false;
   }
 
+  hideSidebar() {
+    this.sidebarVisible.set(false);
+    this.open.set(true);
+    this.isEventsMenuOpen = false;
+  }
+
+  showSidebar() {
+    this.sidebarVisible.set(true);
+  }
+
   toggleEventsMenu() {
     this.isEventsMenuOpen = !this.isEventsMenuOpen;
   }
 
   openProfile() {
-    this.router.navigateByUrl('/profile');
+    this.router.navigateByUrl('/admin/profile');
+  }
+
+  sectionLabel(section: AdminNavItem['section']): string {
+    if (section === 'content') return 'Content';
+    if (section === 'commerce') return 'Commerce';
+    if (section === 'security') return 'Security';
+    return 'Core';
+  }
+
+  isFirstInSection(index: number): boolean {
+    if (index === 0) return true;
+    return this.nav[index - 1]?.section !== this.nav[index]?.section;
   }
 
   logout() {

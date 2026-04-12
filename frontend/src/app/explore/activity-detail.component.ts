@@ -2,11 +2,12 @@ import { CommonModule, Location } from '@angular/common';
 import { AfterViewInit, Component, OnDestroy, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import * as L from 'leaflet';
 import Swal from 'sweetalert2';
+import { extractApiErrorMessage } from '../api-error.util';
 import {
   ActivityAvailabilityDay,
-  ActivityReservationResponse,
   Activity,
   ActivityMedia,
   PublicReview,
@@ -15,6 +16,7 @@ import {
 } from './explore.models';
 import { ExploreService } from './explore.service';
 import { LoginRequiredPromptService } from '../core/login-required-prompt.service';
+import { AuthService } from '../core/auth.service';
 
 interface CalendarDayCell {
   dateIso: string;
@@ -36,6 +38,8 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly exploreService = inject(ExploreService);
+  private readonly authService = inject(AuthService);
+  private readonly http = inject(HttpClient);
   private readonly location = inject(Location);
   private readonly loginPrompt = inject(LoginRequiredPromptService);
 
@@ -69,7 +73,6 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   };
 
   submitting = false;
-  created?: ActivityReservationResponse;
   showBookingModal = false;
   reviewSummary: ReviewSummary = { averageStars: 0, totalReviews: 0 };
   reviews: PublicReview[] = [];
@@ -78,6 +81,8 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     stars: 5,
     commentText: '',
   };
+  editingReviewId: number | null = null;
+  readonly commentEmojis = ['😊', '😍', '😋', '👍', '🔥', '🎉', '👏', '🤩', '💯', '❤️'];
 
   ngAfterViewInit(): void {
     this.viewReady = true;
@@ -249,6 +254,8 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   }
 
   submitReservation(): void {
+    this.blurActiveElement();
+
     if (!this.activity || this.form.numberOfPeople < 1) {
       return;
     }
@@ -256,6 +263,7 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     const selectedAvailability = this.availabilityByDate.get(this.form.reservationDate);
     if (selectedAvailability && selectedAvailability.remainingParticipants != null) {
       if (this.form.numberOfPeople > selectedAvailability.remainingParticipants) {
+        this.blurActiveElement();
         Swal.fire({
           icon: 'warning',
           title: 'Places insuffisantes',
@@ -267,27 +275,36 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     }
 
     this.submitting = true;
-    this.exploreService
-      .reserveActivity(this.activity.activityId, this.form)
+    this.http
+      .post<{ sessionId: string; sessionUrl: string }>(
+        `/api/public/activities/${this.activity.activityId}/reservations/checkout`,
+        this.form
+      )
       .subscribe({
-        next: (res) => {
-          this.created = res;
+        next: (res: { sessionId: string; sessionUrl: string }) => {
           this.submitting = false;
           this.showBookingModal = false;
-          this.loadAvailability();
-          Swal.fire({
-            icon: 'success',
-            title: 'Booking sent',
-            text: 'Your reservation was sent successfully.',
-            confirmButtonColor: '#e63946',
-          });
-        },
-        error: (err) => {
-          this.submitting = false;
+          if (res?.sessionUrl) {
+            this.blurActiveElement();
+            window.location.href = res.sessionUrl;
+            return;
+          }
+
+          this.blurActiveElement();
           Swal.fire({
             icon: 'error',
             title: 'Error',
-            text: err?.error?.message || 'Booking failed.',
+            text: 'Unable to start payment session.',
+            confirmButtonColor: '#e63946',
+          });
+        },
+        error: (err: HttpErrorResponse) => {
+          this.submitting = false;
+          this.blurActiveElement();
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: extractApiErrorMessage(err, 'Booking failed.'),
             confirmButtonColor: '#e63946',
           });
         },
@@ -295,8 +312,7 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   }
 
   openBookingModal(): void {
-    const token = localStorage.getItem('token') || localStorage.getItem('access_token');
-    if (!token) {
+    if (!this.authService.isAuthenticated()) {
       this.loginPrompt.show({
         title: 'Sign in to reserve this activity',
         message: 'Please sign in or create an account to complete your activity reservation.',
@@ -332,6 +348,86 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     this.reviewForm.stars = stars;
   }
 
+  appendEmoji(emoji: string): void {
+    this.reviewForm.commentText = `${this.reviewForm.commentText}${emoji}`;
+  }
+
+  startEditReview(review: PublicReview): void {
+    this.editingReviewId = review.reviewId;
+    this.reviewForm = {
+      stars: review.stars,
+      commentText: review.commentText,
+    };
+  }
+
+  cancelEditReview(): void {
+    this.editingReviewId = null;
+    this.reviewForm = { stars: 5, commentText: '' };
+  }
+
+  isOwnReview(review: PublicReview): boolean {
+    const currentUserId = this.authService.currentUser()?.id;
+    return currentUserId != null && currentUserId === review.userId;
+  }
+
+  reviewAuthorEmail(review: PublicReview): string {
+    return review.userEmail?.trim() || review.username;
+  }
+
+  reviewAuthorInitial(review: PublicReview): string {
+    const source = this.reviewAuthorEmail(review).trim();
+    return source ? source.charAt(0).toUpperCase() : '?';
+  }
+
+  deleteOwnReview(): void {
+    if (!this.activity) {
+      return;
+    }
+
+    Swal.fire({
+      icon: 'warning',
+      title: 'Delete your comment?',
+      text: 'This action cannot be undone.',
+      showCancelButton: true,
+      confirmButtonText: 'Delete',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#e63946',
+    }).then((result) => {
+      if (!result.isConfirmed || !this.activity) {
+        return;
+      }
+
+      this.reviewSubmitting = true;
+      this.exploreService.deleteActivityReviewMine(this.activity.activityId).subscribe({
+        next: () => {
+          this.reviewSubmitting = false;
+          this.cancelEditReview();
+          this.loadReviewSummary();
+          this.loadReviews();
+        },
+        error: (err: HttpErrorResponse) => {
+          this.reviewSubmitting = false;
+          if (err?.status === 401) {
+            Swal.fire({
+              icon: 'warning',
+              title: 'Sign in required',
+              text: 'Please sign in to manage your comment.',
+              confirmButtonColor: '#e63946',
+            });
+            return;
+          }
+
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: err?.error?.message || 'Unable to delete comment.',
+            confirmButtonColor: '#e63946',
+          });
+        },
+      });
+    });
+  }
+
   submitReview(): void {
     if (!this.activity || !this.reviewForm.commentText.trim()) {
       return;
@@ -344,7 +440,7 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     }).subscribe({
       next: () => {
         this.reviewSubmitting = false;
-        this.reviewForm = { stars: 5, commentText: '' };
+        this.cancelEditReview();
         this.loadReviewSummary();
         this.loadReviews();
       },
@@ -605,5 +701,16 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  private blurActiveElement(): void {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement) {
+      active.blur();
+    }
+  }
+
+  releaseFocus(): void {
+    this.blurActiveElement();
   }
 }

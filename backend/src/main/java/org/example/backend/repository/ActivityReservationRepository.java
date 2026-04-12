@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 
 public interface ActivityReservationRepository extends JpaRepository<ActivityReservation, Integer>, JpaSpecificationExecutor<ActivityReservation> {
 
@@ -32,4 +33,14 @@ public interface ActivityReservationRepository extends JpaRepository<ActivityRes
 	Page<ActivityReservation> findByUserUserIdOrderByReservationDateDesc(Integer userId, Pageable pageable);
 
 	void deleteByActivityActivityId(Integer activityId);
+
+	@Query("""
+		select ar
+		from ActivityReservation ar
+		join fetch ar.activity a
+		join fetch a.city
+		left join fetch ar.user
+		where ar.activityReservationId = :reservationId
+		""")
+	Optional<ActivityReservation> findByIdWithAssociations(@Param("reservationId") Integer reservationId);
 }

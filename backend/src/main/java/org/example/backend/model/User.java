@@ -27,6 +27,8 @@ public class User {
 
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String passwordHash;
+
+    @Column(name = "phone", length = 20)
     private String phone;
     private Integer points;
 
@@ -39,12 +41,19 @@ public class User {
     private Boolean artisanRequestPending;
     private Date artisanRequestedAt;
     private String authProvider;
-    @Column(columnDefinition = "TEXT")
+    /** MEDIUMTEXT (≈16 Mo) — URLs longues ou data URLs base64 pour la photo de profil. */
+    @Column(columnDefinition = "MEDIUMTEXT")
     private String profileImageUrl;
     private String nationality;
     private Boolean emailVerified;
     private Integer failedLoginAttempts;
     private Date lockedUntil;
+    private Integer commentViolationCount;
+    private Date commentMutedUntil;
+    private Integer commentBanCount;
+
+    @Column(columnDefinition = "TEXT")
+    private String e2eePublicKey;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "city_id")
@@ -218,6 +227,38 @@ public class User {
 
     public void setLockedUntil(Date lockedUntil) {
         this.lockedUntil = lockedUntil;
+    }
+
+    public Integer getCommentViolationCount() {
+        return commentViolationCount;
+    }
+
+    public void setCommentViolationCount(Integer commentViolationCount) {
+        this.commentViolationCount = commentViolationCount;
+    }
+
+    public Date getCommentMutedUntil() {
+        return commentMutedUntil;
+    }
+
+    public void setCommentMutedUntil(Date commentMutedUntil) {
+        this.commentMutedUntil = commentMutedUntil;
+    }
+
+    public Integer getCommentBanCount() {
+        return commentBanCount;
+    }
+
+    public void setCommentBanCount(Integer commentBanCount) {
+        this.commentBanCount = commentBanCount;
+    }
+
+    public String getE2eePublicKey() {
+        return e2eePublicKey;
+    }
+
+    public void setE2eePublicKey(String e2eePublicKey) {
+        this.e2eePublicKey = e2eePublicKey;
     }
 
     @JsonIgnore

@@ -95,6 +95,10 @@ public class ImgBbService {
         }
     }
 
+    public String uploadImage(byte[] imageBytes, String filename) {
+        return uploadImageBytes(imageBytes, filename);
+    }
+
     private String uploadWithMultipart(MultipartFile file) throws IOException {
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);

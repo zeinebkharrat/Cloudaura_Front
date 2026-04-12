@@ -6,6 +6,7 @@ import org.example.backend.exception.VehicleConflictException;
 import org.example.backend.exception.DriverConflictException;
 import org.example.backend.model.*;
 import org.example.backend.repository.*;
+import org.example.backend.service.TransportReservationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -13,9 +14,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.DateTimeException;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -30,6 +35,7 @@ public class AdminTransportController {
     private final DriverRepository driverRepository;
     private final CityRepository cityRepository;
     private final TransportReservationRepository reservationRepository;
+    private final TransportReservationService transportReservationService;
 
     // ==================== STATS ====================
 
@@ -45,8 +51,9 @@ public class AdminTransportController {
         List<Transport> activeTransports = transportRepository.findByIsActiveTrue();
         long availableSeats = activeTransports.stream()
             .mapToLong(t -> {
-                long booked = reservationRepository.countBookedSeats(t.getTransportId());
-                return Math.max(0, t.getCapacity() - booked);
+                long booked = countBookedSeatsFor(t.getTransportId());
+                int cap = t.getCapacity() != null ? t.getCapacity() : 0;
+                return Math.max(0, cap - booked);
             })
             .sum();
 
@@ -57,85 +64,7 @@ public class AdminTransportController {
         ));
     }
 
-    // ==================== TRANSPORT CRUD ====================
-
-    @GetMapping("/transports")
-    @Transactional(readOnly = true)
-    public ApiResponse<List<TransportDTO>> getAllTransports() {
-        List<Transport> transports = transportRepository.findAll();
-        List<TransportDTO> dtos = transports.stream()
-            .map(t -> toTransportDTO(t, reservationRepository.countBookedSeats(t.getTransportId())))
-            .collect(Collectors.toList());
-        return ApiResponse.success(dtos);
-    }
-
-    @GetMapping("/transports/{id}")
-    @Transactional(readOnly = true)
-    public ApiResponse<TransportDTO> getTransport(@PathVariable Integer id) {
-        Transport t = transportRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transport not found"));
-        return ApiResponse.success(toTransportDTO(t, reservationRepository.countBookedSeats(id)));
-    }
-
-    @PostMapping("/transports")
-    @Transactional
-    public ApiResponse<TransportDTO> createTransport(@RequestBody TransportRequest request) {
-        Transport transport = buildAndValidateTransport(request, null);
-        transport.setCreatedAt(LocalDateTime.now());
-        transport = transportRepository.save(transport);
-        return ApiResponse.success(toTransportDTO(transport, 0));
-    }
-
-    @PutMapping("/transports/{id}")
-    @Transactional
-    public ApiResponse<TransportDTO> updateTransport(@PathVariable Integer id, @RequestBody TransportRequest request) {
-        Transport existing = transportRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transport not found"));
-        Transport transport = buildAndValidateTransport(request, existing);
-        transport.setTransportId(id);
-        transport = transportRepository.save(transport);
-        long booked = reservationRepository.countBookedSeats(id);
-        return ApiResponse.success(toTransportDTO(transport, booked));
-    }
-
-    @PatchMapping("/transports/{id}/status")
-    @Transactional
-    public ApiResponse<TransportDTO> toggleTransportStatus(@PathVariable Integer id, @RequestBody StatusRequest request) {
-        Transport transport = transportRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transport not found"));
-
-        boolean willDeactivate = Boolean.FALSE.equals(request.isActive());
-        if (willDeactivate) {
-            long activeResCount = reservationRepository.countFutureActiveReservations(id);
-            if (activeResCount > 0) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Cannot deactivate: " + activeResCount + " active reservation(s) on this transport");
-            }
-        }
-
-        transport.setIsActive(request.isActive());
-        transport = transportRepository.save(transport);
-        long booked = reservationRepository.countBookedSeats(id);
-        return ApiResponse.success(toTransportDTO(transport, booked));
-    }
-
-    @DeleteMapping("/transports/{id}")
-    @Transactional
-    public ApiResponse<Void> deleteTransport(@PathVariable Integer id) {
-        Transport transport = transportRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transport not found"));
-
-        long confirmedFuture = reservationRepository.countFutureConfirmedReservations(id);
-        if (confirmedFuture > 0) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                "Cancel reservations before deleting (" + confirmedFuture + " confirmed reservation(s))");
-        }
-
-        transportRepository.delete(transport);
-        return ApiResponse.<Void>success(null);
-    }
-
-    // ==================== AVAILABILITY ENDPOINTS ====================
+    // ==================== TRANSPORT QUERIES (literal paths before /transports/{id}) ====================
 
     @GetMapping("/transports/available-types")
     @Transactional(readOnly = true)
@@ -174,8 +103,8 @@ public class AdminTransportController {
         List<Vehicle> vehicles = vehicleRepository.findByTypeInAndIsActiveTrue(compatibleTypes);
 
         if (departure != null && arrival != null) {
-            LocalDateTime dep = LocalDateTime.parse(departure, DateTimeFormatter.ISO_DATE_TIME);
-            LocalDateTime arr = LocalDateTime.parse(arrival, DateTimeFormatter.ISO_DATE_TIME);
+            LocalDateTime dep = parseAdminDateTimeParam(departure, "departure");
+            LocalDateTime arr = parseAdminDateTimeParam(arrival, "arrival");
             vehicles = vehicles.stream()
                 .filter(v -> !transportRepository.existsByVehicleIdAndTimeOverlap(v.getVehicleId(), dep, arr))
                 .collect(Collectors.toList());
@@ -193,8 +122,8 @@ public class AdminTransportController {
         List<Driver> drivers = driverRepository.findByIsActiveTrue();
 
         if (departure != null && arrival != null) {
-            LocalDateTime dep = LocalDateTime.parse(departure, DateTimeFormatter.ISO_DATE_TIME);
-            LocalDateTime arr = LocalDateTime.parse(arrival, DateTimeFormatter.ISO_DATE_TIME);
+            LocalDateTime dep = parseAdminDateTimeParam(departure, "departure");
+            LocalDateTime arr = parseAdminDateTimeParam(arrival, "arrival");
             drivers = drivers.stream()
                 .filter(d -> !transportRepository.existsByDriverIdAndTimeOverlap(d.getDriverId(), dep, arr))
                 .collect(Collectors.toList());
@@ -203,11 +132,98 @@ public class AdminTransportController {
         return ApiResponse.success(drivers.stream().map(this::toDriverDTO).collect(Collectors.toList()));
     }
 
+    @GetMapping("/transports")
+    @Transactional(readOnly = true)
+    public ApiResponse<List<TransportDTO>> getAllTransports() {
+        List<Transport> transports = transportRepository.findAll();
+        List<TransportDTO> dtos = transports.stream()
+            .map(t -> toTransportDTO(t, countBookedSeatsFor(t.getTransportId())))
+            .collect(Collectors.toList());
+        return ApiResponse.success(dtos);
+    }
+
     @GetMapping("/transports/{id}/reservations")
     @Transactional(readOnly = true)
     public ApiResponse<List<ReservationDTO>> getTransportReservations(@PathVariable Integer id) {
         List<TransportReservation> reservations = reservationRepository.findByTransport_TransportId(id);
         return ApiResponse.success(reservations.stream().map(this::toReservationDTO).collect(Collectors.toList()));
+    }
+
+    @GetMapping("/transports/{id}")
+    @Transactional(readOnly = true)
+    public ApiResponse<TransportDTO> getTransport(@PathVariable Integer id) {
+        Transport t = transportRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transport not found"));
+        return ApiResponse.success(toTransportDTO(t, countBookedSeatsFor(id)));
+    }
+
+    // ==================== TRANSPORT MUTATIONS ====================
+
+    @PostMapping("/transports")
+    @Transactional
+    public ApiResponse<TransportDTO> createTransport(@RequestBody TransportRequest request) {
+        Transport transport = buildAndValidateTransport(request, null);
+        transport.setCreatedAt(LocalDateTime.now());
+        transport = transportRepository.save(transport);
+        return ApiResponse.success(toTransportDTO(transport, 0));
+    }
+
+    @PutMapping("/transports/{id}")
+    @Transactional
+    public ApiResponse<TransportDTO> updateTransport(@PathVariable Integer id, @RequestBody TransportRequest request) {
+        Transport existing = transportRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transport not found"));
+        Transport transport = buildAndValidateTransport(request, existing);
+        transport.setTransportId(id);
+        transport = transportRepository.save(transport);
+        long booked = countBookedSeatsFor(id);
+        return ApiResponse.success(toTransportDTO(transport, booked));
+    }
+
+    @PatchMapping("/transports/{id}/status")
+    @Transactional
+    public ApiResponse<TransportDTO> toggleTransportStatus(@PathVariable Integer id, @RequestBody StatusRequest request) {
+        Transport transport = transportRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transport not found"));
+
+        boolean willDeactivate = Boolean.FALSE.equals(request.isActive());
+        if (willDeactivate) {
+            long activeResCount = reservationRepository.countFutureActiveReservations(id);
+            if (activeResCount > 0) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Cannot deactivate: " + activeResCount + " active reservation(s) on this transport");
+            }
+        }
+
+        transport.setIsActive(request.isActive());
+        transport = transportRepository.save(transport);
+        long booked = countBookedSeatsFor(id);
+        return ApiResponse.success(toTransportDTO(transport, booked));
+    }
+
+    @DeleteMapping("/transports/{id}")
+    @Transactional
+    public ApiResponse<Void> deleteTransport(@PathVariable Integer id) {
+        Transport transport = transportRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Transport not found"));
+
+        long futureActive = reservationRepository.countFutureActiveReservations(id);
+        if (futureActive > 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                "Cannot remove this transport: it has upcoming pending or confirmed bookings. Cancel or reassign them first.");
+        }
+
+        long linkedReservations = reservationRepository.countByTransport_TransportId(id);
+        if (linkedReservations > 0) {
+            // FK prevents hard delete while any reservation row references this transport
+            transport.setIsActive(false);
+            transportRepository.save(transport);
+            return ApiResponse.success(null,
+                "This route still has booking history in the database. It was deactivated and hidden from new searches instead of being permanently removed.");
+        }
+
+        transportRepository.delete(transport);
+        return ApiResponse.<Void>success(null);
     }
 
     // ==================== VEHICLE CRUD ====================
@@ -354,6 +370,7 @@ public class AdminTransportController {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Reservation not found"));
         reservation.setStatus(TransportReservation.ReservationStatus.CONFIRMED);
         reservation = reservationRepository.save(reservation);
+        transportReservationService.sendTransportConfirmationWhatsApp(reservation);
         return ApiResponse.success(toReservationDTO(reservation));
     }
 
@@ -369,6 +386,39 @@ public class AdminTransportController {
 
     // ==================== VALIDATION HELPERS ====================
 
+    private long countBookedSeatsFor(Integer transportId) {
+        if (transportId == null) {
+            return 0L;
+        }
+        return reservationRepository.countBookedSeats(transportId);
+    }
+
+    /**
+     * Accepts naive local {@code yyyy-MM-dd'T'HH:mm[:ss]} (same as {@link LocalDateTime} JSON) or ISO-8601 with
+     * offset/Z so availability filtering matches POST body overlap checks (avoids UTC drift from {@code toISOString()}).
+     */
+    private static LocalDateTime parseAdminDateTimeParam(String raw, String label) {
+        if (raw == null || raw.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Missing " + label);
+        }
+        String s = raw.trim();
+        try {
+            return LocalDateTime.parse(s);
+        } catch (DateTimeParseException ignored) {
+            /* fall through */
+        }
+        try {
+            return Instant.parse(s).atZone(ZoneId.systemDefault()).toLocalDateTime();
+        } catch (DateTimeException ignored) {
+            /* fall through */
+        }
+        try {
+            return LocalDateTime.parse(s, DateTimeFormatter.ISO_DATE_TIME);
+        } catch (DateTimeParseException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid " + label + " datetime: " + raw);
+        }
+    }
+
     private Transport buildAndValidateTransport(TransportRequest req, Transport existing) {
         // 1. Same city check
         if (req.departureCityId() != null && req.departureCityId().equals(req.arrivalCityId())) {
@@ -382,21 +432,22 @@ public class AdminTransportController {
 
         Transport.TransportType ttype = Transport.TransportType.valueOf(req.type());
 
-        // 2. Geographic infrastructure check
+        // 2. Geographic infrastructure (admin): only block when a city is explicitly marked without
+        // the facility. Null = unknown / legacy data → allow create/update.
         switch (ttype) {
             case PLANE:
-                if (!Boolean.TRUE.equals(departureCity.getHasAirport()))
+                if (Boolean.FALSE.equals(departureCity.getHasAirport()))
                     throw new InvalidTransportException("NO_AIRPORT",
                         "Vol impossible : " + departureCity.getName() + " n'a pas d'aéroport");
-                if (!Boolean.TRUE.equals(arrivalCity.getHasAirport()))
+                if (Boolean.FALSE.equals(arrivalCity.getHasAirport()))
                     throw new InvalidTransportException("NO_AIRPORT",
                         "Vol impossible : " + arrivalCity.getName() + " n'a pas d'aéroport");
                 break;
             case BUS:
-                if (!Boolean.TRUE.equals(departureCity.getHasBusStation()))
+                if (Boolean.FALSE.equals(departureCity.getHasBusStation()))
                     throw new InvalidTransportException("NO_BUS_STATION",
                         departureCity.getName() + " n'a pas de gare routière");
-                if (!Boolean.TRUE.equals(arrivalCity.getHasBusStation()))
+                if (Boolean.FALSE.equals(arrivalCity.getHasBusStation()))
                     throw new InvalidTransportException("NO_BUS_STATION",
                         arrivalCity.getName() + " n'a pas de gare routière");
                 break;

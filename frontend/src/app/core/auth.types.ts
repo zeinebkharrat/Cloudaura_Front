@@ -12,6 +12,8 @@ export interface UserProfile {
   status: string;
   artisanRequestPending: boolean;
   profileImageUrl?: string | null;
+  /** Gamification points (also returned by GET /api/profile and /api/auth/me). */
+  points?: number | null;
 }
 
 export interface AuthResponse {
@@ -104,6 +106,22 @@ export interface ProfileUpdatePayload {
 export interface ChangePasswordPayload {
   currentPassword: string;
   newPassword: string;
+}
+
+export interface UserDeviceSession {
+  sessionId: string;
+  deviceName: string;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  issuedAt?: string | null;
+  lastSeenAt?: string | null;
+  expiresAt?: string | null;
+  current: boolean;
+  active: boolean;
+}
+
+export interface RevokeOtherSessionsResponse {
+  revokedCount: number;
 }
 
 export interface ForgotPasswordPayload {

@@ -186,6 +186,15 @@
         <div class="cart-extra">
           <div class="payment-section">
             <h3>Mode de paiement</h3>
+            <div class="payment-preview-card" aria-hidden="true">
+              <div class="card-chip"></div>
+              <div class="card-number-display">•••• •••• •••• ••••</div>
+              <div class="card-bottom">
+                <div class="card-holder">Paiement YallaTN+</div>
+                <div class="card-expiry">SECURE</div>
+              </div>
+              <div class="card-type">VISA</div>
+            </div>
             <div class="payment-options">
               <div class="payment-option" [class.active]="paymentMethod() === 'CARD'" (click)="paymentMethod.set('CARD')">
                 <div class="icon">💳</div>

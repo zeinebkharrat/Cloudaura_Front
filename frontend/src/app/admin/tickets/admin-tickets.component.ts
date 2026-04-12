@@ -6,7 +6,7 @@ import jsQR from 'jsqr';
 import { AppAlertsService } from '../../core/services/app-alerts.service';
 import { API_BASE_URL } from '../../core/api-url';
 
-type AttendanceStatus = 'UPCOMING' | 'PRESENT' | 'ABSENT';
+type AttendanceStatus = 'PRESENT' | 'ABSENT';
 
 interface TicketRow {
   reservationItemId: number;
@@ -122,10 +122,7 @@ export class AdminTicketsComponent implements OnInit, OnDestroy {
     if (status === 'PRESENT') {
       return 'Present';
     }
-    if (status === 'ABSENT') {
-      return 'Absent';
-    }
-    return 'Upcoming';
+    return 'Absent';
   }
 
   private normalizeTicketRow(row: any): TicketRow {
@@ -134,10 +131,10 @@ export class AdminTicketsComponent implements OnInit, OnDestroy {
 
     let attendanceStatus: AttendanceStatus;
     const rawStatus = String(row?.attendanceStatus ?? '').toUpperCase();
-    if (rawStatus === 'PRESENT' || rawStatus === 'ABSENT' || rawStatus === 'UPCOMING') {
+    if (rawStatus === 'PRESENT' || rawStatus === 'ABSENT') {
       attendanceStatus = rawStatus;
     } else {
-      attendanceStatus = scanned ? 'PRESENT' : 'UPCOMING';
+      attendanceStatus = scanned ? 'PRESENT' : 'ABSENT';
     }
 
     return {
@@ -159,10 +156,7 @@ export class AdminTicketsComponent implements OnInit, OnDestroy {
     if (status === 'PRESENT') {
       return 'badge-present';
     }
-    if (status === 'ABSENT') {
-      return 'badge-absent';
-    }
-    return 'badge-upcoming';
+    return 'badge-absent';
   }
 
   async openScanner(): Promise<void> {

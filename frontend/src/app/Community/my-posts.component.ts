@@ -51,6 +51,8 @@ export class MyPostsComponent {
   readonly editPostLocation = signal<string>('');
   readonly editPostVisibility = signal<string>('public');
   readonly isEditing = signal<boolean>(false);
+  readonly mediaBusyPostId = signal<number | null>(null);
+  readonly deletingMediaId = signal<number | null>(null);
 
   // Delete confirmation
   readonly deletingPostId = signal<number | null>(null);
@@ -297,6 +299,23 @@ export class MyPostsComponent {
     );
   }
 
+  userAvatarUrl(user?: UserRef): string | null {
+    const raw = (user?.profileImageUrl ?? '').trim();
+    if (!raw) {
+      return null;
+    }
+    if (/^https?:\/\//i.test(raw)) {
+      return raw;
+    }
+    if (raw.startsWith('/')) {
+      return raw;
+    }
+    if (raw.startsWith('uploads/')) {
+      return `/${raw}`;
+    }
+    return `/${raw.replace(/^\/+/, '')}`;
+  }
+
   private parseDate(date?: string | null): number {
     if (!date) return 0;
     const n = Date.parse(date);
@@ -385,6 +404,102 @@ export class MyPostsComponent {
         ...this.swalTheme(),
       });
     }
+  }
+
+  async uploadMediaFromEdit(event: Event, postId: number): Promise<void> {
+    if (!this.authService.isAuthenticated()) {
+      this.router.navigate(['/auth/signin']);
+      return;
+    }
+
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    this.mediaBusyPostId.set(postId);
+
+    try {
+      const mediaType = file.type.startsWith('video/') ? 'VIDEO' : 'IMAGE';
+      await firstValueFrom(
+        this.postMediaService.uploadMedia(file, postId, mediaType as MediaType)
+      );
+
+      await Swal.fire({
+        icon: 'success',
+        title: 'Media added',
+        timer: 1200,
+        showConfirmButton: false,
+        ...this.swalTheme(),
+      });
+
+      this.loadMyPosts();
+    } catch (error) {
+      console.error('Error uploading media from edit form:', error);
+      await Swal.fire({
+        icon: 'error',
+        title: 'Upload failed',
+        text: 'The media could not be added.',
+        ...this.swalTheme(),
+      });
+    } finally {
+      input.value = '';
+      this.mediaBusyPostId.set(null);
+    }
+  }
+
+  async deleteMedia(media: PostMedia, postId: number): Promise<void> {
+    if (!media.mediaId) {
+      return;
+    }
+
+    const confirm = await Swal.fire({
+      icon: 'warning',
+      title: 'Delete this media?',
+      text: 'This file will be removed from your post.',
+      showCancelButton: true,
+      confirmButtonText: 'Delete',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#e63946',
+      ...this.swalTheme(),
+    });
+
+    if (!confirm.isConfirmed) {
+      return;
+    }
+
+    this.mediaBusyPostId.set(postId);
+    this.deletingMediaId.set(media.mediaId);
+
+    try {
+      await firstValueFrom(this.postMediaService.deleteMedia(media.mediaId));
+
+      await Swal.fire({
+        icon: 'success',
+        title: 'Media deleted',
+        timer: 1200,
+        showConfirmButton: false,
+        ...this.swalTheme(),
+      });
+
+      this.loadMyPosts();
+    } catch (error) {
+      console.error('Error deleting media:', error);
+      await Swal.fire({
+        icon: 'error',
+        title: 'Delete failed',
+        text: 'The media could not be deleted.',
+        ...this.swalTheme(),
+      });
+    } finally {
+      this.mediaBusyPostId.set(null);
+      this.deletingMediaId.set(null);
+    }
+  }
+
+  isMediaBusy(postId: number): boolean {
+    return this.mediaBusyPostId() === postId;
   }
 
   private swalTheme(): { background: string; color: string } {

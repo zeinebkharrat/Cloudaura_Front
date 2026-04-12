@@ -8,7 +8,9 @@ import org.example.backend.dto.LoginRequest;
 import org.example.backend.dto.ProfileUpdateRequest;
 import org.example.backend.dto.ResendVerificationRequest;
 import org.example.backend.dto.ResetPasswordRequest;
+import org.example.backend.dto.RevokeOtherSessionsResponse;
 import org.example.backend.dto.SignupRequest;
+import org.example.backend.dto.UserSessionResponse;
 import org.example.backend.dto.UserSummaryResponse;
 import org.example.backend.model.City;
 import org.example.backend.model.Role;
@@ -39,6 +41,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Date;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -156,7 +159,14 @@ public class AuthService {
         String token = createToken(savedUser, TOKEN_TYPE_EMAIL_VERIFICATION, EMAIL_VERIFICATION_EXPIRATION_MS);
         String verificationLink = buildFrontendLink("/verify-email", token);
         try {
-            emailService.sendVerificationEmail(savedUser.getEmail(), savedUser.getFirstName(), verificationLink);
+            emailService.sendVerificationEmail(
+                    savedUser.getEmail(),
+                    savedUser.getFirstName(),
+                    savedUser.getLastName(),
+                    savedUser.getUsername(),
+                    savedUser.getPhone(),
+                    savedUser.getNationality(),
+                    verificationLink);
         } catch (MailException ex) {
             return new AuthMessageResponse(
                     "Account created. Verification email could not be sent (SMTP). "
@@ -191,7 +201,7 @@ public class AuthService {
         }
 
         UserDetails principal = (UserDetails) authentication.getPrincipal();
-        User user = userRepository.findByUsernameIgnoreCase(principal.getUsername())
+        User user = userRepository.findFirstByUsernameIgnoreCaseOrderByUserIdAsc(principal.getUsername())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
 
         resetFailedSigninState(user);
@@ -214,7 +224,7 @@ public class AuthService {
         String lastName = extractLastName(oauth2User);
         String usernameSeed = extractUsernameSeed(oauth2User, provider, normalizedEmail);
 
-        User user = userRepository.findByEmailIgnoreCase(normalizedEmail)
+        User user = userRepository.findFirstByEmailIgnoreCaseOrderByUserIdAsc(normalizedEmail)
                 .orElseGet(() -> createSocialUser(normalizedEmail, firstName, lastName, provider, usernameSeed));
 
         ensureNotBanned(user);
@@ -290,6 +300,33 @@ public class AuthService {
         auditService.log(AuditService.ACTION_PASSWORD_CHANGE, user, details);
     }
 
+    @Transactional(readOnly = true)
+    public List<UserSessionResponse> mySessions(String currentSessionId) {
+        List<UserSessionResponse> sessions = new ArrayList<>();
+        if (currentSessionId != null && !currentSessionId.isBlank()) {
+            Date now = new Date();
+            sessions.add(new UserSessionResponse(currentSessionId, true, now, now, null, null));
+        }
+        return sessions;
+    }
+
+    @Transactional
+    public void revokeSession(String sessionId, String currentSessionId) {
+        if (sessionId == null || sessionId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sessionId is required");
+        }
+        if (currentSessionId != null && currentSessionId.equals(sessionId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot revoke current session from this endpoint");
+        }
+        // Session persistence is not enabled in this build.
+    }
+
+    @Transactional
+    public RevokeOtherSessionsResponse revokeOtherSessions(String currentSessionId) {
+        // Session persistence is not enabled in this build.
+        return new RevokeOtherSessionsResponse(0);
+    }
+
     @Transactional
     public AuthMessageResponse verifyEmail(String token) {
         VerificationToken verificationToken = verificationTokenRepository
@@ -311,7 +348,7 @@ public class AuthService {
     @Transactional
     public AuthMessageResponse resendVerification(ResendVerificationRequest request) {
         String normalizedIdentifier = request.identifier().trim().toLowerCase(Locale.ROOT);
-        userRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(normalizedIdentifier, normalizedIdentifier)
+        userRepository.findFirstByUsernameIgnoreCaseOrEmailIgnoreCaseOrderByUserIdAsc(normalizedIdentifier, normalizedIdentifier)
                 .ifPresent(user -> {
                     if (Boolean.TRUE.equals(user.getEmailVerified())) {
                         return;
@@ -319,7 +356,14 @@ public class AuthService {
                     String token = createToken(user, TOKEN_TYPE_EMAIL_VERIFICATION, EMAIL_VERIFICATION_EXPIRATION_MS);
                     String verificationLink = buildFrontendLink("/verify-email", token);
                     try {
-                        emailService.sendVerificationEmail(user.getEmail(), user.getFirstName(), verificationLink);
+                        emailService.sendVerificationEmail(
+                                user.getEmail(),
+                                user.getFirstName(),
+                                user.getLastName(),
+                                user.getUsername(),
+                                user.getPhone(),
+                                user.getNationality(),
+                                verificationLink);
                     } catch (MailException ex) {
                         throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Email service unavailable. Check SMTP credentials.");
                     }
@@ -343,7 +387,7 @@ public class AuthService {
         }
 
         String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
-        userRepository.findByEmailIgnoreCase(normalizedEmail)
+        userRepository.findFirstByEmailIgnoreCaseOrderByUserIdAsc(normalizedEmail)
                 .ifPresent(user -> {
                     if (!"LOCAL".equalsIgnoreCase(user.getAuthProvider())) {
                         return;
@@ -530,7 +574,7 @@ public class AuthService {
         if (normalized.isBlank()) {
             return Optional.empty();
         }
-        return userRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(normalized, normalized);
+        return userRepository.findFirstByUsernameIgnoreCaseOrEmailIgnoreCaseOrderByUserIdAsc(normalized, normalized);
     }
 
     private void handleFailedSignin(User user) {
@@ -644,7 +688,11 @@ public class AuthService {
             return false;
         }
         String normalized = nationality.trim().toLowerCase(Locale.ROOT);
-        return normalized.equals("tunisia") || normalized.equals("tunisian") || normalized.equals("tunisie");
+        return normalized.equals("tunisia")
+                || normalized.equals("tunisian")
+                || normalized.equals("tunisie")
+                || normalized.equals("tunisien")
+                || normalized.equals("tunisienne");
     }
 
     private User currentUser() {
@@ -654,8 +702,8 @@ public class AuthService {
         }
 
         String username = authentication.getName();
-        return userRepository.findByUsernameIgnoreCase(username)
-                .or(() -> userRepository.findByEmailIgnoreCase(username))
+        return userRepository.findFirstByUsernameIgnoreCaseOrderByUserIdAsc(username)
+                .or(() -> userRepository.findFirstByEmailIgnoreCaseOrderByUserIdAsc(username))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
@@ -690,7 +738,8 @@ public class AuthService {
                 roles,
                 user.getStatus(),
                 Boolean.TRUE.equals(user.getArtisanRequestPending()),
-                user.getProfileImageUrl()
+                user.getProfileImageUrl(),
+                user.getPoints()
         );
     }
 }

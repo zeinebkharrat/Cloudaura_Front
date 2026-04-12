@@ -13,6 +13,8 @@ import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 
+import java.security.Principal;
+
 @Controller
 public class ChatWebSocketController {
 
@@ -25,19 +27,38 @@ public class ChatWebSocketController {
     @Autowired
     private IChatRoomService chatRoomService;
 
+    @Autowired
+    private CustomUserDetailsService customUserDetailsService;
+
     @MessageMapping("/send-message")
-    public void sendMessage(SendMessageRequest request, Authentication authentication) {
-        User sender = extractUser(authentication);
+    public void sendMessage(SendMessageRequest request, Principal principal) {
+        User sender = extractUser(principal);
 
         // Verify the sender is a participant
         if (!chatRoomService.isUserInChatRoom(request.chatRoomId(), sender.getUserId())) {
             return; // Silently reject — user is not a participant
         }
 
+        if (request.receiverId() == null
+                || !chatRoomService.isUserInChatRoom(request.chatRoomId(), request.receiverId())) {
+            return;
+        }
+
+        boolean hasEncryptedPayload = request.encryptedMessage() != null && !request.encryptedMessage().isBlank()
+                && request.encryptedKey() != null && !request.encryptedKey().isBlank()
+                && request.iv() != null && !request.iv().isBlank();
+        if (!hasEncryptedPayload && (request.content() == null || request.content().isBlank())) {
+            return;
+        }
+
         // Save and broadcast
         MessageResponse response = messageService.sendMessage(
                 request.chatRoomId(),
                 sender.getUserId(),
+                request.receiverId(),
+                request.encryptedMessage(),
+                request.encryptedKey(),
+                request.iv(),
                 request.content()
         );
 
@@ -48,8 +69,8 @@ public class ChatWebSocketController {
     }
 
     @MessageMapping("/typing")
-    public void handleTyping(TypingEvent event, Authentication authentication) {
-        User user = extractUser(authentication);
+    public void handleTyping(TypingEvent event, Principal principal) {
+        User user = extractUser(principal);
 
         // Verify the user is a participant
         if (!chatRoomService.isUserInChatRoom(event.chatRoomId(), user.getUserId())) {
@@ -70,10 +91,24 @@ public class ChatWebSocketController {
         );
     }
 
-    private User extractUser(Authentication authentication) {
-        if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetailsService.CustomUserDetails) {
+    private User extractUser(Principal principal) {
+        if (principal instanceof Authentication authentication
+                && authentication.getPrincipal() instanceof CustomUserDetailsService.CustomUserDetails) {
             return ((CustomUserDetailsService.CustomUserDetails) authentication.getPrincipal()).getUser();
         }
+
+        if (principal instanceof Authentication authentication && authentication.getName() != null) {
+            var details = (CustomUserDetailsService.CustomUserDetails) customUserDetailsService
+                    .loadUserByUsername(authentication.getName());
+            return details.getUser();
+        }
+
+        if (principal != null && principal.getName() != null && !principal.getName().isBlank()) {
+            var details = (CustomUserDetailsService.CustomUserDetails) customUserDetailsService
+                    .loadUserByUsername(principal.getName());
+            return details.getUser();
+        }
+
         throw new RuntimeException("User not authenticated");
     }
 }

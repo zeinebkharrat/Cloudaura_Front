@@ -1,4 +1,12 @@
-import { Component, inject, signal, computed, ChangeDetectionStrategy, OnInit } from '@angular/core';
+import {
+  Component,
+  inject,
+  signal,
+  computed,
+  ChangeDetectionStrategy,
+  OnInit,
+  ChangeDetectorRef,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
@@ -8,6 +16,10 @@ import { AuthService } from '../../../core/auth.service';
 import { AppAlertsService } from '../../../core/services/app-alerts.service';
 import { Accommodation } from '../../../core/models/travel.models';
 import { LoginRequiredPromptService } from '../../../core/login-required-prompt.service';
+import {
+  AccommodationRoomCategory,
+  nightlyRateForCategory,
+} from '../../../core/utils/accommodation-quote.util';
 
 @Component({
   standalone: true,
@@ -16,6 +28,12 @@ import { LoginRequiredPromptService } from '../../../core/login-required-prompt.
   template: `
     <div class="page-container">
       <div class="booking-wrapper" [class.confirmation-mode]="step() === 3">
+        @if (editingReservationId() != null) {
+          <div class="heb-edit-banner" role="status">
+            <i class="pi pi-pencil" aria-hidden="true"></i>
+            <span>Updating your stay — save to apply new dates to this booking (same room).</span>
+          </div>
+        }
 
         <!-- Left Panel: Reservation Form -->
         <div class="form-panel">
@@ -118,9 +136,13 @@ import { LoginRequiredPromptService } from '../../../core/login-required-prompt.
                   <span>Guests</span>
                   <strong>{{ store.pax().adults }} guest(s)</strong>
                 </div>
+                <div class="summary-row">
+                  <span>Room</span>
+                  <strong>{{ selectedRoomLabel() }}</strong>
+                </div>
                 <hr class="sum-divider">
                 <div class="summary-row price-row">
-                  <span>{{ store.selectedAccommodation()?.pricePerNight | number:'1.0-0' }} TND × {{ nightCount() }} night(s)</span>
+                  <span>{{ quoteNightly() | number:'1.0-0' }} TND × {{ nightCount() }} night(s)</span>
                   <span>{{ baseTotal() | number:'1.0-0' }} TND</span>
                 </div>
                 <div class="summary-row price-row">
@@ -133,24 +155,34 @@ import { LoginRequiredPromptService } from '../../../core/login-required-prompt.
                 </div>
               </div>
 
-              <!-- Mock Payment Card -->
-              <div class="payment-section">
-                <h3 class="pay-title"><img src="icones/money-bag.png" alt="" class="pay-title-ico" width="22" height="22" /> Secure payment</h3>
-                <div class="card-mock">
-                  <div class="card-chip">⬜</div>
-                  <div class="card-number">**** **** **** 4242</div>
-                  <div class="card-footer">
-                    <span>YallaTN Pay</span>
-                    <span>VISA</span>
-                  </div>
+              @if (editingReservationId() === null) {
+                <div class="payment-section">
+                  <h3 class="pay-title">
+                    <img src="icones/money-bag.png" alt="" class="pay-title-ico" width="22" height="22" />
+                    Secure payment (Stripe)
+                  </h3>
+                  <p class="stripe-flow-hint">
+                    After you confirm, you are redirected to <strong>Stripe Checkout</strong> (same flow as events).
+                    Enter your card on Stripe’s page. In test mode use <code>4242&nbsp;4242&nbsp;4242&nbsp;4242</code>,
+                    any future expiry, any CVC.
+                  </p>
+                  <p class="secure-note">
+                    <i class="pi pi-lock secure-note-ico"></i>
+                    Card data is never stored on YallaTN — only processed by Stripe.
+                  </p>
                 </div>
-                <p class="secure-note"><i class="pi pi-info-circle secure-note-ico"></i> Simulated payment — no real card data is used</p>
-              </div>
+              } @else {
+                <p class="secure-note edit-pay-note">
+                  <i class="pi pi-info-circle secure-note-ico"></i>
+                  Updating dates only — no new payment.
+                </p>
+              }
 
               <div class="step-actions">
                 <button type="button" class="btn-ghost" (click)="step.set(1)">← Edit</button>
-                <button type="button" class="btn-primary" (click)="confirmBooking()" [disabled]="loading()">
+                <button type="button" class="btn-primary" (click)="confirmBooking()" [disabled]="payButtonDisabled()">
                   @if (loading()) { <span class="spinner-sm"></span> Processing... }
+                  @else if (editingReservationId() != null) { <i class="pi pi-save"></i> Update booking }
                   @else { <i class="pi pi-check-circle"></i> Pay & confirm }
                 </button>
               </div>
@@ -165,8 +197,14 @@ import { LoginRequiredPromptService } from '../../../core/login-required-prompt.
                   <i class="pi pi-check conf-check"></i>
                 </div>
               </div>
-              <h2 class="conf-title-heb">Booking confirmed</h2>
-              <p class="conf-desc">Your stay at <strong>{{ store.selectedAccommodation()?.name }}</strong> has been reserved.</p>
+              <h2 class="conf-title-heb">{{ editingReservationId() != null ? 'Stay updated' : 'Booking confirmed' }}</h2>
+              <p class="conf-desc">
+                @if (editingReservationId() != null) {
+                  Your dates at <strong>{{ store.selectedAccommodation()?.name }}</strong> have been updated.
+                } @else {
+                  Your stay at <strong>{{ store.selectedAccommodation()?.name }}</strong> has been reserved.
+                }
+              </p>
               <div class="conf-welcome">
                 <span class="conf-wave"><i class="pi pi-heart-fill"></i></span>
                 <p class="conf-welcome-msg">Thank you <strong>{{ guestForm.value.firstName }}</strong>, you’re all set.</p>
@@ -300,6 +338,13 @@ import { LoginRequiredPromptService } from '../../../core/login-required-prompt.
     .card-number { font-family: monospace; font-size: 1.3rem; letter-spacing: 3px; margin-bottom: 1rem; }
     .card-footer { display: flex; justify-content: space-between; opacity: 0.7; font-size: 0.85rem; }
     .secure-note { font-size: 0.8rem; color: rgba(255,255,255,0.35); text-align: center; margin-top: 0.75rem; }
+    .edit-pay-note { margin-top: 1rem; }
+    .stripe-flow-hint {
+      font-size: 0.85rem; color: rgba(255,255,255,0.55); line-height: 1.5; margin: 0 0 1rem 0;
+    }
+    .stripe-flow-hint code { color: #fca5a5; font-size: 0.82rem; }
+    .stripe-card-field { margin-bottom: 0.5rem; }
+    .stripe-card-input { font-family: ui-monospace, monospace; letter-spacing: 0.04em; }
 
     /* Confirmation */
     .confirmation { text-align: center; padding: 2.5rem 1.5rem; }
@@ -351,6 +396,15 @@ import { LoginRequiredPromptService } from '../../../core/login-required-prompt.
     .guarantees { background: #161922; border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; gap: 12px; }
     .guarantee-item { display: flex; align-items: center; gap: 12px; font-size: 0.9rem; color: rgba(255,255,255,0.7); }
 
+    .heb-edit-banner {
+      grid-column: 1 / -1;
+      display: flex; align-items: flex-start; gap: 0.6rem;
+      padding: 0.85rem 1rem; margin-bottom: 0.5rem; border-radius: 14px;
+      background: rgba(0, 119, 182, 0.15); border: 1px solid rgba(0, 119, 182, 0.35);
+      font-size: 0.88rem; color: rgba(255,255,255,0.92); line-height: 1.45;
+    }
+    .heb-edit-banner .pi { color: #38bdf8; margin-top: 2px; }
+
     @media (max-width: 900px) {
       .booking-wrapper { grid-template-columns: 1fr; }
       .form-row { grid-template-columns: 1fr; }
@@ -366,10 +420,15 @@ export class AccommodationBookingPageComponent implements OnInit {
   auth = inject(AuthService);
   private loginPrompt = inject(LoginRequiredPromptService);
   private alerts = inject(AppAlertsService);
+  private cdr = inject(ChangeDetectorRef);
 
   step = signal(1);
   loading = signal(false);
   reservationId = signal('');
+  /** My bookings → Edit: PATCH stay dates instead of creating a new reservation. */
+  editingReservationId = signal<number | null>(null);
+  /** Locked room when editing (from query). */
+  editingRoomId = signal<number | null>(null);
 
   steps = [
     { num: 1, label: 'Guest' },
@@ -393,13 +452,47 @@ export class AccommodationBookingPageComponent implements OnInit {
     return Math.max(1, Math.floor(diff / 86400000));
   });
 
-  baseTotal = computed(() =>
-    (this.store.selectedAccommodation()?.pricePerNight || 0) * this.nightCount()
-  );
+  quoteNightly = computed(() => {
+    const acc = this.store.selectedAccommodation();
+    if (!acc) return 0;
+    return nightlyRateForCategory(acc, this.store.accommodationRoomCategory());
+  });
+
+  baseTotal = computed(() => this.quoteNightly() * this.nightCount());
   taxAmount = computed(() => Math.round(this.baseTotal() * 0.1));
   grandTotal = computed(() => this.baseTotal() + this.taxAmount());
 
+  selectedRoomLabel(): string {
+    const labels: Record<AccommodationRoomCategory, string> = {
+      SINGLE: 'Single room',
+      DOUBLE: 'Double room',
+      SUITE: 'Luxury suite',
+    };
+    return labels[this.store.accommodationRoomCategory()];
+  }
+
+  payButtonDisabled(): boolean {
+    return this.loading();
+  }
+
   ngOnInit() {
+    const qp = this.route.snapshot.queryParamMap;
+    const checkInQ = qp.get('checkIn');
+    const checkOutQ = qp.get('checkOut');
+    if (checkInQ && checkOutQ) {
+      this.store.setDates({ checkIn: checkInQ, checkOut: checkOutQ });
+    }
+    const edit = qp.get('edit');
+    const roomIdQ = qp.get('roomId');
+    if (edit) {
+      const eid = parseInt(edit, 10);
+      if (Number.isFinite(eid)) this.editingReservationId.set(eid);
+    }
+    if (roomIdQ) {
+      const rid = parseInt(roomIdQ, 10);
+      if (Number.isFinite(rid)) this.editingRoomId.set(rid);
+    }
+
     const id = Number(this.route.snapshot.paramMap.get('id'));
     if (id) {
       this.dataSource
@@ -416,9 +509,47 @@ export class AccommodationBookingPageComponent implements OnInit {
         firstName: user.firstName || '',
         lastName: user.lastName || '',
         email: user.email || '',
-        phone: user.phone || ''
+        phone: user.phone || '',
       });
     }
+
+    const paid = qp.get('paid');
+    const paidRid = qp.get('reservationId');
+    const uidEarly = user?.id;
+    if (paid === '1' && paidRid && uidEarly != null) {
+      const prid = Number(paidRid);
+      if (Number.isFinite(prid)) {
+        this.dataSource.getMyAccommodationReservations(uidEarly).subscribe({
+          next: (list) => {
+            const found = list.find((x) => x.id === prid);
+            if (found) {
+              this.reservationId.set(String(found.id));
+              this.step.set(3);
+              this.cdr.markForCheck();
+            }
+          },
+          error: () => {
+            void this.alerts.error('Booking', 'Could not load your stay reservation.');
+          },
+        });
+      }
+    }
+  }
+
+  private resolveRoomIdForSubmit(acc: Accommodation): { id: number } | null {
+    const locked = this.editingRoomId();
+    if (locked != null && Number.isFinite(locked)) {
+      return { id: locked };
+    }
+    const quoted = this.store.accommodationQuoteRoomId();
+    const guests = this.store.pax().adults;
+    if (quoted != null && acc.rooms?.some((r) => r.id === quoted && r.available !== false)) {
+      const r = acc.rooms!.find((x) => x.id === quoted)!;
+      if ((r.capacity ?? 0) >= guests) {
+        return { id: quoted };
+      }
+    }
+    return this.pickRoom(acc, guests);
   }
 
   nextStep() {
@@ -445,7 +576,7 @@ export class AccommodationBookingPageComponent implements OnInit {
     this.router.navigate(['/hebergement', accId]);
   }
 
-  confirmBooking() {
+  async confirmBooking() {
     const user = this.auth.currentUser();
     if (!user) {
       this.loginPrompt.show({
@@ -475,7 +606,28 @@ export class AccommodationBookingPageComponent implements OnInit {
       return;
     }
 
-    const roomPick = this.pickRoom(acc, guests);
+    const editId = this.editingReservationId();
+    if (editId != null) {
+      this.loading.set(true);
+      this.dataSource.updateAccommodationReservation(editId, user.id, ci, co).subscribe({
+        next: (res) => {
+          this.loading.set(false);
+          this.reservationId.set(res?.id?.toString() ?? String(editId));
+          this.step.set(3);
+        },
+        error: (err) => {
+          this.loading.set(false);
+          void this.alerts.error(
+            'Update failed',
+            err.error?.message ??
+              'We could not update these dates. They may conflict with another booking — try different dates.'
+          );
+        },
+      });
+      return;
+    }
+
+    const roomPick = this.resolveRoomIdForSubmit(acc);
     if (!roomPick) {
       void this.alerts.error(
         'No room available',
@@ -484,30 +636,70 @@ export class AccommodationBookingPageComponent implements OnInit {
       return;
     }
 
+    const total = this.grandTotal();
+    const confirm = await this.alerts.confirm({
+      title: 'Confirm payment',
+      text: `You will be redirected to Stripe to pay ${total} TND for this stay. Continue?`,
+      confirmText: 'Yes, continue to Stripe',
+      cancelText: 'Cancel',
+      icon: 'question',
+    });
+    if (!confirm.isConfirmed) {
+      return;
+    }
+
     this.loading.set(true);
+    this.cdr.markForCheck();
 
     this.dataSource
-      .createReservation({
+      .createAccommodationCheckoutSession({
         roomId: roomPick.id,
         userId: user.id,
-        checkIn: ci,
-        checkOut: co,
+        checkIn: ci.slice(0, 10),
+        checkOut: co.slice(0, 10),
+        offerId: null,
       })
       .subscribe({
-        next: (res) => {
+        next: (checkout) => {
           this.loading.set(false);
-          this.reservationId.set(
-            res?.id?.toString() || 'YTN-' + Math.floor(Math.random() * 90000 + 10000)
-          );
-          this.step.set(3);
+          this.cdr.markForCheck();
+          const url = (checkout.url ?? '').trim();
+          if (!url) {
+            void this.alerts.error('Checkout', 'Invalid payment response from server.');
+            return;
+          }
+          let stripeHost = '';
+          try {
+            stripeHost = new URL(url).hostname.toLowerCase();
+          } catch {
+            /* ignore */
+          }
+          if (stripeHost === 'checkout.stripe.com' || stripeHost.endsWith('.checkout.stripe.com')) {
+            window.location.assign(url);
+            return;
+          }
+          if (url.startsWith('/')) {
+            void this.router.navigateByUrl(url);
+            return;
+          }
+          if (url.startsWith('https://') || url.startsWith('http://')) {
+            window.location.assign(url);
+            return;
+          }
+          void this.alerts.error('Checkout', 'Invalid payment response from server.');
         },
-        error: (err) => {
+        error: (err: unknown) => {
           this.loading.set(false);
-          void this.alerts.error(
-            'Booking failed',
-            err.error?.message ??
-              'We could not complete the reservation. The room may no longer be free for these dates — try other dates or refresh the page.'
-          );
+          this.cdr.markForCheck();
+          const body =
+            err && typeof err === 'object' && 'error' in err ? (err as { error?: unknown }).error : undefined;
+          const msg =
+            typeof body === 'object' && body !== null && 'message' in body
+              ? String((body as { message?: string }).message)
+              : typeof body === 'string'
+                ? body
+                : 'Could not start Stripe checkout.';
+          void this.alerts.error('Checkout', msg);
         },
       });
   }

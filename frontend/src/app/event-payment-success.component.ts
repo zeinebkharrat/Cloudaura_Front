@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+﻿import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -11,207 +11,112 @@ import { extractApiErrorMessage } from './api-error.util';
   selector: 'app-event-payment-success',
   imports: [CommonModule, RouterLink],
   template: `
-    <main class="wrap">
-      <section class="card loading" *ngIf="status === 'loading'">
-        <div class="status-icon status-icon--loading" aria-hidden="true"></div>
-        <p class="kicker">Processing</p>
-        <h1>Confirming your payment</h1>
-        <p class="lead">We are finalizing your reservation. This usually takes a few seconds.</p>
-      </section>
+    <main class="payment-page">
+      <div class="payment-inner animate-in">
+        <header class="payment-head">
+          <p class="kicker">Paiement securise</p>
+          <h1 class="title">YallaTN<span class="accent">+</span> · <span class="sub">events</span></h1>
+        </header>
 
-      <section class="card ok" *ngIf="status === 'ok'">
-        <div class="status-icon status-icon--ok" aria-hidden="true">✓</div>
-        <p class="kicker">Payment confirmed</p>
-        <h1>You're in!</h1>
-        <p class="lead">Your event booking is confirmed and your seat is reserved.</p>
-        <p *ngIf="reservationId != null" class="ref">Reservation #{{ reservationId }}</p>
-        <div class="actions">
-          <a routerLink="/evenements" class="btn">Back to events</a>
+        <div class="state-card" *ngIf="status === 'loading'">
+          <p class="lead">Confirming your payment...</p>
         </div>
-      </section>
 
-      <section class="card err" *ngIf="status === 'error'">
-        <div class="status-icon status-icon--err" aria-hidden="true">!</div>
-        <p class="kicker">Payment issue</p>
-        <h1>Could not confirm</h1>
-        <p class="lead">{{ message }}</p>
-        <div class="actions">
-          <a routerLink="/evenements" class="btn">Back to events</a>
+        <div class="state-card ok" *ngIf="status === 'ok'">
+          <div class="success-icon-wrap"><i class="pi pi-check-circle success-icon"></i></div>
+          <h2>Paiement confirme</h2>
+          <p>Votre reservation d'evenement est validee.</p>
+          <p *ngIf="reservationId != null" class="ref">Reservation #{{ reservationId }}</p>
+          <a routerLink="/evenements" class="btn-pay">Retour aux evenements</a>
         </div>
-      </section>
+
+        <div class="state-card err" *ngIf="status === 'error'">
+          <h2>Echec de confirmation</h2>
+          <p>{{ message }}</p>
+          <a routerLink="/evenements" class="btn-pay">Retour aux evenements</a>
+        </div>
+
+        <footer class="payment-foot">
+          <span class="security"><i class="pi pi-lock"></i> Confirmation securisee</span>
+        </footer>
+      </div>
     </main>
   `,
   styles: [
     `
-      .wrap {
-        max-width: 640px;
-        margin: clamp(3rem, 9vh, 6rem) auto;
-        padding: 1.25rem;
+      .payment-page {
+        max-width: 560px;
+        margin: 0 auto;
+        padding: 88px 20px 48px;
       }
-
-      .card {
-        padding: 2rem 2rem 1.8rem;
-        border-radius: 22px;
-        background: linear-gradient(155deg, rgba(18, 25, 42, 0.96), rgba(12, 18, 31, 0.96));
-        border: 1px solid rgba(148, 163, 184, 0.28);
-        color: #e8edf3;
-        box-shadow: 0 22px 44px rgba(2, 6, 23, 0.38);
-        backdrop-filter: blur(8px);
+      .payment-inner {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
       }
-
+      .payment-head { text-align: center; }
       .kicker {
-        margin: 0.45rem 0 0;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        font-size: 0.72rem;
+        margin: 0 0 8px;
+        font-size: 0.75rem;
         font-weight: 700;
-        color: #8aa4d0;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--text-muted);
       }
-
-      h1 {
-        margin: 0.35rem 0 0.6rem;
-        font-size: clamp(1.45rem, 2.6vw, 1.95rem);
-        line-height: 1.2;
+      .title {
+        margin: 0;
+        font-size: clamp(1.25rem, 3vw, 1.7rem);
+        font-weight: 800;
       }
-
-      .card p {
-        margin: 0.35rem 0;
+      .accent { color: var(--tunisia-red); }
+      .sub { font-size: 0.85em; color: var(--text-muted); font-weight: 600; }
+      .state-card {
+        padding: 28px 26px 30px;
+        border-radius: 24px;
+        background: var(--glass-bg, rgba(255,255,255,0.08));
+        border: 1px solid var(--glass-border, rgba(255,255,255,0.15));
+        text-align: center;
       }
-
       .lead {
         margin: 0;
-        color: rgba(226, 232, 240, 0.88);
-        line-height: 1.5;
+        color: var(--text-muted);
       }
-
-      .status-icon {
-        width: 44px;
-        height: 44px;
+      .ok h2 {
+        margin: 0 0 8px;
+        color: #22c55e;
+      }
+      .err h2 { margin: 0 0 8px; color: #f87171; }
+      .success-icon-wrap {
+        width: 76px;
+        height: 76px;
+        background: rgba(34, 197, 94, 0.12);
         border-radius: 50%;
-        display: grid;
-        place-items: center;
-        font-weight: 800;
-        font-size: 1.15rem;
-      }
-
-      .status-icon--loading {
-        border: 3px solid rgba(148, 163, 184, 0.35);
-        border-top-color: #60a5fa;
-        animation: spin 1s linear infinite;
-      }
-
-      .status-icon--ok {
-        background: rgba(52, 211, 153, 0.16);
-        border: 1px solid rgba(52, 211, 153, 0.42);
-        color: #34d399;
-      }
-
-      .status-icon--err {
-        background: rgba(248, 113, 113, 0.16);
-        border: 1px solid rgba(248, 113, 113, 0.42);
-        color: #f87171;
-      }
-
-      .ok h1 {
-        color: #34d399;
-      }
-
-      .err h1 {
-        color: #f87171;
-      }
-
-      .ref {
-        margin-top: 0.9rem;
-        font-weight: 600;
-        color: #dbeafe;
-      }
-
-      .actions {
-        margin-top: 1.1rem;
-      }
-
-      .btn {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-height: 42px;
-        padding: 0.65rem 1.25rem;
-        border-radius: 12px;
-        background: linear-gradient(135deg, #f12545 0%, #ff4d6d 100%);
+        margin-bottom: 12px;
+      }
+      .success-icon { font-size: 2.5rem; color: #22c55e; }
+      .ref {
+        font-weight: 600;
+        color: var(--text-color);
+      }
+      .btn-pay {
+        display: inline-block;
+        margin-top: 1.25rem;
+        padding: 13px 16px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #ff4b4b, var(--tunisia-red));
         color: #fff;
         text-decoration: none;
-        font-weight: 600;
-        box-shadow: 0 10px 22px rgba(241, 37, 69, 0.28);
+        font-weight: 700;
       }
-
-      .btn:hover {
-        filter: brightness(1.04);
-      }
-
-      :host-context(html:not([data-theme='dark'])) .card {
-        background: linear-gradient(160deg, #ffffff 0%, #f4f8ff 100%);
-        color: #10203d;
-        border: 1px solid #d3e2f8;
-        box-shadow: 0 20px 40px rgba(15, 23, 42, 0.14);
-      }
-
-      :host-context(html:not([data-theme='dark'])) .kicker {
-        color: #476da8;
-      }
-
-      :host-context(html:not([data-theme='dark'])) .lead {
-        color: #3f5d8f;
-      }
-
-      :host-context(html:not([data-theme='dark'])) .status-icon--loading {
-        border-color: rgba(71, 109, 168, 0.24);
-        border-top-color: #2f66cc;
-      }
-
-      :host-context(html:not([data-theme='dark'])) .status-icon--ok {
-        background: rgba(20, 184, 127, 0.14);
-        border-color: rgba(20, 184, 127, 0.28);
-        color: #089669;
-      }
-
-      :host-context(html:not([data-theme='dark'])) .status-icon--err {
-        background: rgba(225, 29, 72, 0.13);
-        border-color: rgba(225, 29, 72, 0.28);
-        color: #e11d48;
-      }
-
-      :host-context(html:not([data-theme='dark'])) .ok h1 {
-        color: #0ea871;
-      }
-
-      :host-context(html:not([data-theme='dark'])) .err h1 {
-        color: #e11d48;
-      }
-
-      :host-context(html:not([data-theme='dark'])) .ref {
-        color: #1f3d70;
-      }
-
-      :host-context(html:not([data-theme='dark'])) .btn {
-        box-shadow: 0 12px 22px rgba(241, 37, 69, 0.2);
-      }
-
+      .payment-foot { text-align: center; color: var(--text-muted); font-size: 0.78rem; }
+      .security { display: inline-flex; align-items: center; gap: 6px; }
+      .animate-in { animation: fadeIn .35s ease both; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: translateY(0);} }
       @media (max-width: 640px) {
-        .wrap {
-          margin-top: 2rem;
-          padding: 0.9rem;
-        }
-
-        .card {
-          border-radius: 18px;
-          padding: 1.45rem 1.2rem;
-        }
-      }
-
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
-        }
+        .state-card { padding: 22px 18px; }
       }
     `,
   ],

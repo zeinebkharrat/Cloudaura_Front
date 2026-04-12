@@ -11,4 +11,6 @@ public record QuizView(
         String description,
         Boolean published,
         Date createdAt,
+        String coverImageUrl,
+        Integer timeLimitSeconds,
         List<QuizQuestion> questions) {}

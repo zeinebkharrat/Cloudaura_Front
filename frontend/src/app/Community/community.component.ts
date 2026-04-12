@@ -1,8 +1,10 @@
-import { Component, HostListener, inject, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, OnDestroy, ViewChild, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin, firstValueFrom, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import * as echarts from 'echarts';
 import {
   Comment,
   CommentWithChildren,
@@ -17,20 +19,82 @@ import { LikeService, LikesByPostResponse } from './like.service';
 import { PostMediaService } from './post-media.service';
 import { PostService } from './post.service';
 import { CityOption, CityService } from './city.service';
-import { FollowService } from './follow.service';
+import { FollowService, HoverUserSummary } from './follow.service';
 import { SavedPostService } from './saved-post.service';
 import { AuthService } from '../core/auth.service';
 import { OwnershipUtil } from './ownership.util';
+import { ChatService } from '../chat/chat.service';
+import { extractApiErrorMessage } from '../api-error.util';
 import Swal from 'sweetalert2';
+import { GiphyItem, GiphyMediaType, GiphyService } from './giphy.service';
+import { tunisiaGeoJson } from '../tunisia-map';
+import { GOVERNORATE_LABEL_EN, GOVERNORATE_LABEL_FR } from '../tunisia-governorate-labels';
+import { CommunityStoriesComponent } from './community-stories.component';
+
+const MINI_TUNISIA_MAP_NAME = 'TunisiaMiniPreview';
+const MINI_TUNISIA_MAP_NAME_PROP = '_echartsRegionId';
+
+type LocationHoverCard = {
+  title: string;
+  subtitle: string;
+  mapRegionId: string | null;
+  highlightLabel: string | null;
+};
+
+type HoverCardUser = UserRef & {
+  userId: number;
+  followersCount?: number;
+  followingCount?: number;
+  age?: number | null;
+  country?: string | null;
+  nationality?: string | null;
+  cityName?: string | null;
+};
+
+type HoverCardState = {
+  user: HoverCardUser;
+  top: number;
+  left: number;
+};
+
+function normalizeRegionToken(value: unknown): string {
+  if (typeof value !== 'string') {
+    return '';
+  }
+
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
+
+function tunisiaGeoWithUniqueRegionIds(geo: any) {
+  return {
+    ...geo,
+    features: geo.features.map((f: any, i: number) => ({
+      ...f,
+      properties: {
+        ...f.properties,
+        [MINI_TUNISIA_MAP_NAME_PROP]: `${f.properties?.gouv_id ?? 'region'}_${i}`,
+      },
+    })),
+  };
+}
 
 @Component({
   selector: 'app-community',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, CommunityStoriesComponent],
   templateUrl: './community.component.html',
   styleUrl: './community.component.css',
 })
 export class CommunityComponent {
+  private static readonly POSTS_PAGE_SIZE = 10;
+
+  @ViewChild('locationMiniMap')
+  private locationMiniMapRef?: ElementRef<HTMLDivElement>;
+
   private readonly postService = inject(PostService);
   private readonly commentService = inject(CommentService);
   private readonly likeService = inject(LikeService);
@@ -38,8 +102,11 @@ export class CommunityComponent {
   private readonly cityService = inject(CityService);
   private readonly followService = inject(FollowService);
   private readonly savedPostService = inject(SavedPostService);
+  private readonly giphyService = inject(GiphyService);
   public readonly authService = inject(AuthService);
+  private readonly chatService = inject(ChatService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   // Feed state
   readonly posts = signal<Post[]>([]);
@@ -48,8 +115,10 @@ export class CommunityComponent {
   readonly medias = signal<PostMedia[]>([]);
   readonly likeStatuses = signal<Map<number, boolean>>(new Map());
   readonly likeUserNicknames = signal<Map<number, string[]>>(new Map());
+  readonly likeUsersByPost = signal<Map<number, UserRef[]>>(new Map());
   readonly followingByAuthor = signal<Map<number, boolean>>(new Map());
   readonly savedByPost = signal<Map<number, boolean>>(new Map());
+  readonly suggestedUsers = signal<UserRef[]>([]);
   readonly cities = signal<CityOption[]>([]);
   readonly loadingCities = signal<boolean>(false);
   readonly savedPosts = signal<Post[]>([]);
@@ -57,6 +126,7 @@ export class CommunityComponent {
 
   readonly loadError = signal<string | null>(null);
   readonly feedLoaded = signal(false);
+  readonly visiblePostsLimit = signal<number>(CommunityComponent.POSTS_PAGE_SIZE);
   /** Placeholder discovery chips — use asset paths instead of emoji */
   readonly cityDiscovery = signal<Array<{ label: string; icon: string }>>([
     { label: 'Kairouan', icon: 'icones/city.png' },
@@ -93,6 +163,19 @@ export class CommunityComponent {
   readonly postCommentDrafts = signal<Record<number, string>>({});
   readonly replyDrafts = signal<Record<number, string>>({});
   readonly activeReplyCommentId = signal<number | null>(null);
+  readonly postCommentGiphy = signal<Record<number, GiphyItem | null>>({});
+  readonly replyCommentGiphy = signal<Record<number, GiphyItem | null>>({});
+
+  // GIPHY picker
+  readonly showGiphyPicker = signal<boolean>(false);
+  readonly giphyContext = signal<{ kind: 'post' | 'reply'; id: number } | null>(null);
+  readonly giphyQuery = signal<string>('');
+  readonly giphyType = signal<GiphyMediaType>('gif');
+  readonly giphyResults = signal<GiphyItem[]>([]);
+  readonly giphyLoading = signal<boolean>(false);
+  readonly giphyError = signal<string | null>(null);
+
+  private giphySearchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   // Media uploads
   readonly uploadingPostId = signal<number | null>(null);
@@ -103,14 +186,46 @@ export class CommunityComponent {
   readonly expandedCommentsPostIds = signal<Set<number>>(new Set());
   readonly activeMediaPostId = signal<number | null>(null);
   readonly activeMediaIndex = signal<number>(0);
+  readonly hoveredLocationPostId = signal<number | null>(null);
+  readonly hoveredLocationCard = signal<LocationHoverCard | null>(null);
+  readonly hoveredUserCard = signal<HoverCardState | null>(null);
+  readonly focusedPostId = signal<number | null>(null);
+
+  private static miniMapRegistered = false;
+  private readonly miniTunisiaGeo = tunisiaGeoWithUniqueRegionIds(tunisiaGeoJson);
+  private readonly miniGovernorateLookup = this.buildGovernorateLookup();
+  private miniMapChart: echarts.ECharts | null = null;
+  private hoverCardCloseTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly hoverUserCache = new Map<number, HoverCardUser>();
+  private feedAutoLoadPending = false;
+  private suggestionsRequestSeq = 0;
 
   constructor() {
     // No more manual userId selection - use JWT authentication
   }
 
   ngOnInit(): void {
+    const savedOnly = !!this.route.snapshot.data['savedOnly'];
+    this.showSavedOnly.set(savedOnly);
+
     this.loadCities();
     this.loadFeed();
+
+    if (savedOnly && this.authService.isAuthenticated()) {
+      this.loadSavedPosts();
+    }
+  }
+
+  ngOnDestroy(): void {
+    if (this.giphySearchDebounceTimer) {
+      clearTimeout(this.giphySearchDebounceTimer);
+      this.giphySearchDebounceTimer = null;
+    }
+    if (this.hoverCardCloseTimer) {
+      clearTimeout(this.hoverCardCloseTimer);
+      this.hoverCardCloseTimer = null;
+    }
+    this.disposeMiniMapChart();
   }
 
   private loadCities(): void {
@@ -129,6 +244,7 @@ export class CommunityComponent {
   private loadFeed(): void {
     this.loadError.set(null);
     this.feedLoaded.set(false);
+    this.resetVisiblePostsLimit();
 
     const safePosts$ = this.postService.getAllPosts().pipe(
       catchError((err) => {
@@ -165,6 +281,8 @@ export class CommunityComponent {
         this.likes.set(likes || []);
         this.comments.set(comments || []);
         this.medias.set(medias || []);
+        void this.refreshSuggestions();
+        this.resetVisiblePostsLimit();
         this.feedLoaded.set(true);
         
         // Load like statuses and nicknames for each post
@@ -206,6 +324,7 @@ export class CommunityComponent {
         const map = new Map<number, boolean>();
         authorIds.forEach((authorId, index) => map.set(authorId, responses[index].following));
         this.followingByAuthor.set(map);
+        void this.refreshSuggestions();
       });
     }
 
@@ -230,6 +349,7 @@ export class CommunityComponent {
     const posts = this.posts();
     const likeStatusMap = new Map<number, boolean>();
     const nicknameMap = new Map<number, string[]>();
+    const usersMap = new Map<number, UserRef[]>();
 
     const likeObservables = posts.map(post => 
       this.likeService.getLikesByPost(post.postId!).pipe(
@@ -248,9 +368,25 @@ export class CommunityComponent {
           const response = responses[index];
           likeStatusMap.set(post.postId!, response.isLikedByCurrentUser);
           nicknameMap.set(post.postId!, response.userNicknames);
+          const users = (response.likes ?? [])
+            .map((like) => like.user)
+            .filter((user): user is UserRef => !!user)
+            .reduce<UserRef[]>((acc, user) => {
+              const userId = user.userId;
+              if (userId != null && acc.some((entry) => entry.userId === userId)) {
+                return acc;
+              }
+              if (userId == null && acc.some((entry) => this.displayName(entry) === this.displayName(user))) {
+                return acc;
+              }
+              acc.push(user);
+              return acc;
+            }, []);
+          usersMap.set(post.postId!, users);
         });
         this.likeStatuses.set(likeStatusMap);
         this.likeUserNicknames.set(nicknameMap);
+        this.likeUsersByPost.set(usersMap);
       },
       error: (err) => {
         console.error('Error loading like statuses:', err);
@@ -301,7 +437,7 @@ export class CommunityComponent {
         commentsCount: 0,
       };
 
-      const createdPost = await firstValueFrom(this.postService.addPost(newPost));
+      let createdPost = await firstValueFrom(this.postService.addPost(newPost));
       const uploadedMedias: PostMedia[] = [];
       
       // Upload media files if any
@@ -318,6 +454,14 @@ export class CommunityComponent {
           } catch (mediaErr) {
             console.error('Error uploading media file:', mediaErr);
           }
+        }
+
+        // Gemini auto-tagging updates hashtags during media upload on backend.
+        // Refresh the just-created post so hashtags are visible immediately in UI.
+        try {
+          createdPost = await firstValueFrom(this.postService.getPost(createdPost.postId));
+        } catch (refreshErr) {
+          console.warn('Could not refresh created post hashtags after media upload:', refreshErr);
         }
       }
 
@@ -344,7 +488,26 @@ export class CommunityComponent {
       
     } catch (error) {
       console.error('Error creating post:', error);
-      this.loadError.set('Failed to create post');
+
+      const httpError = error as HttpErrorResponse;
+      const backendMessage =
+        (typeof httpError?.error === 'string' && httpError.error.trim().length > 0)
+          ? httpError.error
+          : (typeof httpError?.error?.message === 'string' ? httpError.error.message : '');
+
+      if (
+        httpError?.status === 422 &&
+        /bad words|inappropriate|profanity|cannot be published/i.test(backendMessage)
+      ) {
+        await Swal.fire({
+          icon: 'warning',
+          title: 'Post blocked',
+          text: backendMessage || 'You cannot use bad words in posts.',
+          ...this.swalTheme(),
+        });
+      } else {
+        this.loadError.set('Failed to create post');
+      }
     } finally {
       this.isPosting.set(false);
     }
@@ -442,7 +605,183 @@ export class CommunityComponent {
     if (!userId) {
       return;
     }
+    this.hoveredUserCard.set(null);
     this.router.navigate(['/communaute/user', userId]);
+  }
+
+  openUserHoverFromEvent(event: MouseEvent, user?: UserRef): void {
+    if (!user?.userId) {
+      return;
+    }
+
+    const anchor = event.currentTarget as HTMLElement | null;
+    if (!anchor) {
+      return;
+    }
+
+    this.clearUserHoverCloseTimer();
+    const baseUser = this.buildHoverUser(user);
+    const { top, left } = this.computeUserHoverPosition(anchor.getBoundingClientRect());
+    this.hoveredUserCard.set({ user: baseUser, top, left });
+    this.loadHoverUserSummary(baseUser.userId);
+  }
+
+  keepUserHoverOpen(): void {
+    this.clearUserHoverCloseTimer();
+  }
+
+  scheduleUserHoverClose(): void {
+    this.clearUserHoverCloseTimer();
+    this.hoverCardCloseTimer = setTimeout(() => {
+      this.hoveredUserCard.set(null);
+      this.hoverCardCloseTimer = null;
+    }, 1000);
+  }
+
+  goToHoveredUserProfile(event?: Event): void {
+    if (event) {
+      event.preventDefault();
+    }
+    const card = this.hoveredUserCard();
+    if (!card?.user.userId) {
+      return;
+    }
+    this.goToUserProfile(card.user.userId);
+  }
+
+  openChatWithHoveredUser(event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!this.authService.isAuthenticated()) {
+      this.router.navigate(['/signin']);
+      return;
+    }
+
+    const card = this.hoveredUserCard();
+    const userId = card?.user.userId;
+    if (!userId || userId === this.authService.currentUser()?.id) {
+      return;
+    }
+
+    this.hoveredUserCard.set(null);
+    this.chatService.requestOpenBubbleForUser(userId);
+  }
+
+  async toggleFollowFromHover(userId: number, event: Event): Promise<void> {
+    event.preventDefault();
+    event.stopPropagation();
+    await this.toggleFollow(userId);
+  }
+
+  hoverCardCountry(user?: HoverCardUser | null): string {
+    const value = (user?.country ?? user?.nationality ?? '').trim();
+    return value.length > 0 ? value : 'Unknown';
+  }
+
+  hoverCardAge(user?: HoverCardUser | null): string {
+    if (typeof user?.age === 'number' && Number.isFinite(user.age) && user.age > 0) {
+      return String(user.age);
+    }
+    return 'Not shared';
+  }
+
+  private buildHoverUser(user: UserRef): HoverCardUser {
+    const userId = user.userId!;
+    const cached = this.hoverUserCache.get(userId);
+    if (cached) {
+      return {
+        ...cached,
+        ...user,
+        userId,
+      };
+    }
+
+    return {
+      ...user,
+      userId,
+      country: user.country ?? null,
+      nationality: user.nationality ?? null,
+      cityName: user.cityName ?? null,
+      age: user.age ?? null,
+    };
+  }
+
+  private loadHoverUserSummary(userId: number): void {
+    if (this.hoverUserCache.has(userId)) {
+      const card = this.hoveredUserCard();
+      if (card?.user.userId === userId) {
+        card.user = { ...card.user, ...this.hoverUserCache.get(userId)! };
+        this.hoveredUserCard.set({ ...card });
+      }
+      return;
+    }
+
+    this.followService.userSummary(userId).pipe(
+      catchError(() => of(null))
+    ).subscribe((summary) => {
+      if (!summary) {
+        return;
+      }
+
+      const merged: HoverCardUser = {
+        userId,
+        username: summary.username,
+        firstName: summary.firstName,
+        lastName: summary.lastName,
+        profileImageUrl: summary.profileImageUrl ?? null,
+        country: summary.country ?? summary.nationality ?? null,
+        nationality: summary.nationality ?? summary.country ?? null,
+        cityName: summary.cityName ?? null,
+        age: summary.age ?? null,
+        followersCount: summary.followersCount,
+        followingCount: summary.followingCount,
+      };
+
+      this.hoverUserCache.set(userId, merged);
+      const card = this.hoveredUserCard();
+      if (card?.user.userId === userId) {
+        this.hoveredUserCard.set({
+          ...card,
+          user: {
+            ...card.user,
+            ...merged,
+          },
+        });
+      }
+    });
+  }
+
+  private computeUserHoverPosition(rect: DOMRect): { top: number; left: number } {
+    const cardWidth = 340;
+    const cardHeight = 250;
+    const gap = 10;
+    const viewportPadding = 12;
+
+    let left = rect.left;
+    if (left + cardWidth > window.innerWidth - viewportPadding) {
+      left = window.innerWidth - cardWidth - viewportPadding;
+    }
+    if (left < viewportPadding) {
+      left = viewportPadding;
+    }
+
+    let top = rect.bottom + gap;
+    if (top + cardHeight > window.innerHeight - viewportPadding) {
+      top = rect.top - cardHeight - gap;
+    }
+    if (top < viewportPadding) {
+      top = viewportPadding;
+    }
+
+    return { top, left };
+  }
+
+  private clearUserHoverCloseTimer(): void {
+    if (this.hoverCardCloseTimer) {
+      clearTimeout(this.hoverCardCloseTimer);
+      this.hoverCardCloseTimer = null;
+    }
   }
 
   // Ownership helpers
@@ -469,6 +808,10 @@ export class CommunityComponent {
   // Get like nicknames for display
   getLikeNicknames(postId: number): string[] {
     return this.likeUserNicknames().get(postId) || [];
+  }
+
+  getLikeUsers(postId: number): UserRef[] {
+    return this.likeUsersByPost().get(postId) || [];
   }
 
   // Format like display text
@@ -741,11 +1084,257 @@ export class CommunityComponent {
     }
   }
 
+  @HostListener('window:scroll')
+  handleWindowScroll(): void {
+    if (!this.feedLoaded() || this.feedAutoLoadPending) {
+      return;
+    }
+
+    if (!this.canLoadMorePosts()) {
+      return;
+    }
+
+    const viewportBottom = window.scrollY + window.innerHeight;
+    const documentHeight = document.documentElement.scrollHeight;
+    const threshold = 260;
+
+    if (viewportBottom < documentHeight - threshold) {
+      return;
+    }
+
+    this.feedAutoLoadPending = true;
+    this.loadMorePosts();
+    setTimeout(() => {
+      this.feedAutoLoadPending = false;
+    }, 120);
+  }
+
   cityDisplay(city: CityOption): string {
     if (!city.region) {
       return city.name;
     }
     return `${city.name} (${city.region})`;
+  }
+
+  showLocationHover(postId: number, location: string | null | undefined, event: MouseEvent): void {
+    this.hoveredLocationPostId.set(postId);
+    const hoverCard = this.buildLocationHoverCard(location);
+    this.hoveredLocationCard.set(hoverCard);
+
+    if (hoverCard?.mapRegionId) {
+      this.scheduleMiniMapRender();
+    }
+  }
+
+  hideLocationHover(postId: number): void {
+    if (this.hoveredLocationPostId() === postId) {
+      this.hoveredLocationPostId.set(null);
+      this.hoveredLocationCard.set(null);
+      this.disposeMiniMapChart();
+    }
+  }
+
+  isLocationHoverVisible(postId: number): boolean {
+    return this.hoveredLocationPostId() === postId;
+  }
+
+  openCityFromLocation(location: string | null | undefined, event?: Event): void {
+    event?.stopPropagation();
+
+    const cleaned = (location ?? '').trim();
+    if (!cleaned) {
+      return;
+    }
+
+    const city = this.findCityByName(cleaned);
+    if (!city?.cityId) {
+      return;
+    }
+
+    this.router.navigate(['/city', city.cityId]);
+  }
+
+  private buildLocationHoverCard(location: string | null | undefined): LocationHoverCard | null {
+    const cleaned = (location ?? '').trim();
+    if (!cleaned) {
+      return null;
+    }
+
+    const city = this.findCityByName(cleaned);
+    const regionMatch = city
+      ? this.resolveGovernorateFromCity(city, cleaned)
+      : this.findRegionForLocation(cleaned);
+
+    if (!city) {
+      return {
+        title: cleaned,
+        subtitle: 'Tunisia',
+        mapRegionId: regionMatch?.regionId ?? null,
+        highlightLabel: regionMatch?.label ?? null,
+      };
+    }
+
+    return {
+      title: city.name,
+      subtitle: city.region || 'Tunisia',
+      mapRegionId: regionMatch?.regionId ?? null,
+      highlightLabel: regionMatch?.label ?? city.region ?? null,
+    };
+  }
+
+  private resolveGovernorateFromCity(city: CityOption, rawLocation: string): { regionId: string; label: string } | null {
+    const byCityName = this.findRegionForLocation(city.name);
+    if (byCityName) {
+      return byCityName;
+    }
+
+    const regionToken = this.normalizeLocationKey(city.region ?? '');
+    const isMacroRegion = regionToken === 'north' || regionToken === 'south' || regionToken === 'center' || regionToken === 'centre';
+    if (!isMacroRegion && city.region) {
+      const byRegion = this.findRegionForLocation(city.region);
+      if (byRegion) {
+        return byRegion;
+      }
+    }
+
+    return this.findRegionForLocation(rawLocation);
+  }
+
+  private findCityByName(location: string): CityOption | null {
+    const normalized = this.normalizeLocationKey(location);
+    const city = this.cities().find((item) =>
+      this.normalizeLocationKey(item.name) === normalized
+    );
+    return city ?? null;
+  }
+
+  private normalizeLocationKey(value: string): string {
+    return normalizeRegionToken(value);
+  }
+
+  private buildGovernorateLookup(): Array<{ regionId: string; label: string; tokens: string[] }> {
+    return this.miniTunisiaGeo.features.map((feature: any) => {
+      const gouvId = feature.properties?.gouv_id as string | undefined;
+      const gouvFr = feature.properties?.gouv_fr as string | undefined;
+      const regionId = feature.properties?.[MINI_TUNISIA_MAP_NAME_PROP] as string;
+      const label =
+        (gouvId ? GOVERNORATE_LABEL_EN[gouvId] : undefined) ??
+        (gouvId ? GOVERNORATE_LABEL_FR[gouvId] : undefined) ??
+        gouvFr ??
+        'Tunisia';
+
+      return {
+        regionId,
+        label,
+        tokens: [gouvId, gouvFr, GOVERNORATE_LABEL_EN[gouvId ?? ''], GOVERNORATE_LABEL_FR[gouvId ?? '']]
+          .map((token) => normalizeRegionToken(token))
+          .filter((token) => token.length > 0),
+      };
+    });
+  }
+
+  private findRegionForLocation(value: string): { regionId: string; label: string } | null {
+    const normalized = this.normalizeLocationKey(value);
+    if (!normalized) {
+      return null;
+    }
+
+    const exact = this.miniGovernorateLookup.find((entry) => entry.tokens.includes(normalized));
+    if (exact) {
+      return { regionId: exact.regionId, label: exact.label };
+    }
+
+    const fuzzy = this.miniGovernorateLookup.find((entry) =>
+      entry.tokens.some((token) => token.includes(normalized) || normalized.includes(token))
+    );
+    if (!fuzzy) {
+      return null;
+    }
+
+    return { regionId: fuzzy.regionId, label: fuzzy.label };
+  }
+
+  private scheduleMiniMapRender(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.requestAnimationFrame(() => this.renderMiniMapForCurrentHover(2));
+  }
+
+  private renderMiniMapForCurrentHover(retriesLeft: number): void {
+    const hoverCard = this.hoveredLocationCard();
+    const host = this.locationMiniMapRef?.nativeElement;
+
+    if (!hoverCard?.mapRegionId || !host) {
+      if (retriesLeft > 0 && this.hoveredLocationCard()?.mapRegionId) {
+        window.requestAnimationFrame(() => this.renderMiniMapForCurrentHover(retriesLeft - 1));
+      }
+      return;
+    }
+
+    if (!CommunityComponent.miniMapRegistered) {
+      echarts.registerMap(MINI_TUNISIA_MAP_NAME, this.miniTunisiaGeo);
+      CommunityComponent.miniMapRegistered = true;
+    }
+
+    this.disposeMiniMapChart();
+    this.miniMapChart = echarts.init(host);
+
+    this.miniMapChart.setOption({
+      backgroundColor: '#081531',
+      animation: false,
+      tooltip: { show: false },
+      series: [
+        {
+          type: 'map',
+          map: MINI_TUNISIA_MAP_NAME,
+          nameProperty: MINI_TUNISIA_MAP_NAME_PROP,
+          roam: false,
+          silent: true,
+          zoom: 1.08,
+          label: { show: false },
+          itemStyle: {
+            areaColor: '#263858',
+            borderColor: '#6f93c6',
+            borderWidth: 1.6,
+            shadowColor: 'rgba(73, 133, 224, 0.3)',
+            shadowBlur: 12,
+          },
+          emphasis: {
+            disabled: true,
+          },
+          data: [
+            {
+              name: hoverCard.mapRegionId,
+              label: {
+                show: true,
+                color: '#f8fbff',
+                fontSize: 14,
+                fontWeight: 'bold',
+                formatter: hoverCard.highlightLabel || hoverCard.title,
+              },
+              itemStyle: {
+                areaColor: '#4f89de',
+                borderColor: '#b4d8ff',
+                borderWidth: 2,
+                shadowColor: 'rgba(96, 165, 250, 0.56)',
+                shadowBlur: 20,
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    this.miniMapChart.resize();
+  }
+
+  private disposeMiniMapChart(): void {
+    if (this.miniMapChart) {
+      this.miniMapChart.dispose();
+      this.miniMapChart = null;
+    }
   }
 
   // Modals & Section Toggles
@@ -796,6 +1385,14 @@ export class CommunityComponent {
 
   trackByNickname(index: number, nickname: string): string {
     return nickname;
+  }
+
+  trackByUserRef(index: number, user: UserRef): number | string {
+    return user.userId ?? `${this.displayName(user)}-${index}`;
+  }
+
+  trackByGiphy(index: number, item: GiphyItem): string {
+    return item.id || `${item.mediaType}-${index}`;
   }
 
   trackByCity(index: number, city: CityOption): number {
@@ -850,12 +1447,19 @@ export class CommunityComponent {
       ? this.getReplyDraft(parentCommentId)
       : this.getCommentDraft(postId);
     const content = draft.trim();
-    if (!content) return;
+    const selectedGiphy = isReply
+      ? this.getSelectedGiphyForReply(parentCommentId)
+      : this.getSelectedGiphyForPost(postId);
+
+    if (!content && !selectedGiphy) {
+      return;
+    }
 
     try {
       const newComment: Omit<Comment, 'commentId' | 'author' | 'createdAt' | 'updatedAt'> = {
         post: { postId },
         content,
+        gifs: selectedGiphy?.fullUrl ?? null,
         parent: isReply ? { commentId: parentCommentId } : null,
       };
 
@@ -869,12 +1473,227 @@ export class CommunityComponent {
       // Clear draft and reload feed
       if (isReply) {
         this.setReplyDraft(parentCommentId, '');
+        this.setReplyGiphy(parentCommentId, null);
         this.activeReplyCommentId.set(null);
       } else {
         this.setCommentDraft(postId, '');
+        this.setPostCommentGiphy(postId, null);
       }
     } catch (error) {
       console.error('Error adding comment:', error);
+      const message = error instanceof HttpErrorResponse
+        ? extractApiErrorMessage(error, 'Unable to add comment right now.')
+        : 'Unable to add comment right now.';
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Comment blocked',
+        text: message,
+        ...this.swalTheme(),
+      });
+    }
+  }
+
+  openGiphyPickerForPost(postId: number): void {
+    this.giphyContext.set({ kind: 'post', id: postId });
+    this.openGiphyPicker();
+  }
+
+  openGiphyPickerForReply(commentId: number): void {
+    this.giphyContext.set({ kind: 'reply', id: commentId });
+    this.openGiphyPicker();
+  }
+
+  onGiphyQueryInput(value: string): void {
+    this.giphyQuery.set(value);
+    this.scheduleGiphySearch();
+  }
+
+  setGiphyType(type: GiphyMediaType): void {
+    this.giphyType.set(type);
+    this.scheduleGiphySearch();
+  }
+
+  selectGiphy(item: GiphyItem): void {
+    const context = this.giphyContext();
+    if (!context) {
+      return;
+    }
+
+    if (context.kind === 'post') {
+      this.setPostCommentGiphy(context.id, item);
+    } else {
+      this.setReplyGiphy(context.id, item);
+    }
+
+    this.closeGiphyPicker();
+  }
+
+  closeGiphyPicker(): void {
+    this.showGiphyPicker.set(false);
+    this.giphyContext.set(null);
+    this.giphyQuery.set('');
+    this.giphyResults.set([]);
+    this.giphyError.set(null);
+    this.giphyLoading.set(false);
+    if (this.giphySearchDebounceTimer) {
+      clearTimeout(this.giphySearchDebounceTimer);
+      this.giphySearchDebounceTimer = null;
+    }
+  }
+
+  clearSelectedGiphyForPost(postId: number): void {
+    this.setPostCommentGiphy(postId, null);
+  }
+
+  clearSelectedGiphyForReply(commentId: number): void {
+    this.setReplyGiphy(commentId, null);
+  }
+
+  getSelectedGiphyForPost(postId: number): GiphyItem | null {
+    return this.postCommentGiphy()[postId] || null;
+  }
+
+  getSelectedGiphyForReply(commentId: number): GiphyItem | null {
+    return this.replyCommentGiphy()[commentId] || null;
+  }
+
+  getCommentDisplayText(comment: Comment): string {
+    return this.parseCommentPayload(comment.content, comment.gifs).text;
+  }
+
+  getCommentGiphy(comment: Comment): GiphyItem | null {
+    return this.parseCommentPayload(comment.content, comment.gifs).giphy;
+  }
+
+  private openGiphyPicker(): void {
+    this.showGiphyPicker.set(true);
+    this.giphyError.set(null);
+    this.giphyResults.set([]);
+  }
+
+  private scheduleGiphySearch(): void {
+    if (!this.showGiphyPicker()) {
+      return;
+    }
+
+    if (this.giphySearchDebounceTimer) {
+      clearTimeout(this.giphySearchDebounceTimer);
+    }
+
+    const q = this.giphyQuery().trim();
+    if (!q) {
+      this.giphyResults.set([]);
+      this.giphyError.set(null);
+      return;
+    }
+
+    this.giphySearchDebounceTimer = setTimeout(() => {
+      this.searchGiphy();
+    }, 280);
+  }
+
+  private async searchGiphy(): Promise<void> {
+    const q = this.giphyQuery().trim();
+    if (!q) {
+      this.giphyResults.set([]);
+      this.giphyError.set(null);
+      return;
+    }
+
+    this.giphyLoading.set(true);
+    this.giphyError.set(null);
+
+    try {
+      const results = await firstValueFrom(this.giphyService.search(q, this.giphyType(), 24));
+      this.giphyResults.set(results);
+      if (!results.length) {
+        this.giphyError.set('No result found. Try another keyword.');
+      }
+    } catch (error) {
+      console.error('Error searching GIPHY:', error);
+      this.giphyError.set('GIPHY search failed. Check API key configuration.');
+      this.giphyResults.set([]);
+    } finally {
+      this.giphyLoading.set(false);
+    }
+  }
+
+  private setPostCommentGiphy(postId: number, item: GiphyItem | null): void {
+    const next = { ...this.postCommentGiphy() };
+    if (item) {
+      next[postId] = item;
+    } else {
+      delete next[postId];
+    }
+    this.postCommentGiphy.set(next);
+  }
+
+  private setReplyGiphy(commentId: number, item: GiphyItem | null): void {
+    const next = { ...this.replyCommentGiphy() };
+    if (item) {
+      next[commentId] = item;
+    } else {
+      delete next[commentId];
+    }
+    this.replyCommentGiphy.set(next);
+  }
+
+  private parseCommentPayload(content?: string, gifs?: string | null): { text: string; giphy: GiphyItem | null } {
+    const rawText = (content ?? '').trim();
+    const directGifs = (gifs ?? '').trim();
+
+    if (directGifs && this.isAllowedGiphyUrl(directGifs)) {
+      return {
+        text: rawText,
+        giphy: {
+          id: directGifs,
+          title: 'giphy',
+          mediaType: 'gif',
+          previewUrl: directGifs,
+          fullUrl: directGifs,
+        },
+      };
+    }
+
+    // Backward compatibility for old comments that stored GIPHY marker inside content.
+    if (!rawText) {
+      return { text: '', giphy: null };
+    }
+
+    const match = rawText.match(/^\[\[GIPHY\|(gif|sticker)\|([^\]]+)\]\]\s*/i);
+    if (!match) {
+      return { text: rawText, giphy: null };
+    }
+
+    const mediaType = (match[1].toLowerCase() === 'sticker' ? 'sticker' : 'gif') as GiphyMediaType;
+    const fullUrl = match[2].trim();
+
+    if (!this.isAllowedGiphyUrl(fullUrl)) {
+      return { text: rawText, giphy: null };
+    }
+
+    const text = rawText.slice(match[0].length).trim();
+    return {
+      text,
+      giphy: {
+        id: fullUrl,
+        title: mediaType,
+        mediaType,
+        previewUrl: fullUrl,
+        fullUrl,
+      },
+    };
+  }
+
+  private isAllowedGiphyUrl(url: string): boolean {
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== 'https:') {
+        return false;
+      }
+      return parsed.hostname.endsWith('giphy.com') || parsed.hostname.endsWith('giphyusercontent.com');
+    } catch {
+      return false;
     }
   }
 
@@ -889,6 +1708,7 @@ export class CommunityComponent {
       const next = new Map(this.followingByAuthor());
       next.set(authorId, response.following);
       this.followingByAuthor.set(next);
+      void this.refreshSuggestions();
     } catch (error) {
       console.error('Error toggling follow:', error);
     }
@@ -974,6 +1794,7 @@ export class CommunityComponent {
   async toggleSavedMode(): Promise<void> {
     const next = !this.showSavedOnly();
     this.showSavedOnly.set(next);
+    this.resetVisiblePostsLimit();
     if (next) {
       await this.loadSavedPosts();
     }
@@ -987,14 +1808,116 @@ export class CommunityComponent {
     try {
       const posts = await firstValueFrom(this.savedPostService.mySavedPosts());
       this.savedPosts.set(posts || []);
+      this.resetVisiblePostsLimit();
     } catch (error) {
       console.error('Error loading saved posts:', error);
       this.savedPosts.set([]);
+      this.resetVisiblePostsLimit();
     }
   }
 
   visiblePosts(): Post[] {
-    return this.showSavedOnly() ? this.savedPosts() : this.posts();
+    const source = this.showSavedOnly() ? this.savedPosts() : this.posts();
+    return source.slice(0, this.visiblePostsLimit());
+  }
+
+  suggestionLocation(user?: UserRef): string {
+    return (user?.cityName || user?.country || user?.nationality || '').trim();
+  }
+
+  private async refreshSuggestions(): Promise<void> {
+    const requestId = ++this.suggestionsRequestSeq;
+    const currentUserId = this.authService.currentUser()?.id;
+    const followMap = this.followingByAuthor();
+    const unique = new Map<number, UserRef>();
+
+    // Fetch candidates directly from users search endpoint (same source as search bar).
+    // Some backends ignore very short queries, so we use 2+ character seed batches.
+    const seedBatches: string[][] = [
+      this.randomSuggestionSeeds(8),
+      ['an', 'ar', 'ma', 'sa', 'la', 'ra', 'na', 'ou'],
+      this.randomSuggestionSeeds(8),
+    ];
+
+    for (const seeds of seedBatches) {
+      const searchResults = await Promise.all(
+        seeds.map((seed) =>
+          firstValueFrom(
+            this.chatService.searchUsers(seed).pipe(catchError(() => of([])))
+          )
+        )
+      );
+
+      if (requestId !== this.suggestionsRequestSeq) {
+        return;
+      }
+
+      for (const list of searchResults) {
+        for (const item of list || []) {
+          const userId = Number(item?.userId);
+          if (!Number.isInteger(userId) || userId <= 0) {
+            continue;
+          }
+
+          if (currentUserId && userId === currentUserId) {
+            continue;
+          }
+
+          if (followMap.get(userId)) {
+            continue;
+          }
+
+          if (!unique.has(userId)) {
+            unique.set(userId, {
+              userId,
+              username: item?.username,
+              firstName: item?.firstName,
+              lastName: item?.lastName,
+              profileImageUrl: item?.profileImageUrl ?? null,
+              cityName: item?.cityName ?? null,
+              country: item?.country ?? null,
+              nationality: item?.nationality ?? null,
+            });
+          }
+        }
+      }
+
+      if (unique.size >= 4) {
+        break;
+      }
+    }
+
+    const shuffled = Array.from(unique.values()).sort(() => Math.random() - 0.5);
+    this.suggestedUsers.set(shuffled.slice(0, 4));
+  }
+
+  private randomSuggestionSeeds(count: number): string[] {
+    const alphabet = 'abcdefghijklmnopqrstuvwxyz';
+    const seeds = new Set<string>();
+    while (seeds.size < count) {
+      const firstIndex = Math.floor(Math.random() * alphabet.length);
+      const secondIndex = Math.floor(Math.random() * alphabet.length);
+      seeds.add(`${alphabet[firstIndex]}${alphabet[secondIndex]}`);
+    }
+    return Array.from(seeds);
+  }
+
+  loadMorePosts(): void {
+    if (!this.canLoadMorePosts()) {
+      return;
+    }
+
+    const next = this.visiblePostsLimit() + CommunityComponent.POSTS_PAGE_SIZE;
+    this.visiblePostsLimit.set(next);
+  }
+
+  canLoadMorePosts(): boolean {
+    const sourceLength = this.showSavedOnly() ? this.savedPosts().length : this.posts().length;
+    return this.visiblePostsLimit() < sourceLength;
+  }
+
+  private resetVisiblePostsLimit(): void {
+    this.visiblePostsLimit.set(CommunityComponent.POSTS_PAGE_SIZE);
   }
 
   isRepost(post: Post): boolean {
@@ -1027,6 +1950,31 @@ export class CommunityComponent {
       [user?.firstName, user?.lastName].filter(Boolean).join(' ') ??
       'User'
     );
+  }
+
+  userAvatarUrl(user?: UserRef): string | null {
+    return this.normalizeProfileImageUrl(user?.profileImageUrl);
+  }
+
+  currentUserAvatarUrl(): string | null {
+    return this.normalizeProfileImageUrl(this.authService.currentUser()?.profileImageUrl ?? null);
+  }
+
+  private normalizeProfileImageUrl(url?: string | null): string | null {
+    const raw = (url ?? '').trim();
+    if (!raw) {
+      return null;
+    }
+    if (/^https?:\/\//i.test(raw)) {
+      return raw;
+    }
+    if (raw.startsWith('/')) {
+      return raw;
+    }
+    if (raw.startsWith('uploads/')) {
+      return `/${raw}`;
+    }
+    return `/${raw.replace(/^\/+/, '')}`;
   }
 
   private parseDate(date?: string | null): number {
