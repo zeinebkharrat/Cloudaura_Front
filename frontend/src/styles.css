@@ -231,6 +231,74 @@ div:where(.swal2-container) {
   }
 }
 
+.swal2-popup.password-popup-modern {
+  border-radius: 18px !important;
+  border: 1px solid var(--border-soft) !important;
+  box-shadow: var(--shadow-soft) !important;
+  background: var(--surface-1) !important;
+  color: var(--text-color) !important;
+  width: min(560px, 92vw) !important;
+  padding: 1.1rem 1.1rem 1.2rem !important;
+}
+
+.swal2-popup.password-popup-modern .swal2-title {
+  margin-bottom: 0.6rem !important;
+}
+
+.swal2-popup.password-popup-modern .password-popup-wrap {
+  display: grid;
+  gap: 0.5rem;
+  text-align: left;
+}
+
+.swal2-popup.password-popup-modern .password-popup-wrap label {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.swal2-popup.password-popup-modern .swal2-input {
+  width: 100% !important;
+  margin: 0 0 0.35rem !important;
+  border-radius: 12px !important;
+  border: 1px solid var(--border-soft) !important;
+  background: var(--input-bg) !important;
+  color: var(--text-color) !important;
+  padding: 0.72rem 0.82rem !important;
+}
+
+.swal2-popup.password-popup-modern .swal2-input:focus {
+  border-color: #22d3ee !important;
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.2) !important;
+}
+
+.swal2-popup.password-popup-modern .swal2-actions {
+  display: flex !important;
+  justify-content: center;
+  gap: 0.6rem;
+  margin-top: 0.7rem !important;
+}
+
+.swal2-popup.password-popup-modern .password-popup-confirm,
+.swal2-popup.password-popup-modern .password-popup-cancel {
+  border: 0 !important;
+  border-radius: 999px !important;
+  padding: 0.62rem 1rem !important;
+  min-width: 135px;
+  margin: 0 !important;
+  font-weight: 700 !important;
+}
+
+.swal2-popup.password-popup-modern .password-popup-confirm {
+  background: linear-gradient(145deg, #06b6d4, #2563eb) !important;
+  color: #fff !important;
+}
+
+.swal2-popup.password-popup-modern .password-popup-cancel {
+  background: color-mix(in srgb, #38bdf8 15%, var(--surface-2)) !important;
+  color: color-mix(in srgb, var(--text-color) 88%, #2563eb) !important;
+}
+
 :root {
   --bg-color: #f6f8fc;
   --text-color: #1d2433;

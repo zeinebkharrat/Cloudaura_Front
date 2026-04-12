@@ -25,12 +25,6 @@
     <li>
       <a routerLink="/destination-map" routerLinkActive="active">Destinations</a>
     </li>
-    <li>
-      <a routerLink="/transport" routerLinkActive="active">Transport</a>
-    </li>
-    <li>
-      <a routerLink="/planifier-voyage" [class.active]="isStaysNavActive()">Stays</a>
-    </li>
     <li class="services-menu-wrap" (click)="$event.stopPropagation()">
       <button
         type="button"
@@ -46,13 +40,13 @@
       </button>
       @if (isServicesMenuOpen()) {
         <div class="services-dropdown">
+          <a class="services-dd-item" routerLink="/transport" routerLinkActive="active" (click)="closeServicesMenu()">Transport</a>
+          <a class="services-dd-item" routerLink="/planifier-voyage" routerLinkActive="active" (click)="closeServicesMenu()">Stays</a>
+          <a class="services-dd-item" routerLink="/evenements" routerLinkActive="active" (click)="closeServicesMenu()">Events</a>
           <a class="services-dd-item" routerLink="/services/restaurants" routerLinkActive="active" (click)="closeServicesMenu()">Restaurants</a>
           <a class="services-dd-item" routerLink="/services/activities" routerLinkActive="active" (click)="closeServicesMenu()">Activities</a>
         </div>
       }
-    </li>
-    <li>
-      <a routerLink="/activites" routerLinkActive="active">Activités</a>
     </li>
     <li>
       <a routerLink="/artisanat" routerLinkActive="active">Crafts</a>
@@ -66,7 +60,6 @@
     <li>
       <a routerLink="/virtual-tour" routerLinkActive="active">360° Tour</a>
     </li>
-    <li><a routerLink="/" fragment="story">Our story</a></li>
   </ul>
   <div class="nav-actions">
     @if (!isAuthenticated()) {
@@ -286,20 +279,79 @@
 <router-outlet />
 
 @if (!isAdminArea()) {
-<footer>
-  <div class="footer-content">
-    <div class="footer-logo">
+<footer class="site-footer">
+  <div class="site-footer__hero">
+    <div>
+      <p class="site-footer__kicker">Travel Better With YallaTN+</p>
+      <h3>Plan your next Tunisia journey with one modern platform</h3>
+      <p class="site-footer__hero-text">Destinations, transport, stays, experiences, local culture, and community all connected beautifully.</p>
+    </div>
+    <div class="site-footer__hero-actions">
+      <a routerLink="/destination-map" class="site-footer__hero-btn site-footer__hero-btn--primary">Start Exploring</a>
+      <a routerLink="/communaute" class="site-footer__hero-btn site-footer__hero-btn--ghost">Join Community</a>
+    </div>
+  </div>
+
+  <div class="site-footer__grid">
+    <div class="site-footer__brand">
       <img
         class="footer-logo-img"
         src="assets/logo/yallatn-logo.png"
-        width="200"
-        height="64"
-        alt=""
+        width="220"
+        height="72"
+        alt="YallaTN logo"
       />
+      <p>
+        Tunisia travel, planned beautifully. Discover destinations, book stays, find transport,
+        and unlock events in one premium experience.
+      </p>
+      <div class="site-footer__stats">
+        <span>24 Regions</span>
+        <span>100% Tunisia Focus</span>
+        <span>All-in-One Journey</span>
+      </div>
     </div>
-    <div class="footer-text">
-      © 2026 YallaTN+ — travel, activities, destinations, crafts & recommendations for Tunisia.
+
+    <div class="site-footer__col">
+      <h4>Explore</h4>
+      <a routerLink="/destination-map">Destinations</a>
+      <a routerLink="/services/activities">Activities</a>
+      <a routerLink="/evenements">Events</a>
+      <a routerLink="/artisanat">Crafts</a>
     </div>
+
+    <div class="site-footer__col">
+      <h4>Travel Services</h4>
+      <a routerLink="/transport">Transport</a>
+      <a routerLink="/planifier-voyage">Stays</a>
+      <a routerLink="/services/restaurants">Restaurants</a>
+      <a routerLink="/virtual-tour">360° Tour</a>
+    </div>
+
+    <div class="site-footer__col">
+      <h4>Community</h4>
+      <a routerLink="/communaute">Forum</a>
+      <a routerLink="/games">Games & Quizzes</a>
+      <a routerLink="/features">Platform Features</a>
+      <a routerLink="/settings">Account Settings</a>
+    </div>
+
+    <div class="site-footer__col site-footer__col--contact">
+      <h4>Contact & Updates</h4>
+      <p><i class="pi pi-envelope"></i> support&#64;yallatn.tn</p>
+      <p><i class="pi pi-phone"></i> +216 70 000 000</p>
+      <p><i class="pi pi-map-marker"></i> Tunis, Tunisia</p>
+      <div class="site-footer__socials">
+        <a routerLink="/communaute" aria-label="Community"><i class="pi pi-users"></i></a>
+        <a routerLink="/evenements" aria-label="Events"><i class="pi pi-calendar"></i></a>
+        <a routerLink="/virtual-tour" aria-label="Virtual Tour"><i class="pi pi-globe"></i></a>
+      </div>
+    </div>
+  </div>
+
+  <div class="site-footer__bottom">
+    <span>© 2026 YallaTN+. All rights reserved.</span>
+    <span>Made for travelers, locals, and creators across Tunisia.</span>
   </div>
 </footer>
 }

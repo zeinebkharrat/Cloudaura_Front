@@ -41,6 +41,7 @@ import { CommunityShellComponent } from './Community/community-shell.component';
 import { AdminGamesComponent } from './admin/games/admin-games.component';
 import { AdminGamificationComponent } from './admin/gamification/admin-gamification.component';
 import { AdminTicketsComponent } from './admin/tickets/admin-tickets.component';
+import { AdminProfileComponent } from './admin/profile/admin-profile.component';
 import { UserGamesComponent } from './games/user-games.component';
 import { QuizPlayerComponent } from './games/quiz-player.component';
 import { CrosswordPlayerComponent } from './games/crossword-player.component';
@@ -125,6 +126,7 @@ export const routes: Routes = [
       { path: 'posts', component: AdminPostsComponent },
       { path: 'orders', component: OrdersAdminComponent },
       { path: 'products', component: ProductsAdminComponent },
+      { path: 'profile', component: AdminProfileComponent },
       { path: 'activity-reservations', component: AdminActivityReservationsComponent },
       {
         path: 'accommodations',

@@ -1,0 +1,99 @@
+<section class="admin-profile-page">
+  <div class="admin-profile-shell">
+    <header class="admin-profile-head">
+      <div>
+        <p class="kicker">Backoffice identity</p>
+        <h1>Admin profile</h1>
+        <p class="subtitle">This profile belongs to the admin office and is separated from client-facing profile pages.</p>
+      </div>
+      <div class="head-pills">
+        <span class="head-pill">Secure Console</span>
+        <span class="head-pill">Blue Theme</span>
+      </div>
+    </header>
+
+    @if (error()) {
+      <div class="state-msg state-msg--error">{{ error() }}</div>
+    }
+    @if (message()) {
+      <div class="state-msg state-msg--ok">{{ message() }}</div>
+    }
+
+    <div class="admin-profile-grid">
+      <article class="avatar-card">
+        <div class="avatar-hero">
+          <div class="avatar-wrap">
+            @if (form.controls.profileImageUrl.value) {
+              <img [src]="form.controls.profileImageUrl.value" alt="Admin avatar" class="avatar-img" />
+            } @else {
+              <div class="avatar-fallback">{{ user()?.username?.charAt(0)?.toUpperCase() }}</div>
+            }
+          </div>
+          <div class="avatar-hero__meta">
+            <strong>{{ user()?.username }}</strong>
+            <span>Backoffice account</span>
+          </div>
+        </div>
+
+        <label class="upload-btn" for="admin-avatar-upload">
+          <i class="pi pi-upload" aria-hidden="true"></i>
+          {{ uploading() ? 'Uploading...' : 'Upload new photo' }}
+        </label>
+        <input id="admin-avatar-upload" type="file" accept="image/*" (change)="uploadAvatar($event)" [disabled]="uploading()" />
+        <p class="avatar-note">Used in the backoffice sidebar and admin actions.</p>
+
+        <button class="security-btn" type="button" (click)="changePassword()">
+          <i class="pi pi-shield" aria-hidden="true"></i>
+          Change admin password
+        </button>
+      </article>
+
+      <article class="details-card">
+        <form [formGroup]="form" (ngSubmit)="save()" class="admin-form">
+          <label>
+            First name
+            <input formControlName="firstName" [class.input-invalid]="controlInvalid('firstName')" />
+          </label>
+          <label>
+            Last name
+            <input formControlName="lastName" [class.input-invalid]="controlInvalid('lastName')" />
+          </label>
+          <label>
+            Email
+            <input type="email" formControlName="email" [class.input-invalid]="controlInvalid('email')" />
+          </label>
+          <label>
+            Phone
+            <input formControlName="phone" placeholder="+216XXXXXXXX" [class.input-invalid]="controlInvalid('phone')" />
+          </label>
+
+          <div class="roles-block">
+            <span>Roles</span>
+            <div class="roles-list">
+              @for (role of user()?.roles ?? []; track role) {
+                <span>{{ role }}</span>
+              }
+            </div>
+          </div>
+
+          <button class="save-btn" type="submit" [disabled]="saving()">
+            {{ saving() ? 'Saving...' : 'Save admin profile' }}
+          </button>
+        </form>
+      </article>
+
+      <article class="security-card">
+        <h2>Security panel</h2>
+        <p>
+          Use a strong password and rotate credentials periodically. This action updates your admin login only.
+        </p>
+        <ul>
+          <li>Use at least 8 characters</li>
+          <li>Mix uppercase, lowercase, digits</li>
+          <li>Avoid reused passwords</li>
+        </ul>
+        <button type="button" class="pass-btn" (click)="changePassword()">Update password now</button>
+      </article>
+    </div>
+  </div>
+</section>
