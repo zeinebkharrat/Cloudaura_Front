@@ -467,7 +467,7 @@
     <div class="pd-gallery">
       <div class="pd-gallery__main">
         <img
-          [src]="catalogImageUrl(getGalleryImages(item)[detailImageIndex]?.url)"
+          [src]="catalogImageUrl(getGalleryImages(item)[detailImageIndex].url)"
           [alt]="item.name"
           class="pd-gallery__img"
           onerror="this.src=''"
