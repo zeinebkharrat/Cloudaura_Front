@@ -9,10 +9,7 @@
     }
 
     <div class="stepper-wrap">
-      <p-stepper [linear]="true" [value]="activeStep()">
-
-        <p-step-panel header="Passengers">
-          <ng-template pTemplate="content" let-nextCallback="nextCallback">
+      @if (activeStep() === 0) {
             <div class="step">
               @if (transport(); as t) {
                 <div class="trip-inline">
@@ -83,15 +80,13 @@
               <div class="step-nav">
                 <span></span>
                 <button pButton label="Continue" icon="pi pi-arrow-right" iconPos="right"
-                        class="p-button-raised" (click)="goToStep2(nextCallback)"
+                        class="p-button-raised" (click)="goToStep2()"
                         [disabled]="passengerForm.invalid"></button>
               </div>
             </div>
-          </ng-template>
-        </p-step-panel>
+      }
 
-        <p-step-panel header="Payment">
-          <ng-template pTemplate="content" let-prevCallback="prevCallback" let-nextCallback="nextCallback">
+      @if (activeStep() === 1) {
             <div class="step">
               <div class="step-head">
                 <h2>Summary & payment</h2>
@@ -189,18 +184,16 @@
 
               <div class="step-nav">
                 <button pButton label="Back" icon="pi pi-arrow-left"
-                        class="p-button-text" (click)="prevCallback.emit()"></button>
+                        class="p-button-text" (click)="activeStep.set(0)"></button>
                 <button pButton [label]="confirmButtonLabel()"
                         icon="pi pi-lock" class="p-button-raised"
-                        (click)="confirmBooking(nextCallback)"
+                        (click)="confirmBooking()"
                         [loading]="loading()" [disabled]="loading()"></button>
               </div>
             </div>
-          </ng-template>
-        </p-step-panel>
+      }
 
-        <p-step-panel header="Confirmation">
-          <ng-template pTemplate="content">
+      @if (activeStep() === 2) {
             <div class="step conf">
               <div class="conf-icon">
                 <div class="conf-circle"><i class="pi pi-check"></i></div>
@@ -248,10 +241,8 @@
                         (click)="router.navigate(['/'])"></button>
               </div>
             </div>
-          </ng-template>
-        </p-step-panel>
+      }
 
-      </p-stepper>
     </div>
   </div>
 </div>
