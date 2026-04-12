@@ -10,16 +10,22 @@ import { extractApiErrorMessage } from '../api-error.util';
   selector: 'app-activity-payment-success',
   imports: [CommonModule, RouterLink],
   template: `
-    <main class="wrap">
-      <div class="card" *ngIf="status === 'loading'">
+    <main class="payment-page">
+      <div class="payment-inner animate-in">
+      <header class="payment-head">
+        <p class="kicker">Paiement securise</p>
+        <h1 class="title">YallaTN<span class="accent">+</span> · <span class="sub">activities</span></h1>
+      </header>
+
+      <div class="state-card" *ngIf="status === 'loading'">
         <p class="lead">Confirming your activity payment...</p>
       </div>
 
-      <div class="card ok" *ngIf="status === 'ok' && reservation">
+      <div class="state-card ok" *ngIf="status === 'ok' && reservation">
         <div class="brand">
           <img src="assets/logo/yallatn-logo.png" alt="YallaTN logo" />
         </div>
-        <h1>Payment confirmed</h1>
+        <h2>Payment confirmed</h2>
         <p>Your activity booking is now confirmed.</p>
 
         <div class="meta">
@@ -42,40 +48,49 @@ import { extractApiErrorMessage } from '../api-error.util';
         </div>
       </div>
 
-      <div class="card err" *ngIf="status === 'error'">
-        <h1>Could not confirm payment</h1>
+      <div class="state-card err" *ngIf="status === 'error'">
+        <h2>Could not confirm payment</h2>
         <p>{{ message }}</p>
-        <a routerLink="/services/activities" class="btn">Back to activities</a>
+        <a routerLink="/services/activities" class="btn-pay">Back to activities</a>
+      </div>
       </div>
     </main>
   `,
   styles: [
     `
-      .wrap {
+      .payment-page {
         max-width: 760px;
-        margin: 3rem auto;
-        padding: 1.5rem;
-        background:
-          radial-gradient(circle at 10% 5%, rgba(0, 168, 204, 0.18), transparent 38%),
-          radial-gradient(circle at 90% 95%, rgba(241, 37, 69, 0.15), transparent 34%),
-          #f4f7fb;
-        border-radius: 24px;
+        margin: 0 auto;
+        padding: 80px 20px 48px;
       }
-      .card {
-        --panel-bg: #ffffff;
-        --panel-border: #dbe6f0;
-        --text-main: #1f2937;
-        --text-soft: #5a6d82;
-        --ok: #0ea5a4;
-        --error: #dc2626;
-        --meta-bg: #f7fbff;
-        --meta-border: #d7e5f3;
+      .payment-inner {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      .payment-head { text-align: center; }
+      .kicker {
+        margin: 0 0 8px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+      }
+      .title {
+        margin: 0;
+        font-size: clamp(1.25rem, 3vw, 1.7rem);
+        font-weight: 800;
+      }
+      .accent { color: var(--tunisia-red); }
+      .sub { font-size: 0.85em; color: var(--text-muted); font-weight: 600; }
+      .state-card {
         padding: 2.1rem;
         border-radius: 18px;
-        background: var(--panel-bg);
-        border: 1px solid var(--panel-border);
-        color: var(--text-main);
-        box-shadow: 0 22px 40px rgba(15, 23, 42, 0.12);
+        background: var(--glass-bg, rgba(255,255,255,0.08));
+        border: 1px solid var(--glass-border, rgba(255,255,255,0.14));
+        color: var(--text-color);
+        box-shadow: 0 22px 40px rgba(15, 23, 42, 0.08);
       }
       .brand {
         margin-bottom: 1.1rem;
@@ -87,23 +102,23 @@ import { extractApiErrorMessage } from '../api-error.util';
       }
       .lead {
         margin: 0;
-        color: var(--text-soft);
+        color: var(--text-muted);
       }
-      .ok h1 {
+      .ok h2 {
         margin: 0 0 0.4rem;
-        color: #0c8f95;
-        font-size: 2rem;
+        color: #22c55e;
+        font-size: 1.65rem;
       }
-      .err h1 {
+      .err h2 {
         margin: 0 0 0.75rem;
-        color: var(--error);
+        color: #f87171;
       }
       .meta {
         margin: 1rem 0;
         padding: 1.15rem;
         border-radius: 12px;
-        border: 1px solid var(--meta-border);
-        background: var(--meta-bg);
+        border: 1px solid var(--glass-border, rgba(255,255,255,0.16));
+        background: rgba(255,255,255,0.03);
       }
       .meta p {
         margin: 0.35rem 0;
@@ -123,7 +138,7 @@ import { extractApiErrorMessage } from '../api-error.util';
       .qr small {
         display: block;
         margin-top: 0.5rem;
-        color: var(--text-soft);
+        color: var(--text-muted);
       }
       .actions {
         margin-top: 1.25rem;
@@ -131,20 +146,24 @@ import { extractApiErrorMessage } from '../api-error.util';
         flex-wrap: wrap;
         gap: 0.75rem;
       }
-      .btn {
+      .btn,
+      .btn-pay {
         display: inline-block;
-        padding: 0.65rem 1.25rem;
-        border-radius: 10px;
-        background: #f12545;
+        padding: 13px 16px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #ff4b4b, var(--tunisia-red));
         border: none;
         color: #fff;
         text-decoration: none;
-        font-weight: 600;
+        font-weight: 700;
         cursor: pointer;
       }
       .btn.secondary {
-        background: #334155;
+        background: rgba(51, 65, 85, 0.9);
       }
+      .animate-in { animation: fadeIn .35s ease both; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: translateY(0);} }
+
       .btn:disabled {
         opacity: 0.7;
         cursor: not-allowed;

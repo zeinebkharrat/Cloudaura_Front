@@ -2,6 +2,7 @@ package org.example.backend.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.example.backend.dto.personalization.PreferenceImageAnalysisResponse;
 import org.example.backend.dto.personalization.PersonalizedRecommendationsResponse;
 import org.example.backend.dto.personalization.PreferenceSurveyRequest;
 import org.example.backend.service.PersonalizationService;
@@ -12,9 +13,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Map;
 
@@ -45,6 +48,14 @@ public class PersonalizationController {
         Integer userId = requireUserId(authentication);
         boolean completed = personalizationService.getRecommendations(userId).preferencesCompleted();
         return Map.of("preferencesCompleted", completed);
+    }
+
+    @PutMapping(value = "/analyze-image", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public PreferenceImageAnalysisResponse analyzeImage(Authentication authentication,
+                                                        @RequestParam("file") MultipartFile file,
+                                                        @RequestParam(name = "applyToPreferences", defaultValue = "false") boolean applyToPreferences) {
+        Integer userId = requireUserId(authentication);
+        return personalizationService.analyzePreferenceImage(userId, file, applyToPreferences);
     }
 
     private Integer requireUserId(Authentication authentication) {

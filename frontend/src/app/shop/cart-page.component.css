@@ -458,14 +458,59 @@
   gap: 12px;
 }
 
+.payment-preview-card {
+  height: 160px;
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 55%, #1a365d 100%);
+  border-radius: 18px;
+  padding: 18px;
+  position: relative;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.22);
+  margin-bottom: 14px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.payment-preview-card .card-chip {
+  width: 40px;
+  height: 30px;
+  background: linear-gradient(135deg, #ffd700 0%, #f7971e 100%);
+  border-radius: 6px;
+}
+
+.payment-preview-card .card-number-display {
+  font-size: 1.05rem;
+  letter-spacing: 0.12em;
+  font-family: ui-monospace, monospace;
+}
+
+.payment-preview-card .card-bottom {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  opacity: 0.9;
+  letter-spacing: 0.06em;
+}
+
+.payment-preview-card .card-type {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  font-weight: 900;
+  font-style: italic;
+  font-size: 1rem;
+}
+
 .payment-option {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 16px;
-  background: rgba(255, 255, 255, 0.03);
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--glass-border);
-  border-radius: 16px;
+  border-radius: 14px;
   cursor: pointer;
   transition: all 0.2s ease;
   position: relative;
@@ -477,7 +522,7 @@
 }
 
 .payment-option.active {
-  background: rgba(232, 0, 45, 0.05);
+  background: rgba(232, 0, 45, 0.06);
   border-color: var(--tunisia-red);
   box-shadow: 0 4px 20px rgba(232, 0, 45, 0.1);
 }
