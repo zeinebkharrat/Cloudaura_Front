@@ -1,0 +1,167 @@
+<section class="stories-strip">
+  <div class="stories-header">
+    <h3>Stories</h3>
+    <div class="story-create" *ngIf="authService.isAuthenticated()">
+      <label class="story-upload-btn" [class.story-upload-btn--disabled]="uploading()">
+        <span class="story-upload-plus">+</span>
+        <input type="file" accept="image/*,video/*" (change)="onStoryFileSelect($event)" [disabled]="uploading()" />
+        {{ uploading() ? 'Posting...' : 'Add Story' }}
+      </label>
+    </div>
+  </div>
+
+  <div class="stories-tray" *ngIf="!loading(); else storiesLoading">
+    <button type="button" class="story-avatar" *ngFor="let story of trayStories(); trackBy: trackByStoryId" (click)="openViewer(story.storyId)">
+      <span class="avatar-ring" [class.avatar-ring--seen]="story.viewedByCurrentUser"></span>
+      <span class="avatar-media">
+        <img *ngIf="avatarUrl(story); else avatarFallback" [src]="avatarUrl(story)!" [alt]="story.authorUsername" />
+        <ng-template #avatarFallback>
+          <span class="avatar-fallback">{{ (story.authorUsername || 'U').charAt(0).toUpperCase() }}</span>
+        </ng-template>
+      </span>
+      <small>{{ story.authorUsername }}</small>
+    </button>
+
+    <p class="stories-empty" *ngIf="trayStories().length === 0">No active stories yet.</p>
+  </div>
+
+  <ng-template #storiesLoading>
+    <p class="stories-empty">Loading stories...</p>
+  </ng-template>
+</section>
+
+<div class="story-viewer-backdrop" *ngIf="viewerOpen()" (click)="closeViewer()">
+  <div class="story-viewer" (click)="$event.stopPropagation()" *ngIf="activeStory() as story">
+    <div class="story-progress" aria-hidden="true">
+      <span
+        class="story-progress-segment"
+        *ngFor="let item of stories(); let i = index"
+        [class.story-progress-segment--active]="i === viewerIndex()"
+        [class.story-progress-segment--seen]="i < viewerIndex()"
+      ></span>
+    </div>
+
+    <div class="story-topbar">
+      <div class="story-top-left">
+        <button type="button" class="story-viewer-close" (click)="closeViewer()" aria-label="Close story">✕</button>
+      </div>
+
+      <div class="story-author">
+        <img *ngIf="avatarUrl(story); else viewerAvatarFallback" [src]="avatarUrl(story)!" [alt]="story.authorUsername" class="story-author-avatar" />
+        <ng-template #viewerAvatarFallback>
+          <span class="story-author-avatar story-author-avatar--fallback">{{ (story.authorUsername || 'U').charAt(0).toUpperCase() }}</span>
+        </ng-template>
+        <div class="story-author-meta">
+          <strong>{{ story.authorUsername }}</strong>
+          <small>{{ storyAgeLabel(story) }}</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="story-nav-zone story-nav-zone--prev" (click)="prevStory()" aria-hidden="true"></div>
+    <div class="story-nav-zone story-nav-zone--next" (click)="nextStory()" aria-hidden="true"></div>
+    <button type="button" class="story-side-arrow story-side-arrow--left" (click)="prevStory()" aria-label="Previous story">‹</button>
+    <button type="button" class="story-side-arrow story-side-arrow--right" (click)="nextStory()" aria-label="Next story">›</button>
+
+    <div class="story-stage">
+      <div
+        class="story-preview story-preview--left"
+        *ngIf="adjacentStory(-1) as prevStory"
+        [style.background-image]="previewBackground(prevStory)"
+      ></div>
+
+      <div class="story-main-frame">
+        <img *ngIf="story.mediaType !== 'VIDEO'" class="story-media" [src]="story.mediaUrl || ''" [alt]="story.caption || 'Story'" />
+        <video *ngIf="story.mediaType === 'VIDEO'" class="story-media" [src]="story.mediaUrl || ''" autoplay playsinline></video>
+      </div>
+
+      <div
+        class="story-preview story-preview--right"
+        *ngIf="adjacentStory(1) as nextStory"
+        [style.background-image]="previewBackground(nextStory)"
+      ></div>
+    </div>
+
+    <p class="story-caption" *ngIf="story.caption">{{ story.caption }}</p>
+
+    <div class="story-bottombar-glass">
+      <div class="story-actions-left">
+        <button type="button" class="story-icon-btn" (click)="toggleLikeActive()" [attr.aria-label]="story.likedByCurrentUser ? 'Unlike' : 'Like'">
+          {{ story.likedByCurrentUser ? '❤' : '♡' }}
+        </button>
+
+      </div>
+
+      <input type="text" class="story-reply-input" placeholder="Reply..." readonly />
+
+      <button
+        type="button"
+        class="story-views-chip"
+        *ngIf="authService.currentUser()?.id === story.authorId"
+        (click)="openInsights()"
+      >
+        👥 {{ story.viewsCount }} Views
+      </button>
+    </div>
+
+    <div class="story-insights-panel-backdrop" *ngIf="insightsOpen()" (click)="closeInsights()">
+      <div class="story-insights-panel" (click)="$event.stopPropagation()">
+        <div class="story-insights-header">
+          <h4>Story Insights</h4>
+          <button type="button" class="story-insights-close" (click)="closeInsights()" aria-label="Close insights">✕</button>
+        </div>
+
+        <div class="story-insights-stats">
+          <div class="stat-card">
+            <span class="stat-label">Views</span>
+            <strong>{{ viewers().length }}</strong>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Likes</span>
+            <strong>{{ likers().length }}</strong>
+          </div>
+        </div>
+
+        <div class="story-insights-grid" *ngIf="!insightsLoading(); else insightsLoadingState">
+          <section class="insights-list-block">
+            <h5>Viewed By</h5>
+            <div class="insights-list" *ngIf="viewers().length > 0; else emptyViewers">
+              <div class="insight-user-row" *ngFor="let user of viewers(); trackBy: trackByInteractionUser">
+                <img *ngIf="interactionAvatarUrl(user); else viewerInitial" [src]="interactionAvatarUrl(user)!" [alt]="displayName(user.firstName, user.lastName, user.username)" class="insight-avatar" />
+                <ng-template #viewerInitial>
+                  <span class="insight-avatar insight-avatar--fallback">{{ (displayName(user.firstName, user.lastName, user.username) || 'U').charAt(0).toUpperCase() }}</span>
+                </ng-template>
+                <div class="insight-user-meta">
+                  <strong>{{ displayName(user.firstName, user.lastName, user.username) }}</strong>
+                  <small>{{ interactionAgeLabel(user.actedAt) }}</small>
+                </div>
+              </div>
+            </div>
+            <ng-template #emptyViewers><p class="insights-empty">No views yet</p></ng-template>
+          </section>
+
+          <section class="insights-list-block">
+            <h5>Liked By</h5>
+            <div class="insights-list" *ngIf="likers().length > 0; else emptyLikers">
+              <div class="insight-user-row" *ngFor="let user of likers(); trackBy: trackByInteractionUser">
+                <img *ngIf="interactionAvatarUrl(user); else likerInitial" [src]="interactionAvatarUrl(user)!" [alt]="displayName(user.firstName, user.lastName, user.username)" class="insight-avatar" />
+                <ng-template #likerInitial>
+                  <span class="insight-avatar insight-avatar--fallback">{{ (displayName(user.firstName, user.lastName, user.username) || 'U').charAt(0).toUpperCase() }}</span>
+                </ng-template>
+                <div class="insight-user-meta">
+                  <strong>{{ displayName(user.firstName, user.lastName, user.username) }}</strong>
+                  <small>{{ interactionAgeLabel(user.actedAt) }}</small>
+                </div>
+              </div>
+            </div>
+            <ng-template #emptyLikers><p class="insights-empty">No likes yet</p></ng-template>
+          </section>
+        </div>
+
+        <ng-template #insightsLoadingState>
+          <p class="insights-empty">Loading insights...</p>
+        </ng-template>
+      </div>
+    </div>
+  </div>
+</div>

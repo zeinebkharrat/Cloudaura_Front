@@ -64,6 +64,25 @@ public class SightengineCommentModerationService {
         }
     }
 
+    public boolean containsProfanity(String input) {
+        if (input == null || input.isBlank()) {
+            return false;
+        }
+
+        if (!enabled || apiUser == null || apiUser.isBlank() || apiSecret == null || apiSecret.isBlank()) {
+            return false;
+        }
+
+        try {
+            JsonNode rulesResponse = callRulesMode(input);
+            JsonNode matches = rulesResponse.path("profanity").path("matches");
+            return matches.isArray() && !matches.isEmpty();
+        } catch (Exception ex) {
+            log.warn("Sightengine profanity check failed for post gating: {}", ex.getMessage());
+            return false;
+        }
+    }
+
     private JsonNode callRulesMode(String text) throws Exception {
         MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
         body.add("text", text);

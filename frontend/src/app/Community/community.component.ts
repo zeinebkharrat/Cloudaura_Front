@@ -29,6 +29,7 @@ import Swal from 'sweetalert2';
 import { GiphyItem, GiphyMediaType, GiphyService } from './giphy.service';
 import { tunisiaGeoJson } from '../tunisia-map';
 import { GOVERNORATE_LABEL_EN, GOVERNORATE_LABEL_FR } from '../tunisia-governorate-labels';
+import { CommunityStoriesComponent } from './community-stories.component';
 
 const MINI_TUNISIA_MAP_NAME = 'TunisiaMiniPreview';
 const MINI_TUNISIA_MAP_NAME_PROP = '_echartsRegionId';
@@ -84,7 +85,7 @@ function tunisiaGeoWithUniqueRegionIds(geo: any) {
 @Component({
   selector: 'app-community',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, CommunityStoriesComponent],
   templateUrl: './community.component.html',
   styleUrl: './community.component.css',
 })
@@ -469,7 +470,26 @@ export class CommunityComponent {
       
     } catch (error) {
       console.error('Error creating post:', error);
-      this.loadError.set('Failed to create post');
+
+      const httpError = error as HttpErrorResponse;
+      const backendMessage =
+        (typeof httpError?.error === 'string' && httpError.error.trim().length > 0)
+          ? httpError.error
+          : (typeof httpError?.error?.message === 'string' ? httpError.error.message : '');
+
+      if (
+        httpError?.status === 422 &&
+        /bad words|inappropriate|profanity|cannot be published/i.test(backendMessage)
+      ) {
+        await Swal.fire({
+          icon: 'warning',
+          title: 'Post blocked',
+          text: backendMessage || 'You cannot use bad words in posts.',
+          ...this.swalTheme(),
+        });
+      } else {
+        this.loadError.set('Failed to create post');
+      }
     } finally {
       this.isPosting.set(false);
     }
