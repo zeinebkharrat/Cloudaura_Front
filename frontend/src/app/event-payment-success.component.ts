@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+﻿import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -18,27 +18,27 @@ import { extractApiErrorMessage } from './api-error.util';
           <h1 class="title">YallaTN<span class="accent">+</span> · <span class="sub">events</span></h1>
         </header>
 
-      <div class="state-card" *ngIf="status === 'loading'">
-        <p class="lead">Confirming your payment...</p>
-      </div>
+        <div class="state-card" *ngIf="status === 'loading'">
+          <p class="lead">Confirming your payment...</p>
+        </div>
 
-      <div class="state-card ok" *ngIf="status === 'ok'">
-        <div class="success-icon-wrap"><i class="pi pi-check-circle success-icon"></i></div>
-        <h2>Paiement confirme</h2>
-        <p>Votre reservation d'evenement est validee.</p>
-        <p *ngIf="reservationId != null" class="ref">Reservation #{{ reservationId }}</p>
-        <a routerLink="/evenements" class="btn-pay">Retour aux evenements</a>
-      </div>
+        <div class="state-card ok" *ngIf="status === 'ok'">
+          <div class="success-icon-wrap"><i class="pi pi-check-circle success-icon"></i></div>
+          <h2>Paiement confirme</h2>
+          <p>Votre reservation d'evenement est validee.</p>
+          <p *ngIf="reservationId != null" class="ref">Reservation #{{ reservationId }}</p>
+          <a routerLink="/evenements" class="btn-pay">Retour aux evenements</a>
+        </div>
 
-      <div class="state-card err" *ngIf="status === 'error'">
-        <h2>Echec de confirmation</h2>
-        <p>{{ message }}</p>
-        <a routerLink="/evenements" class="btn-pay">Retour aux evenements</a>
-      </div>
+        <div class="state-card err" *ngIf="status === 'error'">
+          <h2>Echec de confirmation</h2>
+          <p>{{ message }}</p>
+          <a routerLink="/evenements" class="btn-pay">Retour aux evenements</a>
+        </div>
 
-      <footer class="payment-foot">
-        <span class="security"><i class="pi pi-lock"></i> Confirmation securisee</span>
-      </footer>
+        <footer class="payment-foot">
+          <span class="security"><i class="pi pi-lock"></i> Confirmation securisee</span>
+        </footer>
       </div>
     </main>
   `,

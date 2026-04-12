@@ -8,9 +8,8 @@
       </div>
       
       <div class="header-actions">
-        <button (click)="toggleDarkMode()" class="btn-mode">
-          {{ isDarkMode ? '☀️ Light Mode' : '🌙 Dark Mode' }}
-        </button>
+        <input #createFromImageInput type="file" accept="image/*" hidden (change)="onCreateFromImageSelected($event)">
+        <button type="button" class="btn-ai" (click)="createFromImageInput.click()">✨ Create from image</button>
         <button class="btn-primary" (click)="openAddModal()">+ New Event</button>
       </div>
     </div>
@@ -72,7 +71,7 @@
             </td>
             <td><span class="badge">{{ ev.eventType }}</span></td>
             <td>
-              <small class="status-label" [style.color]="ev.status === 'COMPLETED' ? '#94a3b8' : '#10b981'">
+              <small class="status-label" [ngClass]="getStatusClass(ev.status)">
                 {{ ev.status }}
               </small>
             </td>
@@ -85,6 +84,7 @@
             </td>
             <td style="text-align: right;">
               <div class="action-btns">
+                <button class="btn-icon" (click)="openDetailsModal(ev)" title="View details">👁️</button>
                 <button class="btn-icon" (click)="openEditModal(ev)" title="Edit">📝</button>
                 <button class="btn-icon" (click)="deleteEvent(ev.eventId)" title="Delete">🗑️</button>
               </div>
@@ -111,6 +111,7 @@
   <div class="modal-backdrop" *ngIf="showModal">
     <div class="modal-content">
       <h2 class="modal-title">{{ isEditMode ? 'Edit Event' : 'New Event' }}</h2>
+      <div *ngIf="aiExtracting" class="ai-status">Reading poster and filling fields automatically...</div>
       
       <form (ngSubmit)="saveEvent()" #eventForm="ngForm" novalidate>
         
@@ -128,20 +129,53 @@
         </div>
 
         <div class="row">
-          <div class="form-group col">
+          <div class="form-group col city-picker-group">
             <label>City (Tunisia)</label>
-            <select name="cityId" [(ngModel)]="currentEvent.city.cityId" class="form-input" required>
-              <option *ngFor="let c of tunisiaCities" [value]="c.cityId">{{c.name}}</option>
-            </select>
+            <input type="hidden" name="cityId" [(ngModel)]="currentEvent.city.cityId" required>
+            <input
+              type="text"
+              name="citySearchTerm"
+              [(ngModel)]="citySearchTerm"
+              (focus)="openCityDropdown()"
+              (input)="onCitySearchTermChange()"
+              (blur)="closeCityDropdownDelayed()"
+              class="form-input city-picker-input"
+              placeholder="Search city..."
+              autocomplete="off"
+            >
+            <div class="city-picker-menu" *ngIf="cityDropdownOpen">
+              <button
+                type="button"
+                class="city-picker-option"
+                *ngFor="let c of filteredTunisiaCities"
+                (mousedown)="selectCityOption(c); $event.preventDefault()"
+              >
+                {{ c.name }}
+              </button>
+              <div class="city-picker-empty" *ngIf="filteredTunisiaCities.length === 0">
+                No city found
+              </div>
+            </div>
           </div>
           <div class="form-group col">
             <label>Category</label>
-            <select name="type" [(ngModel)]="currentEvent.eventType" class="form-input" required>
-              <option value="CULTURAL">Cultural</option>
-              <option value="SPORT">Sport</option>
-              <option value="FESTIVAL">Festival</option>
-              <option value="TECH">Technology</option>
-            </select>
+            <input type="hidden" name="type" [(ngModel)]="currentEvent.eventType" required>
+            <div class="picker-group" tabindex="0" (blur)="closeCategoryDropdownDelayed()">
+              <button type="button" class="picker-trigger" (click)="toggleCategoryDropdown()">
+                <span>{{ selectedEventTypeLabel }}</span>
+                <span class="picker-caret">▾</span>
+              </button>
+              <div class="picker-menu" *ngIf="categoryDropdownOpen">
+                <button
+                  type="button"
+                  class="picker-option"
+                  *ngFor="let option of eventTypeOptions"
+                  (mousedown)="selectEventType(option.value); $event.preventDefault()"
+                >
+                  {{ option.label }}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -181,8 +215,37 @@
         </div>
 
         <div class="form-group">
+          <label>Description for AI (optional, not saved)</label>
+          <textarea
+            name="aiPosterDescription"
+            [(ngModel)]="aiPosterDescription"
+            class="form-input ai-description-input"
+            rows="3"
+            placeholder="Ex: energetic crowd, sunrise mood, include city skyline, modern sporty style..."
+          ></textarea>
+          <button
+            type="button"
+            class="btn-ai-generate"
+            (click)="generatePosterFromAi()"
+            [disabled]="generatingPoster"
+          >
+            {{ generatingPoster ? 'Generating poster...' : '✨ Generate Poster' }}
+          </button>
+        </div>
+
+        <div class="form-group">
           <label>Event Image (Upload)</label>
-          <input type="file" (change)="onFileSelected($event)" class="file-input">
+          <div class="file-upload-row">
+            <input #eventImageInput type="file" (change)="onFileSelected($event)" class="file-input-hidden" accept="image/*">
+            <button type="button" class="file-upload-btn" (click)="eventImageInput.click()">Choose image</button>
+            <span class="file-upload-name">{{ selectedImageFileName || 'No file selected' }}</span>
+          </div>
+          <div *ngIf="currentEvent.imageUrl" class="image-linked-note">
+            <div><strong>Image linked:</strong> Yes</div>
+            <div *ngIf="selectedImageFileName"><strong>Source file:</strong> {{ selectedImageFileName }}</div>
+            <div *ngIf="imageOriginLabel"><strong>Origin:</strong> {{ imageOriginLabel }}</div>
+            <img [src]="currentEvent.imageUrl" alt="Linked event image" class="linked-image-preview">
+          </div>
           <div *ngIf="uploading" class="upload-status">⌛ Uploading image...</div>
         </div>
 
@@ -193,6 +256,70 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <div class="details-backdrop" *ngIf="showDetailsModal && selectedEventDetails" (click)="closeDetailsModal()">
+    <div class="details-modal" (click)="$event.stopPropagation()">
+      <div class="details-modal__header">
+        <h2>{{ selectedEventDetails.title }}</h2>
+        <button type="button" class="details-modal__close" (click)="closeDetailsModal()" aria-label="Close">×</button>
+      </div>
+
+      <div class="details-modal__body">
+        <div class="details-poster" [class.details-poster--placeholder]="!selectedEventDetails.imageUrl">
+          <img
+            [src]="selectedEventDetails.imageUrl || 'assets/placeholder.png'"
+            alt="Event image"
+            class="details-modal__image"
+          >
+          <ng-container *ngIf="isAiGeneratedEventImage(selectedEventDetails)">
+            <div class="details-poster__scrim"></div>
+            <div class="details-poster__gradient"></div>
+
+            <div class="details-poster__brand">
+              <img src="assets/logo/yallatn-logo.png" alt="YallaTN logo" />
+            </div>
+
+            <div class="details-poster__meta">
+              <h3 class="details-poster__title">{{ selectedEventDetails.title }}</h3>
+              <div class="details-poster__facts">
+                <span class="details-poster__fact">
+                  <span class="details-poster__icon" aria-hidden="true">📅</span>
+                  {{ detailsPosterDateRange(selectedEventDetails) }}
+                </span>
+                <span class="details-poster__fact">
+                  <span class="details-poster__icon" aria-hidden="true">📍</span>
+                  {{ selectedEventDetails.venue }}
+                </span>
+                <span class="details-poster__fact details-poster__fact--price">
+                  <span class="details-poster__icon" aria-hidden="true">🎟️</span>
+                  {{ (selectedEventDetails.price ?? 0) > 0 ? (selectedEventDetails.price + ' TN') : 'Free Entry' }}
+                </span>
+              </div>
+            </div>
+          </ng-container>
+        </div>
+
+        <div class="details-grid">
+          <div><strong>Location:</strong> {{ selectedEventDetails.venue }}</div>
+          <div><strong>City:</strong> {{ selectedEventDetails.city.name || 'N/A' }}</div>
+          <div><strong>Type:</strong> {{ selectedEventDetails.eventType }}</div>
+          <div>
+            <strong>Status:</strong>
+            <span class="status-label" [ngClass]="getStatusClass(selectedEventDetails.status)">
+              {{ selectedEventDetails.status }}
+            </span>
+          </div>
+          <div><strong>Start:</strong> {{ selectedEventDetails.startDate | date:'dd/MM/yyyy' }}</div>
+          <div><strong>End:</strong> {{ selectedEventDetails.endDate | date:'dd/MM/yyyy' }}</div>
+          <div><strong>Price:</strong> {{ selectedEventDetails.price ?? 0 }} TN</div>
+        </div>
+      </div>
+
+      <div class="details-modal__footer">
+        <button type="button" class="btn-cancel" (click)="closeDetailsModal()">Close</button>
+      </div>
     </div>
   </div>
 </div>

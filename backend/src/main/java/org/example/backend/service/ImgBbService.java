@@ -63,44 +63,40 @@ public class ImgBbService {
         }
     }
 
-    public String uploadImage(byte[] imageBytes, String filename) {
+    public String uploadImageBytes(byte[] imageBytes, String fileName) {
         if (apiKey == null || apiKey.isBlank()) {
             throw new IllegalStateException("La clé ImgBB n'est pas configurée côté backend");
         }
         if (imageBytes == null || imageBytes.length == 0) {
-            throw new IllegalArgumentException("Fichier image vide");
+            throw new IllegalArgumentException("Contenu image vide");
+        }
+        if (imageBytes.length > 10L * 1024L * 1024L) {
+            throw new IllegalArgumentException("Image trop volumineuse (max 10MB)");
         }
 
         try {
-            return uploadWithByteArray(imageBytes, filename);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+            MultiValueMap<String, String> body = new LinkedMultiValueMap<>();
+            body.add("key", apiKey);
+            body.add("image", Base64.getEncoder().encodeToString(imageBytes));
+            if (fileName != null && !fileName.isBlank()) {
+                body.add("name", fileName);
+            }
+
+            HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
+            ResponseEntity<Map> response = restTemplate.postForEntity(uploadUrl, request, Map.class);
+            return extractUrl(response.getBody());
         } catch (RestClientResponseException ex) {
             String details = ex.getResponseBodyAsString();
             String reason = details == null || details.isBlank() ? ex.getMessage() : details;
             throw new IllegalStateException("Upload ImgBB échoué: " + reason);
-        } catch (IOException ex) {
-            throw new IllegalStateException("Impossible de lire le fichier uploadé", ex);
         }
     }
 
-    private String uploadWithByteArray(byte[] imageBytes, String filename) throws IOException {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-
-        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        body.add("key", apiKey);
-        body.add("image", new ByteArrayResource(imageBytes) {
-            @Override
-            public String getFilename() {
-                return filename != null && !filename.isBlank() ? filename : "city-media.jpg";
-            }
-        });
-        if (filename != null && !filename.isBlank()) {
-            body.add("name", filename);
-        }
-
-        HttpEntity<MultiValueMap<String, Object>> request = new HttpEntity<>(body, headers);
-        ResponseEntity<Map> response = restTemplate.postForEntity(uploadUrl, request, Map.class);
-        return extractUrl(response.getBody());
+    public String uploadImage(byte[] imageBytes, String filename) {
+        return uploadImageBytes(imageBytes, filename);
     }
 
     private String uploadWithMultipart(MultipartFile file) throws IOException {

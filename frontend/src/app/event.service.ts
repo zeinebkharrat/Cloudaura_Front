@@ -108,4 +108,51 @@ export class EventService {
   createReservation(data: any): Observable<any> {
     return this.http.post(`${this.apiUrl}/reservations`, data);
   }
+
+  extractEventFromImage(file: File): Observable<{ text: string; message?: string }> {
+    const createFormData = () => {
+      const formData = new FormData();
+      formData.append('file', file);
+      return formData;
+    };
+
+    const adminUrl = `${this.apiUrl}/admin/extract-from-image`;
+    const legacyUrl = `${this.apiUrl}/extract-from-image`;
+
+    return this.http.post<{ text: string; message?: string }>(adminUrl, createFormData()).pipe(
+      catchError((err) => {
+        const message = String(err?.error?.message ?? err?.error?.error ?? '').toLowerCase();
+        const shouldFallback = err?.status === 404 || message.includes('no static resource');
+
+        if (!shouldFallback) {
+          return throwError(() => err);
+        }
+
+        return this.http.post<{ text: string; message?: string }>(legacyUrl, createFormData());
+      })
+    );
+  }
+
+  generateEventPoster(data: {
+    title: string;
+    city: string;
+    category: string;
+    description?: string;
+  }): Observable<{ prompt: string; imageUrl: string; message?: string }> {
+    const adminUrl = `${this.apiUrl}/admin/generate-poster`;
+    const legacyUrl = `${this.apiUrl}/generate-poster`;
+
+    return this.http.post<{ prompt: string; imageUrl: string; message?: string }>(adminUrl, data).pipe(
+      catchError((err) => {
+        const message = String(err?.error?.message ?? err?.error?.error ?? '').toLowerCase();
+        const shouldFallback = err?.status === 404 || message.includes('no static resource');
+
+        if (!shouldFallback) {
+          return throwError(() => err);
+        }
+
+        return this.http.post<{ prompt: string; imageUrl: string; message?: string }>(legacyUrl, data);
+      })
+    );
+  }
 }

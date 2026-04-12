@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, HostListener } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { ActivatedRoute, Data, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -61,6 +61,7 @@ export interface CatalogProduct {
   styleUrl: './feature-page.component.css',
 })
 export class FeaturePageComponent implements OnInit {
+  private readonly aiGeneratedImageStorageKey = 'eventManagement.aiGeneratedImages';
   private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
   readonly router = inject(Router);
@@ -77,6 +78,12 @@ export class FeaturePageComponent implements OnInit {
   highlights: string[] = [];
   blocks: FeatureBlock[] = [];
   events: TravelEvent[] = [];
+  eventFilterCity = 'ALL';
+  eventFilterType = 'ALL';
+  eventMaxPriceCap = 500;
+  eventMaxPrice = 500;
+  eventCityDropdownOpen = false;
+  eventCitySearch = '';
   isEventFeed = false;
   isLoadingEvents = false;
   eventsLoadError: string | null = null;
@@ -370,6 +377,7 @@ export class FeaturePageComponent implements OnInit {
     const shouldLoadEvents = d['eventFeed'] === true || this.title === 'Events';
     this.isEventFeed = shouldLoadEvents;
     if (shouldLoadEvents) {
+      this.loadCities();
       this.loadEvents();
     } else {
       this.events = [];
@@ -757,6 +765,7 @@ export class FeaturePageComponent implements OnInit {
           status: this.normalizeEventStatus(event.status),
           imageUrl: this.normalizeEventImageUrl(event.imageUrl),
         })).filter((event) => this.shouldDisplayInFrontOffice(event.status));
+        this.resetEventFilters();
         this.isLoadingEvents = false;
       },
       error: (err) => {
@@ -790,6 +799,203 @@ export class FeaturePageComponent implements OnInit {
   private shouldDisplayInFrontOffice(status: unknown): boolean {
     const normalized = this.normalizeEventStatus(status);
     return normalized === 'UPCOMING' || normalized === 'ONGOING';
+  }
+
+  private toEventCityLabel(event: TravelEvent): string {
+    const fromCity = event.city?.name?.trim();
+    if (fromCity) {
+      return fromCity;
+    }
+    const venue = String(event.venue ?? '').trim();
+    if (!venue) {
+      return 'Unknown';
+    }
+    const firstChunk = venue.split(',')[0]?.trim();
+    return firstChunk || venue;
+  }
+
+  get eventCityOptions(): string[] {
+    const allCities = this.cities().map((c) => String(c?.name ?? '').trim()).filter((v) => !!v);
+    if (allCities.length > 0) {
+      return [...new Set(allCities)].sort((a, b) => a.localeCompare(b));
+    }
+    return [...new Set(this.events.map((event) => this.toEventCityLabel(event)).filter((v) => !!v))]
+      .sort((a, b) => a.localeCompare(b));
+  }
+
+  get eventTypeOptions(): string[] {
+    return [...new Set(this.events.map((event) => String(event.eventType ?? '').trim()).filter((v) => !!v))]
+      .sort((a, b) => a.localeCompare(b));
+  }
+
+  get filteredEventCityOptions(): string[] {
+    const query = this.eventCitySearch.trim().toLowerCase();
+    if (!query) {
+      return this.eventCityOptions;
+    }
+    return this.eventCityOptions.filter((city) => city.toLowerCase().includes(query));
+  }
+
+  get selectedEventCityLabel(): string {
+    return this.eventFilterCity === 'ALL' ? 'All cities' : this.eventFilterCity;
+  }
+
+  toggleEventCityDropdown(event: MouseEvent): void {
+    event.stopPropagation();
+    this.eventCityDropdownOpen = !this.eventCityDropdownOpen;
+  }
+
+  selectEventCity(city: string): void {
+    this.eventFilterCity = city;
+    this.eventCityDropdownOpen = false;
+    this.eventCitySearch = '';
+  }
+
+  onEventCityPanelClick(event: MouseEvent): void {
+    event.stopPropagation();
+  }
+
+  @HostListener('document:click')
+  closeEventCityDropdown(): void {
+    this.eventCityDropdownOpen = false;
+  }
+
+  get filteredEvents(): TravelEvent[] {
+    return this.events.filter((event) => {
+      const cityOk = this.eventFilterCity === 'ALL' || this.toEventCityLabel(event) === this.eventFilterCity;
+      const typeOk = this.eventFilterType === 'ALL' || String(event.eventType ?? '').trim() === this.eventFilterType;
+      const price = this.eventPriceAmount(event);
+      const budgetOk = price <= this.eventMaxPrice;
+      return cityOk && typeOk && budgetOk;
+    });
+  }
+
+  get activeEventFilterCount(): number {
+    let count = 0;
+    if (this.eventFilterCity !== 'ALL') {
+      count += 1;
+    }
+    if (this.eventFilterType !== 'ALL') {
+      count += 1;
+    }
+    if (this.eventMaxPrice < this.eventMaxPriceCap) {
+      count += 1;
+    }
+    return count;
+  }
+
+  get activeEventFilterTokens(): string[] {
+    const tokens: string[] = [];
+    if (this.eventFilterCity !== 'ALL') {
+      tokens.push(`City: ${this.eventFilterCity}`);
+    }
+    if (this.eventFilterType !== 'ALL') {
+      tokens.push(`Type: ${this.eventFilterType}`);
+    }
+    if (this.eventMaxPrice < this.eventMaxPriceCap) {
+      tokens.push(`Budget <= ${Math.round(this.eventMaxPrice)} TND`);
+    }
+    return tokens;
+  }
+
+  eventDisplayDate(event: TravelEvent): string {
+    const raw = String(event.startDate ?? '').trim();
+    if (!raw) {
+      return 'Date TBA';
+    }
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) {
+      return raw;
+    }
+    return date.toLocaleDateString(undefined, {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  }
+
+  isAiGeneratedPoster(event: TravelEvent | null): boolean {
+    const normalized = this.normalizePosterImageUrl(event?.imageUrl);
+    if (!normalized) {
+      return false;
+    }
+
+    if (/-poster(?:\.|$)/i.test(normalized)) {
+      return true;
+    }
+
+    return this.getStoredAiGeneratedImages().has(normalized);
+  }
+
+  eventPosterDateRange(event: TravelEvent | null): string {
+    const start = this.formatPosterDisplayDate(event?.startDate);
+    const end = this.formatPosterDisplayDate(event?.endDate);
+    if (!start && !end) {
+      return 'Date TBA';
+    }
+    if (!end || start === end) {
+      return start || end;
+    }
+    return `${start} - ${end}`;
+  }
+
+  private formatPosterDisplayDate(value: string | undefined): string {
+    const raw = String(value ?? '').trim();
+    if (!raw) {
+      return '';
+    }
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) {
+      return raw;
+    }
+    return date.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  }
+
+  private getStoredAiGeneratedImages(): Set<string> {
+    try {
+      const raw = localStorage.getItem(this.aiGeneratedImageStorageKey);
+      if (!raw) {
+        return new Set<string>();
+      }
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        return new Set<string>();
+      }
+
+      const normalized = parsed
+        .map((value) => this.normalizePosterImageUrl(value))
+        .filter((value): value is string => !!value);
+      return new Set<string>(normalized);
+    } catch {
+      return new Set<string>();
+    }
+  }
+
+  private normalizePosterImageUrl(url: unknown): string {
+    return String(url ?? '').trim();
+  }
+
+  eventStatusClass(status: unknown): string {
+    const normalized = this.normalizeEventStatus(status);
+    if (normalized === 'ONGOING') {
+      return 'event-status-badge--ongoing';
+    }
+    return 'event-status-badge--upcoming';
+  }
+
+  resetEventFilters(): void {
+    const maxDetected = this.events.reduce((max, event) => Math.max(max, this.eventPriceAmount(event)), 0);
+    const normalizedCap = Math.max(500, Math.ceil(maxDetected / 50) * 50);
+    this.eventMaxPriceCap = normalizedCap;
+    this.eventMaxPrice = normalizedCap;
+    this.eventFilterCity = 'ALL';
+    this.eventFilterType = 'ALL';
+    this.eventCitySearch = '';
+    this.eventCityDropdownOpen = false;
   }
 
   private normalizeEventImageUrl(url: string | undefined): string | undefined {
