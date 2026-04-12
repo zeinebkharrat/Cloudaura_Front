@@ -28,6 +28,7 @@ import Swal from 'sweetalert2';
 import { GiphyItem, GiphyMediaType, GiphyService } from './giphy.service';
 import { tunisiaGeoJson } from '../tunisia-map';
 import { GOVERNORATE_LABEL_EN, GOVERNORATE_LABEL_FR } from '../tunisia-governorate-labels';
+import { CommunityStoriesComponent } from './community-stories.component';
 
 const MINI_TUNISIA_MAP_NAME = 'TunisiaMiniPreview';
 const MINI_TUNISIA_MAP_NAME_PROP = '_echartsRegionId';
@@ -83,7 +84,7 @@ function tunisiaGeoWithUniqueRegionIds(geo: any) {
 @Component({
   selector: 'app-community',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, CommunityStoriesComponent],
   templateUrl: './community.component.html',
   styleUrl: './community.component.css',
 })

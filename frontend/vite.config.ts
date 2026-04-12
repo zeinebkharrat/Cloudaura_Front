@@ -42,6 +42,7 @@ export default defineConfig({
       '/follow': { target: BACKEND, changeOrigin: true, secure: false },
       '/saved-post': { target: BACKEND, changeOrigin: true, secure: false },
       '/chatroom': { target: BACKEND, changeOrigin: true, secure: false },
+      '/story': { target: BACKEND, changeOrigin: true, secure: false },
     },
   },
 });

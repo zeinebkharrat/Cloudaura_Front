@@ -18,6 +18,7 @@
   "/follow": { "target": "http://localhost:9091", "secure": false, "changeOrigin": true },
   "/saved-post": { "target": "http://localhost:9091", "secure": false, "changeOrigin": true },
   "/chatroom": { "target": "http://localhost:9091", "secure": false, "changeOrigin": true },
+  "/story": { "target": "http://localhost:9091", "secure": false, "changeOrigin": true },
   "/ws": { "target": "http://localhost:9091", "secure": false, "changeOrigin": true, "ws": true },
   "/ws-native": { "target": "http://localhost:9091", "secure": false, "changeOrigin": true, "ws": true }
 }
