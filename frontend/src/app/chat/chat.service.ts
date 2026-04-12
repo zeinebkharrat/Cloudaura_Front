@@ -421,6 +421,9 @@ export class ChatService implements OnDestroy {
     if (msg.messageType === 'VOICE') {
       return 'Voice message';
     }
+    if ((msg.content || '').startsWith('YALLA_STORY_REPLY::')) {
+      return 'Replied to your story';
+    }
     if (this.e2eeService.isEncryptedTextPayload(msg.content)) {
       return 'Encrypted message';
     }

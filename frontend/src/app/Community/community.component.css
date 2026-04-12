@@ -4,9 +4,138 @@
   background: transparent;
 }
 
+.community-main-grid {
+  max-width: 1260px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 920px) 300px;
+  gap: 22px;
+  align-items: start;
+}
+
+.community-main-column {
+  min-width: 0;
+}
+
 .feed {
   max-width: 920px;
   margin: 0 auto;
+}
+
+.community-suggestions {
+  position: sticky;
+  top: 94px;
+  border-radius: 16px;
+  border: 1px solid var(--glass-border);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.community-suggestions__head {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.community-suggestions__head h3 {
+  margin: 0;
+  font-size: 1.75rem;
+  font-size: clamp(1.05rem, 1.6vw, 1.35rem);
+  color: var(--text-color);
+  font-weight: 700;
+}
+
+.community-suggestions__list {
+  display: flex;
+  flex-direction: column;
+}
+
+.community-suggestion-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.community-suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.community-suggestion-user {
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  color: inherit;
+  cursor: pointer;
+  min-width: 0;
+  flex: 1;
+  padding: 0;
+}
+
+.community-suggestion-avatar {
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
+  background: #d5dce8;
+}
+
+.community-suggestion-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.community-suggestion-meta strong {
+  color: var(--text-color);
+  font-size: 0.95rem;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.community-suggestion-meta small {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.community-suggestion-meta strong,
+.community-suggestion-meta small {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.community-suggestion-follow {
+  border: 1px solid rgba(214, 3, 38, 0.28);
+  border-radius: 999px;
+  background: rgba(214, 3, 38, 0.08);
+  color: #b00425;
+  font-size: 0.82rem;
+  font-weight: 700;
+  height: 34px;
+  padding: 0 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.community-suggestion-follow:hover {
+  background: rgba(214, 3, 38, 0.14);
+}
+
+@media (max-width: 1180px) {
+  .community-main-grid {
+    max-width: 920px;
+    grid-template-columns: 1fr;
+  }
+
+  .community-suggestions {
+    display: none;
+  }
 }
 
 .tunisian-sunset-header {

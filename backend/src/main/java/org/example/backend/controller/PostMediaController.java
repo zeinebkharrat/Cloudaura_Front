@@ -4,6 +4,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 
 import org.example.backend.model.PostMedia;
@@ -20,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import org.example.backend.model.Post;
+import org.example.backend.service.GeminiCommunityImageTaggingService;
 
 import java.io.IOException;
 
@@ -32,6 +37,9 @@ public class PostMediaController {
 
     @Autowired
     PostRepository postRepository;
+
+    @Autowired
+    GeminiCommunityImageTaggingService geminiCommunityImageTaggingService;
 
     @GetMapping("/allMedias")
     public List<PostMedia> getAllMedia() {
@@ -125,7 +133,67 @@ public class PostMediaController {
         media.setMediaType(mediaType);
         media.setOrderIndex(orderIndex != null ? orderIndex : 0);
 
-        return mediaService.addMedia(media);
+        PostMedia savedMedia = mediaService.addMedia(media);
+
+        if (mediaType == MediaType.IMAGE) {
+            appendGeminiCategoriesToPostHashtags(post, file);
+        }
+
+        return savedMedia;
+    }
+
+    private void appendGeminiCategoriesToPostHashtags(Post post, MultipartFile file) {
+        try {
+            List<String> categories = geminiCommunityImageTaggingService.classifyImageCategories(file);
+            if (categories.isEmpty()) {
+                return;
+            }
+
+            String merged = mergeHashtags(post.getHashtags(), categories);
+            if (!Objects.equals(merged, post.getHashtags())) {
+                post.setHashtags(merged);
+                postRepository.save(post);
+            }
+        } catch (Exception ex) {
+            // Keep upload flow non-blocking even if AI tagging fails.
+            System.err.println("Gemini hashtag auto-tagging failed: " + ex.getMessage());
+        }
+    }
+
+    private String mergeHashtags(String existingHashtags, List<String> categories) {
+        Set<String> tags = new LinkedHashSet<>();
+
+        String base = existingHashtags == null ? "" : existingHashtags.trim();
+        if (!base.isBlank()) {
+            for (String token : base.split("\\s+")) {
+                String normalized = normalizeHashtagToken(token);
+                if (!normalized.isBlank()) {
+                    tags.add("#" + normalized);
+                }
+            }
+        }
+
+        for (String category : categories) {
+            String normalized = normalizeHashtagToken(category);
+            if (!normalized.isBlank()) {
+                tags.add("#" + normalized);
+            }
+        }
+
+        return String.join(" ", tags);
+    }
+
+    private String normalizeHashtagToken(String raw) {
+        if (raw == null) {
+            return "";
+        }
+
+        return raw
+                .toLowerCase(Locale.ROOT)
+                .trim()
+                .replace("#", "")
+                .replaceAll("[\\s_\\-]+", "")
+                .replaceAll("[^\\p{L}\\p{Nd}]", "");
     }
     
     private User getCurrentUser() {

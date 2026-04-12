@@ -29,4 +29,7 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     boolean existsByEmailIgnoreCase(String email);
 
     Optional<User> findFirstByUsernameIgnoreCaseOrEmailIgnoreCaseOrderByUserIdAsc(String username, String email);
+
+    @Query("SELECT u FROM User u LEFT JOIN FETCH u.city WHERE u.userId = :userId")
+    Optional<User> findByIdWithCity(@Param("userId") Integer userId);
 }

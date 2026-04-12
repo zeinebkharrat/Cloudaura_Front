@@ -1,10 +1,20 @@
 import { CommonModule, DOCUMENT } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import Swal from 'sweetalert2';
 import { AuthService } from '../core/auth.service';
+import { ChatService } from '../chat/chat.service';
 import { StoryService } from './story.service';
 import { Story, StoryInteractionUser } from './story.types';
+
+interface StorySearchUser {
+  userId: number;
+  username: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  profileImageUrl?: string | null;
+}
 
 @Component({
   selector: 'app-community-stories',
@@ -15,7 +25,9 @@ import { Story, StoryInteractionUser } from './story.types';
 })
 export class CommunityStoriesComponent {
   private readonly storyService = inject(StoryService);
+  private readonly chatService = inject(ChatService);
   private readonly document = inject(DOCUMENT);
+  private readonly router = inject(Router);
   readonly authService = inject(AuthService);
 
   readonly stories = signal<Story[]>([]);
@@ -27,13 +39,75 @@ export class CommunityStoriesComponent {
   readonly insightsLoading = signal<boolean>(false);
   readonly viewers = signal<StoryInteractionUser[]>([]);
   readonly likers = signal<StoryInteractionUser[]>([]);
+  readonly storyReplyText = signal<string>('');
+  readonly sendingReply = signal<boolean>(false);
+  readonly userSearchTerm = signal<string>('');
+  readonly userSearchLoading = signal<boolean>(false);
+  readonly searchedUsers = signal<StorySearchUser[]>([]);
+
+  private userSearchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private userSearchRequestSeq = 0;
 
   ngOnInit(): void {
     this.loadStories();
   }
 
   ngOnDestroy(): void {
+    if (this.userSearchDebounceTimer) {
+      clearTimeout(this.userSearchDebounceTimer);
+      this.userSearchDebounceTimer = null;
+    }
     this.document.body.style.overflow = '';
+  }
+
+  onUserSearchInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const query = (input.value || '').trim();
+    this.userSearchTerm.set(input.value || '');
+
+    if (this.userSearchDebounceTimer) {
+      clearTimeout(this.userSearchDebounceTimer);
+      this.userSearchDebounceTimer = null;
+    }
+
+    if (query.length < 2) {
+      this.userSearchLoading.set(false);
+      this.searchedUsers.set([]);
+      return;
+    }
+
+    const requestId = ++this.userSearchRequestSeq;
+    this.userSearchDebounceTimer = setTimeout(() => {
+      this.runUserSearch(query, requestId);
+    }, 280);
+  }
+
+  openUserProfileFromSearch(userId: number): void {
+    if (!Number.isInteger(userId) || userId <= 0) {
+      return;
+    }
+
+    this.userSearchTerm.set('');
+    this.userSearchLoading.set(false);
+    this.searchedUsers.set([]);
+    this.router.navigate(['/communaute/user', userId]);
+  }
+
+  searchUserDisplayName(user: StorySearchUser): string {
+    const full = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+    return full || user.username || 'User';
+  }
+
+  searchUserAvatarUrl(user: StorySearchUser): string | null {
+    const raw = (user.profileImageUrl || '').trim();
+    if (!raw) return null;
+    if (/^https?:\/\//i.test(raw) || raw.startsWith('/')) return raw;
+    if (raw.startsWith('uploads/')) return `/${raw}`;
+    return `/${raw.replace(/^\/+/, '')}`;
+  }
+
+  trackBySearchedUser(_: number, user: StorySearchUser): number {
+    return user.userId;
   }
 
   async loadStories(): Promise<void> {
@@ -99,6 +173,8 @@ export class CommunityStoriesComponent {
   closeViewer(): void {
     this.viewerOpen.set(false);
     this.closeInsights();
+    this.storyReplyText.set('');
+    this.sendingReply.set(false);
     this.document.body.style.overflow = '';
   }
 
@@ -111,6 +187,7 @@ export class CommunityStoriesComponent {
     const list = this.stories();
     if (list.length === 0) return;
     this.viewerIndex.set((this.viewerIndex() + 1) % list.length);
+    this.storyReplyText.set('');
     await this.markViewedCurrent();
   }
 
@@ -118,7 +195,49 @@ export class CommunityStoriesComponent {
     const list = this.stories();
     if (list.length === 0) return;
     this.viewerIndex.set((this.viewerIndex() - 1 + list.length) % list.length);
+    this.storyReplyText.set('');
     await this.markViewedCurrent();
+  }
+
+  onStoryReplyKeydown(event: KeyboardEvent): void {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      void this.sendStoryReply();
+    }
+  }
+
+  canReplyToActiveStory(): boolean {
+    const story = this.activeStory();
+    const currentUserId = this.authService.currentUser()?.id;
+    return !!story && !!currentUserId && story.authorId !== currentUserId;
+  }
+
+  async sendStoryReply(): Promise<void> {
+    const story = this.activeStory();
+    const senderId = this.authService.currentUser()?.id;
+    const reply = this.storyReplyText().trim();
+
+    if (!story || !senderId || !reply || this.sendingReply()) {
+      return;
+    }
+
+    if (story.authorId === senderId) {
+      return;
+    }
+
+    this.sendingReply.set(true);
+    try {
+      const room = await firstValueFrom(this.chatService.getOrCreateChatRoom(story.authorId));
+      const payload = this.buildStoryReplyPayload(story, reply);
+      await this.chatService.sendMessage(room.chatRoomId, story.authorId, payload);
+      this.storyReplyText.set('');
+      this.chatService.requestOpenBubbleForUser(story.authorId);
+    } catch (error) {
+      console.error('Failed to send story reply:', error);
+      await Swal.fire({ icon: 'error', title: 'Reply failed', text: 'Could not send your story reply.' });
+    } finally {
+      this.sendingReply.set(false);
+    }
   }
 
   async toggleLikeActive(): Promise<void> {
@@ -235,6 +354,46 @@ export class CommunityStoriesComponent {
       return 'none';
     }
     return `url("${mediaUrl}")`;
+  }
+
+  private buildStoryReplyPayload(story: Story, replyText: string): string {
+    const payload = {
+      kind: 'story-reply',
+      storyId: story.storyId,
+      authorId: story.authorId,
+      authorUsername: story.authorUsername,
+      mediaUrl: (story.mediaUrl || '').trim(),
+      mediaType: (story.mediaType || 'IMAGE').toString(),
+      caption: (story.caption || '').trim(),
+      replyText,
+      sentAt: new Date().toISOString(),
+    };
+
+    return `YALLA_STORY_REPLY::${JSON.stringify(payload)}`;
+  }
+
+  private async runUserSearch(query: string, requestId: number): Promise<void> {
+    this.userSearchLoading.set(true);
+    try {
+      const users = await firstValueFrom(this.chatService.searchUsers(query));
+      if (requestId !== this.userSearchRequestSeq) {
+        return;
+      }
+
+      const currentUserId = this.authService.currentUser()?.id;
+      this.searchedUsers.set(
+        (users || []).filter((u) => u?.userId && u.userId !== currentUserId)
+      );
+    } catch (error) {
+      if (requestId === this.userSearchRequestSeq) {
+        this.searchedUsers.set([]);
+      }
+      console.error('Failed to search users from stories:', error);
+    } finally {
+      if (requestId === this.userSearchRequestSeq) {
+        this.userSearchLoading.set(false);
+      }
+    }
   }
 
   interactionAgeLabel(actedAt?: string | null): string {

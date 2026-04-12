@@ -268,7 +268,27 @@
                     ></audio>
                   </div>
                 } @else {
-                  <p class="message-text">{{ msg.content }}</p>
+                  @if (isStoryReplyMessage(msg)) {
+                    @if (storyReply(msg); as storyPayload) {
+                      <div class="story-reply-msg">
+                        <small class="story-reply-head">You replied to their story</small>
+                        <div class="story-reply-card">
+                          <img
+                            *ngIf="storyReplyMediaUrl(msg)"
+                            [src]="storyReplyMediaUrl(msg)"
+                            [alt]="storyPayload.authorUsername || 'Story'"
+                            class="story-reply-thumb"
+                          />
+                          <div class="story-reply-meta">
+                            <span class="story-reply-author">{{ storyPayload.authorUsername || 'Story' }}</span>
+                            <p class="story-reply-text">{{ storyPayload.replyText }}</p>
+                          </div>
+                        </div>
+                      </div>
+                    }
+                  } @else {
+                    <p class="message-text">{{ msg.content }}</p>
+                  }
                 }
                 <span class="message-time">{{ formatMessageTime(msg.sentAt) }}</span>
               </div>
