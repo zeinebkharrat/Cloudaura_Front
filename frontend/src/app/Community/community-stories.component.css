@@ -4,6 +4,122 @@
   padding: 2px 6px 8px;
 }
 
+.stories-search-block {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.stories-search-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  border: 1px solid #d4d2db;
+  border-radius: 999px;
+  background: #fff;
+  padding: 0 14px;
+}
+
+.stories-search-icon {
+  font-size: 0.95rem;
+  opacity: 0.66;
+}
+
+.stories-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.95rem;
+  color: #2f3140;
+}
+
+.stories-search-input::placeholder {
+  color: #8a8793;
+}
+
+.stories-search-results {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  border: 1px solid #d9d7e0;
+  border-radius: 14px;
+  background: #fff;
+  max-height: 280px;
+  overflow: auto;
+  box-shadow: 0 14px 34px rgba(23, 28, 44, 0.14);
+  padding: 4px;
+}
+
+.stories-search-state {
+  margin: 0;
+  color: #6f6d78;
+  font-size: 0.88rem;
+  padding: 11px 12px;
+}
+
+.stories-search-item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.stories-search-item:hover {
+  background: #f4f6fb;
+}
+
+.stories-search-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #dcd9e4;
+  flex-shrink: 0;
+}
+
+.stories-search-avatar--fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e9ecf4;
+  color: #3f4353;
+  font-weight: 700;
+}
+
+.stories-search-user-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.stories-search-user-meta strong,
+.stories-search-user-meta small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stories-search-user-meta strong {
+  color: #23262e;
+  font-size: 0.91rem;
+}
+
+.stories-search-user-meta small {
+  color: #7c7987;
+  font-size: 0.79rem;
+}
+
 .stories-header {
   display: flex;
   justify-content: space-between;
@@ -457,6 +573,23 @@
   white-space: nowrap;
 }
 
+.story-send-btn {
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(45, 112, 255, 0.42);
+  color: #f2f6ff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 10px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.story-send-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .story-insights-panel-backdrop {
   position: absolute;
   inset: 0;
@@ -673,7 +806,8 @@
   }
 
   .story-live-chip,
-  .story-views-chip {
+  .story-views-chip,
+  .story-send-btn {
     font-size: 0.8rem;
     padding: 8px 10px;
   }

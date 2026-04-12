@@ -1,4 +1,41 @@
 <section class="stories-strip">
+  <div class="stories-search-block">
+    <label class="stories-search-input-wrap" aria-label="Search users in community stories">
+      <span class="stories-search-icon">🔎</span>
+      <input
+        type="text"
+        class="stories-search-input"
+        placeholder="Search by full name or nickname"
+        [value]="userSearchTerm()"
+        (input)="onUserSearchInput($event)"
+      />
+    </label>
+
+    <div class="stories-search-results" *ngIf="userSearchTerm().trim().length >= 2">
+      <p class="stories-search-state" *ngIf="userSearchLoading()">Searching users...</p>
+
+      <ng-container *ngIf="!userSearchLoading()">
+        <button
+          type="button"
+          class="stories-search-item"
+          *ngFor="let user of searchedUsers(); trackBy: trackBySearchedUser"
+          (click)="openUserProfileFromSearch(user.userId)"
+        >
+          <img *ngIf="searchUserAvatarUrl(user); else searchUserFallback" [src]="searchUserAvatarUrl(user)!" [alt]="searchUserDisplayName(user)" class="stories-search-avatar" />
+          <ng-template #searchUserFallback>
+            <span class="stories-search-avatar stories-search-avatar--fallback">{{ searchUserDisplayName(user).charAt(0).toUpperCase() }}</span>
+          </ng-template>
+          <span class="stories-search-user-meta">
+            <strong>{{ searchUserDisplayName(user) }}</strong>
+            <small>&#64;{{ user.username }}</small>
+          </span>
+        </button>
+
+        <p class="stories-search-state" *ngIf="searchedUsers().length === 0">No users found</p>
+      </ng-container>
+    </div>
+  </div>
+
   <div class="stories-header">
     <h3>Stories</h3>
     <div class="story-create" *ngIf="authService.isAuthenticated()">
@@ -92,7 +129,27 @@
 
       </div>
 
-      <input type="text" class="story-reply-input" placeholder="Reply..." readonly />
+      <ng-container *ngIf="canReplyToActiveStory()">
+        <input
+          type="text"
+          class="story-reply-input"
+          placeholder="Reply..."
+          [value]="storyReplyText()"
+          (input)="storyReplyText.set($any($event.target).value)"
+          (keydown)="onStoryReplyKeydown($event)"
+          [disabled]="sendingReply()"
+        />
+
+        <button
+          type="button"
+          class="story-send-btn"
+          (click)="sendStoryReply()"
+          [disabled]="sendingReply() || !storyReplyText().trim()"
+          aria-label="Send story reply"
+        >
+          {{ sendingReply() ? '...' : 'Send' }}
+        </button>
+      </ng-container>
 
       <button
         type="button"

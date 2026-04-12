@@ -22,6 +22,18 @@ import {
   TypingEvent,
 } from './chat.types';
 
+interface StoryReplyPayload {
+  kind: string;
+  storyId: number;
+  authorId: number;
+  authorUsername: string;
+  mediaUrl: string;
+  mediaType: string;
+  caption?: string;
+  replyText: string;
+  sentAt?: string;
+}
+
 @Component({
   selector: 'app-chat',
   standalone: true,
@@ -482,6 +494,29 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     return !!msg.voiceUrl || msg.messageType === 'VOICE';
   }
 
+  isStoryReplyMessage(msg: MessageResponse): boolean {
+    return this.parseStoryReply(msg.content) != null;
+  }
+
+  storyReply(msg: MessageResponse): StoryReplyPayload | null {
+    return this.parseStoryReply(msg.content);
+  }
+
+  storyReplyMediaUrl(msg: MessageResponse): string {
+    const parsed = this.parseStoryReply(msg.content);
+    const raw = (parsed?.mediaUrl || '').trim();
+    if (!raw) {
+      return '';
+    }
+    if (/^https?:\/\//i.test(raw) || raw.startsWith('/')) {
+      return raw;
+    }
+    if (raw.startsWith('uploads/')) {
+      return `/${raw}`;
+    }
+    return `/${raw.replace(/^\/+/, '')}`;
+  }
+
   registerVoiceAudio(messageId: number, event: Event): void {
     const audio = event.target as HTMLAudioElement;
     this.audioElements.set(messageId, audio);
@@ -676,5 +711,33 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     const plain = await this.chatService.decryptMessageContent(msg);
     return { ...msg, content: plain };
+  }
+
+  private parseStoryReply(content?: string | null): StoryReplyPayload | null {
+    const text = (content || '').trim();
+    const prefix = 'YALLA_STORY_REPLY::';
+    if (!text.startsWith(prefix)) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(text.slice(prefix.length)) as Partial<StoryReplyPayload>;
+      if (parsed.kind !== 'story-reply' || typeof parsed.replyText !== 'string') {
+        return null;
+      }
+      return {
+        kind: 'story-reply',
+        storyId: Number(parsed.storyId || 0),
+        authorId: Number(parsed.authorId || 0),
+        authorUsername: (parsed.authorUsername || '').toString(),
+        mediaUrl: (parsed.mediaUrl || '').toString(),
+        mediaType: (parsed.mediaType || 'IMAGE').toString(),
+        caption: (parsed.caption || '').toString(),
+        replyText: parsed.replyText,
+        sentAt: parsed.sentAt ? String(parsed.sentAt) : undefined,
+      };
+    } catch {
+      return null;
+    }
   }
 }

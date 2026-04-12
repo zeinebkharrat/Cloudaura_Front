@@ -123,7 +123,26 @@
               </div>
             </ng-container>
             <ng-template #textMessage>
-              <span class="message-text">{{ msg.content }}</span>
+              <ng-container *ngIf="isStoryReplyMessage(msg) && storyReply(msg) as storyPayload; else plainTextMessage">
+                <div class="story-reply-msg">
+                  <small class="story-reply-head">You replied to their story</small>
+                  <div class="story-reply-card">
+                    <img
+                      *ngIf="storyReplyMediaUrl(msg)"
+                      [src]="storyReplyMediaUrl(msg)"
+                      [alt]="storyPayload.authorUsername || 'Story'"
+                      class="story-reply-thumb"
+                    />
+                    <div class="story-reply-meta">
+                      <span class="story-reply-author">{{ storyPayload.authorUsername || 'Story' }}</span>
+                      <p class="story-reply-text">{{ storyPayload.replyText }}</p>
+                    </div>
+                  </div>
+                </div>
+              </ng-container>
+              <ng-template #plainTextMessage>
+                <span class="message-text">{{ msg.content }}</span>
+              </ng-template>
             </ng-template>
             <span class="message-time">{{ formatMessageTime(msg.sentAt) }}</span>
           </div>

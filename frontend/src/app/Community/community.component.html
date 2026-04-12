@@ -1,5 +1,7 @@
 <section class="community-page">
-  <app-community-stories></app-community-stories>
+  <div class="community-main-grid">
+    <div class="community-main-column">
+      <app-community-stories></app-community-stories>
 
   <div class="community-header social-shell">
     <div class="create-post-inline" *ngIf="authService.isAuthenticated()">
@@ -700,5 +702,38 @@
         >Chat</button>
       </div>
     </article>
-  </section>
+    </section>
+    </div>
+
+    <aside class="community-suggestions glass-panel" *ngIf="suggestedUsers().length > 0">
+      <header class="community-suggestions__head">
+        <h3>Suggestions for You</h3>
+      </header>
+
+      <div class="community-suggestions__list">
+        <article class="community-suggestion-item" *ngFor="let user of suggestedUsers(); trackBy: trackByUserRef">
+          <button type="button" class="community-suggestion-user" (click)="goToUserProfile(user.userId)">
+            <div class="avatar community-suggestion-avatar">
+              <img *ngIf="userAvatarUrl(user); else suggestionFallback" [src]="userAvatarUrl(user)!" [alt]="displayName(user)" class="avatar-img" />
+              <ng-template #suggestionFallback>{{ displayName(user).charAt(0).toUpperCase() || 'U' }}</ng-template>
+            </div>
+
+            <span class="community-suggestion-meta">
+              <strong>{{ displayName(user) }}</strong>
+              <small *ngIf="suggestionLocation(user)">{{ suggestionLocation(user) }}</small>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            class="community-suggestion-follow"
+            (click)="toggleFollow(user.userId)"
+            *ngIf="authService.isAuthenticated()"
+          >
+            {{ isFollowing(user.userId) ? 'Following' : '+ Add Friend' }}
+          </button>
+        </article>
+      </div>
+    </aside>
+  </div>
 </section>

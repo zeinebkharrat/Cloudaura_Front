@@ -629,6 +629,56 @@
   white-space: pre-wrap;
 }
 
+.story-reply-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 210px;
+}
+
+.story-reply-head {
+  font-size: 0.72rem;
+  opacity: 0.75;
+}
+
+.story-reply-card {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: rgba(12, 16, 26, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 14px;
+  padding: 8px;
+}
+
+.story-reply-thumb {
+  width: 62px;
+  height: 86px;
+  border-radius: 10px;
+  object-fit: cover;
+  background: rgba(0, 0, 0, 0.25);
+  flex-shrink: 0;
+}
+
+.story-reply-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.story-reply-author {
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.story-reply-text {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
 .message-time {
   display: block;
   font-size: 0.7rem;
