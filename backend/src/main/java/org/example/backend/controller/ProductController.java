@@ -15,6 +15,7 @@ import org.example.backend.model.Product;
 import org.example.backend.service.ProductService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,20 +24,24 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.core.Authentication;
+import org.example.backend.service.ImageDescriptionService;
 
 @RestController
 @RequestMapping("/api/products")
 public class ProductController {
     private final ProductService productService;
+    private final ImageDescriptionService imageDescriptionService;
+
     @Value("${app.upload.dir:uploads}")
     private String uploadDir;
 
-    public ProductController(ProductService productService) {
+    public ProductController(ProductService productService, ImageDescriptionService imageDescriptionService) {
         this.productService = productService;
+        this.imageDescriptionService = imageDescriptionService;
     }
 
     @PostMapping({"/upload-image", "/upload-image/"})
@@ -59,6 +64,41 @@ public class ProductController {
             return ResponseEntity.ok(Map.of("imageUrl", "/uploads/products/" + fileName));
         } catch (Exception ex) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @PostMapping(path = "/describe-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, String>> describeImage(@RequestParam("file") MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        try {
+            String description = imageDescriptionService.describeImage(file);
+            return ResponseEntity.ok(Map.of("description", description));
+        } catch (Exception ex) {
+            String message = ex.getMessage() != null ? ex.getMessage() : "Could not describe image.";
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", message));
+        }
+    }
+
+    @PostMapping(path = "/describe-image/local")
+    public ResponseEntity<Map<String, String>> describeLocalImage(@RequestParam("filename") String filename) {
+        if (filename == null || filename.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Filename is required."));
+        }
+        try {
+            Path filePath = Paths.get(uploadDir, "products", filename).toAbsolutePath().normalize();
+            Path baseDir = Paths.get(uploadDir, "products").toAbsolutePath().normalize();
+            if (!filePath.startsWith(baseDir) || !Files.exists(filePath) || !Files.isRegularFile(filePath)) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Local image not found."));
+            }
+            String description = imageDescriptionService.describeImageFromLocalPath(filePath);
+            return ResponseEntity.ok(Map.of("description", description));
+        } catch (Exception ex) {
+            String message = ex.getMessage() != null ? ex.getMessage() : "Could not describe local image.";
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", message));
         }
     }
 

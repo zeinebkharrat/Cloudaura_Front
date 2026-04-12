@@ -423,9 +423,10 @@ export class TransportResultsPageComponent implements OnInit {
     return map[type] ?? '';
   }
 
-  getTypeSeverity(type: string): 'success' | 'info' | 'warning' | 'danger' | undefined {
-    const map: Record<string, 'success' | 'info' | 'warning' | 'danger'> = {
-      BUS: 'success', VAN: 'info', TAXI: 'warning', PLANE: 'danger', CAR: 'info'
+  // FIX: PrimeNG v18 renamed 'warning' severity to 'warn'
+  getTypeSeverity(type: string): 'success' | 'info' | 'warn' | 'danger' | undefined {
+    const map: Record<string, 'success' | 'info' | 'warn' | 'danger'> = {
+      BUS: 'success', VAN: 'info', TAXI: 'warn', PLANE: 'danger', CAR: 'info'
     };
     return map[type];
   }

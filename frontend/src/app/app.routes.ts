@@ -334,32 +334,6 @@ export const routes: Routes = [
       catalog: 'products',
       description:
         'Spotlight artisans and their work: digital storefront, checkout with secure payment (Stripe or mock), and positive impact on the local economy.',
-      blocks: [
-        {
-          icon: '👤',
-          title: 'Tunisian artisans',
-          items: [
-            'Profiles with specialties, location, and contact options.',
-            'Workshop story and craft know-how.',
-          ],
-        },
-        {
-          icon: '🛒',
-          title: 'Catalog & souvenirs',
-          items: [
-            'Handmade products, crafts, and souvenirs.',
-            'Checkout flow with Stripe checkout and mock payment for local testing.',
-          ],
-        },
-        {
-          icon: '🌿',
-          title: 'Promotion & impact',
-          items: [
-            'Highlighting unique products and short supply chains.',
-            'Support for local entrepreneurship and sustainable tourism.',
-          ],
-        },
-      ],
     },
   },
   {
