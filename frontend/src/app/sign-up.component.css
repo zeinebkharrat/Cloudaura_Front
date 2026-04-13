@@ -4,7 +4,8 @@
   place-items: center;
   padding: 140px 20px 60px;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
+  background: transparent;
 }
 
 .auth-page.auth-page--embedded {
@@ -55,14 +56,7 @@
 }
 
 .auth-bg-orb {
-  position: absolute;
-  width: 420px;
-  height: 420px;
-  border-radius: 50%;
-  filter: blur(90px);
-  opacity: 0.35;
-  pointer-events: none;
-  animation: floatOrb 10s ease-in-out infinite;
+  display: none;
 }
 
 .auth-bg-orb-left {
@@ -87,6 +81,8 @@
   -webkit-backdrop-filter: blur(18px);
   padding: 34px;
   box-shadow: 0 24px 50px rgba(0, 0, 0, 0.28);
+  position: relative;
+  z-index: 1;
 }
 
 .auth-hero-visual {
@@ -332,10 +328,12 @@ select option {
 .upload-block-top {
   border-style: solid;
   background:
-    linear-gradient(120deg, rgba(248, 250, 252, 0.42), rgba(255, 255, 255, 0.24)),
-    url('/assets/banner.png') center / cover no-repeat;
-  border-color: rgba(255, 255, 255, 0.52);
-  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.2);
+    linear-gradient(120deg, rgba(255, 255, 255, 0.94), rgba(248, 250, 252, 0.88)) padding-box,
+    linear-gradient(135deg, rgba(14, 165, 233, 0.45), rgba(59, 130, 246, 0.44), rgba(239, 68, 68, 0.42)) border-box;
+  background-size: 100% 100%, 300% 300%;
+  animation: profileRibbon 10s ease-in-out infinite;
+  border-color: transparent;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.16);
   position: relative;
   overflow: hidden;
 }
@@ -344,17 +342,20 @@ select option {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(105deg, rgba(15, 23, 42, 0.16), rgba(15, 23, 42, 0.04) 56%, rgba(255, 255, 255, 0.05));
+  background:
+    radial-gradient(650px 150px at -10% 5%, rgba(14, 165, 233, 0.16), transparent 55%),
+    radial-gradient(520px 160px at 100% 100%, rgba(239, 68, 68, 0.14), transparent 60%);
   pointer-events: none;
 }
 
 .upload-block-top::after {
   content: '';
   position: absolute;
-  inset: -40% auto auto -30%;
-  width: 260px;
-  height: 260px;
-  background: radial-gradient(circle, rgba(255, 255, 255, 0.36), transparent 70%);
+  inset: auto -18% -60% auto;
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.03) 70%, transparent 74%);
+  animation: glowDrift 7s ease-in-out infinite;
   pointer-events: none;
 }
 
@@ -744,9 +745,11 @@ select option {
 
 :root[data-theme="dark"] .upload-block-top {
   background:
-    linear-gradient(125deg, rgba(15, 23, 42, 0.42), rgba(30, 41, 59, 0.3)),
-    url('/assets/banner.png') center / cover no-repeat;
-  border-color: rgba(148, 163, 184, 0.5);
+    linear-gradient(120deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.82)) padding-box,
+    linear-gradient(135deg, rgba(14, 165, 233, 0.5), rgba(59, 130, 246, 0.46), rgba(239, 68, 68, 0.44)) border-box;
+  background-size: 100% 100%, 300% 300%;
+  animation: profileRibbon 10s ease-in-out infinite;
+  border-color: transparent;
 }
 
 :root[data-theme="dark"] .upload-block-top::before {
@@ -837,6 +840,32 @@ select option {
 @keyframes floatOrb {
   0%, 100% { transform: translateY(0) scale(1); }
   50% { transform: translateY(-16px) scale(1.02); }
+}
+
+@keyframes gradientPulse {
+  0%, 100% { background-position: 0% 0%, 0% 40%; }
+  50% { background-position: 0% 0%, 100% 60%; }
+}
+
+@keyframes hueFlow {
+  0% { transform: rotate(0deg) scale(1.02); }
+  50% { transform: rotate(180deg) scale(1.06); }
+  100% { transform: rotate(360deg) scale(1.02); }
+}
+
+@keyframes patternShift {
+  0%, 100% { transform: translate3d(0, 0, 0); opacity: 0.8; }
+  50% { transform: translate3d(2%, -1%, 0); opacity: 0.95; }
+}
+
+@keyframes profileRibbon {
+  0%, 100% { background-position: 100% 100%, 0% 50%; }
+  50% { background-position: 100% 100%, 100% 50%; }
+}
+
+@keyframes glowDrift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.7; }
+  50% { transform: translate3d(-8%, -6%, 0) scale(1.08); opacity: 0.92; }
 }
 
 @media (max-width: 720px) {

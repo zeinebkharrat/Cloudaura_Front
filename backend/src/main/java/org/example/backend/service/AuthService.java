@@ -172,6 +172,7 @@ public class AuthService {
                     savedUser.getUsername(),
                     savedUser.getPhone(),
                     savedUser.getNationality(),
+                    savedUser.getGender(),
                     verificationLink);
         } catch (MailException ex) {
             return new AuthMessageResponse(
@@ -369,6 +370,7 @@ public class AuthService {
                                 user.getUsername(),
                                 user.getPhone(),
                                 user.getNationality(),
+                            user.getGender(),
                                 verificationLink);
                     } catch (MailException ex) {
                         throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Email service unavailable. Check SMTP credentials.");
