@@ -117,15 +117,31 @@
         }
       </div>
 
-      <div class="grid-two">
-        <label>
-          Gender
-          <select formControlName="gender">
-            <option value="">Select gender</option>
-            <option value="FEMALE">Female</option>
-            <option value="MALE">Male</option>
-          </select>
-        </label>
+      <div class="grid-two gender-date-grid">
+        <div class="gender-picker">
+          <span class="gender-picker-title">Gender</span>
+          <div class="gender-cards" role="radiogroup" aria-label="Gender selection">
+            <button
+              type="button"
+              class="gender-card"
+              [class.gender-card-selected]="form.controls.gender.value === 'FEMALE'"
+              (click)="form.controls.gender.setValue('FEMALE')"
+            >
+              <img src="assets/female.png" alt="Female" />
+              <span>Female</span>
+            </button>
+
+            <button
+              type="button"
+              class="gender-card"
+              [class.gender-card-selected]="form.controls.gender.value === 'MALE'"
+              (click)="form.controls.gender.setValue('MALE')"
+            >
+              <img src="assets/male.png" alt="Male" />
+              <span>Male</span>
+            </button>
+          </div>
+        </div>
 
         <label>
           Date of birth
