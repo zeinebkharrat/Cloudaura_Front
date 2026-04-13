@@ -149,6 +149,12 @@ public class AuthService {
         user.setAuthProvider("LOCAL");
         user.setProfileImageUrl(request.profileImageUrl() != null ? request.profileImageUrl().trim() : null);
         user.setNationality(request.nationality() != null ? request.nationality().trim() : null);
+        user.setGender(request.gender());
+        user.setDateOfBirth(request.dateOfBirth());
+        if (becomeArtisant && !isTunisiaNationality(user.getNationality())) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                "Artisan request is available only for Tunisian nationality");
+        }
         user.setCity(resolveCityForNationality(user.getNationality(), request.cityId()));
         user.setEmailVerified(false);
         user.setFailedLoginAttempts(0);
@@ -733,6 +739,8 @@ public class AuthService {
                 user.getLastName(),
                 user.getPhone(),
                 user.getNationality(),
+                user.getGender(),
+                user.getDateOfBirth(),
                 user.getCity() != null ? user.getCity().getCityId().intValue() : null,
                 user.getCity() != null ? user.getCity().getName() : null,
                 roles,

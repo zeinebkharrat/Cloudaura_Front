@@ -13,9 +13,13 @@ import org.example.backend.repository.BanRepository;
 import org.example.backend.repository.CityRepository;
 import org.example.backend.repository.RoleRepository;
 import org.example.backend.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.mail.MailException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -29,25 +33,30 @@ import java.util.stream.Collectors;
 @Service
 public class AdminUserService {
 
+    private static final Logger log = LoggerFactory.getLogger(AdminUserService.class);
+
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final BanRepository banRepository;
     private final CityRepository cityRepository;
     private final AuditService auditService;
     private final EmailService emailService;
+    private final JdbcTemplate jdbcTemplate;
 
     public AdminUserService(UserRepository userRepository,
                             RoleRepository roleRepository,
                             BanRepository banRepository,
                             CityRepository cityRepository,
                             AuditService auditService,
-                            EmailService emailService) {
+                            EmailService emailService,
+                            JdbcTemplate jdbcTemplate) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.banRepository = banRepository;
         this.cityRepository = cityRepository;
         this.auditService = auditService;
         this.emailService = emailService;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Transactional(readOnly = true)
@@ -145,7 +154,59 @@ public class AdminUserService {
         if (!userRepository.existsById(userId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
         }
-        userRepository.deleteById(userId);
+
+        try {
+            deleteUserWithFkCleanup(userId, false);
+        } catch (DataIntegrityViolationException firstFailure) {
+            log.warn("Standard delete for user {} failed due to FK constraints, retrying with FK checks temporarily disabled", userId);
+            deleteUserWithFkCleanup(userId, true);
+        }
+    }
+
+    private void deleteUserWithFkCleanup(Integer userId, boolean disableFkChecks) {
+        if (disableFkChecks) {
+            jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 0");
+        }
+
+        try {
+            deleteRowsReferencingUser(userId);
+            userRepository.deleteById(userId);
+            userRepository.flush();
+        } finally {
+            if (disableFkChecks) {
+                jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 1");
+            }
+        }
+    }
+
+    private void deleteRowsReferencingUser(Integer userId) {
+        String sql = """
+                SELECT TABLE_NAME, COLUMN_NAME
+                FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND REFERENCED_TABLE_NAME = 'users'
+                  AND REFERENCED_COLUMN_NAME = 'user_id'
+                """;
+
+        List<Map<String, Object>> refs = jdbcTemplate.queryForList(sql);
+        for (Map<String, Object> ref : refs) {
+            String tableName = String.valueOf(ref.get("TABLE_NAME"));
+            String columnName = String.valueOf(ref.get("COLUMN_NAME"));
+
+            if (!isSafeSqlIdentifier(tableName) || !isSafeSqlIdentifier(columnName)) {
+                continue;
+            }
+            if ("users".equalsIgnoreCase(tableName)) {
+                continue;
+            }
+
+            String deleteSql = "DELETE FROM `" + tableName + "` WHERE `" + columnName + "` = ?";
+            jdbcTemplate.update(deleteSql, userId);
+        }
+    }
+
+    private boolean isSafeSqlIdentifier(String value) {
+        return value != null && value.matches("[A-Za-z0-9_]+$");
     }
 
     @Transactional

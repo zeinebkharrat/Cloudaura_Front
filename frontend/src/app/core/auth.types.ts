@@ -6,6 +6,8 @@ export interface UserProfile {
   lastName: string;
   phone?: string | null;
   nationality?: string | null;
+  gender?: 'MALE' | 'FEMALE' | null;
+  dateOfBirth?: string | null;
   cityId?: number | null;
   cityName?: string | null;
   roles: string[];
@@ -40,6 +42,8 @@ export interface SignUpPayload {
   lastName: string;
   becomeArtisan: boolean;
   nationality?: string | null;
+  gender?: 'MALE' | 'FEMALE' | null;
+  dateOfBirth?: string | null;
   cityId?: number | null;
   profileImageUrl?: string | null;
   captchaToken?: string | null;

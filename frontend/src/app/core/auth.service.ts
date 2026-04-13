@@ -40,12 +40,7 @@ export class AuthService {
   readonly isAuthenticated = signal(false);
 
   readonly isAdmin = computed(() => this.hasRole('ROLE_ADMIN'));
-  readonly isArtisan = computed(() => {
-    const user = this.currentUser();
-    const hasRole = this.hasRole('ROLE_ARTISAN');
-    const hasPendingRequest = user?.artisanRequestPending === true;
-    return hasRole || hasPendingRequest;
-  });
+  readonly isArtisan = computed(() => this.hasRole('ROLE_ARTISAN'));
 
   signin(payload: SignInPayload) {
     return this.http.post<AuthResponse>(`${this.apiBase}/auth/signin`, payload).pipe(

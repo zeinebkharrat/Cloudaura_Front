@@ -129,8 +129,7 @@ export class FeaturePageComponent implements OnInit {
   });
 
   readonly isArtisan = computed(() => {
-    const user = this.auth.currentUser();
-    return this.auth.hasRole('ROLE_ARTISAN') || (user?.artisanRequestPending === true);
+    return this.auth.hasRole('ROLE_ARTISAN');
   });
 
   readonly showProductForm = signal(false);

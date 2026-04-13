@@ -117,6 +117,22 @@
         }
       </div>
 
+      <div class="grid-two">
+        <label>
+          Gender
+          <select formControlName="gender">
+            <option value="">Select gender</option>
+            <option value="FEMALE">Female</option>
+            <option value="MALE">Male</option>
+          </select>
+        </label>
+
+        <label>
+          Date of birth
+          <input type="date" formControlName="dateOfBirth" [max]="maxBirthDate" />
+        </label>
+      </div>
+
       <label>
         Password
         <input type="password" formControlName="password" placeholder="At least 8 characters" autocomplete="new-password" [class.input-invalid]="controlInvalid('password')" />
@@ -167,10 +183,13 @@
 
       <div class="artisan-box">
         <label class="artisan-check">
-          <input type="checkbox" id="becomeArtisan" formControlName="becomeArtisan" />
+          <input type="checkbox" id="becomeArtisan" formControlName="becomeArtisan" [disabled]="!canRequestArtisan()" />
           <span class="checkbox-box"></span>
           <span>I am a craftsperson and I want to sell my products</span>
         </label>
+        @if (!canRequestArtisan()) {
+          <p class="artisan-note">Only users with Tunisian nationality can request artisan status.</p>
+        }
         @if (form.controls.becomeArtisan.value) {
           <p>Your artisan request will be reviewed by an administrator before the role is activated.</p>
         }
