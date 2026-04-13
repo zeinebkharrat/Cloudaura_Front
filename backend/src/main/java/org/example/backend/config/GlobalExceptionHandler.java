@@ -6,6 +6,7 @@ import org.example.backend.exception.*;
 import org.example.backend.exception.InvalidTransportException;
 import org.example.backend.exception.VehicleConflictException;
 import org.example.backend.exception.DriverConflictException;
+import org.apache.catalina.connector.ClientAbortException;
 import org.springframework.http.MediaType;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -13,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
@@ -122,6 +124,13 @@ public class GlobalExceptionHandler {
         return json(HttpStatus.BAD_REQUEST, ApiResponse.error("Invalid request payload", "BAD_REQUEST"));
     }
 
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
+        String message = ex.getMessage() != null ? ex.getMessage() : "Request method is not supported";
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+                .body(ApiResponse.error(message, "METHOD_NOT_ALLOWED"));
+    }
+
     @ExceptionHandler(InvalidTransportException.class)
     public ResponseEntity<ApiResponse<Void>> handleInvalidTransport(InvalidTransportException ex) {
         return json(HttpStatus.UNPROCESSABLE_ENTITY, ApiResponse.error(ex.getMessage(), ex.getErrorCode()));
@@ -164,12 +173,18 @@ public class GlobalExceptionHandler {
     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 
+    @ExceptionHandler(ClientAbortException.class)
+    public ResponseEntity<Void> handleClientAbort(ClientAbortException ex) {
+        log.debug("Client aborted response stream: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleUnhandled(Exception ex) {
         log.error("Unhandled server error", ex);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.error(
-                        "An unexpected error occurred. Please try again later.",
-                        "INTERNAL_SERVER_ERROR"));
+        return json(HttpStatus.INTERNAL_SERVER_ERROR,
+                ApiResponse.error(
+                    "An unexpected error occurred. Please try again later.",
+                    "INTERNAL_SERVER_ERROR"));
     }
 }

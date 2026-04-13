@@ -1,7 +1,9 @@
 import { inject, Injectable, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { catchError, map, of, tap } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ChatE2eeService } from '../chat/chat-e2ee.service';
+import { isBackendLoginRedirectError } from '../api-error.util';
 import {
   AuthMessageResponse,
   AuthResponse,
@@ -11,9 +13,11 @@ import {
   ProfileUpdatePayload,
   ResendVerificationPayload,
   ResetPasswordPayload,
+  RevokeOtherSessionsResponse,
   SignInPayload,
   SignUpPayload,
   SocialProviders,
+  UserDeviceSession,
   UserProfile,
   CaptchaConfig,
 } from './auth.types';
@@ -36,12 +40,7 @@ export class AuthService {
   readonly isAuthenticated = signal(false);
 
   readonly isAdmin = computed(() => this.hasRole('ROLE_ADMIN'));
-  readonly isArtisan = computed(() => {
-    const user = this.currentUser();
-    const hasRole = this.hasRole('ROLE_ARTISAN');
-    const hasPendingRequest = user?.artisanRequestPending === true;
-    return hasRole || hasPendingRequest;
-  });
+  readonly isArtisan = computed(() => this.hasRole('ROLE_ARTISAN'));
 
   signin(payload: SignInPayload) {
     return this.http.post<AuthResponse>(`${this.apiBase}/auth/signin`, payload).pipe(
@@ -131,6 +130,18 @@ export class AuthService {
     return this.http.patch<void>(`${this.apiBase}/profile/password`, payload);
   }
 
+  getDeviceSessions() {
+    return this.http.get<UserDeviceSession[]>(`${this.apiBase}/profile/sessions`);
+  }
+
+  revokeDeviceSession(sessionId: string) {
+    return this.http.delete<void>(`${this.apiBase}/profile/sessions/${encodeURIComponent(sessionId)}`);
+  }
+
+  revokeOtherDeviceSessions() {
+    return this.http.delete<RevokeOtherSessionsResponse>(`${this.apiBase}/profile/sessions/revoke-others`);
+  }
+
   uploadProfileImage(file: File) {
     const body = new FormData();
     body.append('file', file);
@@ -192,6 +203,7 @@ export class AuthService {
   fetchMe() {
     return this.http.get<UserProfile>(`${this.apiBase}/auth/me`).pipe(
       tap((user) => {
+        this.isAuthenticated.set(true);
         this.currentUser.set(user);
         localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
         this.bootstrapE2eeForUser(user.id);
@@ -209,7 +221,7 @@ export class AuthService {
     }
 
     this.token.set(savedToken);
-    this.isAuthenticated.set(true);
+    this.isAuthenticated.set(false);
 
     if (savedUser) {
       this.currentUser.set(JSON.parse(savedUser) as UserProfile);
@@ -252,6 +264,10 @@ export class AuthService {
     }
 
     this.e2ee.ensureKeyPairReady(userId).catch((err) => {
+      const httpError = err as HttpErrorResponse;
+      if (httpError?.status === 401 || isBackendLoginRedirectError(httpError)) {
+        return;
+      }
       console.error('Failed to bootstrap E2EE keys:', err);
     });
   }

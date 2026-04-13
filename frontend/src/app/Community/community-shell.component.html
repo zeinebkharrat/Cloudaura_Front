@@ -31,6 +31,15 @@
       </a>
 
       <a
+        routerLink="/communaute/digital-passport"
+        routerLinkActive="community-nav-link--active"
+        class="community-nav-link"
+        *ngIf="authService.isAuthenticated()"
+      >
+        Digital Passport
+      </a>
+
+      <a
         routerLink="/communaute/chat"
         routerLinkActive="community-nav-link--active"
         class="community-nav-link"

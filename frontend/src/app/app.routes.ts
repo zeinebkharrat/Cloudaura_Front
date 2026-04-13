@@ -5,6 +5,7 @@ import { VirtualTourPageComponent } from './virtual-tour-page.component';
 import { FeaturePageComponent } from './feature-page.component';
 import { CommunityComponent } from './Community/community.component';
 import { MyPostsComponent } from './Community/my-posts.component';
+import { DigitalPassportComponent } from './Community/digital-passport.component';
 import { UserProfileComponent } from './Community/user-profile.component';
 import { FollowListComponent } from './Community/follow-list.component';
 import { SignInComponent } from './sign-in.component';
@@ -41,6 +42,7 @@ import { CommunityShellComponent } from './Community/community-shell.component';
 import { AdminGamesComponent } from './admin/games/admin-games.component';
 import { AdminGamificationComponent } from './admin/gamification/admin-gamification.component';
 import { AdminTicketsComponent } from './admin/tickets/admin-tickets.component';
+import { AdminProfileComponent } from './admin/profile/admin-profile.component';
 import { UserGamesComponent } from './games/user-games.component';
 import { QuizPlayerComponent } from './games/quiz-player.component';
 import { CrosswordPlayerComponent } from './games/crossword-player.component';
@@ -51,6 +53,7 @@ import { ServicesActivitiesComponent } from './explore/services-activities.compo
 import { MockPaymentComponent } from './shop/mock-payment/mock-payment.component';
 import { ArtisanOrdersComponent } from './artisan/artisan-orders.component';
 import { FavoritesComponent } from './shop/favorites.component';
+import { SettingsComponent } from './settings.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -124,6 +127,7 @@ export const routes: Routes = [
       { path: 'posts', component: AdminPostsComponent },
       { path: 'orders', component: OrdersAdminComponent },
       { path: 'products', component: ProductsAdminComponent },
+      { path: 'profile', component: AdminProfileComponent },
       { path: 'activity-reservations', component: AdminActivityReservationsComponent },
       {
         path: 'accommodations',
@@ -145,6 +149,7 @@ export const routes: Routes = [
     ],
   },
   { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },
+  { path: 'settings', component: SettingsComponent, canActivate: [authGuard] },
   {
     path: 'mes-reservations',
     component: MesReservationsComponent,
@@ -330,32 +335,6 @@ export const routes: Routes = [
       catalog: 'products',
       description:
         'Spotlight artisans and their work: digital storefront, checkout with secure payment (Stripe or mock), and positive impact on the local economy.',
-      blocks: [
-        {
-          icon: '👤',
-          title: 'Tunisian artisans',
-          items: [
-            'Profiles with specialties, location, and contact options.',
-            'Workshop story and craft know-how.',
-          ],
-        },
-        {
-          icon: '🛒',
-          title: 'Catalog & souvenirs',
-          items: [
-            'Handmade products, crafts, and souvenirs.',
-            'Checkout flow with Stripe checkout and mock payment for local testing.',
-          ],
-        },
-        {
-          icon: '🌿',
-          title: 'Promotion & impact',
-          items: [
-            'Highlighting unique products and short supply chains.',
-            'Support for local entrepreneurship and sustainable tourism.',
-          ],
-        },
-      ],
     },
   },
   {
@@ -442,6 +421,11 @@ export const routes: Routes = [
       {
         path: 'my-posts',
         component: MyPostsComponent,
+        canActivate: [authGuard],
+      },
+      {
+        path: 'digital-passport',
+        component: DigitalPassportComponent,
         canActivate: [authGuard],
       },
       {

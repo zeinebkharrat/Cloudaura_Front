@@ -467,26 +467,26 @@ th {
   position: fixed;
   inset: 0;
   z-index: 10050;
-  padding: max(24px, env(safe-area-inset-top)) 20px max(24px, env(safe-area-inset-bottom));
+  overflow: auto;
   box-sizing: border-box;
 }
 
 .fp-modal-overlay {
-  position: absolute;
+  position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.72);
   backdrop-filter: blur(6px);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 24px 16px;
+  padding: 40px 16px 24px;
   box-sizing: border-box;
 }
 
 .fp-modal-card {
+  margin-top: 0;
   position: relative;
   border-radius: 28px;
-  margin: auto;
   width: 100%;
   max-width: 720px;
   max-height: min(92vh, 900px);

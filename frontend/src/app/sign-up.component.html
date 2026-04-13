@@ -3,6 +3,8 @@
   <div class="auth-bg-orb auth-bg-orb-right"></div>
 
   <article class="auth-card auth-card-entrance animate-in">
+    
+
     <p class="auth-kicker">YallaTN+ · Traveller access</p>
     <h1>Create an account</h1>
     <p class="auth-subtitle">Join the YallaTN+ community to plan your adventures in Tunisia.</p>
@@ -19,8 +21,14 @@
             }
           </div>
           <div class="upload-actions">
-            <label class="upload-btn" for="signup-upload">{{ isUploadingImage() ? 'Upload...' : 'Upload a photo' }}</label>
+            <div class="upload-actions-row">
+              <label class="upload-btn" for="signup-upload">{{ isUploadingImage() ? 'Upload...' : (uploadedImageUrl() ? 'Modify profile picture' : 'Upload a photo') }}</label>
+              <button class="camera-btn" type="button" (click)="toggleCameraPanel()" [disabled]="isUploadingImage() || cameraBusy()">
+                {{ showCameraPanel() ? 'Close camera' : 'Open camera' }}
+              </button>
+            </div>
             <input id="signup-upload" type="file" accept="image/*" (change)="onImageSelected($event)" [disabled]="isUploadingImage()" />
+
             @if (isUploadingImage()) {
               <p class="upload-state">Uploading…</p>
             } @else if (uploadedImageUrl()) {
@@ -101,9 +109,50 @@
         }
       </div>
 
+      <div class="grid-two gender-date-grid">
+        <div class="gender-picker">
+          <span class="gender-picker-title">Gender</span>
+          <div class="gender-cards" role="radiogroup" aria-label="Gender selection">
+            <button
+              type="button"
+              class="gender-card"
+              [class.gender-card-selected]="form.controls.gender.value === 'FEMALE'"
+              (click)="form.controls.gender.setValue('FEMALE')"
+            >
+              <img src="assets/female.png" alt="Female" />
+              <span>Female</span>
+            </button>
+
+            <button
+              type="button"
+              class="gender-card"
+              [class.gender-card-selected]="form.controls.gender.value === 'MALE'"
+              (click)="form.controls.gender.setValue('MALE')"
+            >
+              <img src="assets/male.png" alt="Male" />
+              <span>Male</span>
+            </button>
+          </div>
+        </div>
+
+        <label>
+          Date of birth
+          <input type="date" formControlName="dateOfBirth" [max]="maxBirthDate" />
+        </label>
+      </div>
+
       <label>
         Password
         <input type="password" formControlName="password" placeholder="At least 8 characters" autocomplete="new-password" [class.input-invalid]="controlInvalid('password')" />
+        <div class="password-strength-card" role="status" aria-live="polite">
+          <div class="password-strength-head">
+            <span>Password strength</span>
+            <strong [style.color]="passwordStrengthTone()">{{ passwordStrengthLabel() }}</strong>
+          </div>
+          <div class="password-strength-track">
+            <span class="password-strength-fill" [style.width.%]="passwordStrengthPercent()" [style.background]="passwordStrengthTone()"></span>
+          </div>
+        </div>
         @if (controlInvalid('password')) {
           <small class="field-error">Password is required (min. 8 characters).</small>
         }
@@ -112,6 +161,9 @@
       <label>
         Confirm password
         <input type="password" formControlName="confirmPassword" placeholder="Confirm your password" autocomplete="new-password" [class.input-invalid]="controlInvalid('confirmPassword') || (form.hasError('passwordMismatch') && form.controls.confirmPassword.touched)" />
+        <small class="password-match-hint" [class.password-match-ok]="passwordMatchOk()" [class.password-match-ko]="!passwordMatchOk() && form.controls.confirmPassword.value">
+          {{ passwordMatchHint() }}
+        </small>
         @if (controlInvalid('confirmPassword')) {
           <small class="field-error">Please confirm your password.</small>
         }
@@ -139,10 +191,13 @@
 
       <div class="artisan-box">
         <label class="artisan-check">
-          <input type="checkbox" id="becomeArtisan" formControlName="becomeArtisan" />
+          <input type="checkbox" id="becomeArtisan" formControlName="becomeArtisan" [disabled]="!canRequestArtisan()" />
           <span class="checkbox-box"></span>
           <span>I am a craftsperson and I want to sell my products</span>
         </label>
+        @if (!canRequestArtisan()) {
+          <p class="artisan-note">Only users with Tunisian nationality can request artisan status.</p>
+        }
         @if (form.controls.becomeArtisan.value) {
           <p>Your artisan request will be reviewed by an administrator before the role is activated.</p>
         }
@@ -179,4 +234,34 @@
       </p>
     }
   </article>
+
+  @if (showCameraPanel()) {
+    <div class="camera-modal-backdrop" (click)="toggleCameraPanel()">
+      <div class="camera-modal" (click)="$event.stopPropagation()">
+        <button class="camera-close-btn" type="button" (click)="toggleCameraPanel()" aria-label="Close camera">✕</button>
+        <div class="camera-panel">
+          <div class="camera-cadre">
+            <div class="camera-frame" [class.camera-frame-ready]="cameraReady()">
+              <video #cameraVideo playsinline autoplay muted></video>
+              @if (!cameraReady()) {
+                <div class="camera-overlay">Starting camera...</div>
+              }
+            </div>
+          </div>
+
+          <div class="camera-actions">
+            <button class="btn-outline" type="button" (click)="startCamera()" [disabled]="cameraBusy() || isUploadingImage()">Restart</button>
+            <button class="camera-capture-btn" type="button" (click)="captureFromCamera()" [disabled]="!cameraReady() || cameraBusy() || isUploadingImage()">
+              {{ isUploadingImage() ? 'Saving...' : 'Capture photo' }}
+            </button>
+          </div>
+
+          @if (cameraError()) {
+            <small class="field-error camera-error">{{ cameraError() }}</small>
+          }
+        </div>
+        <canvas #cameraCanvas class="camera-canvas-hidden"></canvas>
+      </div>
+    </div>
+  }
 </section>

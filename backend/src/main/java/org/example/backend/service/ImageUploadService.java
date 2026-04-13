@@ -2,6 +2,8 @@ package org.example.backend.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -26,6 +28,7 @@ import java.util.UUID;
 public class ImageUploadService {
 
     private static final String IMGBB_ENDPOINT = "https://api.imgbb.com/1/upload";
+    private static final Logger log = LoggerFactory.getLogger(ImageUploadService.class);
 
     private final HttpClient httpClient = HttpClient.newHttpClient();
     private final ObjectMapper objectMapper;
@@ -47,9 +50,6 @@ public class ImageUploadService {
         if (file == null || file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image file is required");
         }
-        if (apiKey == null || apiKey.isBlank()) {
-            return saveImageLocally(file);
-        }
         if (file.getSize() > maxImageBytes) {
             throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Image exceeds allowed size");
         }
@@ -57,6 +57,20 @@ public class ImageUploadService {
         if (contentType == null || !contentType.toLowerCase().startsWith("image/")) {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "Only image files are accepted");
         }
+
+        if (apiKey == null || apiKey.isBlank()) {
+            return saveImageLocally(file);
+        }
+
+        try {
+            return uploadToImgBb(file);
+        } catch (ResponseStatusException ex) {
+            log.warn("ImgBB upload failed, falling back to local storage: {}", ex.getReason());
+            return saveImageLocally(file);
+        }
+    }
+
+    private String uploadToImgBb(MultipartFile file) {
 
         try {
             String base64Image = Base64.getEncoder().encodeToString(file.getBytes());

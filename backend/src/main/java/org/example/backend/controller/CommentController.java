@@ -2,6 +2,7 @@ package org.example.backend.controller;
 
 import org.example.backend.model.Comment;
 import org.example.backend.model.User;
+import org.example.backend.repository.UserRepository;
 import org.example.backend.service.ICommentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -20,6 +21,9 @@ public class CommentController {
 
     @Autowired
     ICommentService commentService;
+
+    @Autowired
+    UserRepository userRepository;
 
     @GetMapping("/allComments")
     public List<Comment> getAllComments() {
@@ -99,6 +103,13 @@ public class CommentController {
         Object principal = authentication.getPrincipal();
         if (principal instanceof org.example.backend.service.CustomUserDetailsService.CustomUserDetails) {
             return ((org.example.backend.service.CustomUserDetailsService.CustomUserDetails) principal).getUser();
+        }
+
+        String identifier = authentication.getName();
+        if (identifier != null && !identifier.isBlank() && !"anonymousUser".equalsIgnoreCase(identifier)) {
+            return userRepository.findFirstByUsernameIgnoreCaseOrderByUserIdAsc(identifier)
+                .or(() -> userRepository.findFirstByEmailIgnoreCaseOrderByUserIdAsc(identifier))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated"));
         }
         
         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid authentication principal");

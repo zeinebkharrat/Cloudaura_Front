@@ -437,9 +437,9 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  goToStep2(nextCallback: { emit: () => void }) {
+  goToStep2() {
     if (this.passengerForm.valid) {
-      nextCallback.emit();
+      this.activeStep.set(1);
     } else {
       this.passengerForm.markAllAsTouched();
       void this.alerts.warning('Check passenger details', 'Please correct the highlighted fields before continuing.');
@@ -458,7 +458,7 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
     window.location.href = new URL(trimmed, window.location.origin).href;
   }
 
-  confirmBooking(nextCallback: { emit: () => void }) {
+  confirmBooking() {
     const user = this.authService.currentUser();
     if (!user) {
       this.loginPrompt.show({
@@ -504,7 +504,7 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
             if (res.status === 'CONFIRMED') {
               this.loadBoardingQrPng(res.transportReservationId);
             }
-            nextCallback.emit();
+            this.activeStep.set(2);
           },
           error: (err) => {
             this.loading.set(false);
@@ -642,7 +642,7 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
             this.trackingSse.startJourneyTracking(res.transportReservationId);
             this.loadBoardingQrPng(res.transportReservationId);
           }
-          nextCallback.emit();
+          this.activeStep.set(2);
         },
         error: (err) => {
           this.loading.set(false);

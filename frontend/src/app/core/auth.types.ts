@@ -6,6 +6,8 @@ export interface UserProfile {
   lastName: string;
   phone?: string | null;
   nationality?: string | null;
+  gender?: 'MALE' | 'FEMALE' | null;
+  dateOfBirth?: string | null;
   cityId?: number | null;
   cityName?: string | null;
   roles: string[];
@@ -40,6 +42,8 @@ export interface SignUpPayload {
   lastName: string;
   becomeArtisan: boolean;
   nationality?: string | null;
+  gender?: 'MALE' | 'FEMALE' | null;
+  dateOfBirth?: string | null;
   cityId?: number | null;
   profileImageUrl?: string | null;
   captchaToken?: string | null;
@@ -106,6 +110,22 @@ export interface ProfileUpdatePayload {
 export interface ChangePasswordPayload {
   currentPassword: string;
   newPassword: string;
+}
+
+export interface UserDeviceSession {
+  sessionId: string;
+  deviceName: string;
+  ipAddress?: string | null;
+  userAgent?: string | null;
+  issuedAt?: string | null;
+  lastSeenAt?: string | null;
+  expiresAt?: string | null;
+  current: boolean;
+  active: boolean;
+}
+
+export interface RevokeOtherSessionsResponse {
+  revokedCount: number;
 }
 
 export interface ForgotPasswordPayload {

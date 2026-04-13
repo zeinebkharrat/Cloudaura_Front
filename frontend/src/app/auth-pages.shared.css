@@ -115,11 +115,6 @@
   background: rgba(66, 133, 244, 0.08);
 }
 
-.social-btn-github:hover:not(:disabled) {
-  border-color: rgba(255, 255, 255, 0.35);
-  background: rgba(255, 255, 255, 0.06);
-}
-
 .social-btn-facebook:hover:not(:disabled) {
   border-color: rgba(24, 119, 242, 0.55);
   background: rgba(24, 119, 242, 0.1);
@@ -181,6 +176,271 @@
 
 @media (max-width: 520px) {
   .social-buttons-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+::ng-deep .signin-welcome-popup {
+  border-radius: 26px !important;
+  border: 1px solid var(--glass-border) !important;
+  box-shadow: 0 34px 80px rgba(2, 6, 23, 0.38) !important;
+}
+
+::ng-deep .signin-welcome-shell {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 8px 4px 6px;
+}
+
+::ng-deep .signin-welcome-image {
+  width: min(430px, 80vw);
+  height: auto;
+}
+
+::ng-deep .signin-welcome-shell h3 {
+  margin: 0;
+  font-size: clamp(1.35rem, 2.7vw, 1.9rem);
+  letter-spacing: -0.02em;
+}
+
+::ng-deep .signin-welcome-typed {
+  min-height: 2.9em;
+  margin: 0;
+  font-size: clamp(1rem, 2.2vw, 1.2rem);
+  line-height: 1.45;
+  color: var(--text-muted);
+  text-align: center;
+  max-width: 44ch;
+}
+
+::ng-deep .signin-welcome-cursor {
+  display: inline-block;
+  margin-left: 2px;
+  animation: signinCursorBlink 0.9s steps(1, end) infinite;
+  color: color-mix(in srgb, var(--text-color) 82%, transparent);
+}
+
+::ng-deep .signin-welcome-confirm {
+  border: none !important;
+  border-radius: 999px !important;
+  padding: 11px 22px !important;
+  color: #fff !important;
+  font-weight: 700 !important;
+  background: linear-gradient(140deg, #0f172a, #334155) !important;
+}
+
+::ng-deep .signin-survey-grid {
+  width: min(760px, 100%);
+  margin-top: 6px;
+  text-align: left;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+}
+
+::ng-deep .signin-survey-row {
+  display: grid;
+  gap: 6px;
+}
+
+::ng-deep .signin-survey-row--stacked {
+  grid-column: 1 / -1;
+}
+
+::ng-deep .signin-survey-label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--text-color) 78%, transparent);
+  letter-spacing: 0.01em;
+}
+
+::ng-deep .signin-survey-control {
+  border: 1px solid var(--glass-border);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--surface-1) 82%, transparent);
+  color: var(--text-color);
+  font-size: 0.9rem;
+  padding: 8px 10px;
+}
+
+::ng-deep .signin-survey-interests {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+::ng-deep .signin-survey-interests label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-1) 78%, transparent);
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+::ng-deep .signin-survey-interests input {
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  ::ng-deep .signin-survey-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@keyframes signinCursorBlink {
+  0%, 45% { opacity: 1; }
+  46%, 100% { opacity: 0; }
+}
+
+::ng-deep .signin-wizard-popup {
+  border-radius: 26px !important;
+  border: 1px solid color-mix(in srgb, var(--glass-border) 75%, #38bdf8 25%) !important;
+  box-shadow: 0 32px 70px rgba(2, 6, 23, 0.36) !important;
+  background:
+    radial-gradient(circle at 0% 0%, rgba(56, 189, 248, 0.1), transparent 36%),
+    radial-gradient(circle at 100% 100%, rgba(59, 130, 246, 0.1), transparent 34%),
+    var(--surface-1) !important;
+}
+
+::ng-deep .signin-wizard-shell {
+  display: grid;
+  gap: 12px;
+  text-align: center;
+}
+
+::ng-deep .signin-wizard-guide {
+  width: min(330px, 72vw);
+  margin: 0 auto;
+  filter: drop-shadow(0 8px 16px rgba(14, 165, 233, 0.2));
+  animation: wizardFloat 2.4s ease-in-out infinite;
+}
+
+::ng-deep .signin-wizard-shell h3 {
+  margin: 0;
+  font-size: clamp(1.3rem, 2.5vw, 1.85rem);
+}
+
+::ng-deep .signin-wizard-sub {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+::ng-deep .signin-wizard-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+  text-align: left;
+}
+
+::ng-deep .signin-wizard-card-grid--interest {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+::ng-deep .wizard-card {
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 8px;
+  background: color-mix(in srgb, var(--surface-1) 86%, transparent);
+  display: grid;
+  gap: 6px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+::ng-deep .wizard-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(56, 189, 248, 0.52);
+  box-shadow: 0 10px 18px rgba(14, 165, 233, 0.14);
+}
+
+::ng-deep .wizard-card input {
+  accent-color: #0ea5e9;
+  width: 15px;
+  height: 15px;
+}
+
+::ng-deep .wizard-card img {
+  width: 100%;
+  height: 72px;
+  border-radius: 9px;
+  object-fit: cover;
+}
+
+::ng-deep .wizard-card--compact {
+  padding: 12px;
+}
+
+::ng-deep .wizard-icon {
+  font-size: 1.25rem;
+}
+
+::ng-deep .signin-wizard-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  text-align: left;
+}
+
+::ng-deep .signin-wizard-form-grid label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+::ng-deep .signin-wizard-select {
+  border: 1px solid var(--glass-border);
+  border-radius: 11px;
+  padding: 9px 10px;
+  font-size: 0.9rem;
+  background: color-mix(in srgb, var(--surface-1) 84%, transparent);
+  color: var(--text-color);
+}
+
+::ng-deep .signin-wizard-confirm,
+::ng-deep .signin-wizard-cancel {
+  border: none !important;
+  border-radius: 999px !important;
+  padding: 10px 20px !important;
+  font-weight: 700 !important;
+}
+
+::ng-deep .signin-wizard-confirm {
+  color: #fff !important;
+  background: linear-gradient(145deg, #06b6d4, #2563eb) !important;
+}
+
+::ng-deep .signin-wizard-cancel {
+  color: #0369a1 !important;
+  background: rgba(186, 230, 253, 0.7) !important;
+}
+
+@keyframes wizardFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@media (max-width: 860px) {
+  ::ng-deep .signin-wizard-card-grid--interest {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  ::ng-deep .signin-wizard-form-grid,
+  ::ng-deep .signin-wizard-card-grid {
     grid-template-columns: 1fr;
   }
 }

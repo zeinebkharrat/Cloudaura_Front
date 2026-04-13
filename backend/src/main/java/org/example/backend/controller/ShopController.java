@@ -108,7 +108,7 @@ public class ShopController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication requise");
         }
         String name = authentication.getName();
-        if (name == null || name.isBlank()) {
+        if (name == null || name.isBlank() || "anonymousUser".equalsIgnoreCase(name)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Session invalide");
         }
         return name;

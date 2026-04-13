@@ -82,7 +82,7 @@ public class FollowRelationController {
 
     @GetMapping("/user-summary/{userId}")
     public ResponseEntity<Map<String, Object>> userSummary(@PathVariable Integer userId) {
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdWithCity(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         Map<String, Object> payload = new LinkedHashMap<>();

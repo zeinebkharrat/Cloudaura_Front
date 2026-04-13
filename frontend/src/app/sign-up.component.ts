@@ -4,6 +4,7 @@ import {
   Component,
   EventEmitter,
   ElementRef,
+  OnDestroy,
   Input,
   Output,
   inject,
@@ -42,7 +43,7 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
   templateUrl: './sign-up.component.html',
   styleUrls: ['./sign-up.component.css', './auth-pages.shared.css'],
 })
-export class SignUpComponent {
+export class SignUpComponent implements OnDestroy {
     @Input() embedded = false;
     @Output() switchMode = new EventEmitter<'signin'>();
     @Output() signupCompleted = new EventEmitter<void>();
@@ -70,9 +71,23 @@ export class SignUpComponent {
   readonly captchaConfigReady = signal(false);
   /** True when captcha-config request failed — user must fix connectivity / backend. */
   readonly captchaConfigUnavailable = signal(false);
+  readonly showCameraPanel = signal(false);
+  readonly cameraBusy = signal(false);
+  readonly cameraReady = signal(false);
+  readonly cameraError = signal<string | null>(null);
+  readonly passwordStrengthLabel = signal('Very weak');
+  readonly passwordStrengthPercent = signal(0);
+  readonly passwordStrengthTone = signal('#ef4444');
+  readonly passwordMatchHint = signal('Waiting for confirmation');
+  readonly passwordMatchOk = signal(false);
+  readonly maxBirthDate = new Date().toISOString().slice(0, 10);
 
   private recaptchaWidgetId = -1;
   private recaptchaInitInFlight = false;
+  private mediaStream: MediaStream | null = null;
+
+  @ViewChild('cameraVideo') private cameraVideoRef?: ElementRef<HTMLVideoElement>;
+  @ViewChild('cameraCanvas') private cameraCanvasRef?: ElementRef<HTMLCanvasElement>;
 
   readonly form = this.fb.nonNullable.group(
     {
@@ -82,6 +97,8 @@ export class SignUpComponent {
       email: ['', [Validators.required, Validators.email]],
       phone: ['', [Validators.pattern(/^\+?[0-9\s-]{8,20}$/)]],
       nationality: [''],
+      gender: ['' as '' | 'MALE' | 'FEMALE'],
+      dateOfBirth: [''],
       cityId: [null as number | null],
       password: ['', [Validators.required, Validators.minLength(8)]],
       confirmPassword: ['', [Validators.required]],
@@ -128,8 +145,24 @@ export class SignUpComponent {
       if (!this.isTunisiaNationality(nat)) {
         this.form.controls.cityId.setValue(null);
         this.form.controls.cityId.markAsUntouched();
+        if (this.form.controls.becomeArtisan.value) {
+          this.form.controls.becomeArtisan.setValue(false);
+        }
       }
     });
+
+    this.form.controls.password.valueChanges.subscribe((value) => {
+      this.updatePasswordStrength(value ?? '');
+      this.updatePasswordMatchHint();
+    });
+
+    this.form.controls.confirmPassword.valueChanges.subscribe(() => {
+      this.updatePasswordMatchHint();
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.stopCameraStream();
   }
 
   ngAfterViewInit(): void {
@@ -175,7 +208,7 @@ export class SignUpComponent {
   }
 
   controlInvalid(
-    controlName: 'firstName' | 'lastName' | 'username' | 'email' | 'phone' | 'password' | 'confirmPassword' | 'cityId'
+    controlName: 'firstName' | 'lastName' | 'username' | 'email' | 'phone' | 'password' | 'confirmPassword' | 'cityId' | 'gender' | 'dateOfBirth'
   ): boolean {
     const control = this.form.controls[controlName];
     return control.invalid && control.touched;
@@ -201,6 +234,11 @@ export class SignUpComponent {
   submit() {
     if (this.form.invalid || this.isLoading()) {
       this.form.markAllAsTouched();
+      if (this.form.hasError('passwordMismatch')) {
+        this.formError.set('Password confirmation does not match.');
+      } else {
+        this.formError.set('Please correct the highlighted fields before continuing.');
+      }
       return;
     }
 
@@ -229,6 +267,10 @@ export class SignUpComponent {
     if (isTunisia && (cityId == null || Number.isNaN(cityId))) {
       this.form.controls.cityId.markAsTouched();
       this.formError.set('Please select a city for Tunisia.');
+      return;
+    }
+    if (raw.becomeArtisan && !isTunisia) {
+      this.formError.set('Only Tunisian users can request the artisan role.');
       return;
     }
 
@@ -277,6 +319,8 @@ export class SignUpComponent {
       email: string;
       phone: string;
       nationality: string;
+      gender: '' | 'MALE' | 'FEMALE';
+      dateOfBirth: string;
       cityId: number | null;
       password: string;
       confirmPassword: string;
@@ -295,6 +339,8 @@ export class SignUpComponent {
       lastName: raw.lastName,
       becomeArtisan: raw.becomeArtisan,
       nationality: raw.nationality?.trim() || null,
+      gender: raw.gender || null,
+      dateOfBirth: raw.dateOfBirth?.trim() || null,
       cityId: isTunisia ? cityId : null,
       profileImageUrl: this.uploadedImageUrl(),
       captchaToken,
@@ -343,7 +389,158 @@ export class SignUpComponent {
     });
   }
 
+  async toggleCameraPanel() {
+    if (this.showCameraPanel()) {
+      this.showCameraPanel.set(false);
+      this.stopCameraStream();
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      this.cameraError.set('Camera is not supported on this browser.');
+      return;
+    }
+
+    this.cameraError.set(null);
+    this.showCameraPanel.set(true);
+    await this.startCamera();
+  }
+
+  async startCamera() {
+    if (this.cameraBusy()) {
+      return;
+    }
+
+    this.cameraBusy.set(true);
+    this.cameraReady.set(false);
+    this.cameraError.set(null);
+
+    try {
+      this.stopCameraStream();
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 720 } },
+        audio: false,
+      });
+      this.mediaStream = stream;
+
+      const videoElement = this.cameraVideoRef?.nativeElement;
+      if (!videoElement) {
+        throw new Error('Camera preview is unavailable.');
+      }
+
+      videoElement.srcObject = stream;
+      await videoElement.play();
+      this.cameraReady.set(true);
+    } catch {
+      this.cameraError.set('Could not access camera. Please allow permission and retry.');
+      this.showCameraPanel.set(false);
+      this.stopCameraStream();
+    } finally {
+      this.cameraBusy.set(false);
+    }
+  }
+
+  stopCameraStream() {
+    if (this.mediaStream) {
+      this.mediaStream.getTracks().forEach((track) => track.stop());
+      this.mediaStream = null;
+    }
+    const videoElement = this.cameraVideoRef?.nativeElement;
+    if (videoElement) {
+      videoElement.pause();
+      videoElement.srcObject = null;
+    }
+    this.cameraReady.set(false);
+  }
+
+  captureFromCamera() {
+    if (this.isUploadingImage() || this.cameraBusy()) {
+      return;
+    }
+
+    const videoElement = this.cameraVideoRef?.nativeElement;
+    const canvasElement = this.cameraCanvasRef?.nativeElement;
+    if (!videoElement || !canvasElement || !videoElement.videoWidth || !videoElement.videoHeight) {
+      this.cameraError.set('Camera is not ready yet.');
+      return;
+    }
+
+    canvasElement.width = videoElement.videoWidth;
+    canvasElement.height = videoElement.videoHeight;
+
+    const context = canvasElement.getContext('2d');
+    if (!context) {
+      this.cameraError.set('Could not capture photo.');
+      return;
+    }
+
+    context.drawImage(videoElement, 0, 0, canvasElement.width, canvasElement.height);
+    this.isUploadingImage.set(true);
+    this.cameraError.set(null);
+
+    canvasElement.toBlob(
+      (blob) => {
+        if (!blob) {
+          this.isUploadingImage.set(false);
+          this.cameraError.set('Failed to generate image from camera.');
+          return;
+        }
+
+        const photoFile = new File([blob], `signup-camera-${Date.now()}.jpg`, { type: 'image/jpeg' });
+        this.authService.uploadProfileImage(photoFile).subscribe({
+          next: (response) => {
+            this.uploadedImageUrl.set(response.url);
+            this.formSuccess.set('Profile photo captured successfully.');
+            this.showCameraPanel.set(false);
+            this.stopCameraStream();
+          },
+          error: (error: HttpErrorResponse) => {
+            this.cameraError.set(extractApiErrorMessage(error, 'Camera upload failed.'));
+          },
+          complete: () => this.isUploadingImage.set(false),
+        });
+      },
+      'image/jpeg',
+      0.92,
+    );
+  }
+
+  private updatePasswordStrength(password: string) {
+    let score = 0;
+    if (password.length >= 8) score += 1;
+    if (/[A-Z]/.test(password)) score += 1;
+    if (/[0-9]/.test(password)) score += 1;
+    if (/[^A-Za-z0-9]/.test(password)) score += 1;
+
+    const labels = ['Very weak', 'Weak', 'Medium', 'Strong', 'Excellent'];
+    const percents = [12, 30, 56, 78, 100];
+    const tones = ['#ef4444', '#f97316', '#f59e0b', '#10b981', '#16a34a'];
+
+    this.passwordStrengthLabel.set(labels[score]);
+    this.passwordStrengthPercent.set(percents[score]);
+    this.passwordStrengthTone.set(tones[score]);
+  }
+
+  private updatePasswordMatchHint() {
+    const password = this.form.controls.password.value;
+    const confirm = this.form.controls.confirmPassword.value;
+
+    if (!confirm) {
+      this.passwordMatchHint.set('Waiting for confirmation');
+      this.passwordMatchOk.set(false);
+      return;
+    }
+
+    const match = password === confirm;
+    this.passwordMatchOk.set(match);
+    this.passwordMatchHint.set(match ? 'Passwords match' : 'Passwords do not match');
+  }
+
   showCityField(): boolean {
+    return this.isTunisiaNationality(this.form.controls.nationality.value);
+  }
+
+  canRequestArtisan(): boolean {
     return this.isTunisiaNationality(this.form.controls.nationality.value);
   }
 }

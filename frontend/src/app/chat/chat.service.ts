@@ -104,7 +104,7 @@ export class ChatService implements OnDestroy {
       connectHeaders: {
         Authorization: `Bearer ${token}`,
       },
-      reconnectDelay: 30000,
+      reconnectDelay: 5000,
       heartbeatIncoming: 10000,
       heartbeatOutgoing: 10000,
 
@@ -420,6 +420,9 @@ export class ChatService implements OnDestroy {
   private previewText(msg: MessageResponse): string {
     if (msg.messageType === 'VOICE') {
       return 'Voice message';
+    }
+    if ((msg.content || '').startsWith('YALLA_STORY_REPLY::')) {
+      return 'Replied to your story';
     }
     if (this.e2eeService.isEncryptedTextPayload(msg.content)) {
       return 'Encrypted message';

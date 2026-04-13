@@ -3,6 +3,7 @@ package org.example.backend.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -12,8 +13,11 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -41,10 +45,24 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+                .exceptionHandling(ex -> ex
+                    .defaultAuthenticationEntryPointFor(restAuthenticationEntryPoint(),
+                        new OrRequestMatcher(
+                            new AntPathRequestMatcher("/api/**"),
+                            new AntPathRequestMatcher("/post/**"),
+                            new AntPathRequestMatcher("/comment/**"),
+                            new AntPathRequestMatcher("/like/**"),
+                            new AntPathRequestMatcher("/media/**"),
+                            new AntPathRequestMatcher("/follow/**"),
+                            new AntPathRequestMatcher("/saved-post/**"),
+                            new AntPathRequestMatcher("/chatroom/**")
+                        ))
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/auth/**").permitAll()
+                    .requestMatchers("/login", "/login/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/public/activities/*/reservations").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/public/activities/*/reservations/checkout").authenticated()
                         .requestMatchers("/api/public/activity-reservations/**").authenticated()
@@ -74,9 +92,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/ludification/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/ludification/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.GET, "/post/**", "/comment/**", "/like/**", "/media/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/story/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/post/**", "/comment/**", "/like/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/story/**").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/post/**", "/comment/**").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/post/**", "/comment/**").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/story/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                         .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                         .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
@@ -109,6 +130,12 @@ public class SecurityConfig {
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
+    }
+
+    @Bean
+    public AuthenticationEntryPoint restAuthenticationEntryPoint() {
+        return (request, response, authException) ->
+                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
     }
 
     @Bean

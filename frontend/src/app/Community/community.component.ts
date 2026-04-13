@@ -1,4 +1,5 @@
 import { Component, ElementRef, HostListener, OnDestroy, ViewChild, inject, signal } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { forkJoin, firstValueFrom, of } from 'rxjs';
@@ -23,10 +24,12 @@ import { SavedPostService } from './saved-post.service';
 import { AuthService } from '../core/auth.service';
 import { OwnershipUtil } from './ownership.util';
 import { ChatService } from '../chat/chat.service';
+import { extractApiErrorMessage } from '../api-error.util';
 import Swal from 'sweetalert2';
 import { GiphyItem, GiphyMediaType, GiphyService } from './giphy.service';
 import { tunisiaGeoJson } from '../tunisia-map';
 import { GOVERNORATE_LABEL_EN, GOVERNORATE_LABEL_FR } from '../tunisia-governorate-labels';
+import { CommunityStoriesComponent } from './community-stories.component';
 
 const MINI_TUNISIA_MAP_NAME = 'TunisiaMiniPreview';
 const MINI_TUNISIA_MAP_NAME_PROP = '_echartsRegionId';
@@ -82,11 +85,13 @@ function tunisiaGeoWithUniqueRegionIds(geo: any) {
 @Component({
   selector: 'app-community',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, CommunityStoriesComponent],
   templateUrl: './community.component.html',
   styleUrl: './community.component.css',
 })
 export class CommunityComponent {
+  private static readonly POSTS_PAGE_SIZE = 10;
+
   @ViewChild('locationMiniMap')
   private locationMiniMapRef?: ElementRef<HTMLDivElement>;
 
@@ -113,6 +118,7 @@ export class CommunityComponent {
   readonly likeUsersByPost = signal<Map<number, UserRef[]>>(new Map());
   readonly followingByAuthor = signal<Map<number, boolean>>(new Map());
   readonly savedByPost = signal<Map<number, boolean>>(new Map());
+  readonly suggestedUsers = signal<UserRef[]>([]);
   readonly cities = signal<CityOption[]>([]);
   readonly loadingCities = signal<boolean>(false);
   readonly savedPosts = signal<Post[]>([]);
@@ -120,6 +126,7 @@ export class CommunityComponent {
 
   readonly loadError = signal<string | null>(null);
   readonly feedLoaded = signal(false);
+  readonly visiblePostsLimit = signal<number>(CommunityComponent.POSTS_PAGE_SIZE);
   /** Placeholder discovery chips — use asset paths instead of emoji */
   readonly cityDiscovery = signal<Array<{ label: string; icon: string }>>([
     { label: 'Kairouan', icon: 'icones/city.png' },
@@ -182,6 +189,7 @@ export class CommunityComponent {
   readonly hoveredLocationPostId = signal<number | null>(null);
   readonly hoveredLocationCard = signal<LocationHoverCard | null>(null);
   readonly hoveredUserCard = signal<HoverCardState | null>(null);
+  readonly focusedPostId = signal<number | null>(null);
 
   private static miniMapRegistered = false;
   private readonly miniTunisiaGeo = tunisiaGeoWithUniqueRegionIds(tunisiaGeoJson);
@@ -189,6 +197,8 @@ export class CommunityComponent {
   private miniMapChart: echarts.ECharts | null = null;
   private hoverCardCloseTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly hoverUserCache = new Map<number, HoverCardUser>();
+  private feedAutoLoadPending = false;
+  private suggestionsRequestSeq = 0;
 
   constructor() {
     // No more manual userId selection - use JWT authentication
@@ -234,6 +244,7 @@ export class CommunityComponent {
   private loadFeed(): void {
     this.loadError.set(null);
     this.feedLoaded.set(false);
+    this.resetVisiblePostsLimit();
 
     const safePosts$ = this.postService.getAllPosts().pipe(
       catchError((err) => {
@@ -270,6 +281,8 @@ export class CommunityComponent {
         this.likes.set(likes || []);
         this.comments.set(comments || []);
         this.medias.set(medias || []);
+        void this.refreshSuggestions();
+        this.resetVisiblePostsLimit();
         this.feedLoaded.set(true);
         
         // Load like statuses and nicknames for each post
@@ -311,6 +324,7 @@ export class CommunityComponent {
         const map = new Map<number, boolean>();
         authorIds.forEach((authorId, index) => map.set(authorId, responses[index].following));
         this.followingByAuthor.set(map);
+        void this.refreshSuggestions();
       });
     }
 
@@ -423,7 +437,7 @@ export class CommunityComponent {
         commentsCount: 0,
       };
 
-      const createdPost = await firstValueFrom(this.postService.addPost(newPost));
+      let createdPost = await firstValueFrom(this.postService.addPost(newPost));
       const uploadedMedias: PostMedia[] = [];
       
       // Upload media files if any
@@ -440,6 +454,14 @@ export class CommunityComponent {
           } catch (mediaErr) {
             console.error('Error uploading media file:', mediaErr);
           }
+        }
+
+        // Gemini auto-tagging updates hashtags during media upload on backend.
+        // Refresh the just-created post so hashtags are visible immediately in UI.
+        try {
+          createdPost = await firstValueFrom(this.postService.getPost(createdPost.postId));
+        } catch (refreshErr) {
+          console.warn('Could not refresh created post hashtags after media upload:', refreshErr);
         }
       }
 
@@ -466,7 +488,26 @@ export class CommunityComponent {
       
     } catch (error) {
       console.error('Error creating post:', error);
-      this.loadError.set('Failed to create post');
+
+      const httpError = error as HttpErrorResponse;
+      const backendMessage =
+        (typeof httpError?.error === 'string' && httpError.error.trim().length > 0)
+          ? httpError.error
+          : (typeof httpError?.error?.message === 'string' ? httpError.error.message : '');
+
+      if (
+        httpError?.status === 422 &&
+        /bad words|inappropriate|profanity|cannot be published/i.test(backendMessage)
+      ) {
+        await Swal.fire({
+          icon: 'warning',
+          title: 'Post blocked',
+          text: backendMessage || 'You cannot use bad words in posts.',
+          ...this.swalTheme(),
+        });
+      } else {
+        this.loadError.set('Failed to create post');
+      }
     } finally {
       this.isPosting.set(false);
     }
@@ -1043,6 +1084,31 @@ export class CommunityComponent {
     }
   }
 
+  @HostListener('window:scroll')
+  handleWindowScroll(): void {
+    if (!this.feedLoaded() || this.feedAutoLoadPending) {
+      return;
+    }
+
+    if (!this.canLoadMorePosts()) {
+      return;
+    }
+
+    const viewportBottom = window.scrollY + window.innerHeight;
+    const documentHeight = document.documentElement.scrollHeight;
+    const threshold = 260;
+
+    if (viewportBottom < documentHeight - threshold) {
+      return;
+    }
+
+    this.feedAutoLoadPending = true;
+    this.loadMorePosts();
+    setTimeout(() => {
+      this.feedAutoLoadPending = false;
+    }, 120);
+  }
+
   cityDisplay(city: CityOption): string {
     if (!city.region) {
       return city.name;
@@ -1415,6 +1481,15 @@ export class CommunityComponent {
       }
     } catch (error) {
       console.error('Error adding comment:', error);
+      const message = error instanceof HttpErrorResponse
+        ? extractApiErrorMessage(error, 'Unable to add comment right now.')
+        : 'Unable to add comment right now.';
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Comment blocked',
+        text: message,
+        ...this.swalTheme(),
+      });
     }
   }
 
@@ -1633,6 +1708,7 @@ export class CommunityComponent {
       const next = new Map(this.followingByAuthor());
       next.set(authorId, response.following);
       this.followingByAuthor.set(next);
+      void this.refreshSuggestions();
     } catch (error) {
       console.error('Error toggling follow:', error);
     }
@@ -1718,6 +1794,7 @@ export class CommunityComponent {
   async toggleSavedMode(): Promise<void> {
     const next = !this.showSavedOnly();
     this.showSavedOnly.set(next);
+    this.resetVisiblePostsLimit();
     if (next) {
       await this.loadSavedPosts();
     }
@@ -1731,14 +1808,116 @@ export class CommunityComponent {
     try {
       const posts = await firstValueFrom(this.savedPostService.mySavedPosts());
       this.savedPosts.set(posts || []);
+      this.resetVisiblePostsLimit();
     } catch (error) {
       console.error('Error loading saved posts:', error);
       this.savedPosts.set([]);
+      this.resetVisiblePostsLimit();
     }
   }
 
   visiblePosts(): Post[] {
-    return this.showSavedOnly() ? this.savedPosts() : this.posts();
+    const source = this.showSavedOnly() ? this.savedPosts() : this.posts();
+    return source.slice(0, this.visiblePostsLimit());
+  }
+
+  suggestionLocation(user?: UserRef): string {
+    return (user?.cityName || user?.country || user?.nationality || '').trim();
+  }
+
+  private async refreshSuggestions(): Promise<void> {
+    const requestId = ++this.suggestionsRequestSeq;
+    const currentUserId = this.authService.currentUser()?.id;
+    const followMap = this.followingByAuthor();
+    const unique = new Map<number, UserRef>();
+
+    // Fetch candidates directly from users search endpoint (same source as search bar).
+    // Some backends ignore very short queries, so we use 2+ character seed batches.
+    const seedBatches: string[][] = [
+      this.randomSuggestionSeeds(8),
+      ['an', 'ar', 'ma', 'sa', 'la', 'ra', 'na', 'ou'],
+      this.randomSuggestionSeeds(8),
+    ];
+
+    for (const seeds of seedBatches) {
+      const searchResults = await Promise.all(
+        seeds.map((seed) =>
+          firstValueFrom(
+            this.chatService.searchUsers(seed).pipe(catchError(() => of([])))
+          )
+        )
+      );
+
+      if (requestId !== this.suggestionsRequestSeq) {
+        return;
+      }
+
+      for (const list of searchResults) {
+        for (const item of list || []) {
+          const userId = Number(item?.userId);
+          if (!Number.isInteger(userId) || userId <= 0) {
+            continue;
+          }
+
+          if (currentUserId && userId === currentUserId) {
+            continue;
+          }
+
+          if (followMap.get(userId)) {
+            continue;
+          }
+
+          if (!unique.has(userId)) {
+            unique.set(userId, {
+              userId,
+              username: item?.username,
+              firstName: item?.firstName,
+              lastName: item?.lastName,
+              profileImageUrl: item?.profileImageUrl ?? null,
+              cityName: item?.cityName ?? null,
+              country: item?.country ?? null,
+              nationality: item?.nationality ?? null,
+            });
+          }
+        }
+      }
+
+      if (unique.size >= 4) {
+        break;
+      }
+    }
+
+    const shuffled = Array.from(unique.values()).sort(() => Math.random() - 0.5);
+    this.suggestedUsers.set(shuffled.slice(0, 4));
+  }
+
+  private randomSuggestionSeeds(count: number): string[] {
+    const alphabet = 'abcdefghijklmnopqrstuvwxyz';
+    const seeds = new Set<string>();
+    while (seeds.size < count) {
+      const firstIndex = Math.floor(Math.random() * alphabet.length);
+      const secondIndex = Math.floor(Math.random() * alphabet.length);
+      seeds.add(`${alphabet[firstIndex]}${alphabet[secondIndex]}`);
+    }
+    return Array.from(seeds);
+  }
+
+  loadMorePosts(): void {
+    if (!this.canLoadMorePosts()) {
+      return;
+    }
+
+    const next = this.visiblePostsLimit() + CommunityComponent.POSTS_PAGE_SIZE;
+    this.visiblePostsLimit.set(next);
+  }
+
+  canLoadMorePosts(): boolean {
+    const sourceLength = this.showSavedOnly() ? this.savedPosts().length : this.posts().length;
+    return this.visiblePostsLimit() < sourceLength;
+  }
+
+  private resetVisiblePostsLimit(): void {
+    this.visiblePostsLimit.set(CommunityComponent.POSTS_PAGE_SIZE);
   }
 
   isRepost(post: Post): boolean {

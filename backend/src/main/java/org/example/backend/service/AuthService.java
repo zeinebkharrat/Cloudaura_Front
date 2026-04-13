@@ -8,7 +8,9 @@ import org.example.backend.dto.LoginRequest;
 import org.example.backend.dto.ProfileUpdateRequest;
 import org.example.backend.dto.ResendVerificationRequest;
 import org.example.backend.dto.ResetPasswordRequest;
+import org.example.backend.dto.RevokeOtherSessionsResponse;
 import org.example.backend.dto.SignupRequest;
+import org.example.backend.dto.UserSessionResponse;
 import org.example.backend.dto.UserSummaryResponse;
 import org.example.backend.model.City;
 import org.example.backend.model.Role;
@@ -39,6 +41,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Date;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -146,6 +149,12 @@ public class AuthService {
         user.setAuthProvider("LOCAL");
         user.setProfileImageUrl(request.profileImageUrl() != null ? request.profileImageUrl().trim() : null);
         user.setNationality(request.nationality() != null ? request.nationality().trim() : null);
+        user.setGender(request.gender());
+        user.setDateOfBirth(request.dateOfBirth());
+        if (becomeArtisant && !isTunisiaNationality(user.getNationality())) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                "Artisan request is available only for Tunisian nationality");
+        }
         user.setCity(resolveCityForNationality(user.getNationality(), request.cityId()));
         user.setEmailVerified(false);
         user.setFailedLoginAttempts(0);
@@ -163,6 +172,7 @@ public class AuthService {
                     savedUser.getUsername(),
                     savedUser.getPhone(),
                     savedUser.getNationality(),
+                    savedUser.getGender(),
                     verificationLink);
         } catch (MailException ex) {
             return new AuthMessageResponse(
@@ -297,6 +307,33 @@ public class AuthService {
         auditService.log(AuditService.ACTION_PASSWORD_CHANGE, user, details);
     }
 
+    @Transactional(readOnly = true)
+    public List<UserSessionResponse> mySessions(String currentSessionId) {
+        List<UserSessionResponse> sessions = new ArrayList<>();
+        if (currentSessionId != null && !currentSessionId.isBlank()) {
+            Date now = new Date();
+            sessions.add(new UserSessionResponse(currentSessionId, true, now, now, null, null));
+        }
+        return sessions;
+    }
+
+    @Transactional
+    public void revokeSession(String sessionId, String currentSessionId) {
+        if (sessionId == null || sessionId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "sessionId is required");
+        }
+        if (currentSessionId != null && currentSessionId.equals(sessionId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot revoke current session from this endpoint");
+        }
+        // Session persistence is not enabled in this build.
+    }
+
+    @Transactional
+    public RevokeOtherSessionsResponse revokeOtherSessions(String currentSessionId) {
+        // Session persistence is not enabled in this build.
+        return new RevokeOtherSessionsResponse(0);
+    }
+
     @Transactional
     public AuthMessageResponse verifyEmail(String token) {
         VerificationToken verificationToken = verificationTokenRepository
@@ -333,6 +370,7 @@ public class AuthService {
                                 user.getUsername(),
                                 user.getPhone(),
                                 user.getNationality(),
+                            user.getGender(),
                                 verificationLink);
                     } catch (MailException ex) {
                         throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Email service unavailable. Check SMTP credentials.");
@@ -703,6 +741,8 @@ public class AuthService {
                 user.getLastName(),
                 user.getPhone(),
                 user.getNationality(),
+                user.getGender(),
+                user.getDateOfBirth(),
                 user.getCity() != null ? user.getCity().getCityId().intValue() : null,
                 user.getCity() != null ? user.getCity().getName() : null,
                 roles,

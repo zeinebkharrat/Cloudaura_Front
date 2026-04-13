@@ -56,6 +56,8 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
   /** Nouveaux fichiers locaux (aperçus blob) — uploadés à l’enregistrement. */
   pendingFiles: File[] = [];
   pendingPreviewUrls: string[] = [];
+  autoDescriptionLoading = false;
+  autoDescriptionError = '';
 
   /** Détail produit : index image affichée dans la galerie. */
   detailImageIndex = 0;
@@ -279,6 +281,10 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
       this.pendingPreviewUrls.push(URL.createObjectURL(file));
     }
     input.value = '';
+
+    if (!this.productForm.description?.trim() && this.pendingFiles.length > 0) {
+      this.autoFillDescriptionFromFile(this.pendingFiles[0]);
+    }
   }
 
   removePendingImage(index: number): void {
@@ -306,6 +312,33 @@ export class ProductsAdminComponent implements OnInit, OnDestroy {
       el.value = '';
     }
     this.revokeAllPendingPreviews();
+  }
+
+  private autoFillDescriptionFromFile(file: File): void {
+    if (!file || this.autoDescriptionLoading) {
+      return;
+    }
+    this.autoDescriptionError = '';
+    this.autoDescriptionLoading = true;
+    const formData = new FormData();
+    formData.append('file', file);
+
+    this.http.post<{ description?: string; error?: string }>(`${this.apiUrl}/describe-image`, formData).subscribe({
+      next: (response) => {
+        this.autoDescriptionLoading = false;
+        const description = response?.description?.trim();
+        if (description && !this.productForm.description?.trim()) {
+          this.productForm.description = description;
+        }
+        if (response?.error) {
+          this.autoDescriptionError = response.error;
+        }
+      },
+      error: (err: any) => {
+        this.autoDescriptionLoading = false;
+        this.autoDescriptionError = err?.error?.error || 'Could not auto-fill description from the photo.';
+      },
+    });
   }
 
   private revokeAllPendingPreviews(): void {
