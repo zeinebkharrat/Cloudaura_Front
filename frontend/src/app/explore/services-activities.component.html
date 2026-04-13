@@ -11,7 +11,7 @@
         <h3>{{ 'EXPLORE_SERVICES_ACTIVITIES.FILTERS' | translate }}</h3>
 
         <label class="filter-field" [class.filter-detected]="voiceDetectedFilters().city">
-          <span>{{ 'EXPLORE_SERVICES_ACTIVITIES.CITY' | translate }}</span>
+          <span>City</span>
           <select [ngModel]="selectedCityId()" (ngModelChange)="onCityFilterChange($event)">
             <option value="all">{{ 'EXPLORE_SERVICES_ACTIVITIES.ALL_CITIES' | translate }}</option>
             @for (city of cities(); track city.cityId) {
@@ -21,7 +21,7 @@
         </label>
 
         <div class="filter-field" [class.filter-detected]="voiceDetectedFilters().budget">
-          <span>{{ 'EXPLORE_SERVICES_ACTIVITIES.PRICE' | translate }}</span>
+          <span>Price</span>
           <div class="price-inputs">
             <input type="number" [ngModel]="minPrice()" (ngModelChange)="onMinPriceInputChange($event)" />
             <span>{{ 'EXPLORE_SERVICES_ACTIVITIES.TO' | translate }}</span>
@@ -35,12 +35,12 @@
         </div>
 
         <label class="filter-field" [class.filter-detected]="voiceDetectedFilters().date">
-          <span>{{ 'EXPLORE_SERVICES_ACTIVITIES.AVAIL_DATE' | translate }}</span>
+          <span>Availability date</span>
           <input type="date" [ngModel]="selectedDate()" (ngModelChange)="onDateChange($event)" />
         </label>
 
         <label class="filter-field" [class.filter-detected]="voiceDetectedFilters().participants">
-          <span>{{ 'EXPLORE_SERVICES_ACTIVITIES.PARTICIPANTS' | translate }}</span>
+          <span>Participants</span>
           <input type="number" min="1" [ngModel]="participants()" (ngModelChange)="onParticipantsChange($event)" />
         </label>
 
@@ -49,20 +49,28 @@
 
       <div class="services-content">
         <div class="toolbar">
-          <div class="search-wrap modern-voice">
-            <input type="text" [ngModel]="q()" (ngModelChange)="onSearchChange($event)" [placeholder]="'EXPLORE_SERVICES_ACTIVITIES.SEARCH_PH' | translate" />
+          <div class="search-wrap">
+            <div class="modern-search">
+              <input type="text" [ngModel]="q()" (ngModelChange)="onSearchChange($event)" placeholder="Search activity..." />
+              <button class="search-end-btn" type="button" tabindex="-1" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                  <path d="M10.5 3a7.5 7.5 0 1 1 0 15 7.5 7.5 0 0 1 0-15Zm0 2a5.5 5.5 0 1 0 3.43 9.8l3.63 3.63a1 1 0 0 0 1.42-1.42l-3.63-3.63A5.5 5.5 0 0 0 10.5 5Z"/>
+                </svg>
+              </button>
+            </div>
             <button
               class="voice-btn"
               type="button"
               (click)="onVoiceSearchClick()"
               [disabled]="!voiceSupported() || voiceProcessing()"
               [class.active]="voiceListening()"
-              [attr.aria-label]="voiceListening() ? ('EXPLORE_SERVICES_ACTIVITIES.VOICE_STOP' | translate) : ('EXPLORE_SERVICES_ACTIVITIES.VOICE_START' | translate)"
-              [title]="'EXPLORE_SERVICES_ACTIVITIES.VOICE_TITLE' | translate"
+              [attr.aria-label]="voiceListening() ? 'Stop voice recording' : 'Start voice recording'"
+              title="Voice search"
             >
-              🎤
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M12 15a3 3 0 0 0 3-3V7a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a1 1 0 1 1 2 0 7 7 0 0 1-6 6.93V21h2a1 1 0 1 1 0 2H9a1 1 0 0 1 0-2h2v-2.07A7 7 0 0 1 5 12a1 1 0 1 1 2 0 5 5 0 1 0 10 0Z"/>
+              </svg>
             </button>
-            <span class="voice-counter" [class.active]="voiceListening()">{{ (voiceDetectedFilters().city ? 1 : 0) + (voiceDetectedFilters().budget ? 1 : 0) + (voiceDetectedFilters().date ? 1 : 0) + (voiceDetectedFilters().participants ? 1 : 0) }}</span>
           </div>
           <select [ngModel]="sort()" (ngModelChange)="onSortChange($event)">
             <option value="activityId,desc">{{ 'EXPLORE_SERVICES_ACTIVITIES.SORT_NEWEST' | translate }}</option>
@@ -73,10 +81,10 @@
         </div>
 
         @if (voiceListening()) {
-          <p class="voice-state">{{ 'EXPLORE_SERVICES_ACTIVITIES.VOICE_LISTENING' | translate }}</p>
+          <p class="voice-state">Listening... tap microphone again to apply filters.</p>
         }
         @if (voiceProcessing()) {
-          <p class="voice-state">{{ 'EXPLORE_SERVICES_ACTIVITIES.VOICE_ANALYZING' | translate }}</p>
+          <p class="voice-state">Analyzing your voice request...</p>
         }
         @if (lastTranscript()) {
           <p class="voice-state transcript">“{{ lastTranscript() }}”</p>

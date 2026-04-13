@@ -11,13 +11,14 @@
     "secure": false,
     "changeOrigin": true
   },
-  "/post": { "target": "http://127.0.0.1:9091", "secure": false, "changeOrigin": true },
-  "/comment": { "target": "http://127.0.0.1:9091", "secure": false, "changeOrigin": true },
-  "/like": { "target": "http://127.0.0.1:9091", "secure": false, "changeOrigin": true },
-  "/media": { "target": "http://127.0.0.1:9091", "secure": false, "changeOrigin": true },
-  "/follow": { "target": "http://127.0.0.1:9091", "secure": false, "changeOrigin": true },
-  "/saved-post": { "target": "http://127.0.0.1:9091", "secure": false, "changeOrigin": true },
-  "/chatroom": { "target": "http://127.0.0.1:9091", "secure": false, "changeOrigin": true },
-  "/ws": { "target": "http://127.0.0.1:9091", "secure": false, "changeOrigin": true, "ws": true },
-  "/ws-native": { "target": "http://127.0.0.1:9091", "secure": false, "changeOrigin": true, "ws": true }
+  "/post": { "target": "http://localhost:9091", "secure": false, "changeOrigin": true },
+  "/comment": { "target": "http://localhost:9091", "secure": false, "changeOrigin": true },
+  "/like": { "target": "http://localhost:9091", "secure": false, "changeOrigin": true },
+  "/media": { "target": "http://localhost:9091", "secure": false, "changeOrigin": true },
+  "/follow": { "target": "http://localhost:9091", "secure": false, "changeOrigin": true },
+  "/saved-post": { "target": "http://localhost:9091", "secure": false, "changeOrigin": true },
+  "/chatroom": { "target": "http://localhost:9091", "secure": false, "changeOrigin": true },
+  "/story": { "target": "http://localhost:9091", "secure": false, "changeOrigin": true },
+  "/ws": { "target": "http://localhost:9091", "secure": false, "changeOrigin": true, "ws": true },
+  "/ws-native": { "target": "http://localhost:9091", "secure": false, "changeOrigin": true, "ws": true }
 }

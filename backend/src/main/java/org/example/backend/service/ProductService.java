@@ -13,10 +13,12 @@ import org.example.backend.repository.CartItemRepository;
 import org.example.backend.repository.OrderItemRepository;
 import org.example.backend.repository.ProductRepository;
 import org.example.backend.repository.UserRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class ProductService {
@@ -150,6 +152,16 @@ public class ProductService {
     public ProductCatalogItem save(Product entity, String username) {
         User currentUser = userRepository.findFirstByUsernameIgnoreCaseOrderByUserIdAsc(username)
                 .orElseThrow(() -> new NoSuchElementException("User not found with username: " + username));
+
+        boolean isAdmin = currentUser.getRoles().stream().anyMatch(role -> "ROLE_ADMIN".equals(role.getName()));
+        boolean isArtisan = currentUser.getRoles().stream().anyMatch(role -> "ROLE_ARTISAN".equals(role.getName()));
+        if (!isAdmin && !isArtisan) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only approved artisans can create products");
+        }
+        if (!isAdmin && Boolean.TRUE.equals(currentUser.getArtisanRequestPending())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Your artisan request is still pending admin approval");
+        }
+
         // Frontend sends productId: 0 for new products — must be null or Hibernate / DB can error
         if (entity.getProductId() != null && entity.getProductId() == 0) {
             entity.setProductId(null);

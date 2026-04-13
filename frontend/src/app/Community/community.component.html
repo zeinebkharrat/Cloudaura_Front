@@ -1,9 +1,13 @@
 <section class="community-page">
+  <div class="community-main-grid">
+    <div class="community-main-column">
+      <app-community-stories></app-community-stories>
+
   <div class="community-header social-shell">
     <div class="create-post-inline" *ngIf="authService.isAuthenticated()">
       <div class="composer-row-top">
         <div class="avatar composer-avatar">
-          <img *ngIf="currentUserAvatarUrl(); else composerFallback" [src]="currentUserAvatarUrl()!" [attr.alt]="'COMMUNITY.AVATAR_YOU' | translate" class="avatar-img" />
+          <img *ngIf="currentUserAvatarUrl(); else composerFallback" [src]="currentUserAvatarUrl()!" alt="Your profile photo" class="avatar-img" />
           <ng-template #composerFallback>{{ authService.currentUser()?.username?.charAt(0)?.toUpperCase() || 'U' }}</ng-template>
         </div>
         <input
@@ -146,8 +150,8 @@
       <ng-container *ngIf="visiblePosts().length === 0">
         <div class="empty-state glass-panel">
           <div class="empty-state__content">
-            <h3>{{ showSavedOnly() ? ('COMMUNITY.EMPTY_SAVED_TITLE' | translate) : ('COMMUNITY.EMPTY_FEED_TITLE' | translate) }}</h3>
-            <p>{{ showSavedOnly() ? ('COMMUNITY.EMPTY_SAVED_DESC' | translate) : ('COMMUNITY.EMPTY_FEED_DESC' | translate) }}</p>
+            <h3>{{ showSavedOnly() ? 'No saved posts' : 'No posts yet' }}</h3>
+            <p>{{ showSavedOnly() ? 'Save posts to find them here.' : 'Be the first to share something!' }}</p>
             <button 
               type="button"
               class="btn-primary"
@@ -162,7 +166,12 @@
 
       <ng-container *ngFor="let post of visiblePosts(); trackBy: trackByPost">
         <ng-container *ngIf="post.postId != null">
-          <article class="post-card glass-panel" [class.post-card--location-hover]="isLocationHoverVisible(post.postId!)">
+          <article
+            class="post-card glass-panel"
+            [attr.id]="'community-post-' + post.postId"
+            [class.post-card--location-hover]="isLocationHoverVisible(post.postId!)"
+            [class.post-card--focus-target]="focusedPostId() === post.postId"
+          >
             <header class="post-header">
               <div class="post-author">
                 <div class="avatar">
@@ -212,7 +221,7 @@
                         </ng-container>
 
                         <ng-template #noLocationMap>
-                          <span class="location-hover-fallback">{{ 'COMMUNITY.MAP_UNAVAILABLE' | translate }}</span>
+                          <span class="location-hover-fallback">Map unavailable for this city.</span>
                         </ng-template>
                       </span>
                     </ng-container>
@@ -470,7 +479,7 @@
               <!-- Inline quick comment input (Facebook-style) -->
               <div class="inline-comment-input" *ngIf="isCommentsExpanded(post.postId!)">
                 <div class="avatar comment-avatar">
-                  <img *ngIf="currentUserAvatarUrl(); else commentComposerFallback" [src]="currentUserAvatarUrl()!" [attr.alt]="'COMMUNITY.AVATAR_YOU' | translate" class="avatar-img" />
+                  <img *ngIf="currentUserAvatarUrl(); else commentComposerFallback" [src]="currentUserAvatarUrl()!" alt="Your profile photo" class="avatar-img" />
                   <ng-template #commentComposerFallback>{{ authService.currentUser()?.username?.charAt(0)?.toUpperCase() || 'U' }}</ng-template>
                 </div>
                 <input
@@ -486,7 +495,7 @@
 
               <div class="selected-giphy" *ngIf="getSelectedGiphyForPost(post.postId!) as selected">
                 <img [src]="selected.previewUrl || selected.fullUrl" alt="Selected GIF" />
-                <button type="button" class="reply-btn reply-btn--danger" (click)="clearSelectedGiphyForPost(post.postId!)">{{ 'COMMUNITY.REMOVE' | translate }}</button>
+                <button type="button" class="reply-btn reply-btn--danger" (click)="clearSelectedGiphyForPost(post.postId!)">Remove</button>
               </div>
             </div>
           </article>
@@ -552,7 +561,7 @@
 
           <div class="selected-giphy" *ngIf="getSelectedGiphyForReply(comment.commentId!) as selected">
             <img [src]="selected.previewUrl || selected.fullUrl" alt="Selected GIF" />
-            <button type="button" class="reply-btn reply-btn--danger" (click)="clearSelectedGiphyForReply(comment.commentId!)">{{ 'COMMUNITY.REMOVE' | translate }}</button>
+            <button type="button" class="reply-btn reply-btn--danger" (click)="clearSelectedGiphyForReply(comment.commentId!)">Remove</button>
           </div>
 
           <div class="reply-actions">
@@ -606,7 +615,7 @@
     <div class="giphy-modal-backdrop" *ngIf="showGiphyPicker()" (click)="closeGiphyPicker()">
       <section class="giphy-modal-card" (click)="$event.stopPropagation()">
         <header class="giphy-modal-head">
-          <h3>{{ 'COMMUNITY.GIPHY_TITLE' | translate }}</h3>
+          <h3>Add GIF / Sticker</h3>
           <button type="button" class="btn-close" (click)="closeGiphyPicker()">✕</button>
         </header>
 
@@ -616,7 +625,7 @@
             class="quick-comment-input"
             [value]="giphyQuery()"
             (input)="onGiphyQueryInput($any($event.target).value)"
-            [attr.placeholder]="'COMMUNITY.GIPHY_SEARCH_PH' | translate"
+            placeholder="Search GIPHY..."
           />
           <button
             type="button"
@@ -632,11 +641,11 @@
             [class.active]="giphyType() === 'sticker'"
             (click)="setGiphyType('sticker')"
           >
-            {{ 'COMMUNITY.STICKER' | translate }}
+            Sticker
           </button>
         </div>
 
-        <p class="empty-thread" *ngIf="giphyLoading()">{{ 'COMMUNITY.GIPHY_SEARCHING' | translate }}</p>
+        <p class="empty-thread" *ngIf="giphyLoading()">Searching...</p>
         <p class="empty-thread" *ngIf="!giphyLoading() && giphyError()">{{ giphyError() }}</p>
 
         <div class="giphy-grid" *ngIf="!giphyLoading() && giphyResults().length > 0">
@@ -673,9 +682,9 @@
       </header>
 
       <div class="user-hover-card__meta">
-        <p><strong>{{ 'COMMUNITY.HOVER_COUNTRY' | translate }}</strong> {{ hoverCardCountry(hover.user) }}</p>
-        <p *ngIf="hover.user.cityName"><strong>{{ 'COMMUNITY.HOVER_CITY' | translate }}</strong> {{ hover.user.cityName }}</p>
-        <p *ngIf="hover.user.followersCount != null">{{ 'COMMUNITY.HOVER_FOLLOWERS' | translate: { n: hover.user.followersCount } }}</p>
+        <p><strong>Country:</strong> {{ hoverCardCountry(hover.user) }}</p>
+        <p *ngIf="hover.user.cityName"><strong>City:</strong> {{ hover.user.cityName }}</p>
+        <p *ngIf="hover.user.followersCount != null"><strong>{{ hover.user.followersCount }}</strong> followers</p>
       </div>
 
       <div class="user-hover-card__actions" *ngIf="hover.user.userId">
@@ -684,14 +693,47 @@
           class="user-hover-card__btn user-hover-card__btn--primary"
           *ngIf="authService.isAuthenticated() && authService.currentUser()?.id !== hover.user.userId"
           (click)="toggleFollowFromHover(hover.user.userId, $event)"
-        >{{ isFollowing(hover.user.userId) ? ('COMMUNITY.FOLLOWING' | translate) : ('COMMUNITY.FOLLOW_SIMPLE' | translate) }}</button>
+        >{{ isFollowing(hover.user.userId) ? 'Following' : 'Follow' }}</button>
         <button
           type="button"
           class="user-hover-card__btn"
           *ngIf="authService.isAuthenticated() && authService.currentUser()?.id !== hover.user.userId"
           (click)="openChatWithHoveredUser($event)"
-        >{{ 'COMMUNITY.HOVER_CHAT' | translate }}</button>
+        >Chat</button>
       </div>
     </article>
-  </section>
+    </section>
+    </div>
+
+    <aside class="community-suggestions glass-panel" *ngIf="suggestedUsers().length > 0">
+      <header class="community-suggestions__head">
+        <h3>Suggestions for You</h3>
+      </header>
+
+      <div class="community-suggestions__list">
+        <article class="community-suggestion-item" *ngFor="let user of suggestedUsers(); trackBy: trackByUserRef">
+          <button type="button" class="community-suggestion-user" (click)="goToUserProfile(user.userId)">
+            <div class="avatar community-suggestion-avatar">
+              <img *ngIf="userAvatarUrl(user); else suggestionFallback" [src]="userAvatarUrl(user)!" [alt]="displayName(user)" class="avatar-img" />
+              <ng-template #suggestionFallback>{{ displayName(user).charAt(0).toUpperCase() || 'U' }}</ng-template>
+            </div>
+
+            <span class="community-suggestion-meta">
+              <strong>{{ displayName(user) }}</strong>
+              <small *ngIf="suggestionLocation(user)">{{ suggestionLocation(user) }}</small>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            class="community-suggestion-follow"
+            (click)="toggleFollow(user.userId)"
+            *ngIf="authService.isAuthenticated()"
+          >
+            {{ isFollowing(user.userId) ? 'Following' : '+ Add Friend' }}
+          </button>
+        </article>
+      </div>
+    </aside>
+  </div>
 </section>

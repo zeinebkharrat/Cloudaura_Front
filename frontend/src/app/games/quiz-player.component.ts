@@ -20,7 +20,6 @@ export class QuizPlayerComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
   private readonly gamification = inject(GamificationService);
-  private readonly translate = inject(TranslateService);
 
   quiz = signal<Quiz | null>(null);
   currentQuestion = signal<number>(0);

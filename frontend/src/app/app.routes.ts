@@ -5,6 +5,7 @@ import { VirtualTourPageComponent } from './virtual-tour-page.component';
 import { FeaturePageComponent } from './feature-page.component';
 import { CommunityComponent } from './Community/community.component';
 import { MyPostsComponent } from './Community/my-posts.component';
+import { DigitalPassportComponent } from './Community/digital-passport.component';
 import { UserProfileComponent } from './Community/user-profile.component';
 import { FollowListComponent } from './Community/follow-list.component';
 import { SignInComponent } from './sign-in.component';
@@ -41,6 +42,7 @@ import { CommunityShellComponent } from './Community/community-shell.component';
 import { AdminGamesComponent } from './admin/games/admin-games.component';
 import { AdminGamificationComponent } from './admin/gamification/admin-gamification.component';
 import { AdminTicketsComponent } from './admin/tickets/admin-tickets.component';
+import { AdminProfileComponent } from './admin/profile/admin-profile.component';
 import { UserGamesComponent } from './games/user-games.component';
 import { QuizPlayerComponent } from './games/quiz-player.component';
 import { CrosswordPlayerComponent } from './games/crossword-player.component';
@@ -51,6 +53,7 @@ import { ServicesActivitiesComponent } from './explore/services-activities.compo
 import { MockPaymentComponent } from './shop/mock-payment/mock-payment.component';
 import { ArtisanOrdersComponent } from './artisan/artisan-orders.component';
 import { FavoritesComponent } from './shop/favorites.component';
+import { SettingsComponent } from './settings.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -124,6 +127,7 @@ export const routes: Routes = [
       { path: 'posts', component: AdminPostsComponent },
       { path: 'orders', component: OrdersAdminComponent },
       { path: 'products', component: ProductsAdminComponent },
+      { path: 'profile', component: AdminProfileComponent },
       { path: 'activity-reservations', component: AdminActivityReservationsComponent },
       {
         path: 'accommodations',
@@ -145,6 +149,7 @@ export const routes: Routes = [
     ],
   },
   { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },
+  { path: 'settings', component: SettingsComponent, canActivate: [authGuard] },
   {
     path: 'mes-reservations',
     component: MesReservationsComponent,
@@ -198,8 +203,11 @@ export const routes: Routes = [
     path: 'presentation-transport',
     component: FeaturePageComponent,
     data: {
-      i18n: 'PRESENTATION_TRANSPORT',
+      kicker: 'Mobilité',
       accent: 'coral',
+      title: 'Transport & mobilité',
+      description:
+        'Planifier, suivre et optimiser les déplacements : trajets clairs, informations à jour et suggestions adaptées au profil du voyageur.',
       blocks: [
         {
           icon: '🧭',
@@ -232,8 +240,11 @@ export const routes: Routes = [
     path: 'presentation-hebergement',
     component: FeaturePageComponent,
     data: {
-      i18n: 'PRESENTATION_HEBERGEMENT',
+      kicker: 'Séjour',
       accent: 'gold',
+      title: 'Hébergement',
+      description:
+        'Un catalogue complet des lieux où se poser — de l’hôtel à la maison d’hôtes — avec disponibilité, avis et suggestions sur mesure.',
       blocks: [
         {
           icon: '🛏️',
@@ -303,7 +314,9 @@ export const routes: Routes = [
     data: {
       i18n: 'EVENEMENTS',
       accent: 'rose',
+      title: 'Events',
       eventFeed: true,
+      description: "Experience Tunisia's heartbeat with YallaTN+.\nDiscover authentic festivals, sports, and tech events.",
      },
   },
   {
@@ -313,23 +326,8 @@ export const routes: Routes = [
       i18n: 'ARTISANAT',
       accent: 'sand',
       catalog: 'products',
-      blocks: [
-        {
-          icon: '👤',
-          titleKey: 'FEATURE.ARTISANAT_BLOCKS.B1.TITLE',
-          itemKeys: ['FEATURE.ARTISANAT_BLOCKS.B1.I1', 'FEATURE.ARTISANAT_BLOCKS.B1.I2'],
-        },
-        {
-          icon: '🛒',
-          titleKey: 'FEATURE.ARTISANAT_BLOCKS.B2.TITLE',
-          itemKeys: ['FEATURE.ARTISANAT_BLOCKS.B2.I1', 'FEATURE.ARTISANAT_BLOCKS.B2.I2'],
-        },
-        {
-          icon: '🌿',
-          titleKey: 'FEATURE.ARTISANAT_BLOCKS.B3.TITLE',
-          itemKeys: ['FEATURE.ARTISANAT_BLOCKS.B3.I1', 'FEATURE.ARTISANAT_BLOCKS.B3.I2'],
-        },
-      ],
+      description:
+        'Spotlight artisans and their work: digital storefront, checkout with secure payment (Stripe or mock), and positive impact on the local economy.',
     },
   },
   {
@@ -366,6 +364,39 @@ export const routes: Routes = [
   {
     path: 'communaute',
     component: CommunityShellComponent,
+    data: {
+      kicker: 'Voyageurs',
+      accent: 'violet',
+      title: 'Communauté',
+      description:
+        'Relier voyageurs, artisans et équipes : échanges, avis et récits — avec des espaces modérés pour une discussion de qualité.',
+      blocks: [
+        {
+          icon: '💬',
+          title: 'Chat temps réel',
+          items: [
+            'Messagerie privée et groupes thématiques.',
+            'Canaux pour questions rapides et entraide.',
+          ],
+        },
+        {
+          icon: '📣',
+          title: 'Forums & avis',
+          items: [
+            'Forums thématiques : conseils, itinéraires, bons plans.',
+            'Commentaires et notes sur activités, événements, restaurants et produits.',
+          ],
+        },
+        {
+          icon: '📔',
+          title: 'Partage d’expériences',
+          items: [
+            'Carnets de voyage, photos et récits inspirants.',
+            'Modération pour garder un ton respectueux et utile.',
+          ],
+        },
+      ],
+    },
     children: [
       {
         path: '',
@@ -380,6 +411,11 @@ export const routes: Routes = [
       {
         path: 'my-posts',
         component: MyPostsComponent,
+        canActivate: [authGuard],
+      },
+      {
+        path: 'digital-passport',
+        component: DigitalPassportComponent,
         canActivate: [authGuard],
       },
       {

@@ -3,7 +3,6 @@ package org.example.backend.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.example.backend.dto.publicapi.VoiceTranscriptionResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -22,7 +21,6 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class VoiceTranscriptionService {
 
     private static final String ELEVENLABS_STT_ENDPOINT = "https://api.elevenlabs.io/v1/speech-to-text";
@@ -41,13 +39,13 @@ public class VoiceTranscriptionService {
 
     public VoiceTranscriptionResponse transcribe(MultipartFile audioFile, String languageCode) {
         if (audioFile == null || audioFile.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.voice.audio_required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Audio file is required");
         }
         if (audioFile.getSize() > maxAudioBytes) {
-            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "api.error.voice.audio_too_large");
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Audio file is too large");
         }
         if (elevenLabsApiKey == null || elevenLabsApiKey.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "api.error.voice.provider_not_configured");
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Voice provider is not configured");
         }
 
         final String boundary = "----cloudaura-" + UUID.randomUUID();
@@ -65,8 +63,7 @@ public class VoiceTranscriptionService {
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                log.warn("Voice STT upstream status={} body={}", response.statusCode(), response.body());
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "api.error.voice.provider_error");
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, extractProviderError(response.body()));
             }
 
             JsonNode root = objectMapper.readTree(response.body());
@@ -77,7 +74,7 @@ public class VoiceTranscriptionService {
             );
 
             if (transcript == null || transcript.isBlank()) {
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "api.error.voice.empty_transcription");
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Voice provider returned an empty transcription");
             }
 
             String detectedLanguage = firstNonBlank(
@@ -88,10 +85,10 @@ public class VoiceTranscriptionService {
 
             return new VoiceTranscriptionResponse(transcript.trim(), detectedLanguage, "elevenlabs");
         } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.voice.audio_read_failed");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unable to read uploaded audio");
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "api.error.voice.transcription_interrupted");
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Voice transcription interrupted");
         }
     }
 
@@ -130,6 +127,22 @@ public class VoiceTranscriptionService {
 
     private String sanitizeFileName(String fileName) {
         return fileName.replace('"', '_').replace('\n', '_').replace('\r', '_');
+    }
+
+    private String extractProviderError(String body) {
+        try {
+            JsonNode root = objectMapper.readTree(body);
+            String message = firstNonBlank(
+                root.path("detail").asText(null),
+                root.path("error").path("message").asText(null),
+                root.path("message").asText(null)
+            );
+            if (message != null) {
+                return "Voice provider error: " + message;
+            }
+        } catch (Exception ignored) {
+        }
+        return "Voice provider rejected the request";
     }
 
     private String firstNonBlank(String... values) {

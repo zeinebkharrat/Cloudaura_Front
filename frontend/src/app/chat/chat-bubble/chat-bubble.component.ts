@@ -14,12 +14,25 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
 import { ChatService } from '../chat.service';
 import { AuthService } from '../../core/auth.service';
 import { ConversationResponse, MessageResponse, TypingEvent } from '../chat.types';
 import { Router } from '@angular/router';
 import { AppAlertsService } from '../../core/services/app-alerts.service';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { isBackendLoginRedirectError } from '../../api-error.util';
+
+interface StoryReplyPayload {
+  kind: string;
+  storyId: number;
+  authorId: number;
+  authorUsername: string;
+  mediaUrl: string;
+  mediaType: string;
+  caption?: string;
+  replyText: string;
+  sentAt?: string;
+}
 
 @Component({
   selector: 'app-chat-bubble',
@@ -34,7 +47,6 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
   private readonly router = inject(Router);
   private readonly alerts = inject(AppAlertsService);
   private readonly injector = inject(Injector);
-  private readonly translate = inject(TranslateService);
 
   @ViewChild('messagesContainer') messagesContainer!: ElementRef;
   @ViewChild('messageInput') messageInput!: ElementRef;
@@ -96,6 +108,10 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
 
   ngOnInit() {
     this.chatService.ensureE2eeReadyForCurrentUser().catch((err) => {
+      const httpError = err as HttpErrorResponse;
+      if (httpError?.status === 401 || isBackendLoginRedirectError(httpError)) {
+        return;
+      }
       console.error('Failed to initialize E2EE keys:', err);
     });
   }
@@ -220,10 +236,10 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
     }
 
     const confirm = await this.alerts.confirm({
-      title: this.translate.instant('COMMUNITY.CHAT_DELETE_MSG_TITLE'),
-      text: this.translate.instant('COMMUNITY.CHAT_DELETE_MSG_TEXT'),
-      confirmText: this.translate.instant('COMMUNITY.CHAT_DELETE_MSG_CONFIRM'),
-      cancelText: this.translate.instant('COMMUNITY.CANCEL'),
+      title: 'Delete this message?',
+      text: 'This will permanently remove it for everyone in this conversation.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
       icon: 'warning',
     });
 
@@ -242,10 +258,7 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
       error: (err) => {
         console.error('Failed to delete message:', err);
         this.deletingMessageId.set(null);
-        this.alerts.error(
-          this.translate.instant('COMMUNITY.CHAT_DELETE_FAIL_TITLE'),
-          this.translate.instant('COMMUNITY.CHAT_DELETE_FAIL_TEXT')
-        );
+        this.alerts.error('Delete failed', 'Unable to delete this message. Please try again.');
       },
     });
   }
@@ -292,6 +305,29 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
 
   isVoiceMessage(msg: MessageResponse): boolean {
     return !!msg.voiceUrl || msg.messageType === 'VOICE';
+  }
+
+  isStoryReplyMessage(msg: MessageResponse): boolean {
+    return this.parseStoryReply(msg.content) != null;
+  }
+
+  storyReply(msg: MessageResponse): StoryReplyPayload | null {
+    return this.parseStoryReply(msg.content);
+  }
+
+  storyReplyMediaUrl(msg: MessageResponse): string {
+    const parsed = this.parseStoryReply(msg.content);
+    const raw = (parsed?.mediaUrl || '').trim();
+    if (!raw) {
+      return '';
+    }
+    if (/^https?:\/\//i.test(raw) || raw.startsWith('/')) {
+      return raw;
+    }
+    if (raw.startsWith('uploads/')) {
+      return `/${raw}`;
+    }
+    return `/${raw.replace(/^\/+/, '')}`;
   }
 
   registerVoiceAudio(messageId: number, event: Event): void {
@@ -379,6 +415,25 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
     return `${minutes}:${String(seconds).padStart(2, '0')}`;
   }
 
+  conversationPreview(conv: ConversationResponse): string {
+    if (conv.unreadCount === 1) {
+      return 'Sent you one message';
+    }
+    if (conv.unreadCount > 1) {
+      return `Sent you ${conv.unreadCount} messages`;
+    }
+    return 'No new messages';
+  }
+
+  formatVoiceDuration(sec?: number | null): string {
+    if (!sec || sec <= 0) {
+      return '0:00';
+    }
+    const minutes = Math.floor(sec / 60);
+    const seconds = sec % 60;
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+  }
+
   backToList(): void {
     this.activeChatRoomId.set(null);
     this.activeConversation.set(null);
@@ -441,7 +496,7 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
     }
 
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-      alert(this.translate.instant('COMMUNITY.CHAT_VOICE_NOT_SUPPORTED'));
+      alert('Voice recording is not supported on this browser.');
       return;
     }
 
@@ -561,5 +616,33 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
 
     const plain = await this.chatService.decryptMessageContent(msg);
     return { ...msg, content: plain };
+  }
+
+  private parseStoryReply(content?: string | null): StoryReplyPayload | null {
+    const text = (content || '').trim();
+    const prefix = 'YALLA_STORY_REPLY::';
+    if (!text.startsWith(prefix)) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(text.slice(prefix.length)) as Partial<StoryReplyPayload>;
+      if (parsed.kind !== 'story-reply' || typeof parsed.replyText !== 'string') {
+        return null;
+      }
+      return {
+        kind: 'story-reply',
+        storyId: Number(parsed.storyId || 0),
+        authorId: Number(parsed.authorId || 0),
+        authorUsername: (parsed.authorUsername || '').toString(),
+        mediaUrl: (parsed.mediaUrl || '').toString(),
+        mediaType: (parsed.mediaType || 'IMAGE').toString(),
+        caption: (parsed.caption || '').toString(),
+        replyText: parsed.replyText,
+        sentAt: parsed.sentAt ? String(parsed.sentAt) : undefined,
+      };
+    } catch {
+      return null;
+    }
   }
 }

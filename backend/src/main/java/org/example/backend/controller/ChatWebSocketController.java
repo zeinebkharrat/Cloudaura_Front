@@ -10,7 +10,6 @@ import org.example.backend.service.CustomUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
-import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 
@@ -110,6 +109,6 @@ public class ChatWebSocketController {
             return details.getUser();
         }
 
-        throw new AuthenticationCredentialsNotFoundException("api.error.unauthorized");
+        throw new RuntimeException("User not authenticated");
     }
 }

@@ -334,6 +334,11 @@ export class CityExploreComponent implements OnInit, OnDestroy {
   }
 
   openWeatherDrawer(): void {
+    if (this.weatherDrawerOpen()) {
+      this.weatherDrawerOpen.set(false);
+      return;
+    }
+
     this.weatherDrawerOpen.set(true);
     const city = this.details()?.city;
     this.loadWeeklyWeather(city?.latitude ?? null, city?.longitude ?? null);

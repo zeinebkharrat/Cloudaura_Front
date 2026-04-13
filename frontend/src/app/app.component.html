@@ -25,12 +25,6 @@
     <li>
       <a routerLink="/destination-map" routerLinkActive="active">{{ 'NAV.DESTINATIONS' | translate }}</a>
     </li>
-    <li>
-      <a routerLink="/transport" routerLinkActive="active">{{ 'NAV.TRANSPORT' | translate }}</a>
-    </li>
-    <li>
-      <a routerLink="/planifier-voyage" [class.active]="isStaysNavActive()">{{ 'NAV.STAYS' | translate }}</a>
-    </li>
     <li class="services-menu-wrap" (click)="$event.stopPropagation()">
       <button
         type="button"
@@ -46,27 +40,26 @@
       </button>
       @if (isServicesMenuOpen()) {
         <div class="services-dropdown">
-          <a class="services-dd-item" routerLink="/services/restaurants" routerLinkActive="active" (click)="closeServicesMenu()">{{ 'NAV.RESTAURANTS' | translate }}</a>
-          <a class="services-dd-item" routerLink="/services/activities" routerLinkActive="active" (click)="closeServicesMenu()">{{ 'NAV.ACTIVITIES_LINK' | translate }}</a>
+          <a class="services-dd-item" routerLink="/transport" routerLinkActive="active" (click)="closeServicesMenu()">Transport</a>
+          <a class="services-dd-item" routerLink="/planifier-voyage" routerLinkActive="active" (click)="closeServicesMenu()">Stays</a>
+          <a class="services-dd-item" routerLink="/evenements" routerLinkActive="active" (click)="closeServicesMenu()">Events</a>
+          <a class="services-dd-item" routerLink="/services/restaurants" routerLinkActive="active" (click)="closeServicesMenu()">Restaurants</a>
+          <a class="services-dd-item" routerLink="/services/activities" routerLinkActive="active" (click)="closeServicesMenu()">Activities</a>
         </div>
       }
     </li>
     <li>
-      <a routerLink="/activites" routerLinkActive="active">{{ 'NAV.ACTIVITIES_LINK' | translate }}</a>
+      <a routerLink="/artisanat" routerLinkActive="active">Crafts</a>
     </li>
     <li>
-      <a routerLink="/artisanat" routerLinkActive="active">{{ 'NAV.ARTISANAT' | translate }}</a>
+      <a routerLink="/communaute" routerLinkActive="active">Community</a>
     </li>
     <li>
-      <a routerLink="/communaute" routerLinkActive="active">{{ 'NAV.COMMUNITY' | translate }}</a>
+      <a routerLink="/games" routerLinkActive="active">Games &amp; quizzes</a>
     </li>
     <li>
       <a routerLink="/games" routerLinkActive="active">{{ 'NAV.GAMES' | translate }}</a>
     </li>
-    <li>
-      <a routerLink="/virtual-tour" routerLinkActive="active">{{ 'NAV.TOUR360' | translate }}</a>
-    </li>
-    <li><a routerLink="/" fragment="story">{{ 'NAV.STORY' | translate }}</a></li>
   </ul>
   <div class="nav-actions">
     @if (!isAuthenticated()) {
@@ -83,7 +76,7 @@
           } @else {
             <span class="user-avatar fallback">{{ (currentUser()?.firstName || currentUser()?.username || 'U').charAt(0).toUpperCase() }}</span>
           }
-          <span class="nav-user">{{ 'NAV.USER_HI' | translate: { name: (currentUser()?.firstName || currentUser()?.username || '') } }}</span>
+          <span class="nav-user">Hi, {{ currentUser()?.firstName || currentUser()?.username }}</span>
           <div class="user-score-badge">
             <span class="coin-icon">💰</span>
             <span class="score-value">{{ userPoints() }}</span>
@@ -97,12 +90,12 @@
           <div class="user-dropdown">
             @if (userBadgeCollection().length > 0) {
               <div class="badges-mini-shelf">
-                <span class="shelf-label">{{ 'NAV.BADGES' | translate }}</span>
+                <span class="shelf-label">My Badges</span>
                 <div class="shelf-grid">
                   @for (b of userBadgeCollection(); track b.badgeId) {
                     <div class="mini-badge" [title]="b.name + ': ' + b.description">
                       @if (b.iconUrl) {
-                        <img [src]="b.iconUrl" [attr.alt]="'COMMON.BADGE' | translate" />
+                        <img [src]="b.iconUrl" alt="Badge" />
                       } @else {
                         <span class="badge-placeholder">🏅</span>
                       }
@@ -120,9 +113,9 @@
               <i class="pi pi-heart"></i>
               <span>{{ 'NAV.FAVORITES' | translate }}</span>
             </a>
-            <a class="user-dd-item" routerLink="/profile" (click)="closeUserMenu()">
+            <a class="user-dd-item" routerLink="/settings" (click)="closeUserMenu()">
               <i class="pi pi-user"></i>
-              <span>{{ 'NAV.PROFILE' | translate }}</span>
+              <span>Settings</span>
             </a>
             @if (isAdmin()) {
               <a class="user-dd-item" routerLink="/admin/dashboard" (click)="closeUserMenu()">
@@ -155,7 +148,7 @@
 
     @if (isAuthenticated() && !isArtisan()) {
       <div class="challenges-wrap" (click)="$event.stopPropagation()">
-        <button type="button" class="nav-icon-btn challenges-btn" (click)="toggleChallengesPopup($event)" [attr.aria-label]="'NAV.CHALLENGES_A11Y' | translate" [attr.title]="'CHALLENGES.TITLE' | translate">
+        <button type="button" class="nav-icon-btn challenges-btn" (click)="toggleChallengesPopup($event)" aria-label="Daily Challenges" title="Daily Challenges">
           <i class="pi pi-bell nav-icon"></i>
           @if (challengeCount() > 0) {
             <span class="nav-badge pulse-badge">{{ challengeCount() }}</span>
@@ -165,12 +158,12 @@
         @if (isChallengesPopupOpen()) {
           <div class="challenges-popup animate-up">
             <div class="cp-header">
-              <h3>{{ 'CHALLENGES.TITLE' | translate }}</h3>
-              <button type="button" class="btn-close-sm" (click)="closeChallengesPopup()" [attr.aria-label]="'CHALLENGES.CLOSE' | translate">✕</button>
+              <h3>Daily Challenges</h3>
+              <button class="btn-close-sm" (click)="closeChallengesPopup()">✕</button>
             </div>
             <div class="cp-body">
               @if (activeChallenges().length === 0) {
-                <p class="empty-msg">{{ 'CHALLENGES.EMPTY' | translate }}</p>
+                <p class="empty-msg">No active challenges for today. Check back later!</p>
               } @else {
                 @for (c of activeChallenges(); track c.challengeId) {
                   <div class="challenge-item" [class.completed]="c.completed">
@@ -183,22 +176,22 @@
                     </div>
                     <div class="ci-right">
                       <h4 class="ci-title">{{ c.title }}</h4>
-                      <p class="ci-desc">{{ c.description || ('CHALLENGES.DEFAULT_DESC' | translate) }}</p>
+                      <p class="ci-desc">{{ c.description || 'Complete the target to earn points!' }}</p>
                       <div class="ci-foot">
-                        <span class="ci-points">💰 {{ 'CHALLENGES.PTS' | translate: { n: c.pointsReward } }}</span>
+                        <span class="ci-points">💰 {{ c.pointsReward }} pts</span>
                         @if (c.completed) {
-                          <span class="ci-status done">✓ {{ 'CHALLENGES.COMPLETED' | translate }}</span>
+                          <span class="ci-status done">✓ Completed</span>
                         } @else {
                           @if (c.gameKind === 'QUIZ' && c.targetId) {
-                            <a [routerLink]="['/games/quiz', c.targetId]" (click)="closeChallengesPopup()" class="ci-link">{{ 'CHALLENGES.PLAY_NOW' | translate }}</a>
+                            <a [routerLink]="['/games/quiz', c.targetId]" (click)="closeChallengesPopup()" class="ci-link">Play now →</a>
                           } @else if (c.gameKind === 'CROSSWORD' && c.targetId) {
-                            <a [routerLink]="['/games/crossword', c.targetId]" (click)="closeChallengesPopup()" class="ci-link">{{ 'CHALLENGES.PLAY_NOW' | translate }}</a>
+                            <a [routerLink]="['/games/crossword', c.targetId]" (click)="closeChallengesPopup()" class="ci-link">Play now →</a>
                           } @else if (c.gameKind === 'PUZZLE' && c.targetId) {
-                            <a [routerLink]="['/games/puzzle', c.targetId]" (click)="closeChallengesPopup()" class="ci-link">{{ 'CHALLENGES.PLAY_NOW' | translate }}</a>
+                            <a [routerLink]="['/games/puzzle', c.targetId]" (click)="closeChallengesPopup()" class="ci-link">Play now →</a>
                           } @else if (c.gameKind === 'LUDO') {
-                            <a [routerLink]="['/games/ludo']" (click)="closeChallengesPopup()" class="ci-link">{{ 'CHALLENGES.PLAY_NOW' | translate }}</a>
+                            <a [routerLink]="['/games/ludo']" (click)="closeChallengesPopup()" class="ci-link">Play now →</a>
                           } @else {
-                            <a [routerLink]="['/games']" (click)="closeChallengesPopup()" class="ci-link">{{ 'CHALLENGES.VIEW_GAMES' | translate }}</a>
+                            <a [routerLink]="['/games']" (click)="closeChallengesPopup()" class="ci-link">View Games →</a>
                           }
                         }
                       </div>
@@ -212,10 +205,7 @@
       </div>
     }
 
-    <app-currency-selector class="nav-currency" />
-    <app-language-selector class="nav-lang" />
-
-    <button type="button" class="theme-toggle-btn" (click)="toggleTheme()" [attr.aria-label]="'NAV.THEME' | translate" [attr.title]="'NAV.THEME' | translate">
+    <button type="button" class="theme-toggle-btn" (click)="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">
       @if (isDarkMode()) {
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -246,14 +236,14 @@
 @if (loginPrompt.open() && !isAuthenticated()) {
   <div class="login-gate" (click)="closeLoginPrompt()">
     <div class="login-gate__panel" (click)="$event.stopPropagation()">
-      <button type="button" class="login-gate__close" (click)="closeLoginPrompt()" [attr.aria-label]="'LOGIN_GATE.CLOSE' | translate">×</button>
+      <button type="button" class="login-gate__close" (click)="closeLoginPrompt()" aria-label="Close">×</button>
       <div class="login-gate__head">
         <div class="login-gate__brand">
           <img src="assets/logo/yallatn-logo.png" alt="YallaTN" class="login-gate__logo" />
           <div class="login-gate__travel" aria-hidden="true">
-            <span class="login-gate__pill"><img src="icones/city.png" alt="" width="14" height="14" /> {{ 'LOGIN_GATE.PILL_CITIES' | translate }}</span>
-            <span class="login-gate__pill"><img src="icones/actitvity.png" alt="" width="14" height="14" /> {{ 'LOGIN_GATE.PILL_ACTIVITIES' | translate }}</span>
-            <span class="login-gate__pill"><img src="icones/bus.png" alt="" width="14" height="14" /> {{ 'LOGIN_GATE.PILL_TRANSPORT' | translate }}</span>
+            <span class="login-gate__pill"><img src="icones/city.png" alt="" width="14" height="14" /> Cities</span>
+            <span class="login-gate__pill"><img src="icones/actitvity.png" alt="" width="14" height="14" /> Activities</span>
+            <span class="login-gate__pill"><img src="icones/bus.png" alt="" width="14" height="14" /> Transport</span>
           </div>
         </div>
         <h3>{{ loginPrompt.title() }}</h3>
@@ -262,8 +252,8 @@
 
       <div class="auth-switch" [class.auth-switch--signup]="authModalMode() === 'signup'">
         <span class="auth-switch__thumb" aria-hidden="true"></span>
-        <button type="button" class="auth-switch__btn" [class.active]="authModalMode() === 'signin'" (click)="goToSignInFromPrompt()">{{ 'LOGIN_GATE.SIGN_IN_TAB' | translate }}</button>
-        <button type="button" class="auth-switch__btn" [class.active]="authModalMode() === 'signup'" (click)="goToSignUpFromPrompt()">{{ 'LOGIN_GATE.SIGN_UP_TAB' | translate }}</button>
+        <button type="button" class="auth-switch__btn" [class.active]="authModalMode() === 'signin'" (click)="goToSignInFromPrompt()">Sign in</button>
+        <button type="button" class="auth-switch__btn" [class.active]="authModalMode() === 'signup'" (click)="goToSignUpFromPrompt()">Create account</button>
       </div>
 
       <div class="auth-stage" [class.auth-stage--signup]="authModalMode() === 'signup'">
@@ -289,21 +279,79 @@
 <router-outlet />
 
 @if (!isAdminArea()) {
-<footer>
-  <div class="footer-content">
-    <div class="footer-logo">
+<footer class="site-footer">
+  <div class="site-footer__hero">
+    <div>
+      <p class="site-footer__kicker">Travel Better With YallaTN+</p>
+      <h3>Plan your next Tunisia journey with one modern platform</h3>
+      <p class="site-footer__hero-text">Destinations, transport, stays, experiences, local culture, and community all connected beautifully.</p>
+    </div>
+    <div class="site-footer__hero-actions">
+      <a routerLink="/destination-map" class="site-footer__hero-btn site-footer__hero-btn--primary">Start Exploring</a>
+      <a routerLink="/communaute" class="site-footer__hero-btn site-footer__hero-btn--ghost">Join Community</a>
+    </div>
+  </div>
+
+  <div class="site-footer__grid">
+    <div class="site-footer__brand">
       <img
         class="footer-logo-img"
         src="assets/logo/yallatn-logo.png"
-        width="200"
-        height="64"
-        alt=""
+        width="220"
+        height="72"
+        alt="YallaTN logo"
       />
+      <p>
+        Tunisia travel, planned beautifully. Discover destinations, book stays, find transport,
+        and unlock events in one premium experience.
+      </p>
+      <div class="site-footer__stats">
+        <span>24 Regions</span>
+        <span>100% Tunisia Focus</span>
+        <span>All-in-One Journey</span>
+      </div>
     </div>
-    <div class="footer-text">
-      <app-language-selector class="footer-lang" />
-      {{ 'FOOTER.COPY' | translate }}
+
+    <div class="site-footer__col">
+      <h4>Explore</h4>
+      <a routerLink="/destination-map">Destinations</a>
+      <a routerLink="/services/activities">Activities</a>
+      <a routerLink="/evenements">Events</a>
+      <a routerLink="/artisanat">Crafts</a>
     </div>
+
+    <div class="site-footer__col">
+      <h4>Travel Services</h4>
+      <a routerLink="/transport">Transport</a>
+      <a routerLink="/planifier-voyage">Stays</a>
+      <a routerLink="/services/restaurants">Restaurants</a>
+      <a routerLink="/virtual-tour">360° Tour</a>
+    </div>
+
+    <div class="site-footer__col">
+      <h4>Community</h4>
+      <a routerLink="/communaute">Forum</a>
+      <a routerLink="/games">Games & Quizzes</a>
+      <a routerLink="/features">Platform Features</a>
+      <a routerLink="/settings">Account Settings</a>
+    </div>
+
+    <div class="site-footer__col site-footer__col--contact">
+      <h4>Contact & Updates</h4>
+      <p><i class="pi pi-envelope"></i> support&#64;yallatn.tn</p>
+      <p><i class="pi pi-phone"></i> +216 70 000 000</p>
+      <p><i class="pi pi-map-marker"></i> Tunis, Tunisia</p>
+      <div class="site-footer__socials">
+        <a routerLink="/communaute" aria-label="Community"><i class="pi pi-users"></i></a>
+        <a routerLink="/evenements" aria-label="Events"><i class="pi pi-calendar"></i></a>
+        <a routerLink="/virtual-tour" aria-label="Virtual Tour"><i class="pi pi-globe"></i></a>
+      </div>
+    </div>
+  </div>
+
+  <div class="site-footer__bottom">
+    <span>© 2026 YallaTN+. All rights reserved.</span>
+    <span>Made for travelers, locals, and creators across Tunisia.</span>
   </div>
 </footer>
 }

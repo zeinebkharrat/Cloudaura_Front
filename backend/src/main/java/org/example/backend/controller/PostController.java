@@ -4,6 +4,7 @@ import org.example.backend.model.Post;
 import org.example.backend.model.User;
 import org.example.backend.service.CustomUserDetailsService;
 import org.example.backend.service.IPostService;
+import org.example.backend.service.SightengineCommentModerationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +25,9 @@ public class PostController {
     @Autowired
     IPostService postService;
 
+    @Autowired
+    SightengineCommentModerationService moderationService;
+
     @GetMapping("/allPosts")
     public List<Post> getAllPosts() {
         return postService.retrievePosts();
@@ -34,6 +38,13 @@ public class PostController {
         // Force the author to be the authenticated user
         User currentUser = getCurrentUser();
         post.setAuthor(currentUser);
+
+        if (moderationService.containsProfanity(post.getContent())) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNPROCESSABLE_ENTITY,
+                    "Post cannot be published because it contains bad words."
+            );
+        }
 
         if (post.getLocation() == null || post.getLocation().trim().isEmpty()) {
             throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "api.error.post_city_required");

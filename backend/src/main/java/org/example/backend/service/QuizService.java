@@ -11,7 +11,6 @@ import org.example.backend.repository.QuizQuestionRepository;
 import org.example.backend.repository.QuizRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.BeanUtils;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -74,7 +73,8 @@ public class QuizService {
         applyQuizFields(q, body);
         if (q.getTitle() != null && !q.getTitle().isBlank()
                 && quizRepo.countSameNormalizedTitle(q.getTitle().trim()) > 0) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "api.error.quiz.title_exists");
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "A quiz with this title already exists. Choose a different title.");
         }
         if (q.getTimeLimitSeconds() == null) {
             q.setTimeLimitSeconds(60);
@@ -87,13 +87,13 @@ public class QuizService {
             quizRepo.flush();
         } catch (DataIntegrityViolationException ex) {
             log.warn("Quiz create (header row): {}", conflictDetail(ex));
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "api.error.quiz.header_conflict");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Quiz header: " + conflictDetail(ex));
         }
         try {
             saveQuestionsForQuiz(q, body.questions());
         } catch (DataIntegrityViolationException ex) {
             log.warn("Quiz create (questions): {}", conflictDetail(ex));
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "api.error.quiz.questions_conflict");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Quiz questions: " + conflictDetail(ex));
         }
         return toQuizView(q);
     }
@@ -223,40 +223,14 @@ public class QuizService {
             t = 60;
         }
         t = normalizeTimeLimitSeconds(t);
-        String lang = ApiRequestLang.get();
-        String title = localizeQuizLine(q.getTitle(), lang, true);
-        String description = localizeQuizLine(q.getDescription(), lang, false);
-        List<QuizQuestion> raw = quizQuestionRepo.findByQuiz_QuizIdOrderByOrderIndexAsc(q.getQuizId());
-        List<QuizQuestion> viewQuestions = new ArrayList<>(raw.size());
-        for (QuizQuestion qq : raw) {
-            QuizQuestion row = new QuizQuestion();
-            BeanUtils.copyProperties(qq, row, "quiz");
-            row.setQuiz(null);
-            row.setQuestionText(localizeQuizLine(qq.getQuestionText(), lang, false));
-            viewQuestions.add(row);
-        }
         return new QuizView(
                 q.getQuizId(),
-                title,
-                description,
+                q.getTitle(),
+                q.getDescription(),
                 q.getPublished(),
                 q.getCreatedAt(),
                 q.getCoverImageUrl(),
                 t,
-                viewQuestions);
-    }
-
-    /**
-     * @param emptyOnKey when true and the value is a catalog-style key, returns {@code ""} (quiz title);
-     *     otherwise returns null for description-like fields.
-     */
-    private String localizeQuizLine(String value, String lang, boolean emptyOnKey) {
-        if (value == null) {
-            return null;
-        }
-        if (CatalogKeyUtil.looksLikeCatalogKey(value)) {
-            return emptyOnKey ? "" : null;
-        }
-        return translationService.safeTranslate(value, lang);
+                quizQuestionRepo.findByQuiz_QuizIdOrderByOrderIndexAsc(q.getQuizId()));
     }
 }

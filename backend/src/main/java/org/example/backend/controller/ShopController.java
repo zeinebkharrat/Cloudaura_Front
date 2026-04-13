@@ -105,11 +105,11 @@ public class ShopController {
      */
     private static String requireUsername(Authentication authentication) {
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.unauthorized");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication requise");
         }
         String name = authentication.getName();
-        if (name == null || name.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.session_invalid");
+        if (name == null || name.isBlank() || "anonymousUser".equalsIgnoreCase(name)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Session invalide");
         }
         return name;
     }

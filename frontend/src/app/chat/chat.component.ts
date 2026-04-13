@@ -11,7 +11,6 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, Subscription, debounceTime, distinctUntilChanged } from 'rxjs';
 import { ChatService } from './chat.service';
@@ -22,6 +21,18 @@ import {
   MessageResponse,
   TypingEvent,
 } from './chat.types';
+
+interface StoryReplyPayload {
+  kind: string;
+  storyId: number;
+  authorId: number;
+  authorUsername: string;
+  mediaUrl: string;
+  mediaType: string;
+  caption?: string;
+  replyText: string;
+  sentAt?: string;
+}
 
 @Component({
   selector: 'app-chat',
@@ -36,7 +47,6 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   private readonly alerts = inject(AppAlertsService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
-  private readonly translate = inject(TranslateService);
 
   @ViewChild('messagesContainer') messagesContainer!: ElementRef;
   @ViewChild('messageInput') messageInput!: ElementRef;
@@ -186,7 +196,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
       },
       error: (err) => {
         console.error('Failed to load chat history:', err);
-        this.messagesError.set(this.translate.instant('COMMUNITY.CHAT_HISTORY_ERR'));
+        this.messagesError.set('Unable to load previous messages right now.');
         this.messagesLoading.set(false);
       },
     });
@@ -272,10 +282,10 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     const confirm = await this.alerts.confirm({
-      title: this.translate.instant('COMMUNITY.CHAT_DELETE_MSG_TITLE'),
-      text: this.translate.instant('COMMUNITY.CHAT_DELETE_MSG_TEXT'),
-      confirmText: this.translate.instant('COMMUNITY.CHAT_DELETE_MSG_CONFIRM'),
-      cancelText: this.translate.instant('COMMUNITY.CANCEL'),
+      title: 'Delete this message?',
+      text: 'This will permanently remove it for everyone in this conversation.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
       icon: 'warning',
     });
 
@@ -472,12 +482,12 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   conversationPreview(conv: ConversationResponse): string {
     if (conv.unreadCount === 1) {
-      return this.translate.instant('COMMUNITY.CHAT_PREVIEW_ONE');
+      return 'Sent you one message';
     }
     if (conv.unreadCount > 1) {
-      return this.translate.instant('COMMUNITY.CHAT_PREVIEW_MANY', { count: conv.unreadCount });
+      return `Sent you ${conv.unreadCount} messages`;
     }
-    return this.translate.instant('COMMUNITY.CHAT_PREVIEW_NONE');
+    return 'No new messages';
   }
 
   getTypingText(): string {
@@ -498,6 +508,77 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   isVoiceMessage(msg: MessageResponse): boolean {
     return !!msg.voiceUrl || msg.messageType === 'VOICE';
+  }
+
+  registerVoiceAudio(messageId: number, event: Event): void {
+    const audio = event.target as HTMLAudioElement;
+    this.audioElements.set(messageId, audio);
+    audio.onended = () => {
+      if (this.playingVoiceMessageId() === messageId) {
+        this.playingVoiceMessageId.set(null);
+      }
+    };
+  }
+
+  toggleVoicePlayback(messageId: number): void {
+    const currentPlaying = this.playingVoiceMessageId();
+    if (currentPlaying != null && currentPlaying !== messageId) {
+      const prev = this.audioElements.get(currentPlaying);
+      prev?.pause();
+    }
+
+    const audio = this.audioElements.get(messageId);
+    if (!audio) {
+      return;
+    }
+
+    if (!audio.paused) {
+      audio.pause();
+      this.playingVoiceMessageId.set(null);
+      return;
+    }
+
+    audio.play().then(() => {
+      this.playingVoiceMessageId.set(messageId);
+    }).catch(() => {
+      this.playingVoiceMessageId.set(null);
+    });
+  }
+
+  formatVoiceDuration(sec?: number | null): string {
+    if (!sec || sec <= 0) {
+      return '';
+    }
+    const minutes = Math.floor(sec / 60);
+    const seconds = sec % 60;
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+  }
+
+  isVoiceMessage(msg: MessageResponse): boolean {
+    return !!msg.voiceUrl || msg.messageType === 'VOICE';
+  }
+
+  isStoryReplyMessage(msg: MessageResponse): boolean {
+    return this.parseStoryReply(msg.content) != null;
+  }
+
+  storyReply(msg: MessageResponse): StoryReplyPayload | null {
+    return this.parseStoryReply(msg.content);
+  }
+
+  storyReplyMediaUrl(msg: MessageResponse): string {
+    const parsed = this.parseStoryReply(msg.content);
+    const raw = (parsed?.mediaUrl || '').trim();
+    if (!raw) {
+      return '';
+    }
+    if (/^https?:\/\//i.test(raw) || raw.startsWith('/')) {
+      return raw;
+    }
+    if (raw.startsWith('uploads/')) {
+      return `/${raw}`;
+    }
+    return `/${raw.replace(/^\/+/, '')}`;
   }
 
   registerVoiceAudio(messageId: number, event: Event): void {
@@ -574,7 +655,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
 
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-      alert(this.translate.instant('COMMUNITY.CHAT_VOICE_NOT_SUPPORTED'));
+      alert('Voice recording is not supported on this browser.');
       return;
     }
 
@@ -694,5 +775,33 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
     const plain = await this.chatService.decryptMessageContent(msg);
     return { ...msg, content: plain };
+  }
+
+  private parseStoryReply(content?: string | null): StoryReplyPayload | null {
+    const text = (content || '').trim();
+    const prefix = 'YALLA_STORY_REPLY::';
+    if (!text.startsWith(prefix)) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(text.slice(prefix.length)) as Partial<StoryReplyPayload>;
+      if (parsed.kind !== 'story-reply' || typeof parsed.replyText !== 'string') {
+        return null;
+      }
+      return {
+        kind: 'story-reply',
+        storyId: Number(parsed.storyId || 0),
+        authorId: Number(parsed.authorId || 0),
+        authorUsername: (parsed.authorUsername || '').toString(),
+        mediaUrl: (parsed.mediaUrl || '').toString(),
+        mediaType: (parsed.mediaType || 'IMAGE').toString(),
+        caption: (parsed.caption || '').toString(),
+        replyText: parsed.replyText,
+        sentAt: parsed.sentAt ? String(parsed.sentAt) : undefined,
+      };
+    } catch {
+      return null;
+    }
   }
 }

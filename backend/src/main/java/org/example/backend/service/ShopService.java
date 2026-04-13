@@ -512,7 +512,7 @@ public class ShopService {
         String identifier = username.trim();
         return userRepository.findFirstByUsernameIgnoreCaseOrderByUserIdAsc(identifier)
             .or(() -> userRepository.findFirstByEmailIgnoreCaseOrderByUserIdAsc(identifier))
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.shop.user_not_found"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur inconnu"));
     }
 
     private Cart getOrCreateCart(User user) {

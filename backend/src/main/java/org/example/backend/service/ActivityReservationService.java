@@ -53,9 +53,8 @@ public class ActivityReservationService {
 
     @Transactional
     public ActivityReservation createPendingReservation(Integer activityId, CreateActivityReservationRequest request) {
-        Activity activity = activityRepository
-            .findById(activityId)
-            .orElseThrow(() -> new ResourceNotFoundException("reservation.error.activity_not_found"));
+        Activity activity = activityRepository.findById(activityId)
+            .orElseThrow(() -> new ResourceNotFoundException("Activité introuvable: " + activityId));
 
         User user = currentAuthenticatedUser();
 
@@ -296,9 +295,6 @@ public class ActivityReservationService {
 
         String username = authentication.getName();
         return userRepository.findFirstByUsernameIgnoreCaseOrEmailIgnoreCaseOrderByUserIdAsc(username, username)
-            .orElseThrow(
-                    () ->
-                            new ResponseStatusException(
-                                    HttpStatus.UNAUTHORIZED, "reservation.error.user_auth_missing"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Utilisateur authentifié introuvable"));
     }
 }

@@ -212,9 +212,7 @@ public class GamificationService {
 
     @Transactional(readOnly = true)
     public Map<String, Object> getMe(User user) {
-        User u = userRepository
-                .findById(user.getUserId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.user_not_found"));
+        User u = userRepository.findById(user.getUserId()).orElseThrow();
         int pts = u.getPoints() == null ? 0 : u.getPoints();
         List<Map<String, Object>> badges =
                 userBadgeRepository.findByUser_UserIdOrderByEarnedAtDesc(user.getUserId()).stream()
@@ -242,7 +240,7 @@ public class GamificationService {
         Tournament t =
                 tournamentRepository
                         .findById(tournamentId)
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.not_found"));
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         List<TournamentParticipation> ranking =
                 participationRepository.findByTournament_TournamentIdOrderByTotalScoreDesc(tournamentId);
         if (!ranking.isEmpty()) {

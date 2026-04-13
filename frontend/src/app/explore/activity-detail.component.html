@@ -66,7 +66,7 @@
           </article>
         </div>
 
-        <a class="city-link" [routerLink]="['/city', activity.cityId]">{{ 'EXPLORE_ACTIVITY.BACK_CITY' | translate }}</a>
+        <a class="city-link" [routerLink]="['/city', activity.cityId]">Back to city</a>
       </div>
     </article>
 
@@ -106,7 +106,7 @@
               <div class="review-top">
                 <div class="review-author">
                   @if (review.profileImageUrl) {
-                    <img class="review-avatar" [src]="review.profileImageUrl" [alt]="'EXPLORE_ACTIVITY.REVIEWER_ALT' | translate" />
+                    <img class="review-avatar" [src]="review.profileImageUrl" alt="Reviewer profile" />
                   } @else {
                     <span class="review-avatar review-avatar-fallback">{{ reviewAuthorInitial(review) }}</span>
                   }
@@ -116,15 +116,15 @@
                   </div>
                 </div>
                 <div class="review-right">
-                  <div class="stars compact" [attr.aria-label]="'EXPLORE_ACTIVITY.REVIEW_STARS_A11Y' | translate">
+                  <div class="stars compact" aria-label="review stars">
                     @for (state of starStates(review.stars); track $index) {
                       <span [class.filled]="state === 'full'">★</span>
                     }
                   </div>
                   @if (isOwnReview(review)) {
                     <div class="review-actions">
-                      <button type="button" class="mini-btn" (click)="startEditReview(review)" [disabled]="reviewSubmitting">{{ 'EXPLORE_ACTIVITY.EDIT' | translate }}</button>
-                      <button type="button" class="mini-btn danger" (click)="deleteOwnReview()" [disabled]="reviewSubmitting">{{ 'EXPLORE_ACTIVITY.DELETE' | translate }}</button>
+                      <button type="button" class="mini-btn" (click)="startEditReview(review)" [disabled]="reviewSubmitting">Edit</button>
+                      <button type="button" class="mini-btn danger" (click)="deleteOwnReview()" [disabled]="reviewSubmitting">Delete</button>
                     </div>
                   }
                 </div>
@@ -145,19 +145,27 @@
           </div>
         </label>
         <label>
-          {{ 'EXPLORE_ACTIVITY.YOUR_COMMENT' | translate }}
-          <textarea rows="4" [(ngModel)]="reviewForm.commentText" name="activityReviewComment" [placeholder]="'EXPLORE_ACTIVITY.COMMENT_PH' | translate"></textarea>
+          Your comment
+          <textarea rows="4" [(ngModel)]="reviewForm.commentText" name="activityReviewComment" placeholder="Share your experience..." maxlength="1500"></textarea>
         </label>
-        <div class="emoji-row" [attr.aria-label]="'EXPLORE_ACTIVITY.EMOJI_A11Y' | translate">
-          @for (emoji of commentEmojis; track emoji) {
-            <button type="button" class="emoji-btn" (click)="appendEmoji(emoji)">{{ emoji }}</button>
-          }
+        <div class="review-form-tools emoji-picker-wrap">
+          <details class="emoji-details">
+            <summary class="emoji-trigger">😀 Emoji picker</summary>
+            <section class="emoji-panel" aria-label="Emoji picker panel">
+              <div class="emoji-grid" aria-label="Emoji options">
+                @for (emoji of ['😀','😃','😄','😁','😆','😅','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😋','😜','🤪','🤗','😎','🥳','😌','😢','😭','😡','😱','😷','🤒','🤢','👍','👎','👌','✌️','🤟','🤘','🤙','👏','🙌','🙏','💪','👋','🤝','☝️','👇','👉','👈','✈️','🧳','🗺️','🏝️','🚗','🚕','🚌','🚆','⛵','🚤','🍽️','☕','🍵','🥤','🍕','🍔','🌮','🥙','🍟','🍜','🍝','🍣','🥗','🥘','🍲','🍛','🍰','🍩','🍎','🍉','❤️','🧡','💛','💚','💙','💜','🖤','🤍','💯','✅','❌','⚠️','⭐','🔥','✨','💬','📍','📸']; track emoji) {
+                  <button type="button" class="emoji-cell" (click)="appendEmoji(emoji)">{{ emoji }}</button>
+                }
+              </div>
+            </section>
+          </details>
+          <small class="review-char-count">{{ reviewForm.commentText.length }}/1500</small>
         </div>
         <button class="primary-btn" type="submit" [disabled]="reviewSubmitting || !reviewForm.commentText.trim()">
-          {{ reviewSubmitting ? ('EXPLORE_ACTIVITY.SENDING' | translate) : (editingReviewId ? ('EXPLORE_ACTIVITY.SAVE_CHANGES' | translate) : ('EXPLORE_ACTIVITY.POST_COMMENT' | translate)) }}
+          {{ reviewSubmitting ? 'Sending...' : (editingReviewId ? 'Save changes' : 'Post comment') }}
         </button>
         @if (editingReviewId) {
-          <button class="mini-btn" type="button" (click)="cancelEditReview()" [disabled]="reviewSubmitting">{{ 'EXPLORE_ACTIVITY.CANCEL_EDIT' | translate }}</button>
+          <button class="mini-btn" type="button" (click)="cancelEditReview()" [disabled]="reviewSubmitting">Cancel edit</button>
         }
       </form>
     </article>
@@ -236,7 +244,7 @@
           type="submit"
           (mousedown)="releaseFocus()"
           (touchstart)="releaseFocus()">
-          {{ submitting ? ('EXPLORE_ACTIVITY.SENDING' | translate) : ('EXPLORE_ACTIVITY.CONFIRM_BOOKING' | translate) }}
+          {{ submitting ? 'Sending...' : 'Confirm booking' }}
         </button>
       </form>
     </section>

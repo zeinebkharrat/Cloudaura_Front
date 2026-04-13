@@ -1,15 +1,12 @@
 import { CommonModule, DatePipe } from '@angular/common';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Component, OnDestroy, OnInit, inject, ChangeDetectorRef, DestroyRef } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import jsQR from 'jsqr';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AppAlertsService } from '../../core/services/app-alerts.service';
 import { API_BASE_URL } from '../../core/api-url';
-import { LanguageService } from '../../core/services/language.service';
 
-type AttendanceStatus = 'UPCOMING' | 'PRESENT' | 'ABSENT';
+type AttendanceStatus = 'PRESENT' | 'ABSENT';
 
 interface TicketRow {
   reservationItemId: number;
@@ -40,17 +37,13 @@ interface ScanResponse {
 @Component({
   selector: 'app-admin-tickets',
   standalone: true,
-  imports: [CommonModule, FormsModule, DatePipe, TranslateModule],
+  imports: [CommonModule, FormsModule, DatePipe],
   templateUrl: './admin-tickets.component.html',
   styleUrl: './admin-tickets.component.css',
 })
 export class AdminTicketsComponent implements OnInit, OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly alerts = inject(AppAlertsService);
-  private readonly translate = inject(TranslateService);
-  private readonly language = inject(LanguageService);
-  private readonly cdr = inject(ChangeDetectorRef);
-  private readonly destroyRef = inject(DestroyRef);
   private readonly apiUrl = `${API_BASE_URL}/api/events/admin/tickets`;
 
   loading = false;
@@ -73,12 +66,6 @@ export class AdminTicketsComponent implements OnInit, OnDestroy {
   private scanFrameId: number | null = null;
   private detector: any = null;
   private scanCanvas: HTMLCanvasElement | null = null;
-
-  constructor() {
-    this.language.langChangedDebounced$
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.loadTickets());
-  }
 
   ngOnInit(): void {
     this.loadTickets();
@@ -107,13 +94,8 @@ export class AdminTicketsComponent implements OnInit, OnDestroy {
         this.loading = false;
       },
       error: async () => {
-        this.tickets = [];
-        this.filteredTickets = [];
         this.loading = false;
-        await this.alerts.error(
-          this.translate.instant('ADMIN_TICKETS.ERR_LOAD_TITLE'),
-          this.translate.instant('ADMIN_TICKETS.ERR_LOAD_BODY'),
-        );
+        await this.alerts.error('Error', 'Failed to load tickets list.');
       },
     });
   }
@@ -123,7 +105,6 @@ export class AdminTicketsComponent implements OnInit, OnDestroy {
     this.filteredTickets = this.tickets.filter((ticket) => {
       return status === 'ALL' || ticket.attendanceStatus === status;
     });
-    this.cdr.markForCheck();
   }
 
   onFiltersChanged(): void {
@@ -137,16 +118,23 @@ export class AdminTicketsComponent implements OnInit, OnDestroy {
     this.loadTickets();
   }
 
+  statusLabel(status: AttendanceStatus): string {
+    if (status === 'PRESENT') {
+      return 'Present';
+    }
+    return 'Absent';
+  }
+
   private normalizeTicketRow(row: any): TicketRow {
     const startDateValue = row?.startDate ?? row?.eventStartDate ?? null;
     const scanned = Boolean(row?.isScanned ?? row?.scanned ?? false);
 
     let attendanceStatus: AttendanceStatus;
     const rawStatus = String(row?.attendanceStatus ?? '').toUpperCase();
-    if (rawStatus === 'PRESENT' || rawStatus === 'ABSENT' || rawStatus === 'UPCOMING') {
+    if (rawStatus === 'PRESENT' || rawStatus === 'ABSENT') {
       attendanceStatus = rawStatus;
     } else {
-      attendanceStatus = scanned ? 'PRESENT' : 'UPCOMING';
+      attendanceStatus = scanned ? 'PRESENT' : 'ABSENT';
     }
 
     return {
@@ -168,10 +156,7 @@ export class AdminTicketsComponent implements OnInit, OnDestroy {
     if (status === 'PRESENT') {
       return 'badge-present';
     }
-    if (status === 'ABSENT') {
-      return 'badge-absent';
-    }
-    return 'badge-upcoming';
+    return 'badge-absent';
   }
 
   async openScanner(): Promise<void> {
@@ -207,10 +192,7 @@ export class AdminTicketsComponent implements OnInit, OnDestroy {
       this.beginDetectLoop(video);
     } catch {
       this.cameraBusy = false;
-      await this.alerts.error(
-        this.translate.instant('ADMIN_TICKETS.ERR_CAMERA_TITLE'),
-        this.translate.instant('ADMIN_TICKETS.ERR_CAMERA_BODY'),
-      );
+      await this.alerts.error('Camera Error', 'Unable to access camera for QR scanning.');
     }
   }
 
@@ -296,10 +278,7 @@ export class AdminTicketsComponent implements OnInit, OnDestroy {
 
   async validateManualToken(): Promise<void> {
     if (!this.manualToken.trim()) {
-      await this.alerts.warning(
-        this.translate.instant('ADMIN_TICKETS.WARN_TOKEN_TITLE'),
-        this.translate.instant('ADMIN_TICKETS.WARN_TOKEN_BODY'),
-      );
+      await this.alerts.warning('Missing Token', 'Please enter a QR token first.');
       return;
     }
     await this.validateToken(this.manualToken.trim());
@@ -311,69 +290,27 @@ export class AdminTicketsComponent implements OnInit, OnDestroy {
     }
 
     this.scanBusy = true;
-
     this.http.post<ScanResponse>(`${this.apiUrl}/scan`, { token }).subscribe({
       next: async (res) => {
-        const rawMsg = typeof res?.message === 'string' ? res.message : '';
+        this.scanResult = res;
         this.manualToken = token;
-        this.scanResult = {
-          found: Boolean(res.found),
-          alreadyScanned: res.alreadyScanned === true,
-          message: rawMsg,
-          ticket: res.ticket ? this.normalizeTicketRow(res.ticket) : undefined,
-        };
 
         if (res.alreadyScanned) {
-          await this.alerts.warning(
-            this.translate.instant('ADMIN_TICKETS.WARN_USED_TITLE'),
-            this.translate.instant('ADMIN_TICKETS.WARN_USED_BODY'),
-          );
+          await this.alerts.warning('Already Used', 'This ticket was already validated.');
         } else {
-          await this.alerts.success(
-            this.translate.instant('ADMIN_TICKETS.OK_VALIDATED_TITLE'),
-            this.translate.instant('ADMIN_TICKETS.OK_VALIDATED_BODY'),
-          );
+          await this.alerts.success('Validated', 'Ticket validated successfully.');
         }
 
         this.loadTickets();
         this.scanBusy = false;
       },
       error: async (err) => {
-        const fallback = this.translate.instant('ADMIN_TICKETS.ERR_SCAN_DEFAULT');
-        const body = err?.error;
-
-        if (body && typeof body === 'object' && typeof body.message === 'string') {
-          this.manualToken = token;
-          const rawMsg = body.message;
-          this.scanResult = {
-            found: body.found === true,
-            alreadyScanned: body.alreadyScanned === true,
-            message: rawMsg,
-            ticket: body.ticket ? this.normalizeTicketRow(body.ticket) : undefined,
-          };
-
-          if (body.alreadyScanned === true) {
-            await this.alerts.warning(
-              this.translate.instant('ADMIN_TICKETS.WARN_USED_TITLE'),
-              this.translate.instant('ADMIN_TICKETS.WARN_USED_BODY'),
-            );
-          } else {
-            await this.alerts.error(this.translate.instant('ADMIN_TICKETS.ERR_SCAN_TITLE'), rawMsg);
-          }
-          this.loadTickets();
-          this.scanBusy = false;
-          return;
-        }
-
-        const rawMsg =
-          typeof body === 'string' && body.trim()
-            ? body.trim()
-            : fallback;
+        const bodyMessage = err?.error?.message;
         this.scanResult = {
           found: false,
-          message: rawMsg,
+          message: bodyMessage || 'No ticket found for this QR code.',
         };
-        await this.alerts.error(this.translate.instant('ADMIN_TICKETS.ERR_SCAN_TITLE'), rawMsg);
+        await this.alerts.error('Scan Failed', this.scanResult.message);
         this.scanBusy = false;
       },
     });

@@ -24,10 +24,10 @@
              [class.completed]="isNodeCompleted(i)"
              [class.locked]="!isUnlocked(i)"
              (click)="playNode(node, i)">
-
+             
           @if (!isLoggedIn()) {
             <div class="node-auth-overlay">
-              <span class="auth-hint">{{ 'GAMES_HUB.AUTH_HINT' | translate }}</span>
+              <span class="auth-hint">Connectez-vous pour jouer</span>
             </div>
           }
           <!-- Right side label for left-shifted nodes -->
@@ -113,9 +113,9 @@
           <div class="puzzle-card__meta">
             <h3>{{ p.title }}</h3>
             @if (isLoggedIn()) {
-              <span>{{ 'GAMES_HUB.PLAY_CTA' | translate }}</span>
+              <span>Play →</span>
             } @else {
-              <span class="ludo-signin-hint">{{ 'GAMES_HUB.SIGNIN_HINT' | translate }}</span>
+              <span class="ludo-signin-hint">Connexion requise →</span>
             }
           </div>
         </button>
@@ -133,15 +133,14 @@
       <span class="line"></span>
     </div>
     <div class="puzzle-grid">
-      <button type="button" class="puzzle-card" (click)="playLudo()"
-              [attr.aria-label]="isLoggedIn() ? ('GAMES_HUB.LUDO_ARIA_PLAY' | translate) : ('GAMES_HUB.LUDO_ARIA_SIGNIN' | translate)">
+      <button type="button" class="puzzle-card" (click)="playLudo()" [attr.aria-label]="isLoggedIn() ? 'Play Ludo Tunisia' : 'Sign in to play Ludo Tunisia'">
         <div class="ludo-cover">🎲</div>
         <div class="puzzle-card__meta">
-          <h3>{{ 'GAMES_HUB.LUDO_BOARD_TITLE' | translate }}</h3>
+          <h3>Ludo Tunisia board</h3>
           @if (isLoggedIn()) {
-            <span>{{ 'GAMES_HUB.PLAY_CTA' | translate }}</span>
+            <span>Play →</span>
           } @else {
-            <span class="ludo-signin-hint">{{ 'GAMES_HUB.SIGNIN_HINT' | translate }}</span>
+            <span class="ludo-signin-hint">Connexion requise →</span>
           }
         </div>
       </button>

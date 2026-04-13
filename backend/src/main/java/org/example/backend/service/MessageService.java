@@ -12,7 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Date;
 import java.util.List;
@@ -146,11 +145,11 @@ public class MessageService implements IMessageService {
     @Transactional
     public void deleteOwnMessage(Integer chatRoomId, Integer messageId, Integer userId) {
         Message message = messageRepo.findByMessageIdAndChatRoomChatRoomId(messageId, chatRoomId)
-                .orElseThrow(() -> new ResourceNotFoundException("api.error.chat.message_not_found"));
+                .orElseThrow(() -> new RuntimeException("Message not found"));
 
         User sender = message.getSender();
         if (sender == null || !sender.getUserId().equals(userId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "api.error.chat.message_delete_forbidden");
+            throw new RuntimeException("You can only delete your own messages");
         }
 
         messageRepo.delete(message);

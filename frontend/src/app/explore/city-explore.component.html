@@ -21,25 +21,62 @@
             <button class="btn ghost" type="button" (click)="goToMapZoomOut(); $event.stopPropagation()">{{ 'EXPLORE_CITY.BTN_MAP' | translate }}</button>
           </div>
 
-          <button class="weather-box" type="button" (click)="openWeatherDrawer(); $event.stopPropagation()">
-            @if (weatherLoading()) {
-              <p class="weather-line">{{ 'EXPLORE_CITY.WEATHER_LOADING' | translate }}</p>
-            } @else if (weatherError()) {
-              <p class="weather-line weather-error">{{ weatherError() }}</p>
-            } @else {
-              <p class="weather-line weather-title">{{ 'EXPLORE_CITY.WEATHER_TITLE' | translate }}</p>
-              <p class="weather-line weather-main">{{ weatherIcon() }} {{ weatherLabel() }}</p>
-              <p class="weather-line weather-meta">
-                @if (weatherTemperature() !== null) {
-                  <span>{{ weatherTemperature() }}°C</span>
+          <div class="weather-cluster" (click)="$event.stopPropagation()">
+            <button class="weather-box" type="button" (click)="openWeatherDrawer()">
+              @if (weatherLoading()) {
+                <p class="weather-line">Loading weather...</p>
+              } @else if (weatherError()) {
+                <p class="weather-line weather-error">{{ weatherError() }}</p>
+              } @else {
+                <p class="weather-line weather-title">Today weather</p>
+                <p class="weather-line weather-main">{{ weatherIcon() }} {{ weatherLabel() }}</p>
+                <p class="weather-line weather-meta">
+                  @if (weatherTemperature() !== null) {
+                    <span>{{ weatherTemperature() }}°C</span>
+                  }
+                  @if (weatherWind() !== null) {
+                    <span> • Wind {{ weatherWind() }} km/h</span>
+                  }
+                </p>
+                <p class="weather-line weather-hint">Tap for weekly forecast →</p>
+              }
+            </button>
+
+            @if (weatherDrawerOpen()) {
+              <section class="weather-inline-panel" aria-label="Weekly weather panel">
+                <header class="weather-inline-head">
+                  <div>
+                    <h3>Weekly Weather</h3>
+                    <p>{{ vm.city.name }}</p>
+                  </div>
+                  <button type="button" class="weather-close-btn" (click)="closeWeatherDrawer()">×</button>
+                </header>
+
+                @if (weeklyWeatherLoading()) {
+                  <p class="weather-drawer-state">Loading weekly forecast...</p>
+                } @else if (weeklyWeatherError()) {
+                  <p class="weather-drawer-state error">{{ weeklyWeatherError() }}</p>
+                } @else if (weeklyForecast().length === 0) {
+                  <p class="weather-drawer-state">No weekly data available.</p>
+                } @else {
+                  <div class="weather-week-list">
+                    @for (day of weeklyForecast(); track day.date) {
+                      <article class="weather-week-item">
+                        <div class="weather-day-main">
+                          <strong>{{ weeklyDayLabel(day.date) }}</strong>
+                          <span>{{ weeklyDaySummary(day.weatherCode).icon }} {{ weeklyDaySummary(day.weatherCode).label }}</span>
+                        </div>
+                        <div class="weather-day-meta">
+                          <span>{{ day.minTemp ?? '—' }}°C / {{ day.maxTemp ?? '—' }}°C</span>
+                          <span>Wind {{ day.windMax ?? '—' }} km/h</span>
+                        </div>
+                      </article>
+                    }
+                  </div>
                 }
-                @if (weatherWind() !== null) {
-                  <span> • {{ 'EXPLORE_CITY.WEATHER_WIND' | translate: { n: weatherWind() } }}</span>
-                }
-              </p>
-              <p class="weather-line weather-hint">{{ 'EXPLORE_CITY.WEATHER_HINT' | translate }}</p>
+              </section>
             }
-          </button>
+          </div>
         </div>
         @if (hasMultipleImages()) {
           <div class="hero-nav hero-nav-left">◀</div>
@@ -174,40 +211,6 @@
     </section>
   </section>
 
-  @if (weatherDrawerOpen()) {
-    <div class="weather-drawer-backdrop" (click)="closeWeatherDrawer()"></div>
-    <aside class="weather-drawer" [attr.aria-label]="'EXPLORE_CITY.WEEKLY_ARIA' | translate">
-      <header class="weather-drawer-head">
-        <div>
-          <h3>{{ 'EXPLORE_CITY.WEEKLY_TITLE' | translate }}</h3>
-          <p>{{ vm.city.name }}</p>
-        </div>
-        <button type="button" class="weather-close-btn" (click)="closeWeatherDrawer()">×</button>
-      </header>
-
-      @if (weeklyWeatherLoading()) {
-        <p class="weather-drawer-state">{{ 'EXPLORE_CITY.WEEKLY_LOADING' | translate }}</p>
-      } @else if (weeklyWeatherError()) {
-        <p class="weather-drawer-state error">{{ weeklyWeatherError() }}</p>
-      } @else if (weeklyForecast().length === 0) {
-        <p class="weather-drawer-state">{{ 'EXPLORE_CITY.WEEKLY_EMPTY' | translate }}</p>
-      } @else {
-        <div class="weather-week-list">
-          @for (day of weeklyForecast(); track day.date) {
-            <article class="weather-week-item">
-              <div class="weather-day-main">
-                <strong>{{ weeklyDayLabel(day.date) }}</strong>
-                <span>{{ weeklyDaySummary(day.weatherCode).icon }} {{ weeklyDaySummary(day.weatherCode).label }}</span>
-              </div>
-              <div class="weather-day-meta">
-                <span>{{ day.minTemp ?? ('COMMON.DASH' | translate) }}°C / {{ day.maxTemp ?? ('COMMON.DASH' | translate) }}°C</span>
-                <span>{{ 'EXPLORE_CITY.WND' | translate }} {{ day.windMax ?? ('COMMON.DASH' | translate) }} km/h</span>
-              </div>
-            </article>
-          }
-        </div>
-      }
-    </aside>
   }
   }
 }

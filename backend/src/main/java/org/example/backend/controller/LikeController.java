@@ -2,6 +2,7 @@ package org.example.backend.controller;
 
 import org.example.backend.model.LikeEntity;
 import org.example.backend.model.User;
+import org.example.backend.repository.UserRepository;
 import org.example.backend.service.ILikeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -24,6 +25,9 @@ public class LikeController {
 
     @Autowired
     ILikeService likeService;
+
+    @Autowired
+    UserRepository userRepository;
 
     @GetMapping("/allLikes")
     public List<LikeEntity> getAllLikes() {
@@ -109,7 +113,15 @@ public class LikeController {
         if (principal instanceof org.example.backend.service.CustomUserDetailsService.CustomUserDetails details) {
             return details.getUser();
         }
-        return null;
+
+        String identifier = authentication.getName();
+        if (identifier == null || identifier.isBlank() || "anonymousUser".equalsIgnoreCase(identifier)) {
+            return null;
+        }
+
+        return userRepository.findFirstByUsernameIgnoreCaseOrderByUserIdAsc(identifier)
+            .or(() -> userRepository.findFirstByEmailIgnoreCaseOrderByUserIdAsc(identifier))
+            .orElse(null);
     }
 }
 

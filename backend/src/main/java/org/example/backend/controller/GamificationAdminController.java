@@ -49,7 +49,7 @@ public class GamificationAdminController {
     @PostMapping("/badges")
     public Badge createBadge(@RequestBody BadgeRequest req) {
         if (req.name() == null || req.name().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.gamification_name_required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "name required");
         }
         Badge b = new Badge();
         b.setName(req.name().trim());
@@ -60,10 +60,7 @@ public class GamificationAdminController {
 
     @PutMapping("/badges/{id}")
     public Badge updateBadge(@PathVariable Integer id, @RequestBody BadgeRequest req) {
-        Badge b =
-                badgeRepository
-                        .findById(id)
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.not_found"));
+        Badge b = badgeRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         if (req.name() != null && !req.name().isBlank()) {
             b.setName(req.name().trim());
         }
@@ -92,7 +89,7 @@ public class GamificationAdminController {
         DailyChallenge c = new DailyChallenge();
         applyChallenge(c, req);
         if (c.getGameKind() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.gamification_game_kind_required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "gameKind required");
         }
         Date now = new Date();
         c.setValidFrom(now);
@@ -105,7 +102,7 @@ public class GamificationAdminController {
         DailyChallenge c =
                 dailyChallengeRepository
                         .findById(id)
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.not_found"));
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         applyChallenge(c, req);
         return dailyChallengeRepository.save(c);
     }
@@ -145,7 +142,7 @@ public class GamificationAdminController {
     @PostMapping("/tournaments")
     public Tournament createTournament(@RequestBody TournamentRequest req) {
         if (req.title() == null || req.title().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.gamification_title_required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "title required");
         }
         Tournament t = new Tournament();
         t.setTitle(req.title().trim());
@@ -178,7 +175,7 @@ public class GamificationAdminController {
         Tournament t =
                 tournamentRepository
                         .findById(id)
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.not_found"));
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         t.setStatus(TournamentStatus.LIVE);
         tournamentRepository.save(t);
         return ResponseEntity.ok(Map.of("status", "LIVE", "tournamentId", id));

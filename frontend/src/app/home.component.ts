@@ -13,14 +13,14 @@ import {
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { catchError, forkJoin, map, of, Subscription } from 'rxjs';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { catchError, forkJoin, map, of } from 'rxjs';
 import * as echarts from 'echarts';
 import { tunisiaGeoJson } from './tunisia-map';
 import { GOVERNORATE_LABEL_EN, GOVERNORATE_LABEL_FR } from './tunisia-governorate-labels';
 import { ExploreService } from './explore/explore.service';
 import { API_BASE_URL, API_FALLBACK_ORIGIN } from './core/api-url';
-import { LanguageService } from './core/services/language.service';
+import { AuthService } from './core/auth.service';
+import { PersonalizationService } from './core/personalization.service';
 
 interface HomeImageCard {
   title: string;
@@ -108,13 +108,24 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly restaurantCards = signal<HomeImageCard[]>([]);
   readonly transportModes = signal<HomeTransportModeCard[]>([]);
   readonly artisanCards = signal<HomeImageCard[]>([]);
+  readonly personalizedCityCards = signal<HomeImageCard[]>([]);
+  readonly personalizedActivityCards = signal<HomeImageCard[]>([]);
+  readonly personalizedEventCards = signal<HomeImageCard[]>([]);
   readonly currentActivityPage = signal(0);
   readonly activityPageCount = signal(1);
+  readonly currentRestaurantPage = signal(0);
+  readonly restaurantPageCount = signal(1);
+  readonly currentPersonalizedCityPage = signal(0);
+  readonly personalizedCityPageCount = signal(1);
+  readonly currentPersonalizedEventPage = signal(0);
+  readonly personalizedEventPageCount = signal(1);
+  readonly activeAiCityRoute = signal<string | null>(null);
 
   readonly loadingActivities = signal(true);
   readonly loadingTransportModes = signal(true);
   readonly loadingRestaurants = signal(true);
   readonly loadingArtisans = signal(true);
+  readonly loadingPersonalized = signal(true);
 
   mapViewMode = signal<'local' | 'highlights'>('local');
   selectedRegion = signal<{
@@ -131,10 +142,12 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private regionIdToLabelMap?: Map<string, string>;
   private themeObserver?: MutationObserver;
   private autoSlideIntervals: number[] = [];
-  private langChange?: Subscription;
   private readonly handleWindowResize = () => {
     this.tunisiaMapChart?.resize();
     this.recalculateActivityPagination();
+    this.recalculateRestaurantPagination();
+    this.recalculatePersonalizedPagination('personalized-cities-slider', this.personalizedCityPageCount, this.currentPersonalizedCityPage);
+    this.recalculatePersonalizedPagination('personalized-events-slider', this.personalizedEventPageCount, this.currentPersonalizedEventPage);
   };
 
   constructor(
@@ -142,6 +155,8 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     private cdr: ChangeDetectorRef,
     private readonly http: HttpClient,
     private readonly exploreService: ExploreService,
+    private readonly authService: AuthService,
+    private readonly personalizationService: PersonalizationService,
     private readonly router: Router,
     private readonly route: ActivatedRoute,
     private readonly translate: TranslateService,
@@ -150,22 +165,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadHomeSections();
-    this.langChange = this.translate.onLangChange.subscribe(() => {
-      this.loadHomeSections();
-      this.refreshResolvingMapPanel();
-      if (this.tunisiaMapChart) {
-        this.applyMapTheme();
-      }
-    });
-  }
-
-  private refreshResolvingMapPanel(): void {
-    this.selectedRegion.update((prev) => {
-      if (!prev?.resolving) {
-        return prev;
-      }
-      return { ...prev, description: this.translate.instant('HOME.MAP_EXPLORING', { name: prev.name }) };
-    });
+    this.loadPersonalizedSection();
   }
 
   scrollSlider(containerId: string, direction: 1 | -1): void {
@@ -225,8 +225,87 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.currentActivityPage.set(Math.max(0, Math.min(page, this.activityPageCount() - 1)));
   }
 
+  scrollPersonalizedCities(direction: 1 | -1): void {
+    this.scrollPersonalizedPages(direction, this.currentPersonalizedCityPage, this.personalizedCityPageCount, 'personalized-cities-slider');
+  }
+
+  scrollRestaurants(direction: 1 | -1): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const totalPages = this.restaurantPageCount();
+    if (totalPages <= 1) {
+      return;
+    }
+
+    const next = (this.currentRestaurantPage() + direction + totalPages) % totalPages;
+    this.goToRestaurantPage(next);
+  }
+
+  scrollPersonalizedEvents(direction: 1 | -1): void {
+    this.scrollPersonalizedPages(direction, this.currentPersonalizedEventPage, this.personalizedEventPageCount, 'personalized-events-slider');
+  }
+
+  goToPersonalizedCityPage(page: number): void {
+    this.goToPersonalizedPage(page, this.personalizedCityPageCount, this.currentPersonalizedCityPage, 'personalized-cities-slider');
+  }
+
+  goToPersonalizedEventPage(page: number): void {
+    this.goToPersonalizedPage(page, this.personalizedEventPageCount, this.currentPersonalizedEventPage, 'personalized-events-slider');
+  }
+
+  onPersonalizedCitiesSliderScroll(): void {
+    this.syncPersonalizedScroll('personalized-cities-slider', this.personalizedCityPageCount, this.currentPersonalizedCityPage);
+  }
+
+  onRestaurantsSliderScroll(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const slider = document.getElementById('restaurants-slider');
+    if (!slider || !slider.clientWidth) {
+      return;
+    }
+
+    const page = Math.round(slider.scrollLeft / slider.clientWidth);
+    this.currentRestaurantPage.set(Math.max(0, Math.min(page, this.restaurantPageCount() - 1)));
+  }
+
+  onPersonalizedEventsSliderScroll(): void {
+    this.syncPersonalizedScroll('personalized-events-slider', this.personalizedEventPageCount, this.currentPersonalizedEventPage);
+  }
+
   activityPages(): number[] {
     return Array.from({ length: this.activityPageCount() }, (_, i) => i);
+  }
+
+  restaurantPages(): number[] {
+    return Array.from({ length: this.restaurantPageCount() }, (_, i) => i);
+  }
+
+  goToRestaurantPage(page: number): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const slider = document.getElementById('restaurants-slider');
+    if (!slider) {
+      return;
+    }
+
+    const boundedPage = Math.max(0, Math.min(page, this.restaurantPageCount() - 1));
+    slider.scrollTo({ left: boundedPage * slider.clientWidth, behavior: 'smooth' });
+    this.currentRestaurantPage.set(boundedPage);
+  }
+
+  personalizedCityPages(): number[] {
+    return Array.from({ length: this.personalizedCityPageCount() }, (_, i) => i);
+  }
+
+  personalizedEventPages(): number[] {
+    return Array.from({ length: this.personalizedEventPageCount() }, (_, i) => i);
   }
 
   onHeroVideoError(): void {
@@ -261,7 +340,10 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.startThemeObserver();
       this.playReturnZoomOutIfRequested();
       this.startAutoSliders();
-      setTimeout(() => this.recalculateActivityPagination(), 120);
+      setTimeout(() => {
+        this.recalculateActivityPagination();
+        this.recalculateRestaurantPagination();
+      }, 120);
     }
   }
 
@@ -288,7 +370,10 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     };
 
     setup('activities-slider', 3600);
+    setup('restaurants-slider', 3900);
     setup('artisan-slider', 4200);
+    setup('personalized-cities-slider', 4000);
+    setup('personalized-events-slider', 4300);
   }
 
   private stopAutoSliders(): void {
@@ -324,6 +409,109 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.currentActivityPage.set(safePage);
   }
 
+  private recalculateRestaurantPagination(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const slider = document.getElementById('restaurants-slider');
+    if (!slider || !slider.clientWidth) {
+      return;
+    }
+
+    const pages = Math.max(1, Math.ceil(slider.scrollWidth / slider.clientWidth));
+    this.restaurantPageCount.set(pages);
+    const safePage = Math.min(this.currentRestaurantPage(), pages - 1);
+    this.currentRestaurantPage.set(safePage);
+  }
+
+  private recalculatePersonalizedPagination(
+    containerId: string,
+    pageCountSignal: { set: (value: number) => void },
+    currentPageSignal: () => number
+  ): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const slider = document.getElementById(containerId);
+    if (!slider || !slider.clientWidth) {
+      return;
+    }
+
+    const pages = Math.max(1, Math.ceil(slider.scrollWidth / slider.clientWidth));
+    pageCountSignal.set(pages);
+    const safePage = Math.min(currentPageSignal(), pages - 1);
+    this.setSignalValue(currentPageSignal, safePage);
+  }
+
+  private scrollPersonalizedPages(
+    direction: 1 | -1,
+    currentPageSignal: () => number,
+    pageCountSignal: () => number,
+    sliderId: string
+  ): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const totalPages = pageCountSignal();
+    if (totalPages <= 1) {
+      return;
+    }
+
+    const next = (currentPageSignal() + direction + totalPages) % totalPages;
+    this.goToPersonalizedPage(next, pageCountSignal, currentPageSignal, sliderId);
+  }
+
+  private goToPersonalizedPage(
+    page: number,
+    pageCountSignal: () => number,
+    currentPageSignal: () => number,
+    sliderId: string
+  ): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const slider = document.getElementById(sliderId);
+    if (!slider) {
+      return;
+    }
+
+    const boundedPage = Math.max(0, Math.min(page, pageCountSignal() - 1));
+    slider.scrollTo({ left: boundedPage * slider.clientWidth, behavior: 'smooth' });
+    this.setSignalValue(currentPageSignal, boundedPage);
+  }
+
+  private syncPersonalizedScroll(
+    sliderId: string,
+    pageCountSignal: () => number,
+    currentPageSignal: () => number
+  ): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const slider = document.getElementById(sliderId);
+    if (!slider || !slider.clientWidth) {
+      return;
+    }
+
+    const page = Math.round(slider.scrollLeft / slider.clientWidth);
+    const safePage = Math.max(0, Math.min(page, pageCountSignal() - 1));
+    this.setSignalValue(currentPageSignal, safePage);
+  }
+
+  private setSignalValue(signalGetter: () => number, value: number): void {
+    if (signalGetter === this.currentPersonalizedCityPage) {
+      this.currentPersonalizedCityPage.set(value);
+      return;
+    }
+
+    this.currentPersonalizedEventPage.set(value);
+  }
+
   private ensureVideoMutedAutoplay(): void {
     if (!isPlatformBrowser(this.platformId)) {
       return;
@@ -357,6 +545,61 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loadTransportCards();
     this.loadRestaurantCards();
     this.loadArtisanCards();
+  }
+
+  private loadPersonalizedSection(): void {
+    if (!this.authService.currentUser()) {
+      this.loadingPersonalized.set(false);
+      return;
+    }
+
+    this.personalizationService
+      .getRecommendations()
+      .pipe(catchError(() => of(null)))
+      .subscribe((res) => {
+        if (!res) {
+          this.loadingPersonalized.set(false);
+          return;
+        }
+
+        const cityCards: HomeImageCard[] = (res.recommendedCities ?? []).slice(0, 5).map((item) => ({
+          title: item.name,
+          subtitle: item.description || item.region || 'City recommendation for your next stop.',
+          image: item.imageUrl || 'assets/sidi_bou.png',
+          route: `/city/${item.cityId}`,
+          badge: `Match ${(item.score * 100).toFixed(0)}%`,
+          tags: [item.region || 'Tunisia', 'City'],
+        }));
+
+        const activityCards: HomeImageCard[] = (res.recommendedActivities ?? []).slice(0, 4).map((item) => ({
+          title: item.name,
+          subtitle: item.description || item.cityName || 'Activity recommendation tuned for your profile.',
+          image: item.imageUrl || 'assets/sahara.png',
+          route: `/activities/${item.activityId}`,
+          badge: `Match ${(item.score * 100).toFixed(0)}%`,
+          tags: [item.cityName || 'Tunisia', item.type || 'Activity'],
+          priceTag: item.price != null ? `${Math.round(item.price)} TND` : undefined,
+        }));
+
+        const eventCards: HomeImageCard[] = (res.recommendedEvents ?? []).slice(0, 3).map((item) => ({
+          title: item.title,
+          subtitle: item.venue || item.cityName || 'Event recommendation curated for your interests.',
+          image: item.imageUrl || 'assets/el_jem.png',
+          route: '/evenements',
+          badge: `Match ${(item.score * 100).toFixed(0)}%`,
+          tags: [item.cityName || 'Tunisia', item.eventType || 'Event'],
+          priceTag: item.price != null ? `${Math.round(item.price)} TND` : undefined,
+        }));
+
+        this.personalizedCityCards.set(cityCards);
+        this.personalizedActivityCards.set(activityCards);
+        this.personalizedEventCards.set(eventCards);
+        this.loadingPersonalized.set(false);
+        setTimeout(() => {
+          this.recalculatePersonalizedPagination('personalized-cities-slider', this.personalizedCityPageCount, this.currentPersonalizedCityPage);
+          this.recalculatePersonalizedPagination('personalized-events-slider', this.personalizedEventPageCount, this.currentPersonalizedEventPage);
+        }, 40);
+      });
   }
 
   private loadActivityCards(): void {
@@ -397,21 +640,12 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
           .subscribe((itemsWithSummary) => {
           const mapped: HomeImageCard[] = itemsWithSummary.map(({ item, summary }: { item: any; summary: any }) => ({
             title: item.name,
-            subtitle:
-              item.description ||
-              item.cityName ||
-              this.translate.instant('HOME.ACTIVITY_BOOK_SUBTITLE'),
+            subtitle: item.description || item.cityName || 'Book this activity now.',
             image: item.imageUrl || '',
             route: `/activities/${item.activityId}`,
-            tags: [
-              item.cityName || this.translate.instant('HOME.TAG_TUNISIA'),
-              item.type || this.translate.instant('HOME.TAG_EXPERIENCE'),
-            ],
-            priceTag:
-              item.price != null
-                ? this.translate.instant('HOME.PRICE_FROM', { price: String(Math.round(item.price)) })
-                : undefined,
-            badge: this.translate.instant('HOME.BADGE_ACTIVITY'),
+            tags: [item.cityName || 'Tunisia', item.type || 'Experience'],
+            priceTag: item.price != null ? `From ${Math.round(item.price)} TND` : undefined,
+            badge: 'Activity',
             rating: Number(summary?.averageStars) || 0,
             reviewsCount: Number(summary?.totalReviews) || 0,
           }));
@@ -437,20 +671,15 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       .subscribe((res: any) => {
         const mapped: HomeImageCard[] = (res.content ?? []).map((item: any, index: number) => ({
           title: item.name,
-          subtitle:
-            item.description ||
-            item.cityName ||
-            this.translate.instant('HOME.RESTAURANT_TASTE_SUBTITLE'),
+          subtitle: item.description || item.cityName || 'Taste local and international flavors.',
           image: item.imageUrl || fallback[index % fallback.length],
           route: `/restaurants/${item.restaurantId}`,
-          tags: [
-            item.cityName || this.translate.instant('HOME.TAG_TUNISIA'),
-            item.cuisineType || this.translate.instant('HOME.TAG_CUISINE'),
-          ],
-          badge: this.translate.instant('HOME.BADGE_RESTAURANT'),
+          tags: [item.cityName || 'Tunisia', item.cuisineType || 'Cuisine'],
+          badge: 'Restaurant',
         }));
         this.restaurantCards.set(mapped);
         this.loadingRestaurants.set(false);
+        setTimeout(() => this.recalculateRestaurantPagination(), 40);
       });
   }
 
@@ -458,35 +687,35 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.transportModes.set([
       {
         type: 'BUS',
-        label: this.translate.instant('HOME.TRANSPORT_BUS_LABEL'),
+        label: 'Bus',
         icon: 'BUS',
         image: '/assets/transport/bus.jpg',
-        description: this.translate.instant('HOME.TRANSPORT_BUS_DESC'),
-        cta: this.translate.instant('HOME.TRANSPORT_BUS_CTA'),
+        description: 'Intercity and local lines across major destinations.',
+        cta: 'Find Bus Trips',
       },
       {
         type: 'TAXI',
-        label: this.translate.instant('HOME.TRANSPORT_TAXI_LABEL'),
+        label: 'Taxi',
         icon: 'TAXI',
         image: '/assets/transport/taxi.jpg',
-        description: this.translate.instant('HOME.TRANSPORT_TAXI_DESC'),
-        cta: this.translate.instant('HOME.TRANSPORT_TAXI_CTA'),
+        description: 'Fast point-to-point rides for city and airport transfer.',
+        cta: 'Book a Taxi',
       },
       {
         type: 'CAR',
-        label: this.translate.instant('HOME.TRANSPORT_CAR_LABEL'),
+        label: 'Rent Car',
         icon: 'CAR',
         image: '/assets/transport/car.jfif',
-        description: this.translate.instant('HOME.TRANSPORT_CAR_DESC'),
-        cta: this.translate.instant('HOME.TRANSPORT_CAR_CTA'),
+        description: 'Flexible car rental plans for road trips around Tunisia.',
+        cta: 'Rent a Car',
       },
       {
         type: 'PLANE',
-        label: this.translate.instant('HOME.TRANSPORT_FLIGHT_LABEL'),
+        label: 'Avion',
         icon: 'FLIGHT',
         image: '/assets/transport/avion.jpg',
-        description: this.translate.instant('HOME.TRANSPORT_FLIGHT_DESC'),
-        cta: this.translate.instant('HOME.TRANSPORT_FLIGHT_CTA'),
+        description: 'Domestic and international flights to key airports.',
+        cta: 'Browse Flights',
       },
     ]);
     this.loadingTransportModes.set(false);
@@ -494,10 +723,8 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private loadArtisanCards(): void {
     const fallbackImages = ['assets/el_jem.png', 'assets/sidi_bou.png', 'assets/sahara.png'];
-    const lang = this.language.currentLang();
-    const langQ = `lang=${encodeURIComponent(lang)}`;
-    const primary = `${API_BASE_URL}/api/products?${langQ}`;
-    const fallback = `${API_FALLBACK_ORIGIN}/api/products?${langQ}`;
+    const primary = `${API_BASE_URL}/api/products`;
+    const fallback = `${API_FALLBACK_ORIGIN}/api/products`;
     const canTryFallback = API_BASE_URL === '';
 
     this.http
@@ -515,22 +742,13 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
         const mapped: HomeImageCard[] = (Array.isArray(list) ? list : [])
           .slice(0, 10)
           .map((item: any, index: number) => ({
-            title: item.name || this.translate.instant('HOME.ARTISAN_PRODUCT_DEFAULT'),
-            subtitle:
-              item.description ||
-              item.category ||
-              this.translate.instant('HOME.ARTISAN_DEFAULT_SUBTITLE'),
+            title: item.name || 'Artisan Product',
+            subtitle: item.description || item.category || 'Authentic Tunisian craftsmanship.',
             image: item.imageUrl || fallbackImages[index % fallbackImages.length],
             route: '/artisanat',
-            tags: [
-              item.category || this.translate.instant('HOME.TAG_ARTISAN'),
-              item.user?.cityName || this.translate.instant('HOME.TAG_TUNISIA'),
-            ],
-            priceTag:
-              item.price != null
-                ? this.translate.instant('HOME.PRICE_AMOUNT', { price: String(Math.round(item.price)) })
-                : undefined,
-            badge: this.translate.instant('HOME.BADGE_ARTISAN'),
+            tags: [item.category || 'Artisan', item.user?.cityName || 'Tunisia'],
+            priceTag: item.price != null ? `${Math.round(item.price)} TND` : undefined,
+            badge: 'Artisan',
           }));
 
         this.artisanCards.set(mapped);
@@ -541,6 +759,84 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   activityStars(rating?: number): Array<'full' | 'empty'> {
     const safeRating = Math.max(0, Math.min(5, Math.round(rating ?? 0)));
     return Array.from({ length: 5 }, (_, index) => (index < safeRating ? 'full' : 'empty'));
+  }
+
+  matchPercent(item: HomeImageCard): number {
+    const raw = item.badge ?? '';
+    const match = raw.match(/(\d{1,3})/);
+    if (!match) {
+      return 82;
+    }
+
+    const value = Number(match[1]);
+    if (Number.isNaN(value)) {
+      return 82;
+    }
+
+    return Math.max(35, Math.min(99, value));
+  }
+
+  activityAiMatch(item: HomeImageCard): number | null {
+    const matched = this.personalizedActivityCards().find((entry) => entry.route === item.route);
+    if (!matched) {
+      return null;
+    }
+
+    return this.matchPercent(matched);
+  }
+
+  focusAiCityOnMap(city: HomeImageCard): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    this.activeAiCityRoute.set(city.route);
+    const mapSection = document.getElementById('map-section');
+    mapSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    const regionHint = city.tags?.[0] ?? city.subtitle;
+    const feature = this.findMapFeatureByTokens([regionHint, city.title]);
+    const mapRegionId = this.getFeatureRegionId(feature);
+
+    if (mapRegionId) {
+      this.zoomToRegion(mapRegionId);
+      this.applyRegionSelection(mapRegionId);
+    }
+
+    this.selectedRegion.set({
+      name: city.title,
+      description: city.subtitle || `AI selected ${city.title} for your profile.`,
+      cityId: null,
+      resolving: true,
+      mapRegionId,
+    });
+
+    this.exploreService.resolveCityByName(city.title).subscribe({
+      next: (resolved) => {
+        this.selectedRegion.set({
+          name: resolved.city.name,
+          description:
+            resolved.city.description ||
+            `Discover ${resolved.city.name}, one of your best AI matches.`,
+          cityId: resolved.city.cityId,
+          resolving: false,
+          mapRegionId,
+        });
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.selectedRegion.update((prev) =>
+          prev
+            ? {
+                ...prev,
+                description: `AI highlighted ${city.title}. No direct city mapping found.`,
+                resolving: false,
+              }
+            : null
+        );
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   setMapView(mode: 'local' | 'highlights'): void {

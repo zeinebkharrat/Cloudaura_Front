@@ -6,7 +6,6 @@ import com.stripe.model.checkout.Session;
 import com.stripe.param.checkout.SessionCreateParams;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.example.backend.dto.publicapi.ActivityCheckoutSessionResponse;
 import org.example.backend.dto.publicapi.ActivityReservationResponse;
 import org.example.backend.dto.publicapi.CreateActivityReservationRequest;
@@ -23,7 +22,6 @@ import org.example.backend.service.ActivityReceiptLinkService;
 import org.example.backend.service.ActivityReceiptPdfService;
 import org.example.backend.service.ActivityReservationService;
 import org.example.backend.service.QrCodeService;
-import org.example.backend.service.ReservationTranslationHelper;
 import org.example.backend.service.UserIdentityResolver;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -32,7 +30,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
-import java.nio.charset.StandardCharsets;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -45,7 +42,6 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping("/api/public")
 @RequiredArgsConstructor
-@Slf4j
 public class ActivityPaymentController {
 
     private final ActivityReservationService reservationService;
@@ -55,7 +51,6 @@ public class ActivityPaymentController {
     private final ActivityReceiptPdfService activityReceiptPdfService;
     private final QrCodeService qrCodeService;
     private final UserIdentityResolver userIdentityResolver;
-    private final ReservationTranslationHelper reservationLabels;
 
     @Value("${app.frontend.base-url:http://localhost:4200}")
     private String frontendBaseUrl;
@@ -75,8 +70,8 @@ public class ActivityPaymentController {
         try {
             String effectiveStripeKey = resolveStripeApiKey();
             if (effectiveStripeKey == null || effectiveStripeKey.isBlank()) {
-                throw new ResponseStatusException(
-                        HttpStatus.SERVICE_UNAVAILABLE, "reservation.payment.stripe_not_configured");
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body("Stripe is not configured. Set stripe.api.key or STRIPE_SECRET_KEY.");
             }
 
             Stripe.apiKey = effectiveStripeKey;
@@ -84,14 +79,13 @@ public class ActivityPaymentController {
             ActivityReservation reservation = reservationService.createPendingReservation(activityId, request);
             Activity activity = reservation.getActivity();
             if (activity == null || activity.getActivityId() == null) {
-                throw new ResponseStatusException(
-                        HttpStatus.INTERNAL_SERVER_ERROR, "reservation.error.activity_reservation_state");
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Invalid activity reservation state");
             }
 
             double totalPrice = reservation.getTotalPrice() != null ? reservation.getTotalPrice() : 0.0;
             long unitAmountMinor = Math.round(totalPrice * 100);
             if (unitAmountMinor < 1) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.payment.amount_positive");
+                return ResponseEntity.badRequest().body("Total amount must be greater than 0 for Stripe payment.");
             }
 
             String base = normalizeFrontendBase();
@@ -99,11 +93,9 @@ public class ActivityPaymentController {
                 ? "usd"
                 : stripeCheckoutCurrency.trim().toLowerCase();
 
-            int actId = activity.getActivityId();
-            String activityNameRaw = activity.getName() != null && !activity.getName().isBlank()
+            String activityName = activity.getName() != null && !activity.getName().isBlank()
                 ? activity.getName().trim()
-                : "";
-            String activityName = reservationLabels.activityName(actId, activityNameRaw);
+                : ("Activity #" + activity.getActivityId());
 
             SessionCreateParams params = SessionCreateParams.builder()
                 .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
@@ -117,11 +109,7 @@ public class ActivityPaymentController {
                         .setCurrency(currency)
                         .setUnitAmount(unitAmountMinor)
                         .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                            .setName(String.format(
-                                reservationLabels.tr(
-                                    "reservation.payment.activity_booking_line",
-                                    "Réservation d’activité : %s"),
-                                activityName))
+                            .setName("Activity booking: " + activityName)
                             .build())
                         .build())
                     .build())
@@ -130,19 +118,16 @@ public class ActivityPaymentController {
             Session session = Session.create(params);
             String url = session.getUrl();
             if (url == null || url.isBlank()) {
-                throw new ResponseStatusException(
-                        HttpStatus.INTERNAL_SERVER_ERROR, "reservation.payment.stripe_no_checkout_url");
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Stripe did not return a checkout URL");
             }
 
             return ResponseEntity.ok(new ActivityCheckoutSessionResponse(session.getId(), url));
         } catch (ResponseStatusException ex) {
             throw ex;
         } catch (StripeException ex) {
-            log.warn("Stripe checkout session failed", ex);
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "reservation.payment.stripe_generic_error");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Stripe error: " + ex.getMessage());
         } catch (Exception ex) {
-            log.warn("Activity checkout session failed", ex);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "reservation.payment.checkout_error");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + ex.getMessage());
         }
     }
 
@@ -154,8 +139,7 @@ public class ActivityPaymentController {
     ) {
         String effectiveStripeKey = resolveStripeApiKey();
         if (effectiveStripeKey == null || effectiveStripeKey.isBlank()) {
-            throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE, "reservation.payment.stripe_not_configured");
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body("Stripe is not configured");
         }
 
         Stripe.apiKey = effectiveStripeKey;
@@ -163,25 +147,23 @@ public class ActivityPaymentController {
         try {
             Session session = Session.retrieve(request.getSessionId());
             if (!"paid".equalsIgnoreCase(session.getPaymentStatus())) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.payment.not_completed");
+                return ResponseEntity.badRequest().body("Payment not completed yet");
             }
 
             String ref = session.getClientReferenceId();
             if (ref == null || ref.isBlank()) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST, "reservation.payment.missing_client_reference");
+                return ResponseEntity.badRequest().body("Missing reservation reference on session");
             }
 
             int reservationId;
             try {
                 reservationId = Integer.parseInt(ref.trim());
             } catch (NumberFormatException ex) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST, "reservation.payment.invalid_client_reference");
+                return ResponseEntity.badRequest().body("Invalid reservation reference");
             }
 
             ActivityReservation reservation = reservationRepository.findByIdWithAssociations(reservationId)
-                .orElseThrow(() -> new ResourceNotFoundException("reservation.error.activity_reservation_not_found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Activity reservation not found"));
 
             assertReservationOwner(reservation, authentication);
 
@@ -193,13 +175,11 @@ public class ActivityPaymentController {
             ActivityReservationResponse response = reservationService.toResponse(reservation);
             return ResponseEntity.ok(response);
         } catch (StripeException ex) {
-            log.warn("Stripe finalize checkout failed", ex);
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "reservation.payment.stripe_generic_error");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Stripe error: " + ex.getMessage());
         } catch (ResponseStatusException ex) {
-            throw ex;
+            return ResponseEntity.status(ex.getStatusCode()).body(ex.getReason());
         } catch (Exception ex) {
-            log.warn("Finalize activity checkout failed", ex);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "reservation.payment.finalize_failed");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Could not finalize checkout: " + ex.getMessage());
         }
     }
 
@@ -209,7 +189,7 @@ public class ActivityPaymentController {
         Authentication authentication
     ) {
         ActivityReservation reservation = reservationRepository.findByIdWithAssociations(reservationId)
-            .orElseThrow(() -> new ResourceNotFoundException("reservation.error.activity_reservation_not_found"));
+            .orElseThrow(() -> new ResourceNotFoundException("Activity reservation not found"));
 
         assertReservationOwner(reservation, authentication);
         assertConfirmedReservation(reservation);
@@ -229,7 +209,7 @@ public class ActivityPaymentController {
         Authentication authentication
     ) {
         ActivityReservation reservation = reservationRepository.findByIdWithAssociations(reservationId)
-            .orElseThrow(() -> new ResourceNotFoundException("reservation.error.activity_reservation_not_found"));
+            .orElseThrow(() -> new ResourceNotFoundException("Activity reservation not found"));
 
         assertReservationOwner(reservation, authentication);
         assertConfirmedReservation(reservation);
@@ -249,11 +229,11 @@ public class ActivityPaymentController {
         @RequestParam(name = "sig", required = false) String signature
     ) {
         if (!activityReceiptLinkService.isValidSignature(reservationId, signature)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "reservation.error.receipt_signature_invalid");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid receipt link signature");
         }
 
         ActivityReservation reservation = reservationRepository.findByIdWithAssociations(reservationId)
-            .orElseThrow(() -> new ResourceNotFoundException("reservation.error.activity_reservation_not_found"));
+            .orElseThrow(() -> new ResourceNotFoundException("Activity reservation not found"));
 
         assertConfirmedReservation(reservation);
 
@@ -264,106 +244,48 @@ public class ActivityPaymentController {
             .body(pdf);
     }
 
-    @GetMapping(value = "/activity-receipts/{reservationId}", produces = MediaType.TEXT_HTML_VALUE)
-    public ResponseEntity<byte[]> viewReceiptLandingByQr(
-            @PathVariable Integer reservationId,
-            @RequestParam(name = "sig", required = false) String signature) {
-        if (!activityReceiptLinkService.isValidSignature(reservationId, signature)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "reservation.error.receipt_signature_invalid");
-        }
+        @GetMapping(value = "/activity-receipts/{reservationId}", produces = MediaType.TEXT_HTML_VALUE)
+        public ResponseEntity<String> viewReceiptLandingByQr(
+                @PathVariable Integer reservationId,
+                @RequestParam(name = "sig", required = false) String signature
+        ) {
+                if (!activityReceiptLinkService.isValidSignature(reservationId, signature)) {
+                        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid receipt link signature");
+                }
 
-        ActivityReservation reservation = reservationRepository.findByIdWithAssociations(reservationId)
-                .orElseThrow(() -> new ResourceNotFoundException("reservation.error.activity_reservation_not_found"));
-        assertConfirmedReservation(reservation);
+                ActivityReservation reservation = reservationRepository.findByIdWithAssociations(reservationId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Activity reservation not found"));
+                assertConfirmedReservation(reservation);
 
-        Activity act = reservation.getActivity();
-        int actId = act != null && act.getActivityId() != null ? act.getActivityId() : 0;
-        String activityNameRaw = act != null && act.getName() != null ? act.getName() : "";
-        String activityName =
-                actId > 0
-                        ? reservationLabels.activityName(actId, activityNameRaw)
-                        : activityNameRaw;
+                String activityName = reservation.getActivity() != null ? reservation.getActivity().getName() : "Activity";
+                String cityName = reservation.getActivity() != null && reservation.getActivity().getCity() != null
+                        ? reservation.getActivity().getCity().getName()
+                        : "Tunisia";
+                String address = reservation.getActivity() != null && reservation.getActivity().getAddress() != null
+                    ? reservation.getActivity().getAddress()
+                    : "N/A";
 
-        String cityName =
-                reservationLabels.tr(
-                        "reservation.confirmation.fallback_city", "Tunisie");
-        if (act != null && act.getCity() != null) {
-            Integer cid = act.getCity().getCityId();
-            String raw = act.getCity().getName() != null ? act.getCity().getName() : "";
-            if (cid != null) {
-                cityName = reservationLabels.cityName(cid, raw);
-            } else if (!raw.isBlank()) {
-                cityName = raw;
-            }
-        }
-
-        String address =
-                act != null && act.getActivityId() != null
-                        ? reservationLabels.activityAddress(
-                                act.getActivityId(),
-                                act.getAddress() != null ? act.getAddress() : "")
-                        : reservationLabels.tr(
-                                "reservation.confirmation.fallback_address", "N/D");
-        if (address.isBlank()) {
-            address =
-                    reservationLabels.tr(
-                            "reservation.confirmation.fallback_address", "N/D");
-        }
-
-        String imageUrl =
-                act == null
+                String imageUrl = reservation.getActivity() == null
                         ? null
-                        : activityMediaRepository
-                                .findByActivityActivityIdOrderByMediaIdDesc(act.getActivityId())
+                        : activityMediaRepository.findByActivityActivityIdOrderByMediaIdDesc(reservation.getActivity().getActivityId())
                                 .stream()
                                 .map(ActivityMedia::getUrl)
                                 .filter(url -> url != null && !url.isBlank())
                                 .findFirst()
                                 .orElse(null);
 
-        String downloadUrl = activityReceiptLinkService.buildPublicPdfUrl(reservationId);
-        String heroAlt =
-                reservationLabels.tr(
-                        "reservation.confirmation.hero_image_alt", "Image de l’activité");
-        String imageBlock =
-                (imageUrl != null)
-                        ? "<img class=\"hero\" src=\""
-                                + esc(imageUrl)
-                                + "\" alt=\""
-                                + esc(heroAlt)
-                                + "\"/>"
+                String downloadUrl = activityReceiptLinkService.buildPublicPdfUrl(reservationId);
+                String imageBlock = (imageUrl != null)
+                        ? "<img class=\"hero\" src=\"" + esc(imageUrl) + "\" alt=\"Activity image\"/>"
                         : "<div class=\"hero-fallback\">" + esc(activityName) + "</div>";
 
-        String pageTitle =
-                reservationLabels.tr(
-                        "reservation.confirmation.html_title_short", "YallaTN+ — Reçu");
-        String headTitle =
-                reservationLabels.tr(
-                        "reservation.confirmation.receipt_title", "YallaTN+ — Reçu de paiement");
-        String headSub =
-                reservationLabels.tr(
-                        "reservation.confirmation.receipt_sub",
-                        "Scan réussi. Téléchargez votre confirmation PDF.");
-        String lblActivity =
-                reservationLabels.tr(
-                        "reservation.confirmation.activity_label", "Activité");
-        String lblCity =
-                reservationLabels.tr("reservation.confirmation.city_label", "Ville");
-        String lblAddress =
-                reservationLabels.tr(
-                        "reservation.confirmation.address_label", "Adresse");
-        String downloadCta =
-                reservationLabels.tr(
-                        "reservation.confirmation.download_pdf", "Télécharger le PDF");
-
-        String html =
-                """
+                String html = """
                         <!doctype html>
                         <html lang="en">
                         <head>
                             <meta charset="utf-8" />
                             <meta name="viewport" content="width=device-width, initial-scale=1" />
-                            <title>%s</title>
+                            <title>YallaTN Receipt</title>
                             <style>
                                 body { margin:0; font-family: Arial, sans-serif; background:#eef3f8; color:#1b2a3a; }
                                 .wrap { max-width: 680px; margin: 0 auto; padding: 20px 14px; }
@@ -383,53 +305,40 @@ public class ActivityPaymentController {
                             <div class="wrap">
                                 <div class="card">
                                     <div class="head">
-                                        <h1>%s</h1>
-                                        <div class="sub">%s</div>
+                                        <h1>YallaTN+ Payment Receipt</h1>
+                                        <div class="sub">Scan successful. Download your PDF confirmation.</div>
                                     </div>
                                     %s
                                     <div class="body">
-                                        <p class="meta"><strong>%s:</strong> %s<br/><strong>%s:</strong> %s<br/><strong>%s:</strong> %s</p>
-                                        <a class="btn" href="%s">%s</a>
+                                        <p class="meta"><strong>Activity:</strong> %s<br/><strong>City:</strong> %s<br/><strong>Address:</strong> %s</p>
+                                        <a class="btn" href="%s">Download PDF</a>
                                     </div>
                                 </div>
                             </div>
                         </body>
                         </html>
-                        """
-                        .formatted(
-                                esc(pageTitle),
-                                esc(headTitle),
-                                esc(headSub),
-                                imageBlock,
-                                esc(lblActivity),
-                                esc(activityName),
-                                esc(lblCity),
-                                esc(cityName),
-                                esc(lblAddress),
-                                esc(address),
-                                esc(downloadUrl),
-                                esc(downloadCta));
+                        """.formatted(imageBlock, esc(activityName), esc(cityName), esc(address), esc(downloadUrl));
 
-        return ResponseEntity.ok()
-                .contentType(MediaType.TEXT_HTML)
-                .body(html.getBytes(StandardCharsets.UTF_8));
-    }
+                return ResponseEntity.ok()
+                        .contentType(MediaType.TEXT_HTML)
+                        .body(html);
+        }
 
     private void assertReservationOwner(ActivityReservation reservation, Authentication authentication) {
         Integer currentUserId = userIdentityResolver.resolveUserId(authentication);
         if (currentUserId == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "reservation.error.auth_required");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
         }
 
         User owner = reservation.getUser();
         if (owner == null || owner.getUserId() == null || !owner.getUserId().equals(currentUserId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "reservation.error.receipt_wrong_account");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This reservation belongs to another account");
         }
     }
 
     private void assertConfirmedReservation(ActivityReservation reservation) {
         if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "reservation.error.receipt_not_confirmed");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Receipt is available only for confirmed reservations");
         }
     }
 

@@ -82,8 +82,8 @@ public class FollowRelationController {
 
     @GetMapping("/user-summary/{userId}")
     public ResponseEntity<Map<String, Object>> userSummary(@PathVariable Integer userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.user_not_found"));
+        User user = userRepository.findByIdWithCity(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("userId", user.getUserId());
@@ -123,7 +123,7 @@ public class FollowRelationController {
     private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.unauthorized");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
         }
 
         Object principal = authentication.getPrincipal();
@@ -131,6 +131,6 @@ public class FollowRelationController {
             return ((CustomUserDetailsService.CustomUserDetails) principal).getUser();
         }
 
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.invalid_principal");
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid authentication principal");
     }
 }

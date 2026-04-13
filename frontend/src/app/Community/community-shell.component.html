@@ -1,15 +1,15 @@
 <section class="community-shell">
   <aside class="community-sidebar glass-panel">
-    <h2 class="community-sidebar-title">{{ 'COMMUNITY.SHELL_TITLE' | translate }}</h2>
+    <h2 class="community-sidebar-title">Community</h2>
 
-    <nav class="community-nav" [attr.aria-label]="'COMMUNITY.NAV_ARIA' | translate">
+    <nav class="community-nav" aria-label="Community navigation">
       <a
         routerLink="/communaute"
         [routerLinkActiveOptions]="{ exact: true }"
         routerLinkActive="community-nav-link--active"
         class="community-nav-link"
       >
-        {{ 'COMMUNITY.NAV_FEED' | translate }}
+        Fil d'actualite
       </a>
 
       <a
@@ -18,7 +18,7 @@
         class="community-nav-link"
         *ngIf="authService.isAuthenticated()"
       >
-        {{ 'COMMUNITY.NAV_SAVED' | translate }}
+        Saved
       </a>
 
       <a
@@ -27,7 +27,16 @@
         class="community-nav-link"
         *ngIf="authService.isAuthenticated()"
       >
-        {{ 'COMMUNITY.NAV_MY_POSTS' | translate }}
+        My posts
+      </a>
+
+      <a
+        routerLink="/communaute/digital-passport"
+        routerLinkActive="community-nav-link--active"
+        class="community-nav-link"
+        *ngIf="authService.isAuthenticated()"
+      >
+        Digital Passport
       </a>
 
       <a
@@ -36,7 +45,7 @@
         class="community-nav-link"
         *ngIf="authService.isAuthenticated()"
       >
-        {{ 'COMMUNITY.NAV_CHAT' | translate }}
+        Chat
       </a>
 
       <a
@@ -45,9 +54,9 @@
         routerLinkActive="community-nav-link--active"
         class="community-nav-link community-nav-link-button"
       >
-        {{ 'COMMUNITY.NAV_MY_PROFILE' | translate }}
+        My profile
       </a>
-
+      
     </nav>
   </aside>
 

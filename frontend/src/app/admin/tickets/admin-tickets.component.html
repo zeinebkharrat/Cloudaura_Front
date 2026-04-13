@@ -1,15 +1,15 @@
 <div class="tickets-page">
   <header class="tickets-header">
     <div class="title-wrap">
-      <p class="eyebrow">{{ 'ADMIN_TICKETS.EYEBROW' | translate }}</p>
-      <h1>{{ 'ADMIN_TICKETS.TITLE' | translate }}</h1>
-      <p class="subtitle">{{ 'ADMIN_TICKETS.SUBTITLE' | translate }}</p>
+      <p class="eyebrow">Ticket Manager</p>
+      <h1>Tickets</h1>
+      <p class="subtitle">Filter tickets, scan QR codes, and validate attendance in real time.</p>
     </div>
 
     <div class="header-actions">
       <button type="button" class="btn btn-scan" (click)="openScanner()">
         <i class="pi pi-camera"></i>
-        {{ 'ADMIN_TICKETS.OPEN_SCANNER' | translate }}
+        Open Scanner
       </button>
     </div>
   </header>
@@ -17,66 +17,65 @@
   <section class="filters-card">
     <div class="filter-grid">
       <label class="field">
-        <span>{{ 'ADMIN_TICKETS.SEARCH' | translate }}</span>
+        <span>Search</span>
         <input
           type="text"
           [(ngModel)]="searchQuery"
-          [placeholder]="'ADMIN_TICKETS.SEARCH_PH' | translate"
+          placeholder="User name, event name, or ticket name"
           (keyup.enter)="onFiltersChanged()"
         />
       </label>
 
       <label class="field">
-        <span>{{ 'ADMIN_TICKETS.DATE' | translate }}</span>
+        <span>Date</span>
         <input type="date" [(ngModel)]="filterDate" (change)="onFiltersChanged()" />
       </label>
 
       <label class="field">
-        <span>{{ 'ADMIN_TICKETS.STATUS' | translate }}</span>
+        <span>Status</span>
         <select [(ngModel)]="statusFilter" (change)="applyClientFilters()">
-          <option value="ALL">{{ 'ADMIN_TICKETS.STATUS_ALL' | translate }}</option>
-          <option value="UPCOMING">{{ 'ADMIN_TICKETS.STATUS_UPCOMING' | translate }}</option>
-          <option value="PRESENT">{{ 'ADMIN_TICKETS.STATUS_PRESENT' | translate }}</option>
-          <option value="ABSENT">{{ 'ADMIN_TICKETS.STATUS_ABSENT' | translate }}</option>
+          <option value="ALL">All</option>
+          <option value="PRESENT">Present</option>
+          <option value="ABSENT">Absent</option>
         </select>
       </label>
 
       <div class="filter-actions">
-        <button type="button" class="btn" (click)="onFiltersChanged()">{{ 'ADMIN_TICKETS.APPLY' | translate }}</button>
-        <button type="button" class="btn btn-ghost" (click)="resetFilters()">{{ 'ADMIN_TICKETS.RESET' | translate }}</button>
+        <button type="button" class="btn" (click)="onFiltersChanged()">Apply</button>
+        <button type="button" class="btn btn-ghost" (click)="resetFilters()">Reset</button>
       </div>
     </div>
   </section>
 
   <section class="table-card">
     @if (loading) {
-      <div class="state loading">{{ 'ADMIN_TICKETS.LOADING' | translate }}</div>
+      <div class="state loading">Loading tickets...</div>
     } @else if (filteredTickets.length === 0) {
-      <div class="state empty">{{ 'ADMIN_TICKETS.EMPTY' | translate }}</div>
+      <div class="state empty">No tickets found.</div>
     } @else {
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>{{ 'ADMIN_TICKETS.TH_TICKET' | translate }}</th>
-              <th>{{ 'ADMIN_TICKETS.TH_USER' | translate }}</th>
-              <th>{{ 'ADMIN_TICKETS.TH_EVENT' | translate }}</th>
-              <th>{{ 'ADMIN_TICKETS.TH_START' | translate }}</th>
-              <th>{{ 'ADMIN_TICKETS.TH_QR' | translate }}</th>
-              <th>{{ 'ADMIN_TICKETS.TH_STATUS' | translate }}</th>
+              <th>Ticket Name</th>
+              <th>User Name</th>
+              <th>Event Name</th>
+              <th>Start Date</th>
+              <th>QR Token</th>
+              <th>Status</th>
             </tr>
           </thead>
           <tbody>
             @for (ticket of filteredTickets; track ticket.reservationItemId) {
               <tr>
-                <td>{{ ticket.ticketName || ('ADMIN_TICKETS.NO_VALUE' | translate) }}</td>
-                <td>{{ ticket.userName || ('ADMIN_TICKETS.NO_VALUE' | translate) }}</td>
-                <td>{{ ticket.eventName || ('ADMIN_TICKETS.NO_VALUE' | translate) }}</td>
-                <td>{{ ticket.startDate ? (ticket.startDate | date:'mediumDate') : ('ADMIN_TICKETS.NO_VALUE' | translate) }}</td>
-                <td><code>{{ ticket.qrCodeToken || ('ADMIN_TICKETS.NO_VALUE' | translate) }}</code></td>
+                <td>{{ ticket.ticketName || '-' }}</td>
+                <td>{{ ticket.userName || '-' }}</td>
+                <td>{{ ticket.eventName || '-' }}</td>
+                <td>{{ ticket.startDate ? (ticket.startDate | date:'mediumDate') : '-' }}</td>
+                <td><code>{{ ticket.qrCodeToken || '-' }}</code></td>
                 <td>
                   <span class="badge" [ngClass]="statusClass(ticket.attendanceStatus)">
-                    {{ ('ADMIN_TICKETS.STATUS_' + ticket.attendanceStatus) | translate }}
+                    {{ statusLabel(ticket.attendanceStatus) }}
                   </span>
                 </td>
               </tr>
@@ -91,7 +90,7 @@
     <div class="scanner-backdrop" (click)="closeScanner()"></div>
     <section class="scanner-modal" role="dialog" aria-modal="true">
       <header class="scanner-head">
-        <h2>{{ 'ADMIN_TICKETS.SCAN_TITLE' | translate }}</h2>
+        <h2>QR Scanner</h2>
         <button type="button" class="close-btn" (click)="closeScanner()">
           <i class="pi pi-times"></i>
         </button>
@@ -101,26 +100,26 @@
         @if (scannerSupported) {
           <div class="camera-box">
             @if (cameraBusy) {
-              <p>{{ 'ADMIN_TICKETS.SCAN_STARTING' | translate }}</p>
+              <p>Starting camera...</p>
             }
             <video id="ticket-scan-video" muted autoplay playsinline></video>
           </div>
         } @else {
-          <p class="warning">{{ 'ADMIN_TICKETS.SCAN_WARN' | translate }}</p>
+          <p class="warning">Camera scanning is unavailable. Please check browser permissions and use manual token input if needed.</p>
         }
 
         <div class="manual-input">
-          <label for="manual-token">{{ 'ADMIN_TICKETS.MANUAL_LABEL' | translate }}</label>
+          <label for="manual-token">Manual token input</label>
           <div class="manual-row">
             <input
               id="manual-token"
               type="text"
               [(ngModel)]="manualToken"
-              [placeholder]="'ADMIN_TICKETS.MANUAL_PH' | translate"
+              placeholder="Paste QR UUID token"
               (keyup.enter)="validateManualToken()"
             />
             <button type="button" class="btn" [disabled]="scanBusy" (click)="validateManualToken()">
-              {{ scanBusy ? ('ADMIN_TICKETS.CHECKING' | translate) : ('ADMIN_TICKETS.VALIDATE' | translate) }}
+              {{ scanBusy ? 'Checking...' : 'Validate' }}
             </button>
           </div>
         </div>
@@ -130,9 +129,9 @@
             <p>{{ scanResult.message }}</p>
             @if (scanResult.ticket) {
               <div class="result-details">
-                <p><strong>{{ 'ADMIN_TICKETS.TICKET' | translate }}:</strong> {{ scanResult.ticket.ticketName || ('ADMIN_TICKETS.NO_VALUE' | translate) }}</p>
-                <p><strong>{{ 'ADMIN_TICKETS.USER' | translate }}:</strong> {{ scanResult.ticket.userName || ('ADMIN_TICKETS.NO_VALUE' | translate) }}</p>
-                <p><strong>{{ 'ADMIN_TICKETS.EVENT' | translate }}:</strong> {{ scanResult.ticket.eventName || ('ADMIN_TICKETS.NO_VALUE' | translate) }}</p>
+                <p><strong>Ticket:</strong> {{ scanResult.ticket.ticketName || '-' }}</p>
+                <p><strong>User:</strong> {{ scanResult.ticket.userName || '-' }}</p>
+                <p><strong>Event:</strong> {{ scanResult.ticket.eventName || '-' }}</p>
               </div>
             }
           </div>

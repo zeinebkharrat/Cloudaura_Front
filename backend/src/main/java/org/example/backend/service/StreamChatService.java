@@ -51,11 +51,11 @@ public class StreamChatService {
 
     public String uploadVoiceFile(MultipartFile file, Integer userId) {
         if (file == null || file.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.stream.audio_required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Audio file is required");
         }
         String contentType = file.getContentType() == null ? "" : file.getContentType();
         if (!contentType.toLowerCase().startsWith("audio/")) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.stream.audio_type_invalid");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only audio files are allowed");
         }
         if (apiKey == null || apiKey.isBlank() || secret == null || secret.isBlank()) {
             return saveVoiceLocally(file);
@@ -78,7 +78,7 @@ public class StreamChatService {
                 }
             });
         } catch (Exception ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.stream.audio_read_failed");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not read uploaded audio");
         }
 
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
@@ -126,7 +126,7 @@ public class StreamChatService {
 
             return "/uploads/voice-messages/" + stored;
         } catch (IOException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "api.error.stream.upload_failed");
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Voice upload failed");
         }
     }
 

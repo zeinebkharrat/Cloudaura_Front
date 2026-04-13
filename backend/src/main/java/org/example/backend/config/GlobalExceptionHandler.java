@@ -23,6 +23,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.validation.FieldError;
@@ -32,6 +33,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
+import org.apache.catalina.connector.ClientAbortException;
 
 @RestControllerAdvice
 @Slf4j
@@ -270,6 +272,14 @@ public class GlobalExceptionHandler {
                 key);
     }
 
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
+        String message = ex.getMessage() != null ? ex.getMessage() : "Request method is not supported";
+        return json(
+                HttpStatus.METHOD_NOT_ALLOWED,
+                ApiResponse.error(message, "METHOD_NOT_ALLOWED"));
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(IllegalArgumentException ex) {
         log.warn("IllegalArgument (redacted from client): {}", ex.getMessage());
@@ -287,6 +297,12 @@ public class GlobalExceptionHandler {
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 resolve(key, "Une erreur inattendue s'est produite."),
                 key);
+    }
+
+    @ExceptionHandler(ClientAbortException.class)
+    public ResponseEntity<Void> handleClientAbort(ClientAbortException ex) {
+        log.debug("Client aborted response stream: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 
     @ExceptionHandler(Exception.class)

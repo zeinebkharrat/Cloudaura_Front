@@ -44,3 +44,18 @@ export function extractApiErrorMessage(error: HttpErrorResponse, fallback: strin
       return fallback;
   }
 }
+
+export function isBackendLoginRedirectError(error: HttpErrorResponse): boolean {
+  const targetUrl = (error.url ?? '').toLowerCase();
+  const msg = (error.message ?? '').toLowerCase();
+
+  if (targetUrl.includes('/login')) {
+    return true;
+  }
+
+  if (error.status === 0 && msg.includes('unknown error')) {
+    return true;
+  }
+
+  return false;
+}

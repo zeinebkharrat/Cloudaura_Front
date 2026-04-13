@@ -2,6 +2,7 @@ package org.example.backend.service;
 
 import lombok.RequiredArgsConstructor;
 import org.example.backend.dto.PageResponse;
+import org.example.backend.service.CommentModerationResult;
 import org.example.backend.dto.publicapi.CreatePublicReviewRequest;
 import org.example.backend.dto.publicapi.PublicReviewPageResponse;
 import org.example.backend.dto.publicapi.PublicReviewResponse;
@@ -32,6 +33,7 @@ public class PublicReviewService {
     private final RestaurantReviewRepository restaurantReviewRepository;
     private final ActivityReviewRepository activityReviewRepository;
     private final UserRepository userRepository;
+    private final SightengineCommentModerationService moderationService;
 
     @Transactional(readOnly = true)
     public PublicReviewPageResponse listRestaurantReviews(Integer restaurantId, Pageable pageable) {
@@ -77,7 +79,10 @@ public class PublicReviewService {
         review.setRestaurant(restaurant);
         review.setUser(user);
         review.setStars(request.stars());
-        review.setCommentText(request.commentText().trim());
+
+        String incoming = request.commentText().trim();
+        CommentModerationResult moderation = moderationService.moderateComment(incoming);
+        applyModeration(review, moderation);
 
         return toResponse(restaurantReviewRepository.save(review));
     }
@@ -94,7 +99,10 @@ public class PublicReviewService {
         review.setActivity(activity);
         review.setUser(user);
         review.setStars(request.stars());
-        review.setCommentText(request.commentText().trim());
+
+        String incoming = request.commentText().trim();
+        CommentModerationResult moderation = moderationService.moderateComment(incoming);
+        applyModeration(review, moderation);
 
         return toResponse(activityReviewRepository.save(review));
     }
@@ -106,7 +114,7 @@ public class PublicReviewService {
 
         RestaurantReview review = restaurantReviewRepository
             .findByRestaurantRestaurantIdAndUserUserId(restaurantId, user.getUserId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.review_not_found"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Avis introuvable"));
 
         restaurantReviewRepository.delete(review);
     }
@@ -118,7 +126,7 @@ public class PublicReviewService {
 
         ActivityReview review = activityReviewRepository
             .findByActivityActivityIdAndUserUserId(activityId, user.getUserId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.review_not_found"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Avis introuvable"));
 
         activityReviewRepository.delete(review);
     }
@@ -157,6 +165,20 @@ public class PublicReviewService {
 
         String username = authentication.getName();
         return userRepository.findFirstByUsernameIgnoreCaseOrEmailIgnoreCaseOrderByUserIdAsc(username, username)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.review_user_missing"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Utilisateur authentifié introuvable"));
+    }
+
+    private void applyModeration(RestaurantReview review, CommentModerationResult moderation) {
+        review.setOriginalCommentText(moderation.originalContent());
+        review.setSanitizedCommentText(moderation.sanitizedContent());
+        review.setCommentText(moderation.sanitizedContent());
+        review.setAbuseCategories(moderation.abuseCategories().isEmpty() ? null : String.join(",", moderation.abuseCategories()));
+    }
+
+    private void applyModeration(ActivityReview review, CommentModerationResult moderation) {
+        review.setOriginalCommentText(moderation.originalContent());
+        review.setSanitizedCommentText(moderation.sanitizedContent());
+        review.setCommentText(moderation.sanitizedContent());
+        review.setAbuseCategories(moderation.abuseCategories().isEmpty() ? null : String.join(",", moderation.abuseCategories()));
     }
 }

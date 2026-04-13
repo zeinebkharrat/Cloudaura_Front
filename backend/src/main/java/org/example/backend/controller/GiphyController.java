@@ -41,7 +41,10 @@ public class GiphyController {
         }
 
         if (giphyApiKey == null || giphyApiKey.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "api.error.giphy_not_configured");
+            throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "GIPHY API key is not configured. Set GIPHY_API_KEY."
+            );
         }
 
         String normalizedType = "sticker".equalsIgnoreCase(type) ? "sticker" : "gif";

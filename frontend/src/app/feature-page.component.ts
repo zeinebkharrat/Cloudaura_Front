@@ -1,6 +1,4 @@
-import { Component, OnInit, inject, signal, computed, DestroyRef } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { Component, OnInit, inject, signal, computed, HostListener } from '@angular/core';
 import { forkJoin } from 'rxjs';
 import { ActivatedRoute, Data, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -14,7 +12,6 @@ import { EventService } from './event.service';
 import { Event as TravelEvent } from './models/event';
 import { NotificationService } from './core/notification.service';
 import { LoginRequiredPromptService } from './core/login-required-prompt.service';
-import { LanguageService } from './core/services/language.service';
 import { DialogModule } from 'primeng/dialog';
 import { GalleriaModule } from 'primeng/galleria';
 import { ButtonModule } from 'primeng/button';
@@ -70,6 +67,7 @@ export interface CatalogProduct {
   styleUrl: './feature-page.component.css',
 })
 export class FeaturePageComponent implements OnInit {
+  private readonly aiGeneratedImageStorageKey = 'eventManagement.aiGeneratedImages';
   private route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private readonly translate = inject(TranslateService);
@@ -91,6 +89,12 @@ export class FeaturePageComponent implements OnInit {
   highlights: string[] = [];
   blocks: FeatureBlock[] = [];
   events: TravelEvent[] = [];
+  eventFilterCity = 'ALL';
+  eventFilterType = 'ALL';
+  eventMaxPriceCap = 500;
+  eventMaxPrice = 500;
+  eventCityDropdownOpen = false;
+  eventCitySearch = '';
   isEventFeed = false;
   isLoadingEvents = false;
   eventsLoadError: string | null = null;
@@ -99,9 +103,9 @@ export class FeaturePageComponent implements OnInit {
   readonly eventJoinError = signal<string | null>(null);
 
   catalog: 'none' | 'products' = 'none';
-  catalogProducts: CatalogProduct[] = [];
-  catalogLoading = false;
-  catalogError: string | null = null;
+  catalogProducts = signal<CatalogProduct[]>([]);
+  catalogLoading = signal(false);
+  catalogError = signal<string | null>(null);
 
   searchQuery = signal('');
   selectedCategory = signal<string | null>(null);
@@ -113,7 +117,7 @@ export class FeaturePageComponent implements OnInit {
   readonly filteredCatalogProducts = computed(() => {
     const query = this.searchQuery().toLowerCase().trim();
     const cat = this.selectedCategory();
-    return this.catalogProducts.filter(p => {
+    return this.catalogProducts().filter(p => {
       const matchQuery = !query
         || p.name.toLowerCase().includes(query)
         || (p.description?.toLowerCase().includes(query) ?? false)
@@ -136,14 +140,15 @@ export class FeaturePageComponent implements OnInit {
   });
 
   readonly isArtisan = computed(() => {
-    const user = this.auth.currentUser();
-    return this.auth.hasRole('ROLE_ARTISAN') || (user?.artisanRequestPending === true);
+    return this.auth.hasRole('ROLE_ARTISAN');
   });
 
   readonly showProductForm = signal(false);
   readonly artisanProducts = signal<CatalogProduct[]>([]);
   readonly artisanProductsLoading = signal(false);
   readonly artisanProductsError = signal<string | null>(null);
+  readonly autoDescriptionLoading = signal(false);
+  readonly autoDescriptionError = signal<string | null>(null);
 
   readonly newProduct = signal<Partial<CatalogProduct>>({
     name: '',
@@ -268,10 +273,12 @@ export class FeaturePageComponent implements OnInit {
   // Product Details Modal
   readonly showProductDetails = signal(false);
   readonly selectedItem = signal<CatalogProduct | null>(null);
+  detailImageIndex = 0;
 
   openProductDetails(p: CatalogProduct): void {
     this.detailSelectedColor.set(null);
     this.detailSelectedSize.set(null);
+    this.detailImageIndex = 0;
     this.selectedItem.set(p);
     this.showProductDetails.set(true);
     this.maybePreselectVariant(p);
@@ -310,6 +317,7 @@ export class FeaturePageComponent implements OnInit {
 
   closeProductDetails(): void {
     this.showProductDetails.set(false);
+    this.detailImageIndex = 0;
     this.detailSelectedColor.set(null);
     this.detailSelectedSize.set(null);
     const item = this.selectedItem();
@@ -321,6 +329,18 @@ export class FeaturePageComponent implements OnInit {
       });
     }
     this.selectedItem.set(null);
+  }
+
+  detailImagePrev(p: CatalogProduct): void {
+    const n = this.getGalleryImages(p).length;
+    if (n <= 1) return;
+    this.detailImageIndex = (this.detailImageIndex - 1 + n) % n;
+  }
+
+  detailImageNext(p: CatalogProduct): void {
+    const n = this.getGalleryImages(p).length;
+    if (n <= 1) return;
+    this.detailImageIndex = (this.detailImageIndex + 1) % n;
   }
 
   onCityChange(id: any): void {
@@ -383,13 +403,14 @@ export class FeaturePageComponent implements OnInit {
       this.loadProducts();
       this.loadCities();
     } else {
-      this.catalogProducts = [];
-      this.catalogError = null;
+      this.catalogProducts.set([]);
+      this.catalogError.set(null);
     }
 
-    const shouldLoadEvents = d['eventFeed'] === true || this.featureI18nId === 'EVENEMENTS';
+    const shouldLoadEvents = d['eventFeed'] === true || this.title === 'Events';
     this.isEventFeed = shouldLoadEvents;
     if (shouldLoadEvents) {
+      this.loadCities();
       this.loadEvents();
     } else {
       this.events = [];
@@ -412,7 +433,8 @@ export class FeaturePageComponent implements OnInit {
   }
 
   loadProducts(): void {
-    this.catalogLoading = true;
+    this.catalogLoading.set(true);
+    this.catalogError.set(null);
     const cityId = this.selectedCityId();
     const lang = this.language.currentLang();
     const langParam = `lang=${encodeURIComponent(lang)}`;
@@ -423,26 +445,26 @@ export class FeaturePageComponent implements OnInit {
 
     this.http.get<CatalogProduct[]>(primary).subscribe({
       next: (list) => {
-        this.catalogProducts = list ?? [];
-        this.catalogLoading = false;
+        this.catalogProducts.set(list ?? []);
+        this.catalogLoading.set(false);
         this.catalogImageFailed.set(new Set());
       },
       error: () => {
         if (tryFallback) {
           this.http.get<CatalogProduct[]>(fallback).subscribe({
             next: (list) => {
-              this.catalogProducts = list ?? [];
-              this.catalogLoading = false;
+              this.catalogProducts.set(list ?? []);
+              this.catalogLoading.set(false);
               this.catalogImageFailed.set(new Set());
             },
             error: () => {
-              this.catalogError = 'FEATURE_CATALOG.ERR_CATALOG_PROXY';
-              this.catalogLoading = false;
+              this.catalogError.set('Could not load the catalog. Start the backend (default port 9091) and run `ng serve` with the Angular proxy.');
+              this.catalogLoading.set(false);
             },
           });
         } else {
-          this.catalogError = 'FEATURE_CATALOG.ERR_CATALOG_BACKEND';
-          this.catalogLoading = false;
+          this.catalogError.set('Could not load the catalog. Check that the backend is running (e.g. port 9091) and that the Angular proxy is configured.');
+          this.catalogLoading.set(false);
         }
       },
     });
@@ -637,7 +659,40 @@ export class FeaturePageComponent implements OnInit {
         };
         reader.readAsDataURL(file);
       });
+
+      if (!this.newProduct().description?.trim()) {
+        this.autoFillDescriptionFromFile(files[0]);
+      }
     }
+  }
+
+  private autoFillDescriptionFromFile(file: File): void {
+    if (!file || this.autoDescriptionLoading()) {
+      return;
+    }
+
+    this.autoDescriptionError.set(null);
+    this.autoDescriptionLoading.set(true);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    this.http.post<{ description?: string; error?: string }>(`${API_BASE_URL}/api/products/describe-image`, formData).subscribe({
+      next: (response) => {
+        this.autoDescriptionLoading.set(false);
+        const description = response?.description?.trim();
+        if (description && !this.newProduct().description?.trim()) {
+          this.newProduct.set({ ...this.newProduct(), description });
+        }
+        if (response?.error) {
+          this.autoDescriptionError.set(response.error);
+        }
+      },
+      error: (err: any) => {
+        this.autoDescriptionLoading.set(false);
+        this.autoDescriptionError.set(err?.error?.error || 'Could not auto-fill description from the photo.');
+      },
+    });
   }
 
   clearFilesSelection(): void {
@@ -755,6 +810,7 @@ export class FeaturePageComponent implements OnInit {
           status: this.normalizeEventStatus(event.status),
           imageUrl: this.normalizeEventImageUrl(event.imageUrl),
         })).filter((event) => this.shouldDisplayInFrontOffice(event.status));
+        this.resetEventFilters();
         this.isLoadingEvents = false;
       },
       error: (err) => {
@@ -788,6 +844,203 @@ export class FeaturePageComponent implements OnInit {
   private shouldDisplayInFrontOffice(status: unknown): boolean {
     const normalized = this.normalizeEventStatus(status);
     return normalized === 'UPCOMING' || normalized === 'ONGOING';
+  }
+
+  private toEventCityLabel(event: TravelEvent): string {
+    const fromCity = event.city?.name?.trim();
+    if (fromCity) {
+      return fromCity;
+    }
+    const venue = String(event.venue ?? '').trim();
+    if (!venue) {
+      return 'Unknown';
+    }
+    const firstChunk = venue.split(',')[0]?.trim();
+    return firstChunk || venue;
+  }
+
+  get eventCityOptions(): string[] {
+    const allCities = this.cities().map((c) => String(c?.name ?? '').trim()).filter((v) => !!v);
+    if (allCities.length > 0) {
+      return [...new Set(allCities)].sort((a, b) => a.localeCompare(b));
+    }
+    return [...new Set(this.events.map((event) => this.toEventCityLabel(event)).filter((v) => !!v))]
+      .sort((a, b) => a.localeCompare(b));
+  }
+
+  get eventTypeOptions(): string[] {
+    return [...new Set(this.events.map((event) => String(event.eventType ?? '').trim()).filter((v) => !!v))]
+      .sort((a, b) => a.localeCompare(b));
+  }
+
+  get filteredEventCityOptions(): string[] {
+    const query = this.eventCitySearch.trim().toLowerCase();
+    if (!query) {
+      return this.eventCityOptions;
+    }
+    return this.eventCityOptions.filter((city) => city.toLowerCase().includes(query));
+  }
+
+  get selectedEventCityLabel(): string {
+    return this.eventFilterCity === 'ALL' ? 'All cities' : this.eventFilterCity;
+  }
+
+  toggleEventCityDropdown(event: MouseEvent): void {
+    event.stopPropagation();
+    this.eventCityDropdownOpen = !this.eventCityDropdownOpen;
+  }
+
+  selectEventCity(city: string): void {
+    this.eventFilterCity = city;
+    this.eventCityDropdownOpen = false;
+    this.eventCitySearch = '';
+  }
+
+  onEventCityPanelClick(event: MouseEvent): void {
+    event.stopPropagation();
+  }
+
+  @HostListener('document:click')
+  closeEventCityDropdown(): void {
+    this.eventCityDropdownOpen = false;
+  }
+
+  get filteredEvents(): TravelEvent[] {
+    return this.events.filter((event) => {
+      const cityOk = this.eventFilterCity === 'ALL' || this.toEventCityLabel(event) === this.eventFilterCity;
+      const typeOk = this.eventFilterType === 'ALL' || String(event.eventType ?? '').trim() === this.eventFilterType;
+      const price = this.eventPriceAmount(event);
+      const budgetOk = price <= this.eventMaxPrice;
+      return cityOk && typeOk && budgetOk;
+    });
+  }
+
+  get activeEventFilterCount(): number {
+    let count = 0;
+    if (this.eventFilterCity !== 'ALL') {
+      count += 1;
+    }
+    if (this.eventFilterType !== 'ALL') {
+      count += 1;
+    }
+    if (this.eventMaxPrice < this.eventMaxPriceCap) {
+      count += 1;
+    }
+    return count;
+  }
+
+  get activeEventFilterTokens(): string[] {
+    const tokens: string[] = [];
+    if (this.eventFilterCity !== 'ALL') {
+      tokens.push(`City: ${this.eventFilterCity}`);
+    }
+    if (this.eventFilterType !== 'ALL') {
+      tokens.push(`Type: ${this.eventFilterType}`);
+    }
+    if (this.eventMaxPrice < this.eventMaxPriceCap) {
+      tokens.push(`Budget <= ${Math.round(this.eventMaxPrice)} TND`);
+    }
+    return tokens;
+  }
+
+  eventDisplayDate(event: TravelEvent): string {
+    const raw = String(event.startDate ?? '').trim();
+    if (!raw) {
+      return 'Date TBA';
+    }
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) {
+      return raw;
+    }
+    return date.toLocaleDateString(undefined, {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+  }
+
+  isAiGeneratedPoster(event: TravelEvent | null): boolean {
+    const normalized = this.normalizePosterImageUrl(event?.imageUrl);
+    if (!normalized) {
+      return false;
+    }
+
+    if (/-poster(?:\.|$)/i.test(normalized)) {
+      return true;
+    }
+
+    return this.getStoredAiGeneratedImages().has(normalized);
+  }
+
+  eventPosterDateRange(event: TravelEvent | null): string {
+    const start = this.formatPosterDisplayDate(event?.startDate);
+    const end = this.formatPosterDisplayDate(event?.endDate);
+    if (!start && !end) {
+      return 'Date TBA';
+    }
+    if (!end || start === end) {
+      return start || end;
+    }
+    return `${start} - ${end}`;
+  }
+
+  private formatPosterDisplayDate(value: string | undefined): string {
+    const raw = String(value ?? '').trim();
+    if (!raw) {
+      return '';
+    }
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) {
+      return raw;
+    }
+    return date.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  }
+
+  private getStoredAiGeneratedImages(): Set<string> {
+    try {
+      const raw = localStorage.getItem(this.aiGeneratedImageStorageKey);
+      if (!raw) {
+        return new Set<string>();
+      }
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        return new Set<string>();
+      }
+
+      const normalized = parsed
+        .map((value) => this.normalizePosterImageUrl(value))
+        .filter((value): value is string => !!value);
+      return new Set<string>(normalized);
+    } catch {
+      return new Set<string>();
+    }
+  }
+
+  private normalizePosterImageUrl(url: unknown): string {
+    return String(url ?? '').trim();
+  }
+
+  eventStatusClass(status: unknown): string {
+    const normalized = this.normalizeEventStatus(status);
+    if (normalized === 'ONGOING') {
+      return 'event-status-badge--ongoing';
+    }
+    return 'event-status-badge--upcoming';
+  }
+
+  resetEventFilters(): void {
+    const maxDetected = this.events.reduce((max, event) => Math.max(max, this.eventPriceAmount(event)), 0);
+    const normalizedCap = Math.max(500, Math.ceil(maxDetected / 50) * 50);
+    this.eventMaxPriceCap = normalizedCap;
+    this.eventMaxPrice = normalizedCap;
+    this.eventFilterCity = 'ALL';
+    this.eventFilterType = 'ALL';
+    this.eventCitySearch = '';
+    this.eventCityDropdownOpen = false;
   }
 
   private normalizeEventImageUrl(url: string | undefined): string | undefined {

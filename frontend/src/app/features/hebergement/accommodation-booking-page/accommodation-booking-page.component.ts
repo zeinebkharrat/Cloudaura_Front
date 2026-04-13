@@ -593,8 +593,8 @@ export class AccommodationBookingPageComponent implements OnInit {
     const user = this.auth.currentUser();
     if (!user) {
       this.loginPrompt.show({
-        title: this.translate.instant('ACCOMM.LOGIN_PROMPT_TITLE'),
-        message: this.translate.instant('ACCOMM.LOGIN_PROMPT_MSG'),
+        title: 'Sign in to reserve accommodation',
+        message: 'Please sign in or create an account to confirm this accommodation booking.',
         returnUrl: this.router.url,
       });
       return;

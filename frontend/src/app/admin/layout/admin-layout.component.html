@@ -1,71 +1,75 @@
-<div class="shell" [class.collapsed]="!open()">
+<div class="shell" [class.collapsed]="!open()" [class.sidebar-hidden]="!sidebarVisible()">
   <aside class="sidebar">
     <div class="sb-head">
       @if (open()) {
         <span class="sb-logo">
-          <span class="sy">Y</span><span class="sd">•</span><span class="st">TN</span>
+          <span class="sb-logo-mark">
+            <img [src]="logoPath" alt="YallaTN" class="sb-logo-img" />
+          </span>
+          <span class="sb-logo-text-wrap">
+            <span class="sb-logo-text">YallaTN</span>
+            <span class="sb-logo-sub">Admin Console</span>
+          </span>
           <span class="sb-badge">ADMIN</span>
         </span>
       }
-      <button class="tog" (click)="toggle()" id="sidebar-toggle-btn">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-          <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
-        </svg>
-      </button>
+      <div class="sb-head-actions">
+        <button class="tog" (click)="toggle()" id="sidebar-toggle-btn" title="Compact sidebar" aria-label="Compact sidebar" data-tip="Compact sidebar">
+          <i class="pi pi-bars" aria-hidden="true"></i>
+        </button>
+        <button class="tog tog-hide" (click)="hideSidebar()" title="Hide sidebar" aria-label="Hide sidebar" data-tip="Hide sidebar">
+          <i class="pi pi-arrow-left" aria-hidden="true"></i>
+        </button>
+      </div>
     </div>
 
     <nav class="sb-nav">
-  @for (item of nav; track item.route) {
+      @for (item of nav; track item.route; let i = $index) {
+        @if (open() && isFirstInSection(i)) {
+          <div class="sb-section-label">{{ sectionLabel(item.section) }}</div>
+        }
 
-    @if (item.label === 'Events') {
-      <div class="sb-item-container">
-        <div class="sb-item" (click)="toggleEventsMenu()" style="cursor: pointer;">
-          @if (item.iconImg) {
-            <img class="sb-icon-img" [src]="item.iconImg" alt="" width="22" height="22" />
-          } @else if (item.iconClass) {
-            <i class="sb-icon-pi" [class]="item.iconClass"></i>
-          }
-          @if (open()) {
-            <span class="sb-lbl">{{ item.label }}</span>
-            <span [style.transform]="isEventsMenuOpen ? 'rotate(180deg)' : 'rotate(0)'"
-                  style="transition: 0.3s; margin-left: auto; font-size: 0.7rem;">▼</span>
-          }
-        </div>
+        @if (item.label === 'Events') {
+          <div class="sb-item-container">
+            <button type="button" class="sb-item sb-item-btn" (click)="toggleEventsMenu()">
+              @if (item.iconClass) {
+                <i class="sb-icon-pi" [class]="item.iconClass"></i>
+              }
+              @if (open()) {
+                <span class="sb-lbl">{{ item.label }}</span>
+                <span class="sb-chevron" [class.open]="isEventsMenuOpen">⌄</span>
+              }
+            </button>
 
-        @if (isEventsMenuOpen && open()) {
-          <div class="sub-menu" style="display: flex; flex-direction: column; padding-left: 35px; gap: 8px; margin-top: 5px; margin-bottom: 10px;">
-            <a routerLink="/admin/events/dashboard" routerLinkActive="active-sub"
-               style="text-decoration: none; color: #94a3b8; font-size: 0.85rem; display: flex; align-items: center; gap: 8px;">
-              <img src="icones/dashboard.png" alt="" width="18" height="18" class="sub-menu-icon" /> Dashboard
-            </a>
-            <a routerLink="/admin/events/calendar" routerLinkActive="active-sub"
-               style="text-decoration: none; color: #94a3b8; font-size: 0.85rem; display: flex; align-items: center; gap: 8px;">
-              <i class="pi pi-calendar sub-menu-pi"></i> Calendar
-            </a>
-            <a routerLink="/admin/tickets" routerLinkActive="active-sub"
-               style="text-decoration: none; color: #94a3b8; font-size: 0.85rem; display: flex; align-items: center; gap: 8px;">
-              <i class="pi pi-ticket sub-menu-pi"></i> Tickets
-            </a>
+            @if (isEventsMenuOpen && open()) {
+              <div class="sub-menu">
+                <a routerLink="/admin/events/dashboard" routerLinkActive="active-sub">
+                  <i class="pi pi-chart-line sub-menu-pi"></i>
+                  Dashboard
+                </a>
+                <a routerLink="/admin/events/calendar" routerLinkActive="active-sub">
+                  <i class="pi pi-calendar sub-menu-pi"></i>
+                  Calendar
+                </a>
+                <a routerLink="/admin/tickets" routerLinkActive="active-sub">
+                  <i class="pi pi-ticket sub-menu-pi"></i>
+                  Tickets
+                </a>
+              </div>
+            }
           </div>
+        } @else {
+          <a [routerLink]="item.route" routerLinkActive="active"
+             [routerLinkActiveOptions]="{exact: item.route === '/admin'}"
+             class="sb-item" [id]="navDomId(item)">
+            @if (item.iconClass) {
+              <i class="sb-icon-pi" [class]="item.iconClass"></i>
+            }
+            @if (open()) { <span class="sb-lbl">{{ item.label }}</span> }
+          </a>
         }
-      </div>
-    }
-
-    @else {
-      <a [routerLink]="item.route" routerLinkActive="active"
-         [routerLinkActiveOptions]="{exact: item.route === '/admin'}"
-         class="sb-item" [id]="navDomId(item)">
-        @if (item.iconImg) {
-          <img class="sb-icon-img" [src]="item.iconImg" alt="" width="22" height="22" />
-        } @else if (item.iconClass) {
-          <i class="sb-icon-pi" [class]="item.iconClass"></i>
-        }
-        @if (open()) { <span class="sb-lbl">{{ item.label }}</span> }
-      </a>
-    }
-
-  }
-</nav>
+      }
+    </nav>
 
     @if (open()) {
       <div class="sb-foot">
@@ -81,7 +85,7 @@
           </div>
         </button>
         <button class="logout-btn" (click)="logout()" id="admin-logout-btn">
-          <img src="icones/se-deconnecter.png" alt="" class="logout-icon-img" width="20" height="20" />
+          <i class="pi pi-sign-out"></i>
           Sign out
         </button>
       </div>
@@ -89,6 +93,11 @@
   </aside>
 
   <main class="sb-main">
+    @if (!sidebarVisible()) {
+      <button class="show-sidebar-btn" type="button" (click)="showSidebar()" aria-label="Show sidebar" title="Show sidebar" data-tip="Show sidebar">
+        <i class="pi pi-arrow-right"></i>
+      </button>
+    }
     <router-outlet />
   </main>
 </div>

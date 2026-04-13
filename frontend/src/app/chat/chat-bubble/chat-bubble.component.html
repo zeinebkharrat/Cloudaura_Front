@@ -81,8 +81,8 @@
                 type="button"
                 (click)="toggleMessageMenu(msg.messageId)"
                 [disabled]="deletingMessageId() === msg.messageId"
-                [attr.title]="'COMMUNITY.CHAT_MSG_ACTIONS' | translate"
-                [attr.aria-label]="'COMMUNITY.CHAT_MSG_ACTIONS' | translate"
+                title="Message actions"
+                aria-label="Message actions"
               >
                 <span></span><span></span><span></span>
               </button>
@@ -111,7 +111,7 @@
                   <span></span><span></span><span></span>
                 </div>
                 <div class="voice-meta">
-                  <span class="voice-label">{{ 'COMMUNITY.CHAT_VOICE' | translate }}</span>
+                  <span class="voice-label">Voice</span>
                   <span class="voice-time">{{ formatVoiceDuration(msg.voiceDurationSec) }}</span>
                 </div>
                 <audio
@@ -123,7 +123,26 @@
               </div>
             </ng-container>
             <ng-template #textMessage>
-              <span class="message-text">{{ msg.content }}</span>
+              <ng-container *ngIf="isStoryReplyMessage(msg) && storyReply(msg) as storyPayload; else plainTextMessage">
+                <div class="story-reply-msg">
+                  <small class="story-reply-head">You replied to their story</small>
+                  <div class="story-reply-card">
+                    <img
+                      *ngIf="storyReplyMediaUrl(msg)"
+                      [src]="storyReplyMediaUrl(msg)"
+                      [alt]="storyPayload.authorUsername || 'Story'"
+                      class="story-reply-thumb"
+                    />
+                    <div class="story-reply-meta">
+                      <span class="story-reply-author">{{ storyPayload.authorUsername || 'Story' }}</span>
+                      <p class="story-reply-text">{{ storyPayload.replyText }}</p>
+                    </div>
+                  </div>
+                </div>
+              </ng-container>
+              <ng-template #plainTextMessage>
+                <span class="message-text">{{ msg.content }}</span>
+              </ng-template>
             </ng-template>
             <span class="message-time">{{ formatMessageTime(msg.sentAt) }}</span>
           </div>
@@ -150,7 +169,7 @@
               (ngModelChange)="newMessage.set($event)"
               (keydown)="onMessageKeydown($event)"
               (input)="onTyping()"
-              [placeholder]="'COMMUNITY.CHAT_INPUT_PH' | translate"
+              placeholder="Votre message..."
             />
           </ng-container>
           <ng-template #recordingState>
@@ -165,19 +184,19 @@
           </ng-template>
 
           <ng-container *ngIf="isRecording(); else normalActions">
-            <button class="recording-action cancel" (click)="cancelVoiceRecording()" [disabled]="uploadingVoice()" type="button" [attr.title]="'COMMUNITY.CHAT_CANCEL_REC' | translate" [attr.aria-label]="'COMMUNITY.CHAT_CANCEL_REC' | translate">✕</button>
-            <button class="recording-action send" (click)="toggleVoiceRecording()" [disabled]="uploadingVoice()" type="button" [attr.title]="'COMMUNITY.CHAT_SEND_VOICE' | translate" [attr.aria-label]="'COMMUNITY.CHAT_SEND_VOICE' | translate">
+            <button class="recording-action cancel" (click)="cancelVoiceRecording()" [disabled]="uploadingVoice()" type="button">✕</button>
+            <button class="recording-action send" (click)="toggleVoiceRecording()" [disabled]="uploadingVoice()" type="button">
               <span *ngIf="!uploadingVoice(); else uploading">➤</span>
             </button>
           </ng-container>
 
           <ng-template #normalActions>
-            <button class="voice-btn" (click)="toggleVoiceRecording()" [disabled]="uploadingVoice() || !activeChatRoomId()" type="button" [attr.title]="'COMMUNITY.CHAT_RECORD_VOICE' | translate" [attr.aria-label]="'COMMUNITY.CHAT_RECORD_VOICE' | translate">
+            <button class="voice-btn" (click)="toggleVoiceRecording()" [disabled]="uploadingVoice() || !activeChatRoomId()" type="button">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a1 1 0 1 1 2 0 7 7 0 0 1-6 6.93V20h3a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2h3v-2.07A7 7 0 0 1 5 11a1 1 0 1 1 2 0 5 5 0 1 0 10 0z"/>
               </svg>
             </button>
-            <button class="send-btn" (click)="sendMessage()" [disabled]="!newMessage().trim()" type="button" [attr.title]="'COMMUNITY.CHAT_SEND' | translate" [attr.aria-label]="'COMMUNITY.CHAT_SEND' | translate">
+            <button class="send-btn" (click)="sendMessage()" [disabled]="!newMessage().trim()" type="button">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="22" y1="2" x2="11" y2="13"></line>

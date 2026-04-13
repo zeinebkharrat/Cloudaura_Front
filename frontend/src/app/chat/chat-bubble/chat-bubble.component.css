@@ -367,6 +367,57 @@
   word-break: break-word;
 }
 
+.story-reply-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 170px;
+  padding: 8px 10px 4px;
+}
+
+.story-reply-head {
+  font-size: 0.68rem;
+  opacity: 0.75;
+}
+
+.story-reply-card {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  background: rgba(12, 16, 26, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 7px;
+}
+
+.story-reply-thumb {
+  width: 52px;
+  height: 72px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: rgba(0, 0, 0, 0.25);
+  flex-shrink: 0;
+}
+
+.story-reply-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.story-reply-author {
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.story-reply-text {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
 .voice-message-wrap {
   display: flex;
   align-items: center;

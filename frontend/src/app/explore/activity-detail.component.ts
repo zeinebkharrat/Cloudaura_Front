@@ -1,9 +1,8 @@
 import { CommonModule, Location } from '@angular/common';
-import { AfterViewInit, Component, OnDestroy, inject } from '@angular/core';
+import { AfterViewInit, Component, HostListener, OnDestroy, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import * as L from 'leaflet';
 import Swal from 'sweetalert2';
 import { extractApiErrorMessage } from '../api-error.util';
@@ -18,9 +17,6 @@ import {
 import { ExploreService } from './explore.service';
 import { LoginRequiredPromptService } from '../core/login-required-prompt.service';
 import { AuthService } from '../core/auth.service';
-import { DualCurrencyPipe } from '../core/pipes/dual-currency.pipe';
-import { createCurrencyDisplaySyncEffect } from '../core/utils/currency-display-sync';
-import { LanguageService } from '../core/services/language.service';
 
 interface CalendarDayCell {
   dateIso: string;
@@ -48,8 +44,6 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly location = inject(Location);
   private readonly loginPrompt = inject(LoginRequiredPromptService);
-  private readonly translate = inject(TranslateService);
-  private readonly language = inject(LanguageService);
 
   activity?: Activity;
   activityMedia: ActivityMedia[] = [];
@@ -90,7 +84,37 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     commentText: '',
   };
   editingReviewId: number | null = null;
-  readonly commentEmojis = ['😊', '😍', '😋', '👍', '🔥', '🎉', '👏', '🤩', '💯', '❤️'];
+  readonly maxReviewCommentLength = 1500;
+  emojiPickerOpen = false;
+  emojiSearchQuery = '';
+  activeEmojiCategory = 'smileys';
+  readonly emojiCategories: Array<{ id: string; icon: string; emojis: string[] }> = [
+    {
+      id: 'smileys',
+      icon: '😀',
+      emojis: ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😋', '😜', '🤪', '🤗', '😎', '🥳', '😌', '😢', '😭', '😡', '😱', '😷', '🤒', '🤢'],
+    },
+    {
+      id: 'gestures',
+      icon: '👍',
+      emojis: ['👍', '👎', '👌', '✌️', '🤟', '🤘', '🤙', '👏', '🙌', '👐', '🤲', '🙏', '💪', '👋', '🤝', '☝️', '👆', '👇', '👉', '👈'],
+    },
+    {
+      id: 'travel',
+      icon: '✈️',
+      emojis: ['✈️', '🧳', '🗺️', '🧭', '🏝️', '🏖️', '🏜️', '🏕️', '🏛️', '🕌', '🗼', '🎡', '🚗', '🚕', '🚌', '🚆', '🚇', '⛵', '🚤', '🛳️'],
+    },
+    {
+      id: 'food',
+      icon: '🍽️',
+      emojis: ['🍽️', '☕', '🍵', '🥤', '🍕', '🍔', '🌮', '🥙', '🍟', '🍜', '🍝', '🍣', '🥗', '🥘', '🍲', '🍛', '🍰', '🍩', '🍎', '🍉'],
+    },
+    {
+      id: 'symbols',
+      icon: '❤️',
+      emojis: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '💯', '✅', '❌', '⚠️', '⭐', '🔥', '✨', '💬', '📍', '📸'],
+    },
+  ];
 
   ngAfterViewInit(): void {
     this.viewReady = true;
@@ -304,8 +328,8 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
           this.blurActiveElement();
           Swal.fire({
             icon: 'error',
-            title: this.translate.instant('EXPLORE_ACTIVITY.SWAL_ERROR_TITLE'),
-            text: this.translate.instant('EXPLORE_ACTIVITY.SWAL_PAYMENT_SESSION'),
+            title: 'Error',
+            text: 'Unable to start payment session.',
             confirmButtonColor: '#e63946',
           });
         },
@@ -314,11 +338,8 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
           this.blurActiveElement();
           Swal.fire({
             icon: 'error',
-            title: this.translate.instant('EXPLORE_ACTIVITY.SWAL_ERROR_TITLE'),
-            text: extractApiErrorMessage(
-              err,
-              this.translate.instant('EXPLORE_ACTIVITY.SWAL_BOOKING_FAIL'),
-            ),
+            title: 'Error',
+            text: extractApiErrorMessage(err, 'Booking failed.'),
             confirmButtonColor: '#e63946',
           });
         },
@@ -328,8 +349,8 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   openBookingModal(): void {
     if (!this.authService.isAuthenticated()) {
       this.loginPrompt.show({
-        title: this.translate.instant('EXPLORE_ACTIVITY.SWAL_LOGIN_TITLE'),
-        message: this.translate.instant('EXPLORE_ACTIVITY.SWAL_LOGIN_TEXT'),
+        title: 'Sign in to reserve this activity',
+        message: 'Please sign in or create an account to complete your activity reservation.',
         returnUrl: this.router.url,
       });
       return;
@@ -363,7 +384,48 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   }
 
   appendEmoji(emoji: string): void {
+    if (this.reviewForm.commentText.length >= this.maxReviewCommentLength) {
+      return;
+    }
     this.reviewForm.commentText = `${this.reviewForm.commentText}${emoji}`;
+  }
+
+  get visibleReviewEmojis(): string[] {
+    const category = this.emojiCategories.find((entry) => entry.id === this.activeEmojiCategory) ?? this.emojiCategories[0];
+    const source = category?.emojis ?? [];
+    const query = this.emojiSearchQuery.trim();
+    if (!query) {
+      return source;
+    }
+    return source.filter((emoji) => emoji.includes(query));
+  }
+
+  toggleEmojiPicker(): void {
+    this.emojiPickerOpen = !this.emojiPickerOpen;
+    if (!this.emojiPickerOpen) {
+      this.emojiSearchQuery = '';
+    }
+  }
+
+  selectEmojiCategory(categoryId: string): void {
+    this.activeEmojiCategory = categoryId;
+    this.emojiSearchQuery = '';
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    this.emojiPickerOpen = false;
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement | null;
+    if (!target) {
+      return;
+    }
+    if (!target.closest('.emoji-picker-wrap')) {
+      this.emojiPickerOpen = false;
+    }
   }
 
   startEditReview(review: PublicReview): void {
@@ -400,11 +462,11 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
 
     Swal.fire({
       icon: 'warning',
-      title: this.translate.instant('EXPLORE_ACTIVITY.SWAL_DELETE_TITLE'),
-      text: this.translate.instant('EXPLORE_ACTIVITY.SWAL_DELETE_TEXT'),
+      title: 'Delete your comment?',
+      text: 'This action cannot be undone.',
       showCancelButton: true,
-      confirmButtonText: this.translate.instant('EXPLORE_ACTIVITY.SWAL_DELETE_CONFIRM'),
-      cancelButtonText: this.translate.instant('EXPLORE_ACTIVITY.SWAL_DELETE_CANCEL'),
+      confirmButtonText: 'Delete',
+      cancelButtonText: 'Cancel',
       confirmButtonColor: '#e63946',
     }).then((result) => {
       if (!result.isConfirmed || !this.activity) {
@@ -424,8 +486,8 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
           if (err?.status === 401) {
             Swal.fire({
               icon: 'warning',
-              title: this.translate.instant('EXPLORE_ACTIVITY.SWAL_SIGNIN_MANAGE_TITLE'),
-              text: this.translate.instant('EXPLORE_ACTIVITY.SWAL_SIGNIN_MANAGE_TEXT'),
+              title: 'Sign in required',
+              text: 'Please sign in to manage your comment.',
               confirmButtonColor: '#e63946',
             });
             return;
@@ -433,9 +495,8 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
 
           Swal.fire({
             icon: 'error',
-            title: this.translate.instant('EXPLORE_ACTIVITY.SWAL_ERROR_TITLE'),
-            text:
-              err?.error?.message || this.translate.instant('EXPLORE_ACTIVITY.SWAL_DELETE_ERR'),
+            title: 'Error',
+            text: err?.error?.message || 'Unable to delete comment.',
             confirmButtonColor: '#e63946',
           });
         },

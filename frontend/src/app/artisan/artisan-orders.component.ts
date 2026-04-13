@@ -13,7 +13,7 @@ import { LanguageService } from '../core/services/language.service';
 @Component({
   selector: 'app-artisan-orders',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, DualCurrencyPipe, TranslateModule],
+  imports: [CommonModule,  FormsModule],
   templateUrl: './artisan-orders.component.html',
   styleUrl: './artisan-orders.component.css',
 })
@@ -42,7 +42,7 @@ export class ArtisanOrdersComponent implements OnInit {
     }
     return { orders: list.length, revenue, items };
   });
-  
+
   readonly expandedOrderId = signal<number | null>(null);
   readonly detail = signal<CheckoutOrder | null>(null);
   readonly detailLoading = signal(false);

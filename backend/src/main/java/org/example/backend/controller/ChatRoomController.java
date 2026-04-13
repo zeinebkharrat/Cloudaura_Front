@@ -25,11 +25,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import jakarta.validation.Valid;
-import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/chatroom")
-@Slf4j
 public class ChatRoomController {
 
     @Autowired
@@ -100,8 +98,7 @@ public class ChatRoomController {
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            log.warn("getOrCreateChatRoom failed", e);
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.chat.create_failed");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         }
     }
 
@@ -117,7 +114,7 @@ public class ChatRoomController {
         User currentUser = getCurrentUser();
 
         if (!chatRoomService.isUserInChatRoom(chatRoomId, currentUser.getUserId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "api.error.chat_not_participant");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not a participant of this chat room");
         }
 
         chatRoomService.markMessagesAsSeen(chatRoomId, currentUser.getUserId());
@@ -132,7 +129,7 @@ public class ChatRoomController {
         User currentUser = getCurrentUser();
 
         if (!chatRoomService.isUserInChatRoom(chatRoomId, currentUser.getUserId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "api.error.chat_not_participant");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not a participant of this chat room");
         }
 
         List<MessageResponse> messages = messageService.getMessagesByChatRoomOrdered(chatRoomId);
@@ -147,18 +144,17 @@ public class ChatRoomController {
         User currentUser = getCurrentUser();
 
         if (!chatRoomService.isUserInChatRoom(chatRoomId, currentUser.getUserId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "api.error.chat_not_participant");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not a participant of this chat room");
         }
 
         try {
             messageService.deleteOwnMessage(chatRoomId, messageId, currentUser.getUserId());
         } catch (RuntimeException ex) {
-            log.warn("deleteOwnMessage failed", ex);
-            String msg = ex.getMessage() != null ? ex.getMessage().toLowerCase() : "";
-            if (msg.contains("not found")) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.chat.message_not_found");
+            String msg = ex.getMessage() == null ? "Cannot delete message" : ex.getMessage();
+            if (msg.toLowerCase().contains("not found")) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, msg);
             }
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "api.error.chat.message_delete_forbidden");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, msg);
         }
 
         Map<String, String> response = new HashMap<>();
@@ -175,7 +171,7 @@ public class ChatRoomController {
         User currentUser = getCurrentUser();
 
         if (!chatRoomService.isUserInChatRoom(chatRoomId, currentUser.getUserId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "api.error.chat_not_participant");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You are not a participant of this chat room");
         }
 
         String voiceUrl = streamChatService.uploadVoiceFile(file, currentUser.getUserId());
@@ -238,7 +234,7 @@ public class ChatRoomController {
         }
 
         User target = userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.user_not_found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         return ResponseEntity.ok(new E2eePublicKeyResponse(target.getUserId(), target.getE2eePublicKey()));
     }
@@ -246,7 +242,7 @@ public class ChatRoomController {
     private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.unauthorized");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
         }
 
         Object principal = authentication.getPrincipal();
@@ -254,6 +250,6 @@ public class ChatRoomController {
             return ((org.example.backend.service.CustomUserDetailsService.CustomUserDetails) principal).getUser();
         }
 
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.invalid_principal");
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid authentication principal");
     }
 }

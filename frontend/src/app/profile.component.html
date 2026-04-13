@@ -3,15 +3,25 @@
   <div class="auth-bg-orb auth-bg-orb-right"></div>
 
   <article class="profile-card glass-panel">
-    <h1>{{ 'PROFILE.TITLE' | translate }}</h1>
-    <div class="profile-lang-row">
-      <span class="profile-lang-label">{{ 'PROFILE.LANG_LABEL' | translate }}</span>
-      <app-language-selector />
-    </div>
+    <section class="profile-cover" [style.background-image]="coverBackground()">
+      <div class="profile-cover-overlay">
+        <div class="profile-cover-text">
+          <h2>My Cover</h2>
+          <p>Personalize your profile with your own cover photo.</p>
+        </div>
+        <div class="profile-cover-actions">
+          <label class="cover-btn" for="profile-cover-upload">{{ coverUploadBusy() ? 'Uploading...' : 'Change cover' }}</label>
+          <button class="cover-btn ghost" type="button" (click)="resetCoverPhoto()" [disabled]="coverUploadBusy()">Default</button>
+          <input id="profile-cover-upload" type="file" accept="image/*" (change)="uploadCoverImage($event)" [disabled]="coverUploadBusy()" />
+        </div>
+      </div>
+    </section>
+
+    <h1>My profile</h1>
     <p class="subtitle">
-      {{ 'PROFILE.SUBTITLE' | translate }}
+      Update your personal information and password.
       @if (currentUser()?.points != null) {
-        <span class="points-pill">{{ 'PROFILE.POINTS' | translate: { n: currentUser()?.points } }}</span>
+        <span class="points-pill">Points: {{ currentUser()?.points }}</span>
       }
     </p>
 
@@ -39,8 +49,8 @@
     }
 
     <section class="avatar-card avatar-card-modern">
-      <h2>{{ 'PROFILE.PHOTO_TITLE' | translate }}</h2>
-      <p class="avatar-subtitle">{{ 'PROFILE.PHOTO_SUBTITLE' | translate }}</p>
+      <h2>Profile photo</h2>
+      <p class="avatar-subtitle">Use a clear image so hosts and travelers can recognize you quickly.</p>
       <div class="avatar-row avatar-row-modern">
         @if (profileForm.controls.profileImageUrl.value) {
           <img [src]="profileForm.controls.profileImageUrl.value" [attr.alt]="'PROFILE.PHOTO_ALT' | translate" class="avatar-preview" />
@@ -49,9 +59,15 @@
         }
 
         <div class="upload-row upload-row-modern">
-          <label class="upload-btn" for="profile-upload">{{ uploadBusy() ? ('PROFILE.UPLOADING' | translate) : ('PROFILE.UPLOAD_PHOTO' | translate) }}</label>
+          <div class="upload-actions-row">
+            <label class="upload-btn" for="profile-upload">{{ uploadBusy() ? 'Upload...' : (profileForm.controls.profileImageUrl.value ? 'Modify profile picture' : 'Upload a photo') }}</label>
+            <button class="camera-btn" type="button" (click)="toggleCameraPanel()" [disabled]="uploadBusy() || cameraBusy()">
+              {{ showCameraPanel() ? 'Close camera' : 'Open camera' }}
+            </button>
+          </div>
           <input id="profile-upload" type="file" accept="image/*" (change)="uploadImage($event)" [disabled]="uploadBusy()" />
-          <span class="muted">{{ uploadBusy() ? ('PROFILE.UPLOADING' | translate) : ('PROFILE.UPLOAD_HINT' | translate) }}</span>
+          <span class="muted">{{ uploadBusy() ? 'Upload...' : 'Add a clear image for your profile or capture one instantly.' }}</span>
+
         </div>
       </div>
     </section>
@@ -132,9 +148,54 @@
       </div>
     </form>
 
-    <section class="password-form compact-note">
-      <h2>{{ 'PROFILE.SECURITY_TITLE' | translate }}</h2>
-      <p class="muted">{{ 'PROFILE.SECURITY_NOTE' | translate }}</p>
+    <section class="password-form compact-note security-card-modern">
+      <div class="security-orb security-orb-a"></div>
+      <div class="security-orb security-orb-b"></div>
+
+      <div class="security-content">
+        <h2>Security center</h2>
+        <p class="muted">Keep your account safe with a stronger password. The popup includes live password strength and match indicators.</p>
+
+        <ul class="security-benefits">
+          <li>Live strength indicator</li>
+          <li>Instant confirmation matching</li>
+          <li>Modern encrypted flow</li>
+        </ul>
+
+        <button class="security-main-btn" type="button" (click)="openChangePasswordPopup()" [disabled]="isChangingPassword()">
+          {{ isChangingPassword() ? 'Updating...' : 'Change my password' }}
+        </button>
+      </div>
     </section>
   </article>
+
+  @if (showCameraPanel()) {
+    <div class="camera-modal-backdrop" (click)="toggleCameraPanel()">
+      <div class="camera-modal" (click)="$event.stopPropagation()">
+        <button class="camera-close-btn" type="button" (click)="toggleCameraPanel()" aria-label="Close camera">✕</button>
+        <div class="camera-panel">
+          <div class="camera-cadre">
+            <div class="camera-frame" [class.camera-frame-ready]="cameraReady()">
+              <video #cameraVideo playsinline autoplay muted></video>
+              @if (!cameraReady()) {
+                <div class="camera-overlay">Starting camera...</div>
+              }
+            </div>
+          </div>
+
+          <div class="camera-actions">
+            <button class="btn-outline" type="button" (click)="startCamera()" [disabled]="cameraBusy() || uploadBusy()">Restart</button>
+            <button class="camera-capture-btn" type="button" (click)="captureFromCamera()" [disabled]="!cameraReady() || uploadBusy() || cameraBusy()">
+              {{ uploadBusy() ? 'Saving...' : 'Capture photo' }}
+            </button>
+          </div>
+
+          @if (cameraError()) {
+            <small class="field-error camera-error">{{ cameraError() }}</small>
+          }
+        </div>
+        <canvas #cameraCanvas class="camera-canvas-hidden"></canvas>
+      </div>
+    </div>
+  }
 </section>

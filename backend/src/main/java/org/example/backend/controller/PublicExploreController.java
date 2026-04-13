@@ -10,6 +10,7 @@ import org.example.backend.dto.PageResponse;
 import org.example.backend.dto.RestaurantResponse;
 import org.example.backend.dto.publicapi.ActivityAvailabilityDayResponse;
 import org.example.backend.dto.publicapi.ActivityReservationResponse;
+import org.example.backend.dto.publicapi.CityImageDetectionResponse;
 import org.example.backend.dto.publicapi.CityResolveResponse;
 import org.example.backend.dto.publicapi.CreateActivityReservationRequest;
 import org.example.backend.dto.publicapi.CreatePublicReviewRequest;
@@ -23,6 +24,7 @@ import org.example.backend.service.ActivityService;
 import org.example.backend.service.PublicExploreService;
 import org.example.backend.service.PublicReviewService;
 import org.example.backend.service.RestaurantService;
+import org.example.backend.service.CityImageDetectionService;
 import org.example.backend.service.VoiceTranscriptionService;
 import org.springframework.http.MediaType;
 import org.springframework.data.domain.PageRequest;
@@ -48,10 +50,25 @@ public class PublicExploreController {
     private final ActivityReservationService activityReservationService;
     private final PublicReviewService publicReviewService;
     private final VoiceTranscriptionService voiceTranscriptionService;
+    private final CityImageDetectionService cityImageDetectionService;
 
     @GetMapping("/cities/resolve")
     public CityResolveResponse resolveCityByName(@RequestParam String name) {
         return publicExploreService.resolveCityByName(name);
+    }
+
+    @PostMapping(value = "/cities/detect-from-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public CityImageDetectionResponse detectCityFromImage(@RequestParam("image") MultipartFile image) {
+        try {
+            return cityImageDetectionService.detectFromImage(image);
+        } catch (ResponseStatusException ex) {
+            if (ex.getStatusCode().value() == HttpStatus.BAD_REQUEST.value()) {
+                throw ex;
+            }
+            return new CityImageDetectionResponse(false, null, 0.0, "No corresponding city found for this image.");
+        } catch (Exception ex) {
+            return new CityImageDetectionResponse(false, null, 0.0, "No corresponding city found for this image.");
+        }
     }
 
     @GetMapping("/cities/all")
@@ -133,7 +150,7 @@ public class PublicExploreController {
             try {
                 availableDate = LocalDate.parse(date);
             } catch (DateTimeException ex) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.public.date_param_invalid");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Paramètre date invalide (yyyy-MM-dd)");
             }
         }
 
@@ -194,7 +211,7 @@ public class PublicExploreController {
         try {
             fromDate = (from == null || from.isBlank()) ? LocalDate.now() : LocalDate.parse(from);
         } catch (DateTimeException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.public.from_param_invalid");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Paramètre from invalide (yyyy-MM-dd)");
         }
         return activityReservationService.availability(activityId, fromDate, days, participants);
     }

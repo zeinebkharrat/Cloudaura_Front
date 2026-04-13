@@ -3,7 +3,6 @@ import { AfterViewInit, Component, OnDestroy, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import * as L from 'leaflet';
 import { ExploreService } from './explore.service';
 import { PublicReview, ReviewSummary, Restaurant } from './explore.models';
@@ -38,7 +37,7 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
     commentText: '',
   };
   editingReviewId: number | null = null;
-  readonly commentEmojis = ['😊', '😍', '😋', '👍', '🔥', '🎉', '👏', '🤩', '💯', '❤️'];
+  readonly commentEmojis = ['??', '??', '??', '??', '??', '??', '??', '??', '??', '??'];
 
   private map?: L.Map;
   private cityMarker?: L.CircleMarker;
@@ -205,11 +204,11 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
 
     Swal.fire({
       icon: 'warning',
-      title: this.translate.instant('EXPLORE_RESTAURANT.SWAL_DELETE_TITLE'),
-      text: this.translate.instant('EXPLORE_RESTAURANT.SWAL_DELETE_TEXT'),
+      title: 'Delete your comment?',
+      text: 'This action cannot be undone.',
       showCancelButton: true,
-      confirmButtonText: this.translate.instant('EXPLORE_RESTAURANT.SWAL_DELETE_CONFIRM'),
-      cancelButtonText: this.translate.instant('EXPLORE_RESTAURANT.SWAL_DELETE_CANCEL'),
+      confirmButtonText: 'Delete',
+      cancelButtonText: 'Cancel',
       confirmButtonColor: '#e63946',
     }).then((result) => {
       if (!result.isConfirmed || !this.restaurant) {
@@ -229,8 +228,8 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
           if (err?.status === 401) {
             Swal.fire({
               icon: 'warning',
-              title: this.translate.instant('EXPLORE_RESTAURANT.SWAL_SIGNIN_MANAGE_TITLE'),
-              text: this.translate.instant('EXPLORE_RESTAURANT.SWAL_SIGNIN_MANAGE_TEXT'),
+              title: 'Sign in required',
+              text: 'Please sign in to manage your comment.',
               confirmButtonColor: '#e63946',
             });
             return;
@@ -238,9 +237,8 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
 
           Swal.fire({
             icon: 'error',
-            title: this.translate.instant('EXPLORE_RESTAURANT.SWAL_ERROR_TITLE'),
-            text:
-              err?.error?.message || this.translate.instant('EXPLORE_RESTAURANT.SWAL_DELETE_ERR'),
+            title: 'Error',
+            text: err?.error?.message || 'Unable to delete comment.',
             confirmButtonColor: '#e63946',
           });
         },
@@ -278,9 +276,8 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
 
         Swal.fire({
           icon: 'error',
-          title: this.translate.instant('EXPLORE_RESTAURANT.SWAL_ERROR_TITLE'),
-          text:
-            err?.error?.message || this.translate.instant('EXPLORE_RESTAURANT.SWAL_PUBLISH_ERR'),
+          title: 'Error',
+          text: err?.error?.message || 'Unable to publish comment.',
           confirmButtonColor: '#e63946',
         });
       },

@@ -43,7 +43,7 @@ public class GamificationRestController {
     @PostMapping("/report-game")
     public ResponseEntity<Void> reportGame(@RequestBody GamificationReportRequest body) {
         if (body.gameKind() == null || body.gameId() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.gamification_params_required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "gameKind and gameId required");
         }
         gamificationService.onStandaloneGame(
                 currentUser(), body.gameKind(), body.gameId(), body.score(), body.maxScore());
@@ -55,6 +55,6 @@ public class GamificationRestController {
         if (auth != null && auth.getPrincipal() instanceof CustomUserDetailsService.CustomUserDetails d) {
             return d.getUser();
         }
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.unauthorized");
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
     }
 }

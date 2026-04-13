@@ -17,18 +17,19 @@
     type="button"
     class="hero-cinematic__mute-btn"
     (click)="toggleHeroVideoMute()"
-    [attr.aria-label]="videoMuted() ? ('HOME.VIDEO_ARIA_UNMUTE' | translate) : ('HOME.VIDEO_ARIA_MUTE' | translate)"
+    [attr.aria-label]="videoMuted() ? 'Unmute video' : 'Mute video'"
   >
-    {{ videoMuted() ? ('HOME.VIDEO_UNMUTE' | translate) : ('HOME.VIDEO_MUTE' | translate) }}
+    {{ videoMuted() ? 'Unmute' : 'Mute' }}
   </button>
   <div class="hero-cinematic__content animate-in">
-    <span class="hero-cinematic__kicker">{{ 'HOME.HERO_KICKER' | translate }}</span>
-    <h1>{{ 'HOME.HERO_TITLE' | translate }}</h1>
+    <span class="hero-cinematic__kicker">Tunisia, curated beautifully</span>
+    <h1>Discover Tunisia through one elegant travel platform</h1>
     <p>
-      {{ 'HOME.HERO_SUB' | translate }}
+      Cities, activities, stays, transport, restaurants, artisan products, community, and events.
+      Plan, book, and explore with a premium experience from the first scroll.
     </p>
     <div class="hero-cinematic__actions">
-      <a routerLink="/destination-map" class="btn-primary">{{ 'HOME.HERO_CTA' | translate }}</a>
+      <a routerLink="/destination-map" class="btn-primary">Explore Destinations</a>
     </div>
   </div>
 </header>
@@ -80,6 +81,28 @@
         }}
       </button>
     </div>
+
+    <div class="ai-map-matches ai-map-matches--inside" *ngIf="personalizedCityCards().length">
+      <div class="ai-map-matches__head">
+        <p class="ai-map-matches__kicker">AI Prediction</p>
+        <h3>Cities Predits Par AI</h3>
+        <p>Click a city to focus it instantly on the map and reveal your match.</p>
+      </div>
+      <div class="ai-map-matches__list">
+        <button
+          type="button"
+          *ngFor="let city of personalizedCityCards(); let i = index"
+          class="ai-map-chip"
+          [class.ai-map-chip--active]="city.route === activeAiCityRoute()"
+          (click)="focusAiCityOnMap(city)"
+          [style.animationDelay.ms]="120 * i"
+        >
+          <span class="ai-map-chip__pulse" aria-hidden="true"></span>
+          <span class="ai-map-chip__name">{{ city.title }}</span>
+          <strong class="ai-map-chip__score">{{ matchPercent(city) }}%</strong>
+        </button>
+      </div>
+    </div>
   </div>
 
   <div class="map-section-heading section-header">
@@ -91,19 +114,20 @@
 <section class="slider-section">
   <div class="slider-aurora" aria-hidden="true"></div>
   <div class="slider-head">
-    <h2>{{ 'HOME.ACTIVITIES_TITLE' | translate }}</h2>
+    <h2>Top Activities</h2>
   </div>
   <div class="slider-shell">
-    <button type="button" class="slider-arrow slider-arrow--left" (click)="scrollActivities(-1)" [attr.aria-label]="'HOME.ACTIVITIES_PREV_A11Y' | translate">←</button>
+    <button type="button" class="slider-arrow slider-arrow--left" (click)="scrollActivities(-1)" aria-label="Previous activities">←</button>
     <div id="activities-slider" class="slider-track slider-track--activities" (scroll)="onActivitiesSliderScroll()">
       <a *ngFor="let item of activityCards(); let i = index" [routerLink]="item.route" class="slider-card slider-card--activity-clean card-pop-in" [style.animationDelay.ms]="70 * i">
         <div class="activity-card__media-wrap">
+          <span class="activity-ai-pill" *ngIf="activityAiMatch(item) as ai">AI {{ ai }}%</span>
           <img [src]="item.image" [alt]="item.title" />
         </div>
         <div class="activity-card__body">
           <div class="slider-card__topline">
             <span class="slider-card__badge slider-card__badge--solid" *ngIf="item.badge">{{ item.badge }}</span>
-            <span class="slider-card__hint slider-card__hint--dark">{{ 'HOME.POPULAR_CHOICE' | translate }}</span>
+            <span class="slider-card__hint slider-card__hint--dark">Popular choice</span>
           </div>
           <h3 class="slider-card__title-lg slider-card__title-lg--dark">{{ item.title }}</h3>
           <p class="activity-card__subtitle">{{ item.subtitle }}</p>
@@ -116,7 +140,7 @@
           </div>
           <div class="slider-card__footerline">
             <div class="slider-card__price" *ngIf="item.priceTag">{{ item.priceTag }}</div>
-            <span class="slider-card__action slider-card__action--dark">{{ 'HOME.VIEW_DETAILS' | translate }}</span>
+            <span class="slider-card__action slider-card__action--dark">View details -></span>
           </div>
         </div>
       </a>
@@ -124,16 +148,16 @@
       <div *ngIf="loadingActivities()" class="slider-card slider-card--skeleton" aria-hidden="true"></div>
       <div *ngIf="loadingActivities()" class="slider-card slider-card--skeleton" aria-hidden="true"></div>
     </div>
-    <button type="button" class="slider-arrow slider-arrow--right" (click)="scrollActivities(1)" [attr.aria-label]="'HOME.ACTIVITIES_NEXT_A11Y' | translate">→</button>
+    <button type="button" class="slider-arrow slider-arrow--right" (click)="scrollActivities(1)" aria-label="Next activities">→</button>
   </div>
-  <div class="slider-pagination" *ngIf="activityPageCount() > 1" [attr.aria-label]="'HOME.ACTIVITIES_PAGINATION_A11Y' | translate">
+  <div class="slider-pagination" *ngIf="activityPageCount() > 1" aria-label="Activities pagination">
     <button
       type="button"
       class="slider-dot"
       *ngFor="let page of activityPages()"
       [class.slider-dot--active]="page === currentActivityPage()"
       (click)="goToActivityPage(page)"
-      [attr.aria-label]="'HOME.ACTIVITIES_PAGE_A11Y' | translate: { n: page + 1 }"
+      [attr.aria-label]="'Go to activities page ' + (page + 1)"
     ></button>
   </div>
 </section>
@@ -141,8 +165,8 @@
 <section class="transport-modes-section">
   <div class="slider-aurora slider-aurora--right" aria-hidden="true"></div>
   <div class="slider-head">
-    <h2>{{ 'HOME.TRANSPORT_TITLE' | translate }}</h2>
-    <a routerLink="/transport" class="transport-modes__link">{{ 'HOME.TRANSPORT_LINK' | translate }}</a>
+    <h2>Transport Modes</h2>
+    <a routerLink="/transport" class="transport-modes__link">Go to transport -></a>
   </div>
   <div class="transport-modes-grid" *ngIf="!loadingTransportModes(); else transportModesLoading">
     <a routerLink="/transport" class="transport-mode-card card-pop-in" *ngFor="let mode of transportModes(); let i = index" [style.animationDelay.ms]="90 * i">
@@ -166,98 +190,73 @@
   </ng-template>
 </section>
 
-<section class="about-us-home">
-  <div class="about-us-home__glow" aria-hidden="true"></div>
-  <div class="about-us-home__content">
-    <span class="about-us-home__kicker">{{ 'HOME.ABOUT_KICKER' | translate }}</span>
-    <h2>{{ 'HOME.ABOUT_TITLE' | translate }}</h2>
-    <p>
-      {{ 'HOME.ABOUT_DESC' | translate }}
-    </p>
-    <div class="about-us-home__values">
-      <span>{{ 'HOME.ABOUT_VALUE_1' | translate }}</span>
-      <span>{{ 'HOME.ABOUT_VALUE_2' | translate }}</span>
-      <span>{{ 'HOME.ABOUT_VALUE_3' | translate }}</span>
-    </div>
-    <div class="about-us-home__stats">
-      <article>
-        <strong>{{ 'HOME.STAT_GOV_NUMBER' | translate }}</strong>
-        <span>{{ 'HOME.STAT_GOV_LABEL' | translate }}</span>
-      </article>
-      <article>
-        <strong>{{ 'HOME.STAT_PLATFORM_TITLE' | translate }}</strong>
-        <span>{{ 'HOME.STAT_PLATFORM_SUB' | translate }}</span>
-      </article>
-      <article>
-        <strong>{{ 'HOME.STAT_LOCAL_TITLE' | translate }}</strong>
-        <span>{{ 'HOME.STAT_LOCAL_SUB' | translate }}</span>
-      </article>
-    </div>
-      <div class="about-us-home__steps">
-        <div><strong>1</strong><span>{{ 'HOME.STEP_1' | translate }}</span></div>
-        <div><strong>2</strong><span>{{ 'HOME.STEP_2' | translate }}</span></div>
-        <div><strong>3</strong><span>{{ 'HOME.STEP_3' | translate }}</span></div>
-      </div>
-      <div class="about-us-home__actions">
-        <a routerLink="/features" class="about-us-home__btn about-us-home__btn--primary">{{ 'HOME.BTN_FEATURES' | translate }}</a>
-        <a routerLink="/communaute" class="about-us-home__btn about-us-home__btn--ghost">{{ 'HOME.BTN_COMMUNITY' | translate }}</a>
-      </div>
-  </div>
-  <div class="about-us-home__visual">
-    <div class="about-us-home__quote">{{ 'HOME.QUOTE' | translate }}</div>
-    <img src="assets/el_jem.png" [attr.alt]="'HOME.ABOUT_IMG_ALT' | translate" />
-  </div>
-</section>
-
-<section class="restaurants-showcase">
+<section class="slider-section restaurants-showcase">
   <div class="slider-aurora" aria-hidden="true"></div>
   <div class="slider-head">
-    <h2>{{ 'HOME.RESTAURANTS_TITLE' | translate }}</h2>
-    <a routerLink="/services/restaurants" class="transport-modes__link">{{ 'HOME.RESTAURANTS_LINK' | translate }}</a>
+    <h2>Restaurants Spotlight</h2>
+    <a routerLink="/services/restaurants" class="transport-modes__link">Browse all restaurants -></a>
   </div>
-  <div class="restaurants-grid" *ngIf="!loadingRestaurants(); else restaurantLoading">
-    <a *ngFor="let item of restaurantCards(); let i = index" [routerLink]="item.route" class="restaurant-grid-card card-pop-in" [style.animationDelay.ms]="80 * i">
-      <img [src]="item.image" [alt]="item.title" />
-      <div class="restaurant-grid-card__content">
-        <span class="slider-card__badge" *ngIf="item.badge">{{ item.badge }}</span>
-        <h3>{{ item.title }}</h3>
-        <p>{{ item.subtitle }}</p>
-        <div class="slider-card__chips">
-          <span *ngFor="let tag of item.tags">{{ tag }}</span>
+  <div class="slider-shell">
+    <button type="button" class="slider-arrow slider-arrow--left" (click)="scrollRestaurants(-1)" aria-label="Previous restaurants">←</button>
+    <div id="restaurants-slider" class="slider-track slider-track--activities" (scroll)="onRestaurantsSliderScroll()">
+      <a *ngFor="let item of restaurantCards(); let i = index" [routerLink]="item.route" class="slider-card slider-card--activity-clean card-pop-in" [style.animationDelay.ms]="80 * i">
+        <div class="activity-card__media-wrap">
+          <img [src]="item.image" [alt]="item.title" />
         </div>
-      </div>
-    </a>
-  </div>
-  <ng-template #restaurantLoading>
-    <div class="restaurants-grid">
-      <div class="restaurant-grid-card restaurant-grid-card--skeleton"></div>
-      <div class="restaurant-grid-card restaurant-grid-card--skeleton"></div>
-      <div class="restaurant-grid-card restaurant-grid-card--skeleton"></div>
-      <div class="restaurant-grid-card restaurant-grid-card--skeleton"></div>
+        <div class="activity-card__body">
+          <div class="slider-card__topline">
+            <span class="slider-card__badge slider-card__badge--solid" *ngIf="item.badge">{{ item.badge }}</span>
+            <span class="slider-card__hint slider-card__hint--dark">Chef choice</span>
+          </div>
+          <h3 class="slider-card__title-lg slider-card__title-lg--dark">{{ item.title }}</h3>
+          <p class="activity-card__subtitle">{{ item.subtitle }}</p>
+          <div class="slider-card__chips slider-card__chips--light" *ngIf="item.tags?.length">
+            <span *ngFor="let tag of item.tags">{{ tag }}</span>
+          </div>
+          <div class="slider-card__footerline">
+            <div class="slider-card__price">Local Taste</div>
+            <span class="slider-card__action slider-card__action--dark">View details -></span>
+          </div>
+        </div>
+      </a>
+      <div *ngIf="loadingRestaurants()" class="slider-card slider-card--skeleton" aria-hidden="true"></div>
+      <div *ngIf="loadingRestaurants()" class="slider-card slider-card--skeleton" aria-hidden="true"></div>
+      <div *ngIf="loadingRestaurants()" class="slider-card slider-card--skeleton" aria-hidden="true"></div>
     </div>
-  </ng-template>
+    <button type="button" class="slider-arrow slider-arrow--right" (click)="scrollRestaurants(1)" aria-label="Next restaurants">→</button>
+  </div>
+  <div class="slider-pagination" *ngIf="restaurantPageCount() > 1" aria-label="Restaurants pagination">
+    <button
+      type="button"
+      class="slider-dot"
+      *ngFor="let page of restaurantPages()"
+      [class.slider-dot--active]="page === currentRestaurantPage()"
+      (click)="goToRestaurantPage(page)"
+      [attr.aria-label]="'Go to restaurants page ' + (page + 1)"
+    ></button>
+  </div>
 </section>
 
 <section class="cta-duo">
   <a routerLink="/communaute" class="cta-duo__card cta-duo__card--forum">
-    <div class="cta-duo__pill">{{ 'HOME.CTA_FORUM_PILL' | translate }}</div>
-    <h3>{{ 'HOME.CTA_FORUM_TITLE' | translate }}</h3>
-    <p>{{ 'HOME.CTA_FORUM_DESC' | translate }}</p>
+    <div class="cta-duo__pill">Community</div>
+    <h3>Join the Traveler Forum</h3>
+    <p>Ask questions, share itineraries, and get real tips from locals and travelers.</p>
   </a>
   <a routerLink="/evenements" class="cta-duo__card cta-duo__card--event">
-    <div class="cta-duo__pill">{{ 'HOME.CTA_EVENTS_PILL' | translate }}</div>
-    <h3>{{ 'HOME.CTA_EVENTS_TITLE' | translate }}</h3>
-    <p>{{ 'HOME.CTA_EVENTS_DESC' | translate }}</p>
+    <div class="cta-duo__pill">Events</div>
+    <h3>Discover Upcoming Events</h3>
+    <p>Festivals, concerts, culture, and local experiences happening all over Tunisia.</p>
   </a>
 </section>
 
 <section class="slider-section">
   <div class="slider-aurora slider-aurora--right" aria-hidden="true"></div>
   <div class="slider-head">
-    <h2>{{ 'HOME.ARTISAN_TITLE' | translate }}</h2>
+    <h2>Our Artisan Products</h2>
   </div>
   <div class="slider-shell">
-    <button type="button" class="slider-arrow slider-arrow--left" (click)="scrollSlider('artisan-slider', -1)" [attr.aria-label]="'HOME.ARTISAN_PREV_A11Y' | translate">←</button>
+    <button type="button" class="slider-arrow slider-arrow--left" (click)="scrollSlider('artisan-slider', -1)" aria-label="Previous artisan cards">←</button>
     <div id="artisan-slider" class="slider-track">
       <a *ngFor="let item of artisanCards(); let i = index" [routerLink]="item.route" class="slider-card slider-card--image slider-card--rich card-pop-in" [style.animationDelay.ms]="70 * i">
         <img [src]="item.image" [alt]="item.title" />
@@ -274,7 +273,51 @@
       <div *ngIf="loadingArtisans()" class="slider-card slider-card--skeleton" aria-hidden="true"></div>
       <div *ngIf="loadingArtisans()" class="slider-card slider-card--skeleton" aria-hidden="true"></div>
     </div>
-    <button type="button" class="slider-arrow slider-arrow--right" (click)="scrollSlider('artisan-slider', 1)" [attr.aria-label]="'HOME.ARTISAN_NEXT_A11Y' | translate">→</button>
+    <button type="button" class="slider-arrow slider-arrow--right" (click)="scrollSlider('artisan-slider', 1)" aria-label="Next artisan cards">→</button>
+  </div>
+</section>
+
+<section class="about-us-home">
+  <div class="about-us-home__glow" aria-hidden="true"></div>
+  <div class="about-us-home__content">
+    <span class="about-us-home__kicker">About Us</span>
+    <h2>Crafting Tunisia's most immersive travel platform</h2>
+    <p>
+      YallaTN+ connects travelers with local businesses, events, and communities through one elegant platform.
+      Our mission is to make discovering Tunisia easier, richer, and more authentic for everyone.
+    </p>
+    <div class="about-us-home__values">
+      <span>Authentic local discovery</span>
+      <span>Smart planning in one place</span>
+      <span>Community-powered experiences</span>
+    </div>
+    <div class="about-us-home__stats">
+      <article>
+        <strong>24</strong>
+        <span>Governorates Covered</span>
+      </article>
+      <article>
+        <strong>One Platform</strong>
+        <span>Map, Events, Activities, Transport</span>
+      </article>
+      <article>
+        <strong>Local-first</strong>
+        <span>Crafts, Restaurants, and Communities</span>
+      </article>
+    </div>
+      <div class="about-us-home__steps">
+        <div><strong>1</strong><span>Explore regions on the live map</span></div>
+        <div><strong>2</strong><span>Build your route with activities and transport</span></div>
+        <div><strong>3</strong><span>Connect with communities and local events</span></div>
+      </div>
+      <div class="about-us-home__actions">
+        <a routerLink="/features" class="about-us-home__btn about-us-home__btn--primary">See Platform Features</a>
+        <a routerLink="/communaute" class="about-us-home__btn about-us-home__btn--ghost">Join the Community</a>
+      </div>
+  </div>
+  <div class="about-us-home__visual">
+    <div class="about-us-home__quote">"Travel Tunisia deeper, not faster."</div>
+    <img src="assets/el_jem.png" alt="About YallaTN" />
   </div>
 </section>
 

@@ -135,7 +135,7 @@
 
             <div class="edit-form__row">
               <label class="field-label">
-                <span><img src="icones/location-pin.svg" alt="" class="field-ico" width="14" height="14" /> {{ 'COMMUNITY.PLACE' | translate }}</span>
+                <span><img src="icones/location-pin.svg" alt="" class="field-ico" width="14" height="14" /> Place</span>
                 <input
                   type="text"
                   [value]="editPostLocation()"
@@ -156,6 +156,50 @@
                   <option value="private">{{ 'COMMUNITY.VIS_PRIVATE' | translate }}</option>
                 </select>
               </label>
+            </div>
+
+            <div class="edit-media">
+              <div class="edit-media__header">
+                <h5><i class="pi pi-images" aria-hidden="true"></i> Manage media</h5>
+                <label class="btn-outline edit-media__upload-btn" [class.is-disabled]="isMediaBusy(post.postId!)">
+                  <input
+                    type="file"
+                    class="edit-media__file-input"
+                    accept="image/*,video/*"
+                    (change)="uploadMediaFromEdit($event, post.postId!)"
+                    [disabled]="isMediaBusy(post.postId!)"
+                  />
+                  <span *ngIf="!isMediaBusy(post.postId!)"><i class="pi pi-upload btn-ico-pi" aria-hidden="true"></i> Add media</span>
+                  <span *ngIf="isMediaBusy(post.postId!)"><i class="pi pi-spinner pi-spin btn-ico-pi" aria-hidden="true"></i> Working…</span>
+                </label>
+              </div>
+
+              <div class="edit-media__empty" *ngIf="getMediaForPost(post.postId!).length === 0">
+                No media attached to this post yet.
+              </div>
+
+              <div class="edit-media__grid" *ngIf="getMediaForPost(post.postId!).length > 0">
+                <div class="edit-media__item" *ngFor="let m of getMediaForPost(post.postId!)">
+                  <video class="edit-media__video" controls *ngIf="m.mediaType === 'VIDEO'" [src]="m.fileUrl || ''"></video>
+                  <img class="edit-media__image" *ngIf="m.mediaType !== 'VIDEO'" [src]="m.fileUrl || ''" [alt]="'Post media ' + post.postId" />
+
+                  <button
+                    type="button"
+                    class="edit-media__delete"
+                    (click)="deleteMedia(m, post.postId!)"
+                    [disabled]="isMediaBusy(post.postId!)"
+                    [title]="deletingMediaId() === m.mediaId ? 'Deleting...' : 'Delete media'"
+                  >
+                    <i
+                      class="pi"
+                      [class.pi-trash]="deletingMediaId() !== m.mediaId"
+                      [class.pi-spinner]="deletingMediaId() === m.mediaId"
+                      [class.pi-spin]="deletingMediaId() === m.mediaId"
+                      aria-hidden="true"
+                    ></i>
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div class="edit-form__actions">

@@ -7,9 +7,6 @@ import { ExploreService } from './explore.service';
 import { Activity, City, VoiceTranscriptionResponse } from './explore.models';
 import { VoiceSearchService } from './voice-search.service';
 import { parseActivityVoiceQuery } from './voice-query.parser';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { DualCurrencyPipe } from '../core/pipes/dual-currency.pipe';
-import { createCurrencyDisplaySyncEffect } from '../core/utils/currency-display-sync';
 
 @Component({
   selector: 'app-services-activities',
@@ -61,8 +58,7 @@ export class ServicesActivitiesComponent implements OnInit, OnDestroy {
   constructor(
     private readonly exploreService: ExploreService,
     private readonly voiceSearchService: VoiceSearchService,
-    private readonly http: HttpClient,
-    private readonly translate: TranslateService
+    private readonly http: HttpClient
   ) {}
 
   ngOnInit(): void {
@@ -174,7 +170,7 @@ export class ServicesActivitiesComponent implements OnInit, OnDestroy {
     this.voiceSuggestion.set('');
 
     if (!this.voiceSupported()) {
-      this.voiceError.set(this.translate.instant('EXPLORE_SERVICES_ACTIVITIES.ERR_VOICE_UNSUPPORTED'));
+      this.voiceError.set('Voice input is not supported on this browser.');
       return;
     }
 
@@ -187,7 +183,7 @@ export class ServicesActivitiesComponent implements OnInit, OnDestroy {
         await this.voiceSearchService.startCapture();
         this.voiceListening.set(true);
       } catch {
-        this.voiceError.set(this.translate.instant('EXPLORE_SERVICES_ACTIVITIES.ERR_MIC_PERMISSION'));
+        this.voiceError.set('Unable to access microphone. Please allow microphone permission.');
       }
       return;
     }
@@ -204,7 +200,7 @@ export class ServicesActivitiesComponent implements OnInit, OnDestroy {
         next: (result: VoiceTranscriptionResponse) => {
           const transcript = (result.text || '').trim();
           if (!transcript) {
-            this.voiceError.set(this.translate.instant('EXPLORE_SERVICES_ACTIVITIES.ERR_NO_SPEECH'));
+            this.voiceError.set('No speech detected. Please try again.');
             this.voiceProcessing.set(false);
             return;
           }
@@ -243,7 +239,7 @@ export class ServicesActivitiesComponent implements OnInit, OnDestroy {
             !!(budgetOnlyIntent ? '' : parsed.searchQuery);
 
           if (!hasAnyDetected) {
-            this.voiceSuggestion.set(this.translate.instant('EXPLORE_SERVICES_ACTIVITIES.VOICE_TRY_SUGGESTION'));
+            this.voiceSuggestion.set('Try: activity in Tunis, budget between 17 and 25 DT, tomorrow for 2 people.');
             this.voiceProcessing.set(false);
             return;
           }
@@ -254,12 +250,12 @@ export class ServicesActivitiesComponent implements OnInit, OnDestroy {
         },
         error: (err: any) => {
           this.voiceProcessing.set(false);
-          this.voiceError.set(err?.error?.message ?? this.translate.instant('EXPLORE_SERVICES_ACTIVITIES.ERR_VOICE_TRANSCRIPTION'));
+          this.voiceError.set(err?.error?.message ?? 'Voice transcription failed.');
         },
       });
     } catch {
       this.voiceProcessing.set(false);
-      this.voiceError.set(this.translate.instant('EXPLORE_SERVICES_ACTIVITIES.ERR_VOICE_RECORDING'));
+      this.voiceError.set('Voice recording failed. Please try again.');
     }
   }
 

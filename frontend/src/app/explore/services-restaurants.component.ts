@@ -3,13 +3,10 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ExploreService } from './explore.service';
 import { City, Restaurant, VoiceTranscriptionResponse } from './explore.models';
 import { VoiceSearchService } from './voice-search.service';
 import { parseRestaurantVoiceQuery } from './voice-query.parser';
-import { LanguageService } from '../core/services/language.service';
-import { Subscription } from 'rxjs';
 
 @Component({
   selector: 'app-services-restaurants',
@@ -50,9 +47,7 @@ export class ServicesRestaurantsComponent implements OnInit, OnDestroy {
   constructor(
     private readonly exploreService: ExploreService,
     private readonly voiceSearchService: VoiceSearchService,
-    private readonly http: HttpClient,
-    private readonly translate: TranslateService,
-    private readonly language: LanguageService
+    private readonly http: HttpClient
   ) {}
 
   ngOnInit(): void {
@@ -123,7 +118,7 @@ export class ServicesRestaurantsComponent implements OnInit, OnDestroy {
     this.voiceSuggestion.set('');
 
     if (!this.voiceSupported()) {
-      this.voiceError.set(this.translate.instant('EXPLORE_SERVICES_RESTAURANTS.ERR_VOICE_UNSUPPORTED'));
+      this.voiceError.set('Voice input is not supported on this browser.');
       return;
     }
 
@@ -153,7 +148,7 @@ export class ServicesRestaurantsComponent implements OnInit, OnDestroy {
         next: (result: VoiceTranscriptionResponse) => {
           const transcript = (result.text || '').trim();
           if (!transcript) {
-            this.voiceError.set(this.translate.instant('EXPLORE_SERVICES_RESTAURANTS.ERR_NO_SPEECH'));
+            this.voiceError.set('No speech detected. Please try again.');
             this.voiceProcessing.set(false);
             return;
           }
@@ -187,12 +182,12 @@ export class ServicesRestaurantsComponent implements OnInit, OnDestroy {
         },
         error: (err: any) => {
           this.voiceProcessing.set(false);
-          this.voiceError.set(err?.error?.message ?? this.translate.instant('EXPLORE_SERVICES_RESTAURANTS.ERR_VOICE_TRANSCRIPTION'));
+          this.voiceError.set(err?.error?.message ?? 'Voice transcription failed.');
         },
       });
     } catch {
       this.voiceProcessing.set(false);
-      this.voiceError.set(this.translate.instant('EXPLORE_SERVICES_RESTAURANTS.ERR_VOICE_RECORDING'));
+      this.voiceError.set('Voice recording failed. Please try again.');
     }
   }
 

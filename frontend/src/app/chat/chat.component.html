@@ -197,7 +197,7 @@
               @if (messagesError()) {
                 <p>{{ messagesError() }}</p>
               } @else {
-                <p>{{ 'COMMUNITY.CHAT_FIRST_MSG' | translate }}</p>
+                <p>Envoyez le premier message ! 👋</p>
               }
             </div>
           }
@@ -233,7 +233,7 @@
                         (click)="deleteOwnMessage(msg)"
                         [disabled]="deletingMessageId() === msg.messageId"
                       >
-                        {{ 'COMMUNITY.CHAT_DELETE' | translate }}
+                        Delete
                       </button>
                     }
                   </div>
@@ -253,7 +253,7 @@
                       <span></span><span></span><span></span><span></span><span></span>
                     </div>
                     <div class="voice-meta">
-                      <span class="voice-label">{{ 'COMMUNITY.CHAT_VOICE' | translate }}</span>
+                      <span class="voice-label">Voice</span>
                       @if (msg.voiceDurationSec) {
                         <span class="voice-time">{{ formatVoiceDuration(msg.voiceDurationSec) }}</span>
                       } @else {
@@ -268,7 +268,27 @@
                     ></audio>
                   </div>
                 } @else {
-                  <p class="message-text">{{ msg.content }}</p>
+                  @if (isStoryReplyMessage(msg)) {
+                    @if (storyReply(msg); as storyPayload) {
+                      <div class="story-reply-msg">
+                        <small class="story-reply-head">You replied to their story</small>
+                        <div class="story-reply-card">
+                          <img
+                            *ngIf="storyReplyMediaUrl(msg)"
+                            [src]="storyReplyMediaUrl(msg)"
+                            [alt]="storyPayload.authorUsername || 'Story'"
+                            class="story-reply-thumb"
+                          />
+                          <div class="story-reply-meta">
+                            <span class="story-reply-author">{{ storyPayload.authorUsername || 'Story' }}</span>
+                            <p class="story-reply-text">{{ storyPayload.replyText }}</p>
+                          </div>
+                        </div>
+                      </div>
+                    }
+                  } @else {
+                    <p class="message-text">{{ msg.content }}</p>
+                  }
                 }
                 <span class="message-time">{{ formatMessageTime(msg.sentAt) }}</span>
               </div>
@@ -295,7 +315,7 @@
               <textarea
                 #messageInput
                 class="message-input"
-                [placeholder]="'COMMUNITY.CHAT_INPUT_PH' | translate"
+                placeholder="Écrire un message..."
                 [ngModel]="newMessage()"
                 (ngModelChange)="newMessage.set($event)"
                 (keydown)="onMessageKeydown($event)"
@@ -318,7 +338,7 @@
                 class="recording-action cancel"
                 (click)="cancelVoiceRecording()"
                 [disabled]="uploadingVoice()"
-                [attr.title]="'COMMUNITY.CHAT_CANCEL_REC' | translate"
+                title="Cancel recording"
                 type="button"
               >
                 ✕
@@ -327,7 +347,7 @@
                 class="recording-action send"
                 (click)="toggleVoiceRecording()"
                 [disabled]="uploadingVoice()"
-                [attr.title]="'COMMUNITY.CHAT_SEND_VOICE' | translate"
+                title="Send voice message"
                 type="button"
               >
                 @if (uploadingVoice()) { ... } @else { ➤ }
@@ -337,7 +357,7 @@
                 class="voice-btn"
                 (click)="toggleVoiceRecording()"
                 [disabled]="uploadingVoice() || !activeChatRoomId()"
-                [attr.title]="'COMMUNITY.CHAT_RECORD_VOICE' | translate"
+                title="Record voice message"
                 type="button"
               >
                 @if (uploadingVoice()) {
@@ -353,7 +373,7 @@
                 class="send-btn"
                 (click)="sendMessage()"
                 [disabled]="!newMessage().trim()"
-                [attr.title]="'COMMUNITY.CHAT_SEND' | translate"
+                title="Envoyer"
                 id="sendMessageBtn"
                 type="button">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
