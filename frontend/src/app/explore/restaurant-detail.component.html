@@ -119,12 +119,20 @@
         </label>
         <label>
           Your comment
-          <textarea rows="4" [(ngModel)]="reviewForm.commentText" name="reviewComment" placeholder="Share your experience..."></textarea>
+          <textarea rows="4" [(ngModel)]="reviewForm.commentText" name="reviewComment" placeholder="Share your experience..." maxlength="1500"></textarea>
         </label>
-        <div class="emoji-row" aria-label="Emoji shortcuts">
-          @for (emoji of commentEmojis; track emoji) {
-            <button type="button" class="emoji-btn" (click)="appendEmoji(emoji)">{{ emoji }}</button>
-          }
+        <div class="review-form-tools emoji-picker-wrap">
+          <details class="emoji-details">
+            <summary class="emoji-trigger">😀 Emoji picker</summary>
+            <section class="emoji-panel" aria-label="Emoji picker panel">
+              <div class="emoji-grid" aria-label="Emoji options">
+                @for (emoji of ['😀','😃','😄','😁','😆','😅','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😋','😜','🤪','🤗','😎','🥳','😌','😢','😭','😡','😱','😷','🤒','🤢','👍','👎','👌','✌️','🤟','🤘','🤙','👏','🙌','🙏','💪','👋','🤝','☝️','👇','👉','👈','✈️','🧳','🗺️','🏝️','🚗','🚕','🚌','🚆','⛵','🚤','🍽️','☕','🍵','🥤','🍕','🍔','🌮','🥙','🍟','🍜','🍝','🍣','🥗','🥘','🍲','🍛','🍰','🍩','🍎','🍉','❤️','🧡','💛','💚','💙','💜','🖤','🤍','💯','✅','❌','⚠️','⭐','🔥','✨','💬','📍','📸']; track emoji) {
+                  <button type="button" class="emoji-cell" (click)="appendEmoji(emoji)">{{ emoji }}</button>
+                }
+              </div>
+            </section>
+          </details>
+          <small class="review-char-count">{{ reviewForm.commentText.length }}/1500</small>
         </div>
         <button class="primary-btn" type="submit" [disabled]="reviewSubmitting || !reviewForm.commentText.trim()">
           {{ reviewSubmitting ? 'Sending...' : (editingReviewId ? 'Save changes' : 'Post comment') }}

@@ -10,11 +10,24 @@ import {
   ChangeDetectorRef,
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
 import * as echarts from 'echarts';
 import { tunisiaGeoJson } from './tunisia-map';
 import { GOVERNORATE_LABEL_EN, GOVERNORATE_LABEL_FR } from './tunisia-governorate-labels';
 import { ExploreService } from './explore/explore.service';
+
+interface CityImageDetectionResponse {
+  matched: boolean;
+  city: {
+    cityId: number;
+    name: string;
+    region?: string | null;
+    description: string | null;
+  } | null;
+  confidence: number;
+  message: string;
+}
 
 const TUNISIA_MAP_NAME_PROP = '_echartsRegionId';
 const HOME_MAP_RETURN_CONTEXT_KEY = 'homeMapReturnContext';
@@ -79,6 +92,9 @@ export class DestinationMapComponent implements AfterViewInit, OnDestroy {
     mapRegionId: string | null;
   } | null>(null);
   isMapNavigating = signal(false);
+  isImageDetecting = signal(false);
+  imageDetectionMessage = signal('');
+  imageDetectionError = signal(false);
 
   private tunisiaMapChart?: echarts.ECharts;
   private mapGeoData?: any;
@@ -92,6 +108,7 @@ export class DestinationMapComponent implements AfterViewInit, OnDestroy {
     @Inject(PLATFORM_ID) private platformId: Object,
     private cdr: ChangeDetectorRef,
     private readonly exploreService: ExploreService,
+    private readonly http: HttpClient,
     private readonly router: Router,
     private readonly route: ActivatedRoute
   ) {}
@@ -189,6 +206,54 @@ export class DestinationMapComponent implements AfterViewInit, OnDestroy {
       });
       this.isMapNavigating.set(false);
     }, 680);
+  }
+
+  onCityImageUpload(event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0] ?? null;
+    if (input) {
+      input.value = '';
+    }
+
+    if (!file) {
+      return;
+    }
+
+    this.isImageDetecting.set(true);
+    this.imageDetectionError.set(false);
+    this.imageDetectionMessage.set('Analyzing image and detecting city...');
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    this.http.post<CityImageDetectionResponse>('/api/public/cities/detect-from-image', formData).subscribe({
+      next: (response: CityImageDetectionResponse) => {
+        this.isImageDetecting.set(false);
+
+        if (!response.matched || !response.city) {
+          this.selectedRegion.set(null);
+          this.applyRegionSelection(null);
+          this.imageDetectionError.set(true);
+          this.imageDetectionMessage.set(response.message || 'No corresponding city found.');
+          this.cdr.detectChanges();
+          return;
+        }
+
+        this.highlightDetectedCity(
+          response.city.name,
+          response.city.cityId,
+          response.city.region ?? null,
+          response.city.description,
+          response.confidence
+        );
+      },
+      error: (err: HttpErrorResponse) => {
+        this.isImageDetecting.set(false);
+        this.imageDetectionError.set(true);
+        this.imageDetectionMessage.set(err?.error?.message || 'No corresponding city found.');
+        this.cdr.detectChanges();
+      },
+    });
   }
 
   private displayName(p: { name?: string; data?: any }): string {
@@ -645,6 +710,34 @@ export class DestinationMapComponent implements AfterViewInit, OnDestroy {
         },
       ],
     });
+  }
+
+  private highlightDetectedCity(
+    cityName: string,
+    cityId: number,
+    cityRegion: string | null,
+    cityDescription: string | null,
+    confidence: number
+  ): void {
+    const feature = this.findMapFeatureByTokens([cityName, cityRegion]);
+    const mapRegionId = this.getFeatureRegionId(feature);
+
+    if (mapRegionId) {
+      this.applyRegionSelection(mapRegionId);
+      this.zoomToRegion(mapRegionId);
+    }
+
+    this.selectedRegion.set({
+      name: cityName,
+      description: cityDescription || `Detected from image with ${Math.round(confidence * 100)}% confidence.`,
+      cityId,
+      resolving: false,
+      mapRegionId,
+    });
+
+    this.imageDetectionError.set(false);
+    this.imageDetectionMessage.set(`Detected city: ${cityName}`);
+    this.cdr.detectChanges();
   }
 
   private extractFeatureCenter(geometry: any): [number, number] | null {
