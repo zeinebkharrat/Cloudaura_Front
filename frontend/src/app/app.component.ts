@@ -11,11 +11,12 @@ import { LoginRequiredPromptService } from './core/login-required-prompt.service
 import { SignInComponent } from './sign-in.component';
 import { SignUpComponent } from './sign-up.component';
 import { GamificationService, DailyChallengeRow, GamificationBadgeEntry } from './core/gamification.service';
+import { HomeAssistantWidgetComponent } from './home-assistant-widget.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, ChatBubbleComponent, SignInComponent, SignUpComponent],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, ChatBubbleComponent, SignInComponent, SignUpComponent, HomeAssistantWidgetComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
 })

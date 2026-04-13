@@ -286,6 +286,10 @@
 <router-outlet />
 
 @if (!isAdminArea()) {
+  <app-home-assistant-widget></app-home-assistant-widget>
+}
+
+@if (!isAdminArea()) {
 <footer>
   <div class="footer-content">
     <div class="footer-logo">

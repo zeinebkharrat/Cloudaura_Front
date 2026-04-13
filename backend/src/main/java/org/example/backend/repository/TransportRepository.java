@@ -1,6 +1,7 @@
 package org.example.backend.repository;
 
 import org.example.backend.model.Transport;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -22,6 +23,9 @@ public interface TransportRepository extends JpaRepository<Transport, Integer> {
     List<Transport> findByTypeAndIsActiveTrue(Transport.TransportType type);
 
     List<Transport> findByIsActiveTrue();
+
+        @EntityGraph(attributePaths = {"departureCity", "arrivalCity"})
+        List<Transport> findTop5ByIsActiveTrueOrderByDepartureTimeAsc();
 
     @Query("SELECT COUNT(t) > 0 FROM Transport t WHERE t.vehicle.vehicleId = :vehicleId " +
            "AND t.isActive = true AND t.departureTime < :arrivalTime AND t.arrivalTime > :departureTime")

@@ -11,6 +11,8 @@ import org.example.backend.dto.RestaurantResponse;
 import org.example.backend.dto.publicapi.ActivityAvailabilityDayResponse;
 import org.example.backend.dto.publicapi.ActivityReservationResponse;
 import org.example.backend.dto.publicapi.CityImageDetectionResponse;
+import org.example.backend.dto.publicapi.ChatbotQueryRequest;
+import org.example.backend.dto.publicapi.ChatbotQueryResponse;
 import org.example.backend.dto.publicapi.CityResolveResponse;
 import org.example.backend.dto.publicapi.CreateActivityReservationRequest;
 import org.example.backend.dto.publicapi.CreatePublicReviewRequest;
@@ -25,6 +27,7 @@ import org.example.backend.service.PublicExploreService;
 import org.example.backend.service.PublicReviewService;
 import org.example.backend.service.RestaurantService;
 import org.example.backend.service.CityImageDetectionService;
+import org.example.backend.service.ChatbotAssistantService;
 import org.example.backend.service.VoiceTranscriptionService;
 import org.springframework.http.MediaType;
 import org.springframework.data.domain.PageRequest;
@@ -51,6 +54,7 @@ public class PublicExploreController {
     private final PublicReviewService publicReviewService;
     private final VoiceTranscriptionService voiceTranscriptionService;
     private final CityImageDetectionService cityImageDetectionService;
+    private final ChatbotAssistantService chatbotAssistantService;
 
     @GetMapping("/cities/resolve")
     public CityResolveResponse resolveCityByName(@RequestParam String name) {
@@ -69,6 +73,11 @@ public class PublicExploreController {
         } catch (Exception ex) {
             return new CityImageDetectionResponse(false, null, 0.0, "No corresponding city found for this image.");
         }
+    }
+
+    @PostMapping("/chatbot/query")
+    public ChatbotQueryResponse chatbotQuery(@Valid @RequestBody ChatbotQueryRequest request) {
+        return chatbotAssistantService.answer(request.question(), request.conversation());
     }
 
     @GetMapping("/cities/all")
