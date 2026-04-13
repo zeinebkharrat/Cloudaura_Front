@@ -6,7 +6,10 @@ import {
   OnDestroy,
   ChangeDetectionStrategy,
   ChangeDetectorRef,
+  DestroyRef,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { TranslateService } from '@ngx-translate/core';
 import { HttpClient } from '@angular/common/http';
 import { FormBuilder, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -14,14 +17,15 @@ import { TripContextStore } from '../../../core/stores/trip-context.store';
 import { AppAlertsService } from '../../../core/services/app-alerts.service';
 import { DATA_SOURCE_TOKEN } from '../../../core/adapters/data-source.adapter';
 import { AuthService } from '../../../core/auth.service';
+import { LoginRequiredPromptService } from '../../../core/login-required-prompt.service';
 import {
   Transport,
   TransportReservation,
-  TRANSPORT_TYPE_META,
-  TransportType,
   ReservationStatus,
 } from '../../../core/models/travel.models';
 import { TransportTrackingSseService } from '../transport-tracking-sse.service';
+import { CurrencyService } from '../../../core/services/currency.service';
+import { createCurrencyDisplaySyncEffect } from '../../../core/utils/currency-display-sync';
 
 @Component({
   selector: 'app-transport-booking-page',
@@ -389,8 +393,12 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private alerts = inject(AppAlertsService);
   private cdr = inject(ChangeDetectorRef);
+  private readonly translate = inject(TranslateService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly currency = inject(CurrencyService);
   private http = inject(HttpClient);
   authService = inject(AuthService);
+  private loginPrompt = inject(LoginRequiredPromptService);
   private dataSource = inject(DATA_SOURCE_TOKEN);
   private trackingSse = inject(TransportTrackingSseService);
 
@@ -407,6 +415,9 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
   paymentMethod = signal<'CASH' | 'KONNECT' | 'STRIPE' | 'PAYPAL'>('CASH');
   paymentMethodValue = 'CASH';
 
+  /** Re-render OnPush views when the global currency or FX snapshot changes. */
+  private readonly _currencyDisplaySync = createCurrencyDisplaySyncEffect();
+
   passengerForm = this.fb.group({
     firstName: ['', [Validators.required, Validators.minLength(2)]],
     lastName: ['', [Validators.required, Validators.minLength(2)]],
@@ -414,6 +425,10 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
     phone: ['', [Validators.required, Validators.pattern(/^\d{8}$/)]],
     seats: [1, [Validators.required, Validators.min(1)]],
   });
+
+  constructor() {
+    this.translate.onLangChange.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.cdr.markForCheck());
+  }
 
   ngOnInit() {
     const qpDate = this.route.snapshot.queryParamMap.get('date');
@@ -449,7 +464,10 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
           this.cdr.markForCheck();
         },
         error: () => {
-          void this.alerts.error('Trip not found', 'We could not load this trip. Returning to search.');
+          void this.alerts.error(
+            this.translate.instant('TRANSPORT_BOOKING.ALERT_TRIP_NOT_FOUND'),
+            this.translate.instant('TRANSPORT_BOOKING.ALERT_TRIP_NOT_FOUND_BODY'),
+          );
           this.router.navigate(['/transport']);
         },
       });
@@ -477,7 +495,10 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
             this.cdr.markForCheck();
           },
           error: () => {
-            void this.alerts.error('Booking', 'Could not load paid reservation.');
+            void this.alerts.error(
+              this.translate.instant('TRANSPORT_BOOKING.ALERT_PAID_LOAD'),
+              this.translate.instant('TRANSPORT_BOOKING.ALERT_PAID_LOAD_BODY'),
+            );
           },
         });
       }
@@ -489,7 +510,10 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
         this.dataSource.getTransportReservation(rid, (user as { id: number }).id).subscribe({
           next: (existing) => {
             if (Number.isFinite(transportIdNum) && existing.transportId != null && existing.transportId !== transportIdNum) {
-              void this.alerts.warning('Different trip', 'This booking belongs to another trip. Opening your bookings.');
+              void this.alerts.warning(
+                this.translate.instant('TRANSPORT_BOOKING.ALERT_DIFF_TRIP'),
+                this.translate.instant('TRANSPORT_BOOKING.ALERT_DIFF_TRIP_BODY'),
+              );
               void this.router.navigate(['/mes-reservations'], { queryParams: { tab: 'transport' } });
               return;
             }
@@ -516,7 +540,10 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
             this.cdr.markForCheck();
           },
           error: () => {
-            void this.alerts.error('Booking not found', 'We could not load this reservation. Try again from My bookings.');
+            void this.alerts.error(
+              this.translate.instant('TRANSPORT_BOOKING.ALERT_BOOKING_NOT_FOUND'),
+              this.translate.instant('TRANSPORT_BOOKING.ALERT_BOOKING_NOT_FOUND_BODY'),
+            );
             void this.router.navigate(['/mes-reservations'], { queryParams: { tab: 'transport' } });
           },
         });
@@ -555,7 +582,10 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
       nextCallback.emit();
     } else {
       this.passengerForm.markAllAsTouched();
-      void this.alerts.warning('Check passenger details', 'Please correct the highlighted fields before continuing.');
+      void this.alerts.warning(
+        this.translate.instant('TRANSPORT_BOOKING.ALERT_CHECK_PASS'),
+        this.translate.instant('TRANSPORT_BOOKING.ALERT_CHECK_PASS_BODY'),
+      );
     }
   }
 
@@ -565,7 +595,10 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
   private redirectToCheckoutUrl(url: string): void {
     const trimmed = (url ?? '').trim();
     if (!trimmed) {
-      void this.alerts.error('Checkout', 'Invalid payment response from server.');
+      void this.alerts.error(
+        this.translate.instant('TRANSPORT_BOOKING.ALERT_CHECKOUT'),
+        this.translate.instant('TRANSPORT_BOOKING.ALERT_CHECKOUT_INVALID'),
+      );
       return;
     }
     window.location.href = new URL(trimmed, window.location.origin).href;
@@ -574,8 +607,11 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
   confirmBooking(nextCallback: { emit: () => void }) {
     const user = this.authService.currentUser();
     if (!user) {
-      void this.alerts.warning('Sign in required', 'Please sign in to complete your booking.');
-      this.router.navigate(['/signin']);
+      this.loginPrompt.show({
+        title: this.translate.instant('TRANSPORT_BOOKING.LOGIN_TITLE'),
+        message: this.translate.instant('TRANSPORT_BOOKING.LOGIN_MSG'),
+        returnUrl: this.router.url,
+      });
       return;
     }
 
@@ -586,8 +622,8 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
     const maxSeats = this.maxBookableSeats(t);
     if (seats > maxSeats) {
       void this.alerts.warning(
-        'Not enough seats',
-        `This trip only has ${maxSeats} seat(s) available. Reduce the number of seats and try again.`
+        this.translate.instant('TRANSPORT_BOOKING.ALERT_NOT_ENOUGH_SEATS'),
+        this.translate.instant('TRANSPORT_BOOKING.ALERT_NOT_ENOUGH_SEATS_BODY', { n: maxSeats }),
       );
       return;
     }
@@ -619,8 +655,10 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
           error: (err) => {
             this.loading.set(false);
             void this.alerts.error(
-              'Update failed',
-              err.error?.message ?? 'We could not update this booking. Try again.'
+              this.translate.instant('TRANSPORT_BOOKING.ALERT_UPDATE_FAIL'),
+              typeof err?.error?.message === 'string' && err.error.message
+                ? err.error.message
+                : this.translate.instant('TRANSPORT_BOOKING.ALERT_UPDATE_FAIL_BODY'),
             );
           },
         });
@@ -631,15 +669,18 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
       const travelDate = this.buildTravelDateTimeIso();
       if (!travelDate) {
         this.loading.set(false);
-        void this.alerts.warning('Date', 'Select a travel date from search before paying.');
+        void this.alerts.warning(
+          this.translate.instant('TRANSPORT_BOOKING.ALERT_DATE'),
+          this.translate.instant('TRANSPORT_BOOKING.ALERT_DATE_BODY'),
+        );
         return;
       }
       const routeKm = t.type === 'TAXI' ? this.store.transportRouteKm() : undefined;
       if (t.type === 'TAXI' && (routeKm == null || routeKm <= 0)) {
         this.loading.set(false);
         void this.alerts.warning(
-          'Route',
-          'Taxi pricing needs a driving route. Run a search with cities so the map can estimate distance.'
+          this.translate.instant('TRANSPORT_BOOKING.ALERT_ROUTE_TITLE'),
+          this.translate.instant('TRANSPORT_BOOKING.ALERT_TAXI_ROUTE_BODY'),
         );
         return;
       }
@@ -670,8 +711,8 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
                 ? String((body as { message?: string }).message)
                 : typeof body === 'string'
                   ? body
-                  : 'Could not start Stripe checkout.';
-            void this.alerts.error('Checkout', msg);
+                  : this.translate.instant('TRANSPORT_BOOKING.STRIPE_CHECKOUT_FAIL');
+            void this.alerts.error(this.translate.instant('TRANSPORT_BOOKING.ALERT_STRIPE_FAIL'), msg);
           },
         });
       return;
@@ -681,15 +722,18 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
       const travelDate = this.buildTravelDateTimeIso();
       if (!travelDate) {
         this.loading.set(false);
-        void this.alerts.warning('Date', 'Select a travel date from search before paying.');
+        void this.alerts.warning(
+          this.translate.instant('TRANSPORT_BOOKING.ALERT_DATE'),
+          this.translate.instant('TRANSPORT_BOOKING.ALERT_DATE_BODY'),
+        );
         return;
       }
       const routeKm = t.type === 'TAXI' ? this.store.transportRouteKm() : undefined;
       if (t.type === 'TAXI' && (routeKm == null || routeKm <= 0)) {
         this.loading.set(false);
         void this.alerts.warning(
-          'Route',
-          'Taxi pricing needs a driving route. Run a search with cities so the map can estimate distance.'
+          this.translate.instant('TRANSPORT_BOOKING.ALERT_ROUTE_TITLE'),
+          this.translate.instant('TRANSPORT_BOOKING.ALERT_TAXI_ROUTE_BODY'),
         );
         return;
       }
@@ -719,8 +763,8 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
                 ? String((body as { message?: string }).message)
                 : typeof body === 'string'
                   ? body
-                  : 'Could not start PayPal checkout.';
-            void this.alerts.error('PayPal', msg);
+                  : this.translate.instant('TRANSPORT_BOOKING.PAYPAL_CHECKOUT_FAIL');
+            void this.alerts.error(this.translate.instant('TRANSPORT_BOOKING.ALERT_PAYPAL_FAIL'), msg);
           },
         });
       return;
@@ -757,22 +801,24 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
         error: (err) => {
           this.loading.set(false);
           void this.alerts.error(
-            'Booking failed',
-            err.error?.message ?? 'We could not complete the reservation. Please try again.'
+            this.translate.instant('TRANSPORT_BOOKING.ALERT_BOOKING_FAIL'),
+            typeof err?.error?.message === 'string' && err.error.message
+              ? err.error.message
+              : this.translate.instant('TRANSPORT_BOOKING.ALERT_BOOKING_FAIL_BODY'),
           );
         },
       });
   }
 
   confirmButtonLabel(): string {
-    const total = this.calculateTotal();
+    const money = this.currency.formatDual(this.calculateTotal());
     if (this.editingReservationId() != null) {
-      return `Update booking · ${total} TND`;
+      return this.translate.instant('TRANSPORT_BOOKING.BTN_UPDATE', { money });
     }
     if (this.paymentMethod() === 'STRIPE' || this.paymentMethod() === 'PAYPAL') {
-      return `Pay & confirm · ${total} TND`;
+      return this.translate.instant('TRANSPORT_BOOKING.BTN_PAY', { money });
     }
-    return `Confirm · ${total} TND`;
+    return this.translate.instant('TRANSPORT_BOOKING.BTN_CONFIRM', { money });
   }
 
   /** Status chip on confirmation — brand palette only (no PrimeNG info blue). */
@@ -801,9 +847,23 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
     ctrl.updateValueAndValidity({ emitEvent: false });
   }
 
-  /** PayPal charges in USD; shown for transparency (TND × 0.32). */
+  /** PayPal charges in USD; estimate from cached FX when available. */
   paypalUsdFromTnd(): number {
-    return Math.round(this.calculateTotal() * 0.32 * 100) / 100;
+    const total = this.calculateTotal();
+    const usd = this.currency.rateFor('USD');
+    if (usd != null && usd > 0) {
+      return Math.round(total * usd * 100) / 100;
+    }
+    return Math.round(total * 0.32 * 100) / 100;
+  }
+
+  /** Approximate USD per 1 TND for the PayPal note (live snapshot or legacy 0.32). */
+  paypalUsdPerTndDisplay(): string {
+    const usd = this.currency.rateFor('USD');
+    if (usd != null && usd > 0) {
+      return usd.toFixed(4);
+    }
+    return '0.32';
   }
 
   calculateTotal(): number {
@@ -866,8 +926,9 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  getTypeLabel(type: string): string {
-    return TRANSPORT_TYPE_META[type as TransportType]?.label ?? type;
+  transportTypeLabelKey(raw: string | undefined): string {
+    const u = (raw ?? 'BUS').toString().toUpperCase();
+    return `TRANSPORT.TYPE.${u}`;
   }
 
   getTypeEmoji(type: string): string {

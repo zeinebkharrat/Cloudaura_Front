@@ -1,7 +1,7 @@
 <div class="roadmap-page">
   <div class="hub-hero animate-in">
-    <h1>Explore, play, learn.</h1>
-    <p>Discover Tunisia through our interactive games. Move forward on the map!</p>
+    <h1>{{ 'GAMES_HUB.TITLE' | translate }}</h1>
+    <p>{{ 'GAMES_HUB.LEAD' | translate }}</p>
     @if (roadmapNotice()) {
       <div class="roadmap-notice">{{ roadmapNotice() }}</div>
     }
@@ -11,20 +11,25 @@
     <!-- Introduction Divider -->
     <div class="roadmap-section">
       <span class="line"></span>
-      <h2>Introduction</h2>
+      <h2>{{ 'GAMES_HUB.SECTION_INTRO' | translate }}</h2>
       <span class="line"></span>
     </div>
 
     <div class="roadmap-nodes-wrapper">
       @for (node of roadmapNodes(); track node.nodeId; let i = $index) {
-        <div class="node-row" 
-             [class.shift-left]="i % 2 === 0" 
-             [class.shift-right]="i % 2 === 1" 
-             [class.current]="i === currentHighlightIndex()" 
+        <div class="node-row"
+             [class.shift-left]="i % 2 === 0"
+             [class.shift-right]="i % 2 === 1"
+             [class.current]="i === currentHighlightIndex()"
              [class.completed]="isNodeCompleted(i)"
              [class.locked]="!isUnlocked(i)"
              (click)="playNode(node, i)">
-             
+
+          @if (!isLoggedIn()) {
+            <div class="node-auth-overlay">
+              <span class="auth-hint">{{ 'GAMES_HUB.AUTH_HINT' | translate }}</span>
+            </div>
+          }
           <!-- Right side label for left-shifted nodes -->
           @if (i % 2 === 0) {
             <div class="node-label-right">{{ node.nodeLabel }}</div>
@@ -32,7 +37,7 @@
 
           <div class="hex-3d-wrapper">
             @if (isUnlocked(i) && !isNodeCompleted(i) && i === currentHighlightIndex()) {
-              <div class="continue-bubble">CONTINUE</div>
+              <div class="continue-bubble">{{ 'GAMES_HUB.CONTINUE' | translate }}</div>
             }
 
             <div class="hex-3d">
@@ -70,20 +75,20 @@
           @if (i % 2 === 0) {
             <!-- Left to Right -->
             <svg class="node-connector" viewBox="0 0 100 60" preserveAspectRatio="none">
-              <path d="M 12 0 C 12 30, 88 30, 88 60" 
-                    fill="none" 
-                    [attr.stroke]="isNodeCompleted(i) ? '#0ea5e9' : '#374151'" 
-                    stroke-width="8" 
+              <path d="M 12 0 C 12 30, 88 30, 88 60"
+                    fill="none"
+                    [attr.stroke]="isNodeCompleted(i) ? '#0ea5e9' : '#374151'"
+                    stroke-width="8"
                     stroke-linecap="round"
                     [attr.stroke-dasharray]="!isNodeCompleted(i) ? '8 8' : 'none'" />
             </svg>
           } @else {
             <!-- Right to Left -->
             <svg class="node-connector" viewBox="0 0 100 60" preserveAspectRatio="none">
-              <path d="M 88 0 C 88 30, 12 30, 12 60" 
-                    fill="none" 
-                    [attr.stroke]="isNodeCompleted(i) ? '#0ea5e9' : '#374151'" 
-                    stroke-width="8" 
+              <path d="M 88 0 C 88 30, 12 30, 12 60"
+                    fill="none"
+                    [attr.stroke]="isNodeCompleted(i) ? '#0ea5e9' : '#374151'"
+                    stroke-width="8"
                     stroke-linecap="round"
                     [attr.stroke-dasharray]="!isNodeCompleted(i) ? '8 8' : 'none'" />
             </svg>
@@ -91,13 +96,13 @@
         }
       }
     </div>
-    
+
   </div>
 
   <div class="puzzle-section animate-up">
     <div class="roadmap-section">
       <span class="line"></span>
-      <h2>Image puzzles</h2>
+      <h2>{{ 'GAMES_HUB.SECTION_PUZZLES' | translate }}</h2>
       <span class="line"></span>
     </div>
 
@@ -107,12 +112,16 @@
           <img [src]="p.imageDataUrl" [alt]="p.title" />
           <div class="puzzle-card__meta">
             <h3>{{ p.title }}</h3>
-            <span>Play →</span>
+            @if (isLoggedIn()) {
+              <span>{{ 'GAMES_HUB.PLAY_CTA' | translate }}</span>
+            } @else {
+              <span class="ludo-signin-hint">{{ 'GAMES_HUB.SIGNIN_HINT' | translate }}</span>
+            }
           </div>
         </button>
       }
       @if (puzzles().length === 0) {
-        <p class="puzzle-empty">No puzzles published yet.</p>
+        <p class="puzzle-empty">{{ 'GAMES_HUB.PUZZLES_EMPTY' | translate }}</p>
       }
     </div>
   </div>
@@ -120,15 +129,20 @@
   <div class="puzzle-section animate-up">
     <div class="roadmap-section">
       <span class="line"></span>
-      <h2>Ludo Tunisia</h2>
+      <h2>{{ 'GAMES_HUB.SECTION_LUDO' | translate }}</h2>
       <span class="line"></span>
     </div>
     <div class="puzzle-grid">
-      <button class="puzzle-card" (click)="playLudo()">
+      <button type="button" class="puzzle-card" (click)="playLudo()"
+              [attr.aria-label]="isLoggedIn() ? ('GAMES_HUB.LUDO_ARIA_PLAY' | translate) : ('GAMES_HUB.LUDO_ARIA_SIGNIN' | translate)">
         <div class="ludo-cover">🎲</div>
         <div class="puzzle-card__meta">
-          <h3>Ludo Tunisia board</h3>
-          <span>Play →</span>
+          <h3>{{ 'GAMES_HUB.LUDO_BOARD_TITLE' | translate }}</h3>
+          @if (isLoggedIn()) {
+            <span>{{ 'GAMES_HUB.PLAY_CTA' | translate }}</span>
+          } @else {
+            <span class="ludo-signin-hint">{{ 'GAMES_HUB.SIGNIN_HINT' | translate }}</span>
+          }
         </div>
       </button>
       @if (ludoCards().length > 0) {
@@ -137,7 +151,7 @@
             <div class="puzzle-card__meta">
               <h3>{{ card.title }}</h3>
               <p>{{ card.description }}</p>
-              <span>Effect: {{ card.effectSteps! > 0 ? '+' : '' }}{{ card.effectSteps }}</span>
+              <span>{{ 'GAMES_HUB.LUDO_EFFECT' | translate: { sign: card.effectSteps! > 0 ? '+' : '', steps: card.effectSteps } }}</span>
             </div>
           </div>
         }

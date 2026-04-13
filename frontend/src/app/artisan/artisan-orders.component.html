@@ -2,52 +2,52 @@
   <div class="ao-bg" aria-hidden="true"></div>
 
   <header class="ao-header">
-    <p class="ao-kicker">Artisan workspace</p>
-    <h1 class="ao-title">My orders</h1>
+    <p class="ao-kicker">{{ 'ARTISAN_ORDERS.KICKER' | translate }}</p>
+    <h1 class="ao-title">{{ 'ARTISAN_ORDERS.TITLE' | translate }}</h1>
     <p class="ao-lead">
-      Track your sales, fulfilment, and customer contacts in one place — expand a row for full detail.
+      {{ 'ARTISAN_ORDERS.LEAD' | translate }}
     </p>
   </header>
 
-  <section *ngIf="!loading() && !error() && summary() as s" class="ao-stats" aria-label="Overview">
+  <section *ngIf="!loading() && !error() && summary() as s" class="ao-stats" [attr.aria-label]="'ARTISAN_ORDERS.STATS_ARIA' | translate">
     <div class="ao-stat ao-stat--primary">
       <span class="ao-stat__icon" aria-hidden="true"><i class="pi pi-shopping-bag"></i></span>
       <div class="ao-stat__text">
         <span class="ao-stat__value">{{ s.orders }}</span>
-        <span class="ao-stat__label">Active orders</span>
+        <span class="ao-stat__label">{{ 'ARTISAN_ORDERS.STAT_ORDERS' | translate }}</span>
       </div>
     </div>
     <div class="ao-stat">
       <span class="ao-stat__icon" aria-hidden="true"><i class="pi pi-box"></i></span>
       <div class="ao-stat__text">
         <span class="ao-stat__value">{{ s.items }}</span>
-        <span class="ao-stat__label">Items sold</span>
+        <span class="ao-stat__label">{{ 'ARTISAN_ORDERS.STAT_ITEMS' | translate }}</span>
       </div>
     </div>
     <div class="ao-stat ao-stat--accent">
       <span class="ao-stat__icon" aria-hidden="true"><i class="pi pi-chart-line"></i></span>
       <div class="ao-stat__text">
-        <span class="ao-stat__value">{{ formatPrice(s.revenue) }}</span>
-        <span class="ao-stat__label">Volume (listed)</span>
+        <span class="ao-stat__value">{{ s.revenue | dualCurrency }}</span>
+        <span class="ao-stat__label">{{ 'ARTISAN_ORDERS.STAT_VOLUME' | translate }}</span>
       </div>
     </div>
   </section>
 
   <div *ngIf="loading()" class="ao-state ao-state--loading">
     <span class="ao-spinner" aria-hidden="true"></span>
-    <p>Loading your orders…</p>
+    <p>{{ 'ARTISAN_ORDERS.LOADING' | translate }}</p>
   </div>
 
   <div *ngIf="error()" class="ao-state ao-state--error">
     <span class="ao-state__icon" aria-hidden="true">!</span>
     <p>{{ error() }}</p>
-    <button type="button" class="ao-btn ao-btn--ghost" (click)="loadList()">Try again</button>
+    <button type="button" class="ao-btn ao-btn--ghost" (click)="loadList()">{{ 'ARTISAN_ORDERS.TRY_AGAIN' | translate }}</button>
   </div>
 
   <div *ngIf="!loading() && !error() && orders() !== null && orders()!.length === 0" class="ao-empty">
     <span class="ao-empty__glyph" aria-hidden="true">◇</span>
-    <h2>No orders yet</h2>
-    <p>When a customer buys one of your pieces, it will show up here.</p>
+    <h2>{{ 'ARTISAN_ORDERS.EMPTY_TITLE' | translate }}</h2>
+    <p>{{ 'ARTISAN_ORDERS.EMPTY_DESC' | translate }}</p>
   </div>
 
   <div *ngIf="!loading() && !error() && orders() !== null && orders()!.length > 0" class="ao-list">
@@ -68,7 +68,7 @@
               <i class="pi pi-box"></i>
             </span>
             <div class="ao-order__ref-text">
-              <span class="ao-label">Reference</span>
+              <span class="ao-label">{{ 'ARTISAN_ORDERS.REF' | translate }}</span>
               <span class="ao-value">#{{ row.orderId }}</span>
             </div>
           </div>
@@ -77,21 +77,21 @@
             <div class="ao-metric">
               <i class="pi pi-calendar" aria-hidden="true"></i>
               <div>
-                <span class="ao-label">Date</span>
+                <span class="ao-label">{{ 'ARTISAN_ORDERS.DATE' | translate }}</span>
                 <span class="ao-value">{{ formatDate(row.orderedAt) }}</span>
               </div>
             </div>
             <div class="ao-metric">
               <i class="pi pi-wallet" aria-hidden="true"></i>
               <div>
-                <span class="ao-label">Total</span>
-                <span class="ao-value ao-value--accent">{{ formatPrice(row.totalAmount) }}</span>
+                <span class="ao-label">{{ 'ARTISAN_ORDERS.TOTAL' | translate }}</span>
+                <span class="ao-value ao-value--accent">{{ row.totalAmount | dualCurrency }}</span>
               </div>
             </div>
             <div class="ao-metric ao-metric--compact">
               <i class="pi pi-list" aria-hidden="true"></i>
               <div>
-                <span class="ao-label">Items</span>
+                <span class="ao-label">{{ 'ARTISAN_ORDERS.ITEMS' | translate }}</span>
                 <span class="ao-value">{{ row.itemCount }}</span>
               </div>
             </div>
@@ -110,7 +110,7 @@
         <div class="ao-order__panel-inner">
           <div *ngIf="detailLoading()" class="ao-panel-loading">
             <i class="pi pi-spin pi-spinner" aria-hidden="true"></i>
-            <span>Loading details…</span>
+            <span>{{ 'ARTISAN_ORDERS.DETAIL_LOADING' | translate }}</span>
           </div>
 
           <ng-container *ngIf="detail() as d">
@@ -118,16 +118,16 @@
               <div class="ao-buyer__head">
                 <h3 [id]="'buyer-' + row.orderId" class="ao-section-title">
                   <i class="pi pi-map-marker" aria-hidden="true"></i>
-                  Customer &amp; delivery
+                  {{ 'ARTISAN_ORDERS.SECTION_BUYER' | translate }}
                 </h3>
               </div>
               <div class="ao-buyer__grid">
                 <div class="ao-field">
-                  <span class="ao-label">Name</span>
+                  <span class="ao-label">{{ 'ARTISAN_ORDERS.NAME' | translate }}</span>
                   <span class="ao-value">{{ d.buyer?.firstName }} {{ d.buyer?.lastName }}</span>
                 </div>
                 <div class="ao-field ao-field--email">
-                  <span class="ao-label">Email</span>
+                  <span class="ao-label">{{ 'ARTISAN_ORDERS.EMAIL' | translate }}</span>
                   <a class="ao-email-pill" [href]="'mailto:' + d.buyer?.email">
                     <i class="pi pi-envelope" aria-hidden="true"></i>
                     {{ d.buyer?.email }}
@@ -139,7 +139,7 @@
             <section class="ao-lines" [attr.aria-labelledby]="'lines-' + row.orderId">
               <h3 [id]="'lines-' + row.orderId" class="ao-section-title">
                 <i class="pi pi-shopping-bag" aria-hidden="true"></i>
-                Line items
+                {{ 'ARTISAN_ORDERS.LINE_ITEMS' | translate }}
               </h3>
 
               <ul class="ao-line-list">
@@ -149,16 +149,16 @@
                     <div class="ao-line__product">
                       <p class="ao-line__name">{{ item.name }}</p>
                       <div class="ao-line__tags">
-                        <span class="ao-tag">Qty {{ item.quantity }}</span>
-                        <span *ngIf="item.size" class="ao-tag">Size {{ item.size }}</span>
-                        <span *ngIf="item.color" class="ao-tag">Color {{ item.color }}</span>
+                        <span class="ao-tag">{{ 'ARTISAN_ORDERS.QTY' | translate }} {{ item.quantity }}</span>
+                        <span *ngIf="item.size" class="ao-tag">{{ 'ARTISAN_ORDERS.SIZE' | translate }} {{ item.size }}</span>
+                        <span *ngIf="item.color" class="ao-tag">{{ 'ARTISAN_ORDERS.COLOR' | translate }} {{ item.color }}</span>
                       </div>
-                      <p class="ao-line__sub">{{ formatPrice(item.unitPrice) }} × {{ item.quantity }}</p>
+                      <p class="ao-line__sub">{{ item.unitPrice | dualCurrency }} × {{ item.quantity }}</p>
                     </div>
                   </div>
-                  <div class="ao-line__total">{{ formatPrice(item.lineTotal) }}</div>
+                  <div class="ao-line__total">{{ item.lineTotal | dualCurrency }}</div>
                   <div class="ao-line__status">
-                    <label class="ao-label" [attr.for]="'st-' + item.orderItemId">Status</label>
+                    <label class="ao-label" [attr.for]="'st-' + item.orderItemId">{{ 'ARTISAN_ORDERS.STATUS' | translate }}</label>
                     <div class="ao-select-wrap">
                       <select
                         [id]="'st-' + item.orderItemId"
@@ -167,7 +167,9 @@
                         class="ao-select"
                         [class.ao-select--busy]="updatingItems().has(item.orderItemId)"
                       >
-                        <option *ngFor="let opt of statusOptions" [value]="opt.value">{{ opt.label }}</option>
+                        <option *ngFor="let opt of statusOptionValues" [value]="opt">
+                          {{ ('ARTISAN_ORDERS.STATUS_' + opt) | translate }}
+                        </option>
                       </select>
                       <i
                         *ngIf="updatingItems().has(item.orderItemId)"

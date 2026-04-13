@@ -7,6 +7,8 @@ export interface CityOption {
   cityId: number;
   name: string;
   region?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 /** Backend CityController wraps list in ApiResponse { success, data, ... }. */

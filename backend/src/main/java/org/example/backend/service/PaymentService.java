@@ -6,9 +6,11 @@ import com.stripe.model.checkout.Session;
 import com.stripe.param.checkout.SessionCreateParams;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import org.example.backend.model.OrderEntity;
 import org.example.backend.model.OrderItem;
 import org.example.backend.model.OrderStatus;
+import org.example.backend.model.Product;
 import org.example.backend.dto.transport.TransportPaymentStartDto;
 import org.example.backend.model.Reservation;
 import org.example.backend.model.TransportReservation;
@@ -29,6 +31,8 @@ public class PaymentService {
 
     private final OrderEntityRepository orderEntityRepository;
     private final OrderItemRepository orderItemRepository;
+    private final EmailService emailService;
+    private final CatalogTranslationService catalogTranslationService;
     private final String stripeApiKey;
     private final String frontendBaseUrl;
 
@@ -45,10 +49,14 @@ public class PaymentService {
     public PaymentService(
             OrderEntityRepository orderEntityRepository,
             OrderItemRepository orderItemRepository,
+            EmailService emailService,
+            CatalogTranslationService catalogTranslationService,
             @Value("${stripe.api.key:disabled}") String stripeApiKey,
             @Value("${app.frontend.base-url:http://localhost:4200}") String frontendBaseUrl) {
         this.orderEntityRepository = orderEntityRepository;
         this.orderItemRepository = orderItemRepository;
+        this.emailService = emailService;
+        this.catalogTranslationService = catalogTranslationService;
         this.stripeApiKey = stripeApiKey;
         this.frontendBaseUrl = frontendBaseUrl;
     }
@@ -81,11 +89,26 @@ public class PaymentService {
         return Math.round(presentment * 100.0);
     }
 
+    private String resolveProductLineDisplayName(Product product) {
+        if (product == null) {
+            return "";
+        }
+        String fallback = product.getName() != null ? product.getName() : "";
+        Integer id = product.getProductId();
+        if (id == null) {
+            return fallback;
+        }
+        return catalogTranslationService.resolveEntityField(id, "product", "name", fallback);
+    }
+
     private String stripeLineItemNameWithTndRef(String base, double totalTnd) {
         if ("tnd".equals(normalizedStripeCurrency())) {
             return base;
         }
-        return base + String.format(" (réf. %.2f TND)", totalTnd);
+        String suffixPattern =
+                catalogTranslationService.resolveForRequest(
+                        "reservation.payment.stripe_tnd_ref_suffix", " (réf. %.2f TND)");
+        return base + String.format(Locale.US, suffixPattern, totalTnd);
     }
 
     public String generatePaymentUrl(OrderEntity order) {
@@ -112,7 +135,7 @@ public class PaymentService {
                             .setUnitAmount(minorUnitsFromTnd(price))
                             .setProductData(
                                 SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                                    .setName(oi.getProduct().getName())
+                                    .setName(resolveProductLineDisplayName(oi.getProduct()))
                                     .build()
                             )
                             .build()
@@ -132,7 +155,10 @@ public class PaymentService {
                             .setUnitAmount(minorUnitsFromTnd(order.getDeliveryFee()))
                             .setProductData(
                                 SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                                    .setName("Frais de Livraison")
+                                    .setName(
+                                            catalogTranslationService.resolveForRequest(
+                                                    "payment.line.delivery",
+                                                    "Frais de livraison"))
                                     .build()
                             )
                             .build()
@@ -160,7 +186,10 @@ public class PaymentService {
                             .setUnitAmount(-discount) 
                             .setProductData(
                                 SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                                    .setName("Code Promo (Réduction)")
+                                    .setName(
+                                            catalogTranslationService.resolveForRequest(
+                                                    "payment.line.promo_discount",
+                                                    "Réduction (code promo)"))
                                     .build()
                             )
                             .build()
@@ -173,18 +202,20 @@ public class PaymentService {
             // Safe fallback if the discount logic causes Stripe rejection: create a single line item
             if (currentTotalCents != expectedTotalCents) {
                 stripeLines.clear();
+                String orderLineFmt =
+                        catalogTranslationService.resolveForRequest(
+                                "payment.line.order_total", "Commande n°%s");
                 stripeLines.add(
                     SessionCreateParams.LineItem.builder()
                         .setQuantity(1L)
                         .setPriceData(
-                            SessionCreateParams.LineItem.PriceData.builder()
+                                SessionCreateParams.LineItem.PriceData.builder()
                                 .setCurrency(checkoutCurrency)
                                 .setUnitAmount(expectedTotalCents)
                                 .setProductData(
-                                    SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                                        .setName("Commande #" + order.getOrderId())
-                                        .build()
-                                )
+                                        SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                                .setName(String.format(orderLineFmt, order.getOrderId()))
+                                                .build())
                                 .build()
                         )
                         .build()
@@ -203,7 +234,8 @@ public class PaymentService {
             return session.getUrl();
         } catch (StripeException e) {
             log.error("Stripe checkout session (shop) failed", e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Erreur génération Stripe");
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR, "reservation.payment.stripe_generic_error");
         }
     }
 
@@ -216,8 +248,7 @@ public class PaymentService {
         if (!StripeSecretKeys.isStripeSecretConfigured(key)) {
             log.warn("createTransportCheckoutSession called but stripe secret not configured after normalize");
             throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "Stripe n'est pas configuré pour ce transport.");
+                    HttpStatus.SERVICE_UNAVAILABLE, "reservation.payment.stripe_not_configured");
         }
         Stripe.apiKey = key;
 
@@ -226,7 +257,13 @@ public class PaymentService {
         assertTransportStripeChargeable(unitAmount, checkoutCurrency);
 
         String ref = reservation.getReservationRef();
-        String label = "Transport — " + (ref != null && !ref.isBlank() ? ref : "#" + reservation.getTransportReservationId());
+        String transportPrefix =
+                catalogTranslationService.resolveForRequest(
+                        "reservation.payment.transport_prefix", "Transport");
+        String label =
+                transportPrefix
+                        + " — "
+                        + (ref != null && !ref.isBlank() ? ref : "#" + reservation.getTransportReservationId());
 
         List<SessionCreateParams.LineItem> stripeLines = List.of(
                 SessionCreateParams.LineItem.builder()
@@ -264,7 +301,8 @@ public class PaymentService {
                     url != null && !url.isBlank());
             if (url == null || url.isBlank()) {
                 log.error("Stripe returned no checkout URL for transport reservation {}", reservation.getTransportReservationId());
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Stripe n'a pas renvoyé d'URL de paiement.");
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_GATEWAY, "reservation.payment.stripe_no_checkout_url");
             }
             return TransportPaymentStartDto.builder().url(url).build();
         } catch (StripeException e) {
@@ -274,9 +312,7 @@ public class PaymentService {
                     unitAmount,
                     reservation.getTransportReservationId(),
                     e);
-            String hint = e.getMessage() != null ? e.getMessage() : "erreur inconnue";
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_GATEWAY, "Paiement Stripe indisponible : " + hint);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "reservation.payment.stripe_unavailable");
         }
     }
 
@@ -285,14 +321,14 @@ public class PaymentService {
      */
     public TransportPaymentStartDto createAccommodationCheckoutSession(Reservation reservation, double totalTnd) {
         if (reservation == null || reservation.getReservationId() == null) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Réservation invalide pour Stripe.");
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR, "reservation.payment.invalid_accommodation_reservation");
         }
         String key = StripeSecretKeys.normalize(stripeApiKey);
         if (!StripeSecretKeys.isStripeSecretConfigured(key)) {
             log.warn("createAccommodationCheckoutSession called but stripe secret not configured after normalize");
             throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "Stripe n'est pas configuré pour l'hébergement.");
+                    HttpStatus.SERVICE_UNAVAILABLE, "reservation.payment.stripe_not_configured_accommodation");
         }
         Stripe.apiKey = key;
 
@@ -300,7 +336,13 @@ public class PaymentService {
         long unitAmount = minorUnitsFromTnd(totalTnd);
         assertTransportStripeChargeable(unitAmount, checkoutCurrency);
 
-        String label = "Hébergement — réservation #" + reservation.getReservationId();
+        String hebPrefix =
+                catalogTranslationService.resolveForRequest(
+                        "reservation.payment.accommodation_prefix", "Hébergement");
+        String resWord =
+                catalogTranslationService.resolveForRequest(
+                        "reservation.payment.reservation_word", "réservation");
+        String label = hebPrefix + " — " + resWord + " #" + reservation.getReservationId();
 
         List<SessionCreateParams.LineItem> stripeLines = List.of(
                 SessionCreateParams.LineItem.builder()
@@ -339,7 +381,8 @@ public class PaymentService {
                 log.error(
                         "Stripe returned no checkout URL for accommodation reservation {}",
                         reservation.getReservationId());
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Stripe n'a pas renvoyé d'URL de paiement.");
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_GATEWAY, "reservation.payment.stripe_no_checkout_url");
             }
             return TransportPaymentStartDto.builder().url(url).build();
         } catch (StripeException e) {
@@ -349,15 +392,15 @@ public class PaymentService {
                     unitAmount,
                     reservation.getReservationId(),
                     e);
-            String hint = e.getMessage() != null ? e.getMessage() : "erreur inconnue";
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Paiement Stripe indisponible : " + hint);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "reservation.payment.stripe_unavailable");
         }
     }
 
     /** Enforces Stripe-style minimums for common two-decimal presentment currencies. */
-    private static void assertTransportStripeChargeable(long minorAmount, String currency) {
+    private void assertTransportStripeChargeable(long minorAmount, String currency) {
         if (minorAmount <= 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Montant total invalide pour le paiement.");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "reservation.payment.amount_invalid_stripe");
         }
         String c = currency == null ? "" : currency.trim().toLowerCase();
         // Stripe minimum ~0.50 for USD/EUR/AUD/CAD/CHF/GBP/SGD/NZD (minor units = cents)
@@ -371,15 +414,16 @@ public class PaymentService {
                         || "nzd".equals(c))
                 && minorAmount < 50) {
             throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Montant trop faible pour Stripe dans cette devise (minimum ~0,50). Augmentez places, distance ou durée.");
+                    HttpStatus.BAD_REQUEST, "reservation.payment.amount_too_low_stripe");
         }
     }
 
     @Transactional
     public void markOrderAsPaid(Integer orderId) {
-        OrderEntity order = orderEntityRepository.findById(orderId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Commande introuvable"));
+        OrderEntity order = orderEntityRepository
+            .findById(orderId)
+            .orElseThrow(
+                    () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "payment.error.order_not_found"));
         
         if (order.getStatus() == OrderStatus.PENDING) {
             order.setStatus(OrderStatus.PROCESSING); // Indicates payment success, artisan should prepare it
@@ -391,6 +435,17 @@ public class PaymentService {
                 if (item.getStatus() == OrderStatus.PENDING) {
                     item.setStatus(OrderStatus.PROCESSING);
                     orderItemRepository.save(item);
+                }
+            }
+
+            if (order.getUser() != null && order.getUser().getEmail() != null && !order.getUser().getEmail().isBlank()) {
+                try {
+                    emailService.sendOrderConfirmation(
+                            order.getUser().getEmail(),
+                            String.valueOf(order.getOrderId()),
+                            order.getTotalAmount());
+                } catch (Exception ex) {
+                    log.warn("Order paid but confirmation email failed for orderId={}: {}", orderId, ex.getMessage());
                 }
             }
         }

@@ -2,7 +2,10 @@ import { CommonModule } from '@angular/common';
 import {
   afterNextRender,
   Component,
+  EventEmitter,
   ElementRef,
+  Input,
+  Output,
   inject,
   Injector,
   signal,
@@ -11,6 +14,7 @@ import {
 import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AuthService } from './core/auth.service';
 import { extractApiErrorMessage } from './api-error.util';
 import { CityOption } from './core/auth.types';
@@ -35,15 +39,20 @@ function passwordsMatch(group: AbstractControl): ValidationErrors | null {
 @Component({
   selector: 'app-sign-up',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, TranslateModule],
   templateUrl: './sign-up.component.html',
   styleUrls: ['./sign-up.component.css', './auth-pages.shared.css'],
 })
 export class SignUpComponent {
+    @Input() embedded = false;
+    @Output() switchMode = new EventEmitter<'signin'>();
+    @Output() signupCompleted = new EventEmitter<void>();
+
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly injector = inject(Injector);
+  private readonly translate = inject(TranslateService);
 
   @ViewChild('recaptchaHost') recaptchaHost?: ElementRef<HTMLDivElement>;
 
@@ -140,7 +149,7 @@ export class SignUpComponent {
       this.recaptchaInitInFlight = true;
       loadRecaptchaV3Script(this.captchaSiteKey())
         .catch(() => {
-          this.formError.set('Could not load reCAPTCHA v3. Reload the page.');
+          this.formError.set(this.translate.instant('AUTH_SIGNUP.MSG_RECAPTCHA_V3_SCRIPT'));
         })
         .finally(() => {
           this.recaptchaInitInFlight = false;
@@ -160,7 +169,7 @@ export class SignUpComponent {
         }
       })
       .catch(() => {
-        this.formError.set('Could not load the captcha. Reload the page.');
+        this.formError.set(this.translate.instant('AUTH_SIGNUP.MSG_RECAPTCHA_V2_SCRIPT'));
       })
       .finally(() => {
         this.recaptchaInitInFlight = false;
@@ -175,7 +184,7 @@ export class SignUpComponent {
   }
 
   phoneErrorMessage(): string {
-    return 'Invalid phone number (8–20 digits; spaces or hyphens allowed).';
+    return this.translate.instant('AUTH_SIGNUP.ERR_PHONE_FORMAT');
   }
 
   private normalizePhone(value: string): string | null {
@@ -198,21 +207,17 @@ export class SignUpComponent {
     }
 
     if (!this.captchaConfigReady()) {
-      this.formError.set('Loading bot protection… Try again in a moment.');
+      this.formError.set(this.translate.instant('AUTH_SIGNUP.MSG_CAPTCHA_LOADING'));
       return;
     }
 
     if (this.captchaConfigUnavailable()) {
-      this.formError.set(
-        'Could not reach the server for reCAPTCHA configuration. Ensure the backend is running (proxy /api) and reload the page.'
-      );
+      this.formError.set(this.translate.instant('AUTH_SIGNUP.MSG_CAPTCHA_UNREACHABLE'));
       return;
     }
 
     if (this.captchaMisconfigured()) {
-      this.formError.set(
-        'reCAPTCHA is misconfigured on the server: secret key without site key. Set app.recaptcha.site-key in application.properties.'
-      );
+      this.formError.set(this.translate.instant('AUTH_SIGNUP.MSG_CAPTCHA_SERVER'));
       return;
     }
 
@@ -221,7 +226,7 @@ export class SignUpComponent {
     const cityId = raw.cityId != null ? Number(raw.cityId) : null;
     if (isTunisia && (cityId == null || Number.isNaN(cityId))) {
       this.form.controls.cityId.markAsTouched();
-      this.formError.set('Please select a city for Tunisia.');
+      this.formError.set(this.translate.instant('AUTH_SIGNUP.MSG_CITY_TUNISIA'));
       return;
     }
 
@@ -229,7 +234,7 @@ export class SignUpComponent {
     if (this.captchaEnabled() && !this.captchaV3()) {
       captchaToken = getRecaptchaResponse(this.recaptchaWidgetId);
       if (!captchaToken) {
-        this.formError.set('Please complete reCAPTCHA.');
+        this.formError.set(this.translate.instant('AUTH_SIGNUP.MSG_RECAPTCHA_COMPLETE'));
         return;
       }
     }
@@ -243,14 +248,14 @@ export class SignUpComponent {
         .then(() => executeRecaptchaV3(key, 'signup'))
         .then((token) => {
           if (!token?.trim()) {
-            this.formError.set('reCAPTCHA v3: empty token. Try again.');
+            this.formError.set(this.translate.instant('AUTH_SIGNUP.MSG_RECAPTCHA_V3_EMPTY'));
             this.isLoading.set(false);
             return;
           }
           this.runSignupRequest(raw, isTunisia, cityId, token);
         })
         .catch(() => {
-          this.formError.set('reCAPTCHA v3 unavailable. Reload the page.');
+          this.formError.set(this.translate.instant('AUTH_SIGNUP.MSG_RECAPTCHA_V3_FAIL'));
           this.isLoading.set(false);
         });
       return;
@@ -295,8 +300,13 @@ export class SignUpComponent {
 
     this.authService.signup(finalPayload).subscribe({
       next: (response) => {
-        this.formSuccess.set(response.message || 'Account created. Check your email.');
+        this.formSuccess.set(response.message || this.translate.instant('AUTH_SIGNUP.MSG_ACCOUNT_CREATED'));
         resetRecaptchaWidget(this.recaptchaWidgetId);
+        if (this.embedded) {
+          this.signupCompleted.emit();
+          this.switchMode.emit('signin');
+          return;
+        }
         setTimeout(() => {
           this.router.navigateByUrl('/signin');
         }, 2800);
@@ -304,7 +314,7 @@ export class SignUpComponent {
       error: (error: HttpErrorResponse) => {
         this.isLoading.set(false);
         resetRecaptchaWidget(this.recaptchaWidgetId);
-        this.formError.set(extractApiErrorMessage(error, 'Sign-up failed. Please try again.'));
+        this.formError.set(extractApiErrorMessage(error, this.translate.instant('AUTH_SIGNUP.MSG_SIGNUP_FAILED')));
       },
       complete: () => this.isLoading.set(false),
     });
@@ -325,7 +335,7 @@ export class SignUpComponent {
         this.uploadedImageUrl.set(response.url);
       },
       error: (error: HttpErrorResponse) => {
-        this.formError.set(extractApiErrorMessage(error, 'Image upload failed.'));
+        this.formError.set(extractApiErrorMessage(error, this.translate.instant('AUTH_SIGNUP.MSG_UPLOAD_FAILED')));
       },
       complete: () => this.isUploadingImage.set(false),
     });

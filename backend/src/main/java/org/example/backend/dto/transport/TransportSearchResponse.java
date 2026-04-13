@@ -18,9 +18,5 @@ public class TransportSearchResponse {
     private int capacity;
     private int availableSeats;
     private int durationMinutes;
-    private String vehicleBrand;
-    private String vehicleModel;
-    private String driverName;
-    private double driverRating;
     private boolean isActive;
 }

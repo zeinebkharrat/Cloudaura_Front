@@ -1,12 +1,14 @@
 import { CommonModule, Location } from '@angular/common';
 import { AfterViewInit, Component, OnDestroy, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import * as L from 'leaflet';
 import Swal from 'sweetalert2';
+import { extractApiErrorMessage } from '../api-error.util';
 import {
   ActivityAvailabilityDay,
-  ActivityReservationResponse,
   Activity,
   ActivityMedia,
   PublicReview,
@@ -14,6 +16,11 @@ import {
   CreateActivityReservationRequest,
 } from './explore.models';
 import { ExploreService } from './explore.service';
+import { LoginRequiredPromptService } from '../core/login-required-prompt.service';
+import { AuthService } from '../core/auth.service';
+import { DualCurrencyPipe } from '../core/pipes/dual-currency.pipe';
+import { createCurrencyDisplaySyncEffect } from '../core/utils/currency-display-sync';
+import { LanguageService } from '../core/services/language.service';
 
 interface CalendarDayCell {
   dateIso: string;
@@ -27,14 +34,22 @@ interface CalendarDayCell {
 @Component({
   selector: 'app-activity-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, DualCurrencyPipe, TranslateModule],
   templateUrl: './activity-detail.component.html',
   styleUrl: './activity-detail.component.css',
 })
 export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
+  private readonly _currencyDisplaySync = createCurrencyDisplaySyncEffect();
+
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly exploreService = inject(ExploreService);
+  private readonly authService = inject(AuthService);
+  private readonly http = inject(HttpClient);
   private readonly location = inject(Location);
+  private readonly loginPrompt = inject(LoginRequiredPromptService);
+  private readonly translate = inject(TranslateService);
+  private readonly language = inject(LanguageService);
 
   activity?: Activity;
   activityMedia: ActivityMedia[] = [];
@@ -57,7 +72,7 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   availabilityByDate = new Map<string, ActivityAvailabilityDay>();
   calendarDays: CalendarDayCell[] = [];
   calendarMonth = this.startOfMonth(new Date());
-  weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  readonly weekdayIndices = [0, 1, 2, 3, 4, 5, 6] as const;
   showOnlyAvailable = false;
 
   form: CreateActivityReservationRequest = {
@@ -66,7 +81,6 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   };
 
   submitting = false;
-  created?: ActivityReservationResponse;
   showBookingModal = false;
   reviewSummary: ReviewSummary = { averageStars: 0, totalReviews: 0 };
   reviews: PublicReview[] = [];
@@ -75,13 +89,15 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     stars: 5,
     commentText: '',
   };
+  editingReviewId: number | null = null;
+  readonly commentEmojis = ['😊', '😍', '😋', '👍', '🔥', '🎉', '👏', '🤩', '💯', '❤️'];
 
   ngAfterViewInit(): void {
     this.viewReady = true;
     const id = Number(this.route.snapshot.paramMap.get('activityId'));
     if (!id) {
       this.loading = false;
-      this.error = 'Activity not found.';
+      this.error = this.translate.instant('EXPLORE_ACTIVITY.ERR_NOT_FOUND');
       return;
     }
 
@@ -97,7 +113,8 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
       },
       error: (err) => {
         this.loading = false;
-        this.error = err?.error?.message || 'Unable to load this activity.';
+        this.error =
+          err?.error?.message || this.translate.instant('EXPLORE_ACTIVITY.ERR_LOAD');
       },
     });
   }
@@ -246,6 +263,8 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   }
 
   submitReservation(): void {
+    this.blurActiveElement();
+
     if (!this.activity || this.form.numberOfPeople < 1) {
       return;
     }
@@ -253,10 +272,13 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     const selectedAvailability = this.availabilityByDate.get(this.form.reservationDate);
     if (selectedAvailability && selectedAvailability.remainingParticipants != null) {
       if (this.form.numberOfPeople > selectedAvailability.remainingParticipants) {
+        this.blurActiveElement();
         Swal.fire({
           icon: 'warning',
-          title: 'Places insuffisantes',
-          text: `Il reste ${selectedAvailability.remainingParticipants} place(s) pour cette date.`,
+          title: this.translate.instant('EXPLORE_ACTIVITY.SWAL_PLACES_TITLE'),
+          text: this.translate.instant('EXPLORE_ACTIVITY.SWAL_PLACES_TEXT', {
+            n: selectedAvailability.remainingParticipants,
+          }),
           confirmButtonColor: '#e63946',
         });
         return;
@@ -264,27 +286,39 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     }
 
     this.submitting = true;
-    this.exploreService
-      .reserveActivity(this.activity.activityId, this.form)
+    this.http
+      .post<{ sessionId: string; sessionUrl: string }>(
+        `/api/public/activities/${this.activity.activityId}/reservations/checkout`,
+        this.form
+      )
       .subscribe({
-        next: (res) => {
-          this.created = res;
+        next: (res: { sessionId: string; sessionUrl: string }) => {
           this.submitting = false;
           this.showBookingModal = false;
-          this.loadAvailability();
+          if (res?.sessionUrl) {
+            this.blurActiveElement();
+            window.location.href = res.sessionUrl;
+            return;
+          }
+
+          this.blurActiveElement();
           Swal.fire({
-            icon: 'success',
-            title: 'Booking sent',
-            text: 'Your reservation was sent successfully.',
+            icon: 'error',
+            title: this.translate.instant('EXPLORE_ACTIVITY.SWAL_ERROR_TITLE'),
+            text: this.translate.instant('EXPLORE_ACTIVITY.SWAL_PAYMENT_SESSION'),
             confirmButtonColor: '#e63946',
           });
         },
-        error: (err) => {
+        error: (err: HttpErrorResponse) => {
           this.submitting = false;
+          this.blurActiveElement();
           Swal.fire({
             icon: 'error',
-            title: 'Error',
-            text: err?.error?.message || 'Booking failed.',
+            title: this.translate.instant('EXPLORE_ACTIVITY.SWAL_ERROR_TITLE'),
+            text: extractApiErrorMessage(
+              err,
+              this.translate.instant('EXPLORE_ACTIVITY.SWAL_BOOKING_FAIL'),
+            ),
             confirmButtonColor: '#e63946',
           });
         },
@@ -292,6 +326,15 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   }
 
   openBookingModal(): void {
+    if (!this.authService.isAuthenticated()) {
+      this.loginPrompt.show({
+        title: this.translate.instant('EXPLORE_ACTIVITY.SWAL_LOGIN_TITLE'),
+        message: this.translate.instant('EXPLORE_ACTIVITY.SWAL_LOGIN_TEXT'),
+        returnUrl: this.router.url,
+      });
+      return;
+    }
+
     this.showBookingModal = true;
     this.loadAvailability();
   }
@@ -319,6 +362,87 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     this.reviewForm.stars = stars;
   }
 
+  appendEmoji(emoji: string): void {
+    this.reviewForm.commentText = `${this.reviewForm.commentText}${emoji}`;
+  }
+
+  startEditReview(review: PublicReview): void {
+    this.editingReviewId = review.reviewId;
+    this.reviewForm = {
+      stars: review.stars,
+      commentText: review.commentText,
+    };
+  }
+
+  cancelEditReview(): void {
+    this.editingReviewId = null;
+    this.reviewForm = { stars: 5, commentText: '' };
+  }
+
+  isOwnReview(review: PublicReview): boolean {
+    const currentUserId = this.authService.currentUser()?.id;
+    return currentUserId != null && currentUserId === review.userId;
+  }
+
+  reviewAuthorEmail(review: PublicReview): string {
+    return review.userEmail?.trim() || review.username;
+  }
+
+  reviewAuthorInitial(review: PublicReview): string {
+    const source = this.reviewAuthorEmail(review).trim();
+    return source ? source.charAt(0).toUpperCase() : '?';
+  }
+
+  deleteOwnReview(): void {
+    if (!this.activity) {
+      return;
+    }
+
+    Swal.fire({
+      icon: 'warning',
+      title: this.translate.instant('EXPLORE_ACTIVITY.SWAL_DELETE_TITLE'),
+      text: this.translate.instant('EXPLORE_ACTIVITY.SWAL_DELETE_TEXT'),
+      showCancelButton: true,
+      confirmButtonText: this.translate.instant('EXPLORE_ACTIVITY.SWAL_DELETE_CONFIRM'),
+      cancelButtonText: this.translate.instant('EXPLORE_ACTIVITY.SWAL_DELETE_CANCEL'),
+      confirmButtonColor: '#e63946',
+    }).then((result) => {
+      if (!result.isConfirmed || !this.activity) {
+        return;
+      }
+
+      this.reviewSubmitting = true;
+      this.exploreService.deleteActivityReviewMine(this.activity.activityId).subscribe({
+        next: () => {
+          this.reviewSubmitting = false;
+          this.cancelEditReview();
+          this.loadReviewSummary();
+          this.loadReviews();
+        },
+        error: (err: HttpErrorResponse) => {
+          this.reviewSubmitting = false;
+          if (err?.status === 401) {
+            Swal.fire({
+              icon: 'warning',
+              title: this.translate.instant('EXPLORE_ACTIVITY.SWAL_SIGNIN_MANAGE_TITLE'),
+              text: this.translate.instant('EXPLORE_ACTIVITY.SWAL_SIGNIN_MANAGE_TEXT'),
+              confirmButtonColor: '#e63946',
+            });
+            return;
+          }
+
+          Swal.fire({
+            icon: 'error',
+            title: this.translate.instant('EXPLORE_ACTIVITY.SWAL_ERROR_TITLE'),
+            text:
+              err?.error?.message || this.translate.instant('EXPLORE_ACTIVITY.SWAL_DELETE_ERR'),
+            confirmButtonColor: '#e63946',
+          });
+        },
+      });
+    });
+  }
+
   submitReview(): void {
     if (!this.activity || !this.reviewForm.commentText.trim()) {
       return;
@@ -331,7 +455,7 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     }).subscribe({
       next: () => {
         this.reviewSubmitting = false;
-        this.reviewForm = { stars: 5, commentText: '' };
+        this.cancelEditReview();
         this.loadReviewSummary();
         this.loadReviews();
       },
@@ -340,8 +464,8 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
         if (err?.status === 401) {
           Swal.fire({
             icon: 'warning',
-            title: 'Sign in required',
-            text: 'Please sign in to post a comment.',
+            title: this.translate.instant('EXPLORE_ACTIVITY.SWAL_SIGNIN_POST_TITLE'),
+            text: this.translate.instant('EXPLORE_ACTIVITY.SWAL_SIGNIN_POST_TEXT'),
             confirmButtonColor: '#e63946',
           });
           return;
@@ -349,8 +473,9 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
 
         Swal.fire({
           icon: 'error',
-          title: 'Error',
-          text: err?.error?.message || 'Unable to publish comment.',
+          title: this.translate.instant('EXPLORE_ACTIVITY.SWAL_ERROR_TITLE'),
+          text:
+            err?.error?.message || this.translate.instant('EXPLORE_ACTIVITY.SWAL_PUBLISH_ERR'),
           confirmButtonColor: '#e63946',
         });
       },
@@ -482,7 +607,9 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   }
 
   monthLabel(): string {
-    return this.calendarMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    const lang = this.language.currentLang();
+    const locale = lang === 'ar' ? 'ar-TN' : lang === 'fr' ? 'fr-FR' : 'en-GB';
+    return this.calendarMonth.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
   }
 
   totalPrice(): number {
@@ -493,10 +620,10 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   selectedRemainingPlaces(): string {
     const availability = this.availabilityByDate.get(this.form.reservationDate);
     if (!availability) {
-      return '—';
+      return this.translate.instant('COMMON.DASH');
     }
     if (availability.remainingParticipants == null) {
-      return 'Unlimited';
+      return this.translate.instant('EXPLORE_ACTIVITY.UNLIMITED');
     }
     return String(availability.remainingParticipants);
   }
@@ -592,5 +719,16 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  private blurActiveElement(): void {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement) {
+      active.blur();
+    }
+  }
+
+  releaseFocus(): void {
+    this.blurActiveElement();
   }
 }

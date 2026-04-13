@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 import org.example.backend.dto.ProductCatalogItem;
+import org.example.backend.i18n.CatalogKeyUtil;
 import org.example.backend.model.Product;
 import org.example.backend.model.ProductImage;
 import org.example.backend.model.ProductVariant;
@@ -23,16 +24,19 @@ public class ProductService {
     private final UserRepository userRepository;
     private final CartItemRepository cartItemRepository;
     private final OrderItemRepository orderItemRepository;
+    private final CatalogTranslationService catalogTranslationService;
 
     public ProductService(
             ProductRepository productRepository,
             UserRepository userRepository,
             CartItemRepository cartItemRepository,
-            OrderItemRepository orderItemRepository) {
+            OrderItemRepository orderItemRepository,
+            CatalogTranslationService catalogTranslationService) {
         this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.cartItemRepository = cartItemRepository;
         this.orderItemRepository = orderItemRepository;
+        this.catalogTranslationService = catalogTranslationService;
     }
 
     /**
@@ -42,6 +46,9 @@ public class ProductService {
         return productRepository.findAll();
     }
 
+    /**
+     * Catalog strings are resolved from the {@code translations} table only (see {@link CatalogTranslationService}).
+     */
     @Transactional(readOnly = true)
     public List<ProductCatalogItem> findAllWithCatalogDto() {
         return productRepository.findAll().stream().map(this::toCatalogItem).toList();
@@ -78,7 +85,11 @@ public class ProductService {
         ProductCatalogItem.CatalogSeller seller = null;
         User u = p.getUser();
         if (u != null && u.getUsername() != null && !u.getUsername().isBlank()) {
-            String city = (u.getCity() != null) ? u.getCity().getName() : null;
+            String city = null;
+            if (u.getCity() != null) {
+                int cid = u.getCity().getCityId();
+                city = catalogTranslationService.resolveForRequest("city." + cid + ".name", u.getCity().getName());
+            }
             seller = new ProductCatalogItem.CatalogSeller(u.getUsername(), city);
         }
 
@@ -93,7 +104,7 @@ public class ProductService {
         boolean isFavorite = false;
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated() && !auth.getPrincipal().equals("anonymousUser")) {
-            java.util.Optional<User> userOpt = userRepository.findByUsernameIgnoreCase(auth.getName());
+            java.util.Optional<User> userOpt = userRepository.findFirstByUsernameIgnoreCaseOrderByUserIdAsc(auth.getName());
             if (userOpt.isPresent()) {
                 User user = userOpt.get();
                 if (user.getFavorites() != null) {
@@ -102,10 +113,19 @@ public class ProductService {
             }
         }
 
+        int pid = p.getProductId();
+        String rawName = p.getName();
+        String resName = catalogTranslationService.resolveEntityField(pid, "product", "name", rawName);
+        String nameOut = CatalogKeyUtil.isBadI18nPlaceholder(rawName, resName) ? "" : resName;
+
+        String rawDesc = p.getDescription();
+        String resDesc = catalogTranslationService.resolveEntityField(pid, "product", "description", rawDesc);
+        String descOut = CatalogKeyUtil.isBadI18nPlaceholder(rawDesc, resDesc) ? null : resDesc;
+
         return new ProductCatalogItem(
                 p.getProductId(),
-                p.getName(),
-                p.getDescription(),
+                nameOut,
+                descOut,
                 p.getCategory() != null ? p.getCategory().name() : null,
                 p.getStatus() != null ? p.getStatus().name() : null,
                 normalizeImageUrlForApi(p.getImageUrl()),
@@ -128,7 +148,7 @@ public class ProductService {
 
     @Transactional
     public ProductCatalogItem save(Product entity, String username) {
-        User currentUser = userRepository.findByUsernameIgnoreCase(username)
+        User currentUser = userRepository.findFirstByUsernameIgnoreCaseOrderByUserIdAsc(username)
                 .orElseThrow(() -> new NoSuchElementException("User not found with username: " + username));
         // Frontend sends productId: 0 for new products — must be null or Hibernate / DB can error
         if (entity.getProductId() != null && entity.getProductId() == 0) {

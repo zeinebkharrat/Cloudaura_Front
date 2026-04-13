@@ -15,16 +15,19 @@ import {
   quoteRoomId,
   suiteEligible,
 } from '../../../core/utils/accommodation-quote.util';
+import { DualCurrencyPipe } from '../../../core/pipes/dual-currency.pipe';
+import { createCurrencyDisplaySyncEffect } from '../../../core/utils/currency-display-sync';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, RouterModule, ReactiveFormsModule],
+  imports: [CommonModule, RouterModule, ReactiveFormsModule, DualCurrencyPipe, TranslateModule],
   template: `
     @if (loading()) {
       <div class="loader-page">
         <div class="spinner-large"></div>
-        <p>Loading accommodation…</p>
+        <p>{{ 'ACCOMM.LOADING_DETAILS' | translate }}</p>
       </div>
     }
 
@@ -36,7 +39,7 @@ import {
           <div class="hero-overlay">
             <div class="hero-top">
               <button class="btn-back" (click)="router.navigate(['/hebergement'])">
-                ← Back to listings
+                {{ 'ACCOMM.BACK_LISTINGS' | translate }}
               </button>
               <div class="hero-badges">
                 <span class="badge-type">
@@ -50,7 +53,7 @@ import {
                 <h1>{{ acc.name }}</h1>
                 <div class="location-row">
                   <img src="icones/city.png" alt="" class="loc-icon-img" width="18" height="18" />
-                  <span>{{ acc.cityName }}, Tunisia</span>
+                  <span>{{ acc.cityName }}, {{ 'ACCOMM.COUNTRY' | translate }}</span>
                 </div>
               </div>
               <div class="rating-big">
@@ -69,63 +72,57 @@ import {
 
             <!-- Quick Highlights -->
             <div class="card highlights-card">
-              <h3 class="hl-title"><img src="icones/hotel.png" alt="" class="hl-title-ico" width="22" height="22" /> Highlights</h3>
+              <h3 class="hl-title"><img src="icones/hotel.png" alt="" class="hl-title-ico" width="22" height="22" /> {{ 'ACCOMM.HIGHLIGHTS_TITLE' | translate }}</h3>
               <div class="highlights-grid">
-                <div class="highlight"><i class="pi pi-sun hl-pi" aria-hidden="true"></i><span>Air conditioning</span></div>
-                <div class="highlight"><i class="pi pi-shopping-bag hl-pi" aria-hidden="true"></i><span>Breakfast included</span></div>
-                <div class="highlight"><i class="pi pi-car hl-pi" aria-hidden="true"></i><span>Free parking</span></div>
-                <div class="highlight"><i class="pi pi-clock hl-pi" aria-hidden="true"></i><span>24/7 service</span></div>
-                <div class="highlight"><i class="pi pi-wifi hl-pi" aria-hidden="true"></i><span>Wi‑Fi included</span></div>
-                <div class="highlight"><i class="pi pi-users hl-pi" aria-hidden="true"></i><span>Accessible (PRM)</span></div>
+                <div class="highlight"><i class="pi pi-sun hl-pi" aria-hidden="true"></i><span>{{ 'ACCOMM.HL_AIR_CON' | translate }}</span></div>
+                <div class="highlight"><i class="pi pi-shopping-bag hl-pi" aria-hidden="true"></i><span>{{ 'ACCOMM.HL_BREAKFAST' | translate }}</span></div>
+                <div class="highlight"><i class="pi pi-car hl-pi" aria-hidden="true"></i><span>{{ 'ACCOMM.HL_PARKING' | translate }}</span></div>
+                <div class="highlight"><i class="pi pi-clock hl-pi" aria-hidden="true"></i><span>{{ 'ACCOMM.HL_SERVICE_247' | translate }}</span></div>
+                <div class="highlight"><i class="pi pi-wifi hl-pi" aria-hidden="true"></i><span>{{ 'ACCOMM.HL_WIFI' | translate }}</span></div>
+                <div class="highlight"><i class="pi pi-users hl-pi" aria-hidden="true"></i><span>{{ 'ACCOMM.HL_ACCESSIBLE' | translate }}</span></div>
                 @if (acc.rating >= 4) {
-                  <div class="highlight"><i class="pi pi-database hl-pi" aria-hidden="true"></i><span>Pool</span></div>
-                  <div class="highlight"><i class="pi pi-sparkles hl-pi" aria-hidden="true"></i><span>Spa &amp; wellness</span></div>
+                  <div class="highlight"><i class="pi pi-database hl-pi" aria-hidden="true"></i><span>{{ 'ACCOMM.HL_POOL' | translate }}</span></div>
+                  <div class="highlight"><i class="pi pi-sparkles hl-pi" aria-hidden="true"></i><span>{{ 'ACCOMM.HL_SPA' | translate }}</span></div>
                 }
               </div>
             </div>
 
             <!-- Description -->
             <div class="card">
-              <h3>About this property</h3>
-              <p class="desc-text">
-                Welcome to <strong>{{ acc.name }}</strong>, in the heart of <strong>{{ acc.cityName }}</strong>.
-                This standout property blends modern comfort with authentic Tunisian charm.
-                Enjoy quality services and a great base to explore the region.
-              </p>
-              <p class="desc-text">
-                With a <strong>{{ acc.rating }}/5</strong> rating, guests highlight warm hospitality,
-                spotless rooms, and great amenities.
-              </p>
+              <h3>{{ 'ACCOMM.ABOUT_TITLE' | translate }}</h3>
+              <p class="desc-text">{{ 'ACCOMM.ABOUT_L1' | translate: { name: acc.name, city: acc.cityName } }}</p>
+              <p class="desc-text">{{ 'ACCOMM.ABOUT_L2' | translate }}</p>
+              <p class="desc-text">{{ 'ACCOMM.ABOUT_L3' | translate: { rating: acc.rating } }}</p>
             </div>
 
             <!-- Rooms Available -->
             <div class="card">
-              <h3 class="rooms-title"><i class="pi pi-home rooms-title-pi" aria-hidden="true"></i> Available rooms</h3>
+              <h3 class="rooms-title"><i class="pi pi-home rooms-title-pi" aria-hidden="true"></i> {{ 'ACCOMM.ROOMS_TITLE' | translate }}</h3>
               <div class="rooms-list">
                 <div class="room-item" [class.selected]="store.accommodationRoomCategory() === 'SINGLE'" (click)="selectRoom('SINGLE')">
                   <div class="room-icon" aria-hidden="true"><i class="pi pi-user"></i></div>
                   <div class="room-info">
-                    <strong>Single room</strong>
-                    <span>1 guest · Garden view</span>
+                    <strong>{{ 'ACCOMM.ROOM_SINGLE' | translate }}</strong>
+                    <span>{{ 'ACCOMM.ROOM_SINGLE_DESC' | translate }}</span>
                   </div>
-                  <div class="room-price">{{ roomNightly(acc, 'SINGLE') | number:'1.0-0' }} TND / night</div>
+                  <div class="room-price">{{ roomNightly(acc, 'SINGLE') | dualCurrency }} <span class="room-per-night">{{ 'ACCOMM.PER_NIGHT' | translate }}</span></div>
                 </div>
                 <div class="room-item" [class.selected]="store.accommodationRoomCategory() === 'DOUBLE'" (click)="selectRoom('DOUBLE')">
                   <div class="room-icon" aria-hidden="true"><i class="pi pi-users"></i></div>
                   <div class="room-info">
-                    <strong>Double room</strong>
-                    <span>2 guests · Sea view available</span>
+                    <strong>{{ 'ACCOMM.ROOM_DOUBLE' | translate }}</strong>
+                    <span>{{ 'ACCOMM.ROOM_DOUBLE_DESC' | translate }}</span>
                   </div>
-                  <div class="room-price">{{ roomNightly(acc, 'DOUBLE') | number:'1.0-0' }} TND / night</div>
+                  <div class="room-price">{{ roomNightly(acc, 'DOUBLE') | dualCurrency }} <span class="room-per-night">{{ 'ACCOMM.PER_NIGHT' | translate }}</span></div>
                 </div>
                 @if (eligibleSuite(acc)) {
                   <div class="room-item suite" [class.selected]="store.accommodationRoomCategory() === 'SUITE'" (click)="selectRoom('SUITE')">
                     <div class="room-icon" aria-hidden="true"><i class="pi pi-star-fill"></i></div>
                     <div class="room-info">
-                      <strong>Luxury suite</strong>
-                      <span>4 guests · Terrace · Panoramic view</span>
+                      <strong>{{ 'ACCOMM.ROOM_SUITE' | translate }}</strong>
+                      <span>{{ 'ACCOMM.ROOM_SUITE_DESC' | translate }}</span>
                     </div>
-                    <div class="room-price">{{ roomNightly(acc, 'SUITE') | number:'1.0-0' }} TND / night</div>
+                    <div class="room-price">{{ roomNightly(acc, 'SUITE') | dualCurrency }} <span class="room-per-night">{{ 'ACCOMM.PER_NIGHT' | translate }}</span></div>
                   </div>
                 }
               </div>
@@ -136,8 +133,8 @@ import {
           <div class="booking-widget">
             <div class="widget-card">
               <div class="widget-price">
-                <span class="price-big">{{ effectiveNightly() | number:'1.0-0' }}</span>
-                <span class="price-unit">TND / night</span>
+                <span class="price-widget-dual">{{ effectiveNightly() | dualCurrency }}</span>
+                <span class="price-unit"><small>{{ 'ACCOMM.PER_NIGHT' | translate }}</small></span>
               </div>
               <div class="rating-small">{{ getStars(acc.rating) }} {{ acc.rating }}/5</div>
 
@@ -147,20 +144,20 @@ import {
               <form [formGroup]="dateForm" class="date-form">
                 <div class="date-row">
                   <div class="date-field">
-                    <label><i class="pi pi-calendar widget-label-pi" aria-hidden="true"></i> Check-in</label>
+                    <label><i class="pi pi-calendar widget-label-pi" aria-hidden="true"></i> {{ 'ACCOMM.CHECK_IN' | translate }}</label>
                     <input type="date" formControlName="checkIn" [min]="today">
                   </div>
                   <div class="date-field">
-                    <label><i class="pi pi-calendar widget-label-pi" aria-hidden="true"></i> Check-out</label>
+                    <label><i class="pi pi-calendar widget-label-pi" aria-hidden="true"></i> {{ 'ACCOMM.CHECK_OUT' | translate }}</label>
                     <input type="date" formControlName="checkOut" [min]="tomorrow">
                   </div>
                 </div>
 
                 <div class="pax-field">
-                  <label><i class="pi pi-users widget-label-pi" aria-hidden="true"></i> Guests</label>
+                  <label><i class="pi pi-users widget-label-pi" aria-hidden="true"></i> {{ 'ACCOMM.GUESTS' | translate }}</label>
                   <select formControlName="guests">
                     @for (i of guestOptions(); track i) {
-                      <option [value]="i">{{ i }} guest(s)</option>
+                      <option [value]="i">{{ 'ACCOMM.GUESTS_OPTION' | translate: { n: i } }}</option>
                     }
                   </select>
                 </div>
@@ -170,27 +167,27 @@ import {
               @if (nightCount() > 0) {
                 <div class="price-breakdown">
                   <div class="breakdown-row">
-                    <span>{{ effectiveNightly() | number:'1.0-0' }} TND × {{ nightCount() }} night(s)</span>
-                    <span>{{ totalPrice() | number:'1.0-0' }} TND</span>
+                    <span>{{ effectiveNightly() | dualCurrency }} {{ 'ACCOMM.X_NIGHTS' | translate: { n: nightCount() } }}</span>
+                    <span>{{ totalPrice() | dualCurrency }}</span>
                   </div>
                   <div class="breakdown-row">
-                    <span>Taxes &amp; fees</span>
-                    <span>{{ taxAmount() | number:'1.0-0' }} TND</span>
+                    <span>{{ 'ACCOMM.TAXES_FEES' | translate }}</span>
+                    <span>{{ taxAmount() | dualCurrency }}</span>
                   </div>
                   <hr class="divider">
                   <div class="breakdown-row total-row">
-                    <strong>Total</strong>
-                    <strong class="total-price">{{ grandTotal() | number:'1.0-0' }} TND</strong>
+                    <strong>{{ 'ACCOMM.TOTAL' | translate }}</strong>
+                    <strong class="total-price">{{ grandTotal() | dualCurrency }}</strong>
                   </div>
                 </div>
               }
 
               <button class="btn-book" (click)="onBook()"
                       [disabled]="dateForm.invalid || nightCount() <= 0">
-                Book now
+                {{ 'ACCOMM.BOOK_NOW' | translate }}
               </button>
 
-              <p class="no-charge"><i class="pi pi-check-circle no-charge-pi" aria-hidden="true"></i> Free cancellation · No hidden fees</p>
+              <p class="no-charge"><i class="pi pi-check-circle no-charge-pi" aria-hidden="true"></i> {{ 'ACCOMM.TRUST_BADGE' | translate }}</p>
             </div>
           </div>
         </div>
@@ -256,8 +253,9 @@ import {
     /* Booking Widget */
     .booking-widget { position: sticky; top: 100px; height: fit-content; }
     .widget-card { background: var(--surface-1); border: 1px solid var(--border-soft); border-radius: 20px; padding: 2rem; box-shadow: var(--shadow-card); }
-    .widget-price { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
-    .price-big { font-size: 2.2rem; font-weight: 800; color: var(--text-color); }
+    .widget-price { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; margin-bottom: 4px; }
+    .price-widget-dual { font-size: 1.05rem; font-weight: 800; color: var(--text-color); line-height: 1.3; max-width: 100%; }
+    .room-per-night { font-size: 0.78rem; color: var(--text-muted); font-weight: 600; white-space: nowrap; }
     .price-unit { color: var(--text-muted); }
     .rating-small { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1.5rem; }
     .divider { border: none; border-top: 1px solid var(--border-soft); margin: 1.5rem 0; }
@@ -301,12 +299,15 @@ import {
   `]
 })
 export class AccommodationDetailsPageComponent implements OnInit {
+  private readonly _currencyDisplaySync = createCurrencyDisplaySyncEffect();
+
   route = inject(ActivatedRoute);
   router = inject(Router);
   store = inject(TripContextStore);
   dataSource = inject(DATA_SOURCE_TOKEN);
   fb = inject(FormBuilder);
   private destroyRef = inject(DestroyRef);
+  private translate = inject(TranslateService);
 
   accommodation = signal<Accommodation | null>(null);
   loading = signal(true);
@@ -449,13 +450,9 @@ export class AccommodationDetailsPageComponent implements OnInit {
   }
 
   formatType(type: string): string {
-    const map: Record<string, string> = {
-      HOTEL: 'Hotel',
-      MAISON_HOTE: 'Guest house',
-      GUESTHOUSE: 'Rural guesthouse',
-      AUTRE: 'Stay',
-    };
-    return map[type] || type;
+    const key = `ACCOMM.TYPE_${type}`;
+    const t = this.translate.instant(key);
+    return t !== key ? t : type;
   }
 
   typeIconSrc(type: string): string {

@@ -1,6 +1,7 @@
 package org.example.backend.repository;
 
 import org.example.backend.model.TransportReservation;
+import org.example.backend.model.TransportReservation.ReservationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -24,27 +25,41 @@ public interface TransportReservationRepository extends JpaRepository<TransportR
 
     @Query("SELECT COALESCE(SUM(r.numberOfSeats), 0) FROM TransportReservation r " +
            "WHERE r.transport.transportId = :id " +
-           "AND r.status IN (org.example.backend.model.TransportReservation.ReservationStatus.CONFIRMED, " +
-           "org.example.backend.model.TransportReservation.ReservationStatus.PENDING)")
-    int countBookedSeats(@Param("id") int transportId);
+           "AND r.status IN :statuses")
+    int countBookedSeats(@Param("id") int transportId, @Param("statuses") List<ReservationStatus> statuses);
+
+    default int countBookedSeats(int transportId) {
+        return countBookedSeats(transportId, List.of(ReservationStatus.CONFIRMED, ReservationStatus.PENDING));
+    }
 
     @Query("SELECT COUNT(r) FROM TransportReservation r " +
            "WHERE r.transport.transportId = :id " +
-           "AND r.status IN (org.example.backend.model.TransportReservation.ReservationStatus.CONFIRMED, " +
-           "org.example.backend.model.TransportReservation.ReservationStatus.PENDING) " +
+           "AND r.status IN :statuses " +
            "AND r.travelDate > CURRENT_TIMESTAMP")
-    long countFutureActiveReservations(@Param("id") int transportId);
+    long countFutureActiveReservations(@Param("id") int transportId, @Param("statuses") List<ReservationStatus> statuses);
+
+    default long countFutureActiveReservations(int transportId) {
+        return countFutureActiveReservations(transportId, List.of(ReservationStatus.CONFIRMED, ReservationStatus.PENDING));
+    }
 
     @Query("SELECT COUNT(r) FROM TransportReservation r " +
            "WHERE r.transport.transportId = :id " +
-           "AND r.status = org.example.backend.model.TransportReservation.ReservationStatus.CONFIRMED " +
+           "AND r.status = :status " +
            "AND r.travelDate > CURRENT_TIMESTAMP")
-    long countFutureConfirmedReservations(@Param("id") int transportId);
+    long countFutureConfirmedReservations(@Param("id") int transportId, @Param("status") ReservationStatus status);
+
+    default long countFutureConfirmedReservations(int transportId) {
+        return countFutureConfirmedReservations(transportId, ReservationStatus.CONFIRMED);
+    }
 
     @Query("SELECT COUNT(r) FROM TransportReservation r " +
-           "WHERE r.status = org.example.backend.model.TransportReservation.ReservationStatus.CONFIRMED " +
+           "WHERE r.status = :status " +
            "AND FUNCTION('DATE', r.travelDate) = FUNCTION('CURDATE')")
-    long countTodayConfirmed();
+    long countTodayConfirmed(@Param("status") ReservationStatus status);
+
+    default long countTodayConfirmed() {
+        return countTodayConfirmed(ReservationStatus.CONFIRMED);
+    }
 
     @Query("SELECT DISTINCT r FROM TransportReservation r " +
            "LEFT JOIN FETCH r.user " +

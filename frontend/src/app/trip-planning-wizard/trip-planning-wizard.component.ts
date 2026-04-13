@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
+import { TranslateModule } from '@ngx-translate/core';
 import { AuthService } from '../core/auth.service';
 
 type Tri = boolean | null;
@@ -8,7 +9,7 @@ type Tri = boolean | null;
 @Component({
   selector: 'app-trip-planning-wizard',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, TranslateModule],
   templateUrl: './trip-planning-wizard.component.html',
   styleUrl: './trip-planning-wizard.component.css',
 })

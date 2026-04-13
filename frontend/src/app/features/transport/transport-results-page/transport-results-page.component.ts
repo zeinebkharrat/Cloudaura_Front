@@ -1,4 +1,11 @@
-import { Component, OnInit, inject, signal, computed, ChangeDetectionStrategy } from '@angular/core';
+import {
+  Component,
+  OnInit,
+  inject,
+  signal,
+  computed,
+  ChangeDetectionStrategy,
+} from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
@@ -7,7 +14,8 @@ import { RippleModule } from 'primeng/ripple';
 import { TripContextStore } from '../../../core/stores/trip-context.store';
 import { DATA_SOURCE_TOKEN } from '../../../core/adapters/data-source.adapter';
 import { AppAlertsService } from '../../../core/services/app-alerts.service';
-import { Transport, City, TransportType, TRANSPORT_TYPE_META } from '../../../core/models/travel.models';
+import { Transport, City } from '../../../core/models/travel.models';
+import { TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-transport-results-page',
@@ -29,13 +37,13 @@ import { Transport, City, TransportType, TRANSPORT_TYPE_META } from '../../../co
 
         <div class="rp-badges">
           <span class="rp-badge"><i class="pi pi-calendar"></i> {{ formatSearchDateTime(queryParams.date) }}</span>
-          <span class="rp-badge"><i class="pi pi-users"></i> {{ queryParams.passengers }} passager(s)</span>
-          <span class="rp-badge rp-badge-accent">{{ getTypeEmoji(queryParams.transportType) }} {{ getTypeLabel(queryParams.transportType) }}</span>
+          <span class="rp-badge"><i class="pi pi-users"></i> {{ 'TRANSPORT_RESULTS.BADGE_PASSENGERS' | translate: { n: queryParams.passengers } }}</span>
+          <span class="rp-badge rp-badge-accent">{{ getTypeEmoji(queryParams.transportType) }} {{ transportTypeLabelKey(queryParams.transportType) | translate }}</span>
         </div>
 
         <button class="rp-back" pRipple (click)="goBack()">
           <i class="pi pi-arrow-left"></i>
-          <span>Edit search</span>
+          <span>{{ 'TRANSPORT_RESULTS.BACK_EDIT' | translate }}</span>
         </button>
       </header>
 
@@ -64,13 +72,13 @@ import { Transport, City, TransportType, TRANSPORT_TYPE_META } from '../../../co
           <!-- Empty State -->
           <div class="rp-empty">
             <div class="rp-empty-icon">{{ getTypeEmoji(queryParams.transportType) }}</div>
-            <h3>No trips available</h3>
-            <p>No <strong>{{ getTypeLabel(queryParams.transportType) }}</strong> options for this route and date.</p>
-            <p class="rp-empty-hint">Use the button above to change your search criteria.</p>
+            <h3>{{ 'TRANSPORT_RESULTS.EMPTY_TITLE' | translate }}</h3>
+            <p><span>{{ 'TRANSPORT_RESULTS.EMPTY_PART1' | translate }}</span><strong>{{ transportTypeLabelKey(queryParams.transportType) | translate }}</strong><span>{{ 'TRANSPORT_RESULTS.EMPTY_PART2' | translate }}</span></p>
+            <p class="rp-empty-hint">{{ 'TRANSPORT_RESULTS.EMPTY_HINT' | translate }}</p>
           </div>
         } @else {
           <!-- Results Count -->
-          <p class="rp-count">{{ sortedResults().length }} trip(s) available</p>
+          <p class="rp-count">{{ 'TRANSPORT_RESULTS.COUNT' | translate: { n: sortedResults().length } }}</p>
 
           <!-- Result Cards -->
           <div class="rp-list">
@@ -78,9 +86,9 @@ import { Transport, City, TransportType, TRANSPORT_TYPE_META } from '../../../co
               <div class="tc" pRipple (click)="onSelect(t)">
                 <!-- Top row: type badge + seats warning -->
                 <div class="tc-top">
-                  <p-tag [value]="getTypeLabel(t.type)" [severity]="getTypeSeverity(t.type)"></p-tag>
+                  <p-tag [value]="('TRANSPORT.TYPE.' + (t.type || 'BUS')) | translate" [severity]="getTypeSeverity(t.type)"></p-tag>
                   @if (t.availableSeats !== undefined && t.availableSeats < 5) {
-                    <span class="tc-warn"><i class="pi pi-exclamation-triangle"></i> Only {{ t.availableSeats }} seat(s) left</span>
+                    <span class="tc-warn"><i class="pi pi-exclamation-triangle"></i> {{ 'TRANSPORT_RESULTS.SEATS_LEFT' | translate: { n: t.availableSeats } }}</span>
                   }
                 </div>
 
@@ -110,13 +118,7 @@ import { Transport, City, TransportType, TRANSPORT_TYPE_META } from '../../../co
                 <!-- Info + CTA row -->
                 <div class="tc-bottom">
                   <div class="tc-details">
-                    @if (t.vehicleBrand) {
-                      <span class="tc-vehicle"><i class="pi pi-car"></i> {{ t.vehicleBrand }} {{ t.vehicleModel }}</span>
-                    }
-                    <span class="tc-seats"><i class="pi pi-users"></i> {{ t.availableSeats ?? t.capacity }} seats</span>
-                    @if (t.driverRating) {
-                      <span class="tc-rating"><i class="pi pi-star-fill"></i> {{ t.driverRating }}</span>
-                    }
+                    <span class="tc-seats"><i class="pi pi-users"></i> {{ 'TRANSPORT_RESULTS.SEATS' | translate: { n: (t.availableSeats ?? t.capacity) } }}</span>
                   </div>
 
                   <div class="tc-action">
@@ -124,7 +126,7 @@ import { Transport, City, TransportType, TRANSPORT_TYPE_META } from '../../../co
                       <span class="tc-amount">{{ t.price }}</span>
                       <span class="tc-currency">TND</span>
                     </div>
-                    <button pButton label="Book" icon="pi pi-arrow-right"
+                    <button pButton [label]="'TRANSPORT_RESULTS.BTN_BOOK' | translate" icon="pi pi-arrow-right"
                             iconPos="right" class="p-button-sm p-button-raised"></button>
                   </div>
                 </div>
@@ -251,13 +253,9 @@ import { Transport, City, TransportType, TRANSPORT_TYPE_META } from '../../../co
     .tc-details {
       display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
     }
-    .tc-vehicle, .tc-seats {
+    .tc-seats {
       display: flex; align-items: center; gap: 0.35rem;
       font-size: 0.82rem; color: var(--text-muted, #a8b3c7);
-    }
-    .tc-rating {
-      display: flex; align-items: center; gap: 3px;
-      font-size: 0.82rem; font-weight: 700; color: #facc15;
     }
 
     .tc-action { display: flex; align-items: center; gap: 1rem; flex-shrink: 0; }
@@ -313,6 +311,7 @@ export class TransportResultsPageComponent implements OnInit {
   private store = inject(TripContextStore);
   private dataSource = inject(DATA_SOURCE_TOKEN);
   private alerts = inject(AppAlertsService);
+  private translate = inject(TranslateService);
 
   loading = signal(true);
   allResults = signal<Transport[]>([]);
@@ -360,8 +359,8 @@ export class TransportResultsPageComponent implements OnInit {
       error: () => {
         this.loading.set(false);
         void this.alerts.error(
-          'Could not load results',
-          'We could not fetch trips. Check your connection and try again.'
+          this.translate.instant('TRANSPORT_RESULTS.ALERT_LOAD_TITLE'),
+          this.translate.instant('TRANSPORT_RESULTS.ALERT_LOAD_BODY'),
         );
       },
     });
@@ -411,8 +410,9 @@ export class TransportResultsPageComponent implements OnInit {
     return h > 0 ? `${h}h${m > 0 ? String(m).padStart(2, '0') : ''}` : `${m}min`;
   }
 
-  getTypeLabel(type: string): string {
-    return TRANSPORT_TYPE_META[type as TransportType]?.label ?? type;
+  transportTypeLabelKey(raw: string | undefined): string {
+    const u = (raw ?? 'BUS').toString().toUpperCase();
+    return `TRANSPORT.TYPE.${u}`;
   }
 
   getTypeEmoji(type: string): string {

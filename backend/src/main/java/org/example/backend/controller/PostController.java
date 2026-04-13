@@ -36,7 +36,7 @@ public class PostController {
         post.setAuthor(currentUser);
 
         if (post.getLocation() == null || post.getLocation().trim().isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "City is required");
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "api.error.post_city_required");
         }
 
         Date now = new Date();
@@ -59,16 +59,16 @@ public class PostController {
         Post existingPost = postService.retrievePost(id);
         
         if (existingPost == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.post_not_found");
         }
         
         // Only allow users to update their own posts
         if (!existingPost.getAuthor().getUserId().equals(currentUser.getUserId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only edit your own posts");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "api.error.post_edit_forbidden");
         }
 
         if (post.getLocation() == null || post.getLocation().trim().isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "City is required");
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "api.error.post_city_required");
         }
         
         // Preserve author + immutable create date, refresh update date, and keep server counters authoritative.
@@ -84,9 +84,10 @@ public class PostController {
     }
 
     @PostMapping("/repost/{id}")
-    public ResponseEntity<?> repost(@PathVariable Integer id) {
+    public ResponseEntity<?> repost(@PathVariable Integer id, @RequestBody(required = false) Map<String, String> payload) {
         User currentUser = getCurrentUser();
-        Post repost = postService.repost(id, currentUser.getUserId());
+        String caption = payload != null ? payload.get("caption") : null;
+        Post repost = postService.repost(id, currentUser.getUserId(), caption);
         if (repost == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Original post not found"));
         }
@@ -99,12 +100,12 @@ public class PostController {
         Post existingPost = postService.retrievePost(id);
         
         if (existingPost == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.post_not_found");
         }
         
         // Only allow users to delete their own posts
         if (!existingPost.getAuthor().getUserId().equals(currentUser.getUserId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only delete your own posts");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "api.error.post_delete_forbidden");
         }
         
         postService.removePost(id);
@@ -149,7 +150,7 @@ public class PostController {
     private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.unauthorized");
         }
         
         // Extract User entity from CustomUserDetails
@@ -158,7 +159,7 @@ public class PostController {
             return ((CustomUserDetailsService.CustomUserDetails) principal).getUser();
         }
         
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid authentication principal");
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.invalid_principal");
     }
 }
 

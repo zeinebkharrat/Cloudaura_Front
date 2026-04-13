@@ -1,0 +1,35 @@
+<div class="cur-wrap" [class.cur-wrap--loading]="currency.ratesLoading()">
+  <label class="cur-label" for="yallatn-currency">{{ 'CURRENCY_UI.LABEL' | translate }}</label>
+  <div class="cur-row">
+    <select
+      id="yallatn-currency"
+      class="cur-select"
+      [ngModel]="currency.selectedCode()"
+      (ngModelChange)="onChange($event)"
+      [disabled]="currency.ratesLoading()"
+      aria-describedby="yallatn-currency-hint"
+    >
+      @for (o of options; track o.code) {
+        <option [ngValue]="o.code">{{ o.label }}</option>
+      }
+    </select>
+    @if (currency.ratesLoading()) {
+      <span class="cur-spinner" aria-hidden="true"></span>
+    }
+  </div>
+  <span id="yallatn-currency-hint" class="cur-hint">
+    @if (currency.ratesError()) {
+      <span class="cur-err">{{ 'CURRENCY_UI.RATES_UNAVAILABLE' | translate }}</span>
+    } @else {
+      @if (currency.snapshot(); as snap) {
+        @if (snap.source !== 'LIVE') {
+          <span class="cur-warn">{{
+            snap.source === 'EMERGENCY_FALLBACK'
+              ? ('CURRENCY_UI.RATES_FALLBACK' | translate)
+              : ('CURRENCY_UI.RATES_CACHED' | translate)
+          }}</span>
+        }
+      }
+    }
+  </span>
+</div>

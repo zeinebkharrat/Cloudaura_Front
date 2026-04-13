@@ -1,0 +1,13 @@
+<div class="lang-selector" role="group" [attr.aria-label]="'COMMON.LANGUAGE' | translate">
+  @for (opt of options; track opt.code) {
+    <button
+      type="button"
+      class="lang-btn"
+      [class.lang-btn--active]="opt.code === current()"
+      (click)="select(opt.code)"
+      [attr.aria-pressed]="opt.code === current()"
+    >
+      {{ opt.label }}
+    </button>
+  }
+</div>

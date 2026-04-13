@@ -4,12 +4,14 @@ import lombok.RequiredArgsConstructor;
 import org.example.backend.dto.ActivityRequest;
 import org.example.backend.dto.ActivityResponse;
 import org.example.backend.exception.ResourceNotFoundException;
+import org.example.backend.i18n.CatalogKeyUtil;
 import org.example.backend.model.ActivityMedia;
 import org.example.backend.model.Activity;
 import org.example.backend.model.ReservationStatus;
 import org.example.backend.repository.ActivityReservationRepository;
 import org.example.backend.repository.ActivityMediaRepository;
 import org.example.backend.repository.ActivityRepository;
+import org.example.backend.repository.ActivityReviewRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -36,7 +38,9 @@ public class ActivityService {
     private final ActivityRepository activityRepository;
     private final ActivityMediaRepository activityMediaRepository;
     private final ActivityReservationRepository activityReservationRepository;
+    private final ActivityReviewRepository activityReviewRepository;
     private final CityService cityService;
+    private final CatalogTranslationService catalogTranslationService;
 
     public Page<ActivityResponse> list(String q, Pageable pageable) {
         return list(q, null, null, null, null, 1, pageable);
@@ -117,13 +121,15 @@ public class ActivityService {
     @Transactional
     public void delete(Integer id) {
         Activity activity = findActivity(id);
+        activityReservationRepository.deleteByActivityActivityId(activity.getActivityId());
+        activityReviewRepository.deleteByActivityActivityId(activity.getActivityId());
         activityMediaRepository.deleteByActivityActivityId(activity.getActivityId());
         activityRepository.delete(activity);
     }
 
     public Activity findActivity(Integer id) {
         return activityRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Activité introuvable: " + id));
+            .orElseThrow(() -> new ResourceNotFoundException("reservation.error.activity_not_found"));
     }
 
     private void apply(Activity activity, ActivityRequest request) {
@@ -138,7 +144,7 @@ public class ActivityService {
 
         Integer maxParticipants = request.getMaxParticipantsPerDay();
         if (maxParticipants != null && maxParticipants < 1) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le nombre maximal de participants doit être >= 1");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.activity.max_participants_invalid");
         }
 
         if (maxParticipants == null) {
@@ -160,15 +166,34 @@ public class ActivityService {
             .map(ActivityMedia::getUrl)
             .orElse(null);
 
+        int aid = activity.getActivityId();
+        int cid = activity.getCity().getCityId();
+
+        String rawName = activity.getName();
+        String resName = catalogTranslationService.resolveEntityField(aid, "activity", "name", rawName);
+        String nameOut = CatalogKeyUtil.isBadI18nPlaceholder(rawName, resName) ? "" : resName;
+
+        String rawType = activity.getType();
+        String resType = catalogTranslationService.resolveEntityField(aid, "activity", "type", rawType);
+        String typeOut = CatalogKeyUtil.isBadI18nPlaceholder(rawType, resType) ? "" : resType;
+
+        String rawDesc = activity.getDescription();
+        String resDesc = catalogTranslationService.resolveEntityField(aid, "activity", "description", rawDesc);
+        String descOut = CatalogKeyUtil.isBadI18nPlaceholder(rawDesc, resDesc) ? null : resDesc;
+
+        String rawAddr = activity.getAddress();
+        String resAddr = catalogTranslationService.resolveEntityField(aid, "activity", "address", rawAddr);
+        String addrOut = CatalogKeyUtil.isBadI18nPlaceholder(rawAddr, resAddr) ? null : resAddr;
+
         return new ActivityResponse(
             activity.getActivityId(),
             activity.getCity().getCityId(),
-            activity.getCity().getName(),
-            activity.getName(),
-            activity.getType(),
+            catalogTranslationService.resolveEntityField(cid, "city", "name", activity.getCity().getName()),
+            nameOut,
+            typeOut,
             activity.getPrice(),
-            activity.getDescription(),
-            activity.getAddress(),
+            descOut,
+            addrOut,
             activity.getLatitude(),
             activity.getLongitude(),
             imageUrl,

@@ -2,22 +2,31 @@ import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { ExploreService } from './explore.service';
-import { Activity, City } from './explore.models';
+import { Activity, City, VoiceTranscriptionResponse } from './explore.models';
+import { VoiceSearchService } from './voice-search.service';
+import { parseActivityVoiceQuery } from './voice-query.parser';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { DualCurrencyPipe } from '../core/pipes/dual-currency.pipe';
+import { createCurrencyDisplaySyncEffect } from '../core/utils/currency-display-sync';
 
 @Component({
   selector: 'app-services-activities',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, DualCurrencyPipe, TranslateModule],
   templateUrl: './services-activities.component.html',
   styleUrl: './services-activities.component.css',
 })
 export class ServicesActivitiesComponent implements OnInit, OnDestroy {
+  private readonly _currencyDisplaySync = createCurrencyDisplaySyncEffect();
+
   loading = signal(true);
   error = signal('');
   activities = signal<Activity[]>([]);
   cities = signal<City[]>([]);
   q = signal('');
+  voiceQuery = signal('');
   selectedCityId = signal<number | 'all'>('all');
   sort = signal('activityId,desc');
   selectedDate = signal('');
@@ -31,15 +40,33 @@ export class ServicesActivitiesComponent implements OnInit, OnDestroy {
   totalPages = signal(0);
   totalElements = signal(0);
   activityRatingById = signal<Record<number, number>>({});
+  voiceSupported = signal(false);
+  voiceListening = signal(false);
+  voiceProcessing = signal(false);
+  voiceError = signal('');
+  lastTranscript = signal('');
+  voiceSuggestion = signal('');
+  voiceDetectedFilters = signal({
+    city: false,
+    budget: false,
+    date: false,
+    participants: false,
+  });
 
   private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   private priceDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   pageNumbers = computed(() => Array.from({ length: this.totalPages() }, (_, index) => index));
 
-  constructor(private readonly exploreService: ExploreService) {}
+  constructor(
+    private readonly exploreService: ExploreService,
+    private readonly voiceSearchService: VoiceSearchService,
+    private readonly http: HttpClient,
+    private readonly translate: TranslateService
+  ) {}
 
   ngOnInit(): void {
+    this.voiceSupported.set(this.voiceSearchService.isSupported());
     this.loadCities();
     this.loadActivities();
   }
@@ -55,6 +82,7 @@ export class ServicesActivitiesComponent implements OnInit, OnDestroy {
 
   onSearchChange(value: string): void {
     this.q.set(value);
+    this.voiceQuery.set('');
     if (this.searchDebounceTimer) {
       clearTimeout(this.searchDebounceTimer);
     }
@@ -121,10 +149,118 @@ export class ServicesActivitiesComponent implements OnInit, OnDestroy {
   }
 
   clearAvailabilityFilter(): void {
+    this.q.set('');
+    this.voiceQuery.set('');
+    this.selectedCityId.set('all');
+    this.minPrice.set(this.sliderMin);
+    this.maxPrice.set(this.sliderMax);
     this.selectedDate.set('');
     this.participants.set(1);
+    this.voiceSuggestion.set('');
+    this.voiceError.set('');
+    this.lastTranscript.set('');
+    this.voiceDetectedFilters.set({
+      city: false,
+      budget: false,
+      date: false,
+      participants: false,
+    });
     this.page.set(0);
     this.loadActivities();
+  }
+
+  async onVoiceSearchClick(): Promise<void> {
+    this.voiceError.set('');
+    this.voiceSuggestion.set('');
+
+    if (!this.voiceSupported()) {
+      this.voiceError.set(this.translate.instant('EXPLORE_SERVICES_ACTIVITIES.ERR_VOICE_UNSUPPORTED'));
+      return;
+    }
+
+    if (this.voiceProcessing()) {
+      return;
+    }
+
+    if (!this.voiceListening()) {
+      try {
+        await this.voiceSearchService.startCapture();
+        this.voiceListening.set(true);
+      } catch {
+        this.voiceError.set(this.translate.instant('EXPLORE_SERVICES_ACTIVITIES.ERR_MIC_PERMISSION'));
+      }
+      return;
+    }
+
+    this.voiceListening.set(false);
+    this.voiceProcessing.set(true);
+
+    try {
+      const audioBlob = await this.voiceSearchService.stopCapture();
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'voice-search.webm');
+
+      this.http.post<VoiceTranscriptionResponse>('/api/public/voice/transcribe', formData).subscribe({
+        next: (result: VoiceTranscriptionResponse) => {
+          const transcript = (result.text || '').trim();
+          if (!transcript) {
+            this.voiceError.set(this.translate.instant('EXPLORE_SERVICES_ACTIVITIES.ERR_NO_SPEECH'));
+            this.voiceProcessing.set(false);
+            return;
+          }
+
+          const parsed = parseActivityVoiceQuery(transcript, this.cities());
+          this.lastTranscript.set(parsed.cleanedTranscript);
+          this.voiceDetectedFilters.set(parsed.detected);
+          const budgetOnlyIntent =
+            parsed.detected.budget &&
+            !parsed.detected.city &&
+            !parsed.detected.date &&
+            !parsed.detected.participants;
+          this.voiceQuery.set(budgetOnlyIntent ? '' : parsed.searchQuery);
+
+          if (parsed.cityId != null) {
+            this.selectedCityId.set(parsed.cityId);
+          }
+          if (parsed.minPrice != null) {
+            this.minPrice.set(Math.max(this.sliderMin, Math.min(parsed.minPrice, this.sliderMax)));
+          }
+          if (parsed.maxPrice != null) {
+            this.maxPrice.set(Math.max(this.minPrice(), Math.min(parsed.maxPrice, this.sliderMax)));
+          }
+          if (parsed.date) {
+            this.selectedDate.set(parsed.date);
+          }
+          if (parsed.participants != null) {
+            this.participants.set(Math.max(1, Math.floor(parsed.participants)));
+          }
+
+          const hasAnyDetected =
+            parsed.detected.city ||
+            parsed.detected.budget ||
+            parsed.detected.date ||
+            parsed.detected.participants ||
+            !!(budgetOnlyIntent ? '' : parsed.searchQuery);
+
+          if (!hasAnyDetected) {
+            this.voiceSuggestion.set(this.translate.instant('EXPLORE_SERVICES_ACTIVITIES.VOICE_TRY_SUGGESTION'));
+            this.voiceProcessing.set(false);
+            return;
+          }
+
+          this.page.set(0);
+          this.loadActivities();
+          this.voiceProcessing.set(false);
+        },
+        error: (err: any) => {
+          this.voiceProcessing.set(false);
+          this.voiceError.set(err?.error?.message ?? this.translate.instant('EXPLORE_SERVICES_ACTIVITIES.ERR_VOICE_TRANSCRIPTION'));
+        },
+      });
+    } catch {
+      this.voiceProcessing.set(false);
+      this.voiceError.set(this.translate.instant('EXPLORE_SERVICES_ACTIVITIES.ERR_VOICE_RECORDING'));
+    }
   }
 
   previousPage(): void {
@@ -191,7 +327,7 @@ export class ServicesActivitiesComponent implements OnInit, OnDestroy {
     this.error.set('');
 
     this.exploreService.listActivities({
-      q: this.q(),
+      q: this.buildActivityQuery(),
       cityId: this.selectedCityNumericId(),
       minPrice: this.minPrice(),
       maxPrice: this.maxPrice(),
@@ -210,7 +346,7 @@ export class ServicesActivitiesComponent implements OnInit, OnDestroy {
       },
       error: (err) => {
         this.loading.set(false);
-        this.error.set(err?.error?.message ?? 'Unable to load activities');
+        this.error.set(err?.error?.message ?? this.translate.instant('EXPLORE_SERVICES_ACTIVITIES.ERR_LOAD_ACTIVITIES'));
       },
     });
   }
@@ -233,5 +369,12 @@ export class ServicesActivitiesComponent implements OnInit, OnDestroy {
         },
       });
     }
+  }
+
+  private buildActivityQuery(): string {
+    return [this.q().trim(), this.voiceQuery().trim()]
+      .filter((value) => !!value)
+      .join(' ')
+      .trim();
   }
 }

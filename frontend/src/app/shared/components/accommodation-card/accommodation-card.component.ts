@@ -1,11 +1,14 @@
 import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Accommodation } from '../../../core/models/travel.models';
+import { DualCurrencyPipe } from '../../../core/pipes/dual-currency.pipe';
+import { TranslateModule } from '@ngx-translate/core';
+import { createCurrencyDisplaySyncEffect } from '../../../core/utils/currency-display-sync';
 
 @Component({
   selector: 'app-accommodation-card',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, DualCurrencyPipe, TranslateModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="hotel-card" (click)="select.emit()">
@@ -14,7 +17,7 @@ import { Accommodation } from '../../../core/models/travel.models';
         <div class="visual-content">
           <span class="type-pill">
             <img class="type-pill-icon" [src]="typeIconSrc(accommodation.type)" alt="" width="18" height="18" />
-            {{ formatType(accommodation.type) }}
+            {{ ('HEBERG.TYPE.' + accommodation.type) | translate }}
           </span>
           <div class="visual-icon-wrap">
             <img class="visual-icon-img" [src]="typeIconSrc(accommodation.type)" alt="" />
@@ -34,25 +37,25 @@ import { Accommodation } from '../../../core/models/travel.models';
         
         <div class="location-row">
           <span class="loc-dot"></span>
-          <span>{{ accommodation.cityName || 'Tunisie' }}</span>
+          <span>{{ accommodation.cityName || ('HEBERG.LIST.HERO_TUNISIA' | translate) }}</span>
           <span class="region-tag" *ngIf="accommodation.cityRegion">{{ accommodation.cityRegion }}</span>
         </div>
 
         <!-- Quick amenities -->
         <div class="amenity-row">
-          <span class="amenity-chip"><i class="pi pi-wifi amenity-pi" aria-hidden="true"></i> Wi‑Fi</span>
-          <span class="amenity-chip"><i class="pi pi-car amenity-pi" aria-hidden="true"></i> Parking</span>
-          <span class="amenity-chip" *ngIf="accommodation.rating >= 4"><i class="pi pi-database amenity-pi" aria-hidden="true"></i> Pool</span>
+          <span class="amenity-chip"><i class="pi pi-wifi amenity-pi" aria-hidden="true"></i> {{ 'HEBERG.CARD.WIFI' | translate }}</span>
+          <span class="amenity-chip"><i class="pi pi-car amenity-pi" aria-hidden="true"></i> {{ 'HEBERG.CARD.PARKING' | translate }}</span>
+          <span class="amenity-chip" *ngIf="accommodation.rating >= 4"><i class="pi pi-database amenity-pi" aria-hidden="true"></i> {{ 'HEBERG.CARD.POOL' | translate }}</span>
         </div>
 
         <!-- Footer -->
         <div class="card-footer">
           <div class="price-block">
-            <span class="price-value">{{ accommodation.pricePerNight | number:'1.0-0' }}</span>
-            <span class="price-currency">TND<small>/nuit</small></span>
+            <span class="price-dual">{{ accommodation.pricePerNight | dualCurrency }}</span>
+            <span class="price-currency"><small>{{ 'HEBERG.CARD.NIGHT' | translate }}</small></span>
           </div>
           <button class="btn-voir">
-            Voir <span class="arrow">→</span>
+            {{ 'HEBERG.CARD.VIEW' | translate }} <span class="arrow">→</span>
           </button>
         </div>
       </div>
@@ -207,11 +210,13 @@ import { Accommodation } from '../../../core/models/travel.models';
       padding-top: 12px;
       border-top: 1px solid var(--border-soft);
     }
-    .price-block { display: flex; align-items: baseline; gap: 4px; }
-    .price-value {
-      font-size: 1.5rem;
+    .price-block { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; max-width: 100%; }
+    .price-dual {
+      font-size: 0.92rem;
       font-weight: 800;
       color: var(--text-color);
+      line-height: 1.25;
+      word-break: break-word;
     }
     .price-currency {
       font-size: 0.8rem;
@@ -244,18 +249,10 @@ import { Accommodation } from '../../../core/models/travel.models';
   `]
 })
 export class AccommodationCardComponent {
+  private readonly _currencyDisplaySync = createCurrencyDisplaySyncEffect();
+
   @Input() accommodation!: Accommodation;
   @Output() select = new EventEmitter<void>();
-
-  formatType(type: string): string {
-    const map: Record<string, string> = {
-      HOTEL: 'Hotel',
-      MAISON_HOTE: 'Guest house',
-      GUESTHOUSE: 'Rural guesthouse',
-      AUTRE: 'Stay',
-    };
-    return map[type] || type;
-  }
 
   typeIconSrc(type: string): string {
     if (type === 'HOTEL') return 'icones/hotel.png';

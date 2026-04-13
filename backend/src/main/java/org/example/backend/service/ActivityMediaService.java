@@ -94,7 +94,7 @@ public class ActivityMediaService {
 
     private ActivityMedia findMedia(Integer id) {
         return activityMediaRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Media activité introuvable: " + id));
+            .orElseThrow(() -> new ResourceNotFoundException("api.error.activity_media_not_found"));
     }
 
     private void apply(ActivityMedia media, ActivityMediaRequest request) {

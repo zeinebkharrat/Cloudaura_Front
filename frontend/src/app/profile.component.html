@@ -3,8 +3,17 @@
   <div class="auth-bg-orb auth-bg-orb-right"></div>
 
   <article class="profile-card glass-panel">
-    <h1>My profile</h1>
-    <p class="subtitle">Update your personal information and password.</p>
+    <h1>{{ 'PROFILE.TITLE' | translate }}</h1>
+    <div class="profile-lang-row">
+      <span class="profile-lang-label">{{ 'PROFILE.LANG_LABEL' | translate }}</span>
+      <app-language-selector />
+    </div>
+    <p class="subtitle">
+      {{ 'PROFILE.SUBTITLE' | translate }}
+      @if (currentUser()?.points != null) {
+        <span class="points-pill">{{ 'PROFILE.POINTS' | translate: { n: currentUser()?.points } }}</span>
+      }
+    </p>
 
     <a routerLink="/mes-reservations" class="profile-bookings-cta">
       <span class="profile-bookings-ico" aria-hidden="true">
@@ -16,8 +25,8 @@
         </svg>
       </span>
       <span class="profile-bookings-text">
-        <span class="profile-bookings-title">My bookings</span>
-        <span class="profile-bookings-desc">Transport tickets &amp; stays — pay, download QR, edit or cancel.</span>
+        <span class="profile-bookings-title">{{ 'PROFILE.BOOKINGS_TITLE' | translate }}</span>
+        <span class="profile-bookings-desc">{{ 'PROFILE.BOOKINGS_DESC' | translate }}</span>
       </span>
       <span class="profile-bookings-chev" aria-hidden="true">→</span>
     </a>
@@ -29,19 +38,20 @@
       <div class="msg success">{{ actionSuccess() }}</div>
     }
 
-    <section class="avatar-card">
-      <h2>Profile photo</h2>
-      <div class="avatar-row">
+    <section class="avatar-card avatar-card-modern">
+      <h2>{{ 'PROFILE.PHOTO_TITLE' | translate }}</h2>
+      <p class="avatar-subtitle">{{ 'PROFILE.PHOTO_SUBTITLE' | translate }}</p>
+      <div class="avatar-row avatar-row-modern">
         @if (profileForm.controls.profileImageUrl.value) {
-          <img [src]="profileForm.controls.profileImageUrl.value" alt="Profile photo" class="avatar-preview" />
+          <img [src]="profileForm.controls.profileImageUrl.value" [attr.alt]="'PROFILE.PHOTO_ALT' | translate" class="avatar-preview" />
         } @else {
-          <div class="avatar-placeholder">No image</div>
+          <div class="avatar-placeholder">{{ 'PROFILE.PHOTO_PLACEHOLDER' | translate }}</div>
         }
 
-        <div class="upload-row">
-          <label class="upload-btn" for="profile-upload">{{ uploadBusy() ? 'Upload...' : 'Upload a photo' }}</label>
+        <div class="upload-row upload-row-modern">
+          <label class="upload-btn" for="profile-upload">{{ uploadBusy() ? ('PROFILE.UPLOADING' | translate) : ('PROFILE.UPLOAD_PHOTO' | translate) }}</label>
           <input id="profile-upload" type="file" accept="image/*" (change)="uploadImage($event)" [disabled]="uploadBusy()" />
-          <span class="muted">{{ uploadBusy() ? 'Upload...' : 'Add a clear image for your profile.' }}</span>
+          <span class="muted">{{ uploadBusy() ? ('PROFILE.UPLOADING' | translate) : ('PROFILE.UPLOAD_HINT' | translate) }}</span>
         </div>
       </div>
     </section>
@@ -49,48 +59,48 @@
     <form [formGroup]="profileForm" (ngSubmit)="saveProfile()" class="profile-form">
       <div class="grid-two">
         <label>
-          First name
+          {{ 'PROFILE.FIRST_NAME' | translate }}
           <input type="text" formControlName="firstName" [class.input-invalid]="controlInvalid('firstName')" />
           @if (controlInvalid('firstName')) {
-            <small class="field-error">First name is required (min. 2 characters).</small>
+            <small class="field-error">{{ 'PROFILE.ERR_FIRST_NAME' | translate }}</small>
           }
         </label>
         <label>
-          Last name
+          {{ 'PROFILE.LAST_NAME' | translate }}
           <input type="text" formControlName="lastName" [class.input-invalid]="controlInvalid('lastName')" />
           @if (controlInvalid('lastName')) {
-            <small class="field-error">Last name is required (min. 2 characters).</small>
+            <small class="field-error">{{ 'PROFILE.ERR_LAST_NAME' | translate }}</small>
           }
         </label>
       </div>
 
       <div class="grid-two">
         <label>
-          Email
+          {{ 'PROFILE.EMAIL' | translate }}
           <input type="email" formControlName="email" [class.input-invalid]="controlInvalid('email')" />
           @if (controlInvalid('email')) {
-            <small class="field-error">Please enter a valid email address.</small>
+            <small class="field-error">{{ 'PROFILE.ERR_EMAIL' | translate }}</small>
           }
         </label>
         <label>
-          Numéro WhatsApp (optionnel)
+          {{ 'PROFILE.WHATSAPP_LABEL' | translate }}
           <input
             type="text"
             formControlName="phone"
-            placeholder="+216 XX XXX XXX"
+            [placeholder]="'PROFILE.WHATSAPP_PH' | translate"
             [class.input-invalid]="controlInvalid('phone')" />
           @if (controlInvalid('phone')) {
             <small class="field-error">{{ phoneErrorMessage() }}</small>
           }
-          <span class="muted field-hint">Pour recevoir vos confirmations sur WhatsApp</span>
+          <span class="muted field-hint">{{ 'PROFILE.WHATSAPP_HINT' | translate }}</span>
         </label>
       </div>
 
       <div class="grid-two">
         <label>
-          Nationality
+          {{ 'PROFILE.NATIONALITY' | translate }}
           <select formControlName="nationality">
-            <option value="">Choose a nationality</option>
+            <option value="">{{ 'PROFILE.NATIONALITY_PLACEHOLDER' | translate }}</option>
             @for (nationality of nationalities(); track nationality) {
               <option [value]="nationality">{{ nationality }}</option>
             }
@@ -98,15 +108,15 @@
         </label>
         @if (showCityField()) {
           <label>
-            City
+            {{ 'PROFILE.CITY' | translate }}
             <select formControlName="cityId" [class.input-invalid]="cityErrorVisible()">
-              <option [ngValue]="null">Select a city</option>
+              <option [ngValue]="null">{{ 'PROFILE.CITY_PLACEHOLDER' | translate }}</option>
               @for (city of cities(); track city.id) {
                 <option [ngValue]="city.id">{{ city.name }} ({{ city.region }})</option>
               }
             </select>
             @if (cityErrorVisible()) {
-              <small class="field-error">City is required for Tunisian nationality.</small>
+              <small class="field-error">{{ 'PROFILE.ERR_CITY_TUNISIAN' | translate }}</small>
             }
           </label>
         }
@@ -114,17 +124,17 @@
 
       <div class="profile-actions">
         <button class="btn-primary" type="submit" [disabled]="isSavingProfile()">
-          {{ isSavingProfile() ? 'Saving…' : 'Save profile' }}
+          {{ isSavingProfile() ? ('PROFILE.SAVING' | translate) : ('PROFILE.SAVE_PROFILE' | translate) }}
         </button>
         <button class="btn-outline profile-password-btn" type="button" (click)="openChangePasswordPopup()" [disabled]="isChangingPassword()">
-          {{ isChangingPassword() ? 'Updating…' : 'Change password' }}
+          {{ isChangingPassword() ? ('PROFILE.UPDATING' | translate) : ('PROFILE.CHANGE_PASSWORD' | translate) }}
         </button>
       </div>
     </form>
 
     <section class="password-form compact-note">
-      <h2>Security</h2>
-      <p class="muted">Password changes use a secure popup so sensitive fields are not always visible on the page.</p>
+      <h2>{{ 'PROFILE.SECURITY_TITLE' | translate }}</h2>
+      <p class="muted">{{ 'PROFILE.SECURITY_NOTE' | translate }}</p>
     </section>
   </article>
 </section>

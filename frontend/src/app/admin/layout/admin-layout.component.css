@@ -1,5 +1,17 @@
-.shell { display:grid; grid-template-columns:260px 1fr; min-height:100vh; transition:grid-template-columns .3s ease; }
+/* Keep sidebar on the physical left even when <html dir="rtl"> (Arabic). */
+.shell {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  min-height: 100vh;
+  transition: grid-template-columns 0.3s ease;
+  direction: ltr;
+}
 .shell.collapsed { grid-template-columns:72px 1fr; }
+
+/* Arabic: main pane still flows RTL for post text etc.; chrome stays LTR. */
+:host-context([dir='rtl']) .sb-main {
+  direction: rtl;
+}
 
 .sidebar { position:sticky; top:0; height:100vh; display:flex; flex-direction:column; background-color:#0f172a; border-right:1px solid rgba(255,255,255,.12); z-index:100; transition:all .3s ease; box-shadow:8px 0 28px rgba(0,0,0,.35); }
 

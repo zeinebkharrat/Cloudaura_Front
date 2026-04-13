@@ -6,6 +6,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import * as L from 'leaflet';
 import { Client, IMessage } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
 import { TrackingUpdate } from '../../../core/models/travel.models';
 
 @Component({
@@ -148,17 +149,21 @@ export class TrackingMapComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private connectWebSocket(): void {
-    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const brokerURL = `${proto}//${window.location.host}/ws-native`;
+    const token = localStorage.getItem('auth_token');
 
     this.stompClient = new Client({
-      brokerURL,
+      // Backend exposes STOMP over SockJS at /ws.
+      webSocketFactory: () => new SockJS('/ws'),
+      connectHeaders: token ? { Authorization: `Bearer ${token}` } : {},
       reconnectDelay: 5000,
       onConnect: () => {
         this.stompClient!.subscribe(`/topic/tracking/${this.reservationId}`, (msg: IMessage) => {
           const update = JSON.parse(msg.body) as TrackingUpdate;
           this.handleUpdate(update);
         });
+      },
+      onStompError: () => {
+        this.status.set('IN_TRANSIT');
       },
     });
     this.stompClient.activate();

@@ -1,6 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
 @import 'sweetalert2/dist/sweetalert2.min.css';
 @import 'leaflet/dist/leaflet.css';
+.swal2-container,
+div:where(.swal2-container) {
+  z-index: 30000 !important;
+}
 
 /* Light theme (default tokens; html[data-theme="light"] matches app toggle) */
 :root,
@@ -53,6 +57,131 @@
   --menu-bg: rgba(15, 23, 42, 0.96);
   --menu-hover-bg: rgba(255, 255, 255, 0.08);
   --input-bg: rgba(255, 255, 255, 0.06);
+}
+
+/* ─── Admin modal design system (shared Transport / Accommodation dialogs) ─── */
+:root,
+:root[data-theme="light"] {
+  --adm-space-1: 8px;
+  --adm-space-2: 16px;
+  --adm-space-3: 24px;
+  --adm-modal-radius: 16px;
+  --adm-modal-radius-sm: 12px;
+  --adm-modal-radius-xs: 10px;
+  --adm-modal-overlay: color-mix(in srgb, #0f172a 48%, transparent);
+  --adm-modal-border: var(--glass-border);
+  --adm-modal-shadow: var(--shadow-card);
+  --adm-modal-shadow-elevated: 0 25px 80px color-mix(in srgb, #0f172a 18%, transparent);
+  --adm-modal-glow-line: color-mix(in srgb, var(--mediterranean-blue) 12%, transparent);
+  --adm-dialog-header-bg: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--mediterranean-blue) 14%, var(--surface-1)) 0%,
+    color-mix(in srgb, #6366f1 10%, var(--surface-1)) 50%,
+    color-mix(in srgb, var(--tunisia-red) 8%, var(--surface-1)) 100%
+  );
+  --adm-dialog-content-bg: linear-gradient(
+    165deg,
+    var(--surface-1) 0%,
+    color-mix(in srgb, var(--surface-2) 70%, var(--surface-1) 30%) 50%,
+    var(--surface-1) 100%
+  );
+  --adm-dialog-footer-bg: color-mix(in srgb, var(--surface-2) 55%, var(--surface-1) 45%);
+  /* Opaque shell so the dialog (incl. header + close button) never shows the page through */
+  --adm-dialog-shell-bg: var(--surface-1);
+  --adm-section-bg: color-mix(in srgb, var(--surface-1) 94%, var(--bg-color) 6%);
+  --adm-section-border: var(--border-soft);
+  --adm-section-shadow: var(--shadow-soft);
+  --adm-text: var(--text-color);
+  --adm-text-muted: var(--text-muted);
+  --adm-text-subtle: color-mix(in srgb, var(--text-color) 45%, var(--text-muted) 55%);
+  --adm-primary: var(--tunisia-red);
+  --adm-accent-teal: #0d9488;
+  --adm-accent-indigo: #4f46e5;
+  --adm-accent-violet: #7c3aed;
+  --adm-accent-sky: color-mix(in srgb, var(--mediterranean-blue) 85%, #38bdf8 15%);
+  --adm-head-line: linear-gradient(90deg, var(--adm-accent-teal), var(--adm-accent-indigo), var(--adm-primary));
+  --adm-icon-wrap-bg: color-mix(in srgb, var(--surface-2) 80%, var(--surface-1) 20%);
+  --adm-icon-wrap-border: var(--border-soft);
+  --adm-icon-wrap-fg: var(--adm-accent-teal);
+  --adm-chip-bg: color-mix(in srgb, var(--surface-2) 88%, var(--surface-1) 12%);
+  --adm-chip-border: var(--border-soft);
+  --adm-chip-fg: var(--text-color);
+  --adm-chip-hover-bg: color-mix(in srgb, var(--adm-accent-teal) 12%, var(--surface-1));
+  --adm-chip-active-border: color-mix(in srgb, var(--adm-accent-indigo) 45%, var(--border-soft));
+  --adm-chip-active-bg: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--adm-accent-teal) 16%, var(--surface-1)),
+    color-mix(in srgb, var(--adm-accent-indigo) 14%, var(--surface-1))
+  );
+  --adm-input-bg: var(--input-bg);
+  --adm-input-fg: var(--text-color);
+  --adm-input-border: var(--border-soft);
+  --adm-input-border-focus: color-mix(in srgb, var(--adm-accent-indigo) 50%, var(--border-soft));
+  --adm-focus-ring: 0 0 0 3px color-mix(in srgb, var(--adm-accent-indigo) 22%, transparent);
+  --adm-color-scheme: light;
+  --adm-success: #16a34a;
+  --adm-success-soft: color-mix(in srgb, var(--adm-success) 22%, transparent);
+  --adm-warning: #d97706;
+  --adm-warning-soft: color-mix(in srgb, var(--adm-warning) 22%, transparent);
+  --adm-danger: #dc2626;
+  --adm-danger-soft: color-mix(in srgb, var(--adm-danger) 18%, transparent);
+  --adm-danger-text: color-mix(in srgb, var(--adm-danger) 92%, #fff 8%);
+  --adm-price-frame: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--adm-accent-teal) 38%, transparent),
+    color-mix(in srgb, var(--adm-accent-indigo) 38%, transparent)
+  );
+  --adm-price-inner-bg: var(--surface-1);
+  --adm-price-badge-bg: color-mix(in srgb, var(--adm-accent-teal) 14%, var(--surface-1));
+  --adm-price-badge-border: color-mix(in srgb, var(--adm-accent-teal) 28%, var(--border-soft));
+  --adm-price-badge-fg: var(--adm-accent-teal);
+  --adm-slider-track: var(--surface-3);
+  --adm-slider-range: linear-gradient(90deg, var(--adm-accent-teal), var(--adm-accent-indigo));
+  --adm-slider-handle-border: var(--surface-1);
+  --adm-slider-handle-fill: linear-gradient(135deg, var(--adm-accent-teal), var(--adm-accent-indigo));
+  --adm-btn-secondary-fg: var(--text-color);
+  --adm-btn-secondary-border: var(--border-soft);
+  --adm-btn-secondary-hover-bg: color-mix(in srgb, var(--adm-primary) 8%, var(--surface-2));
+  --adm-btn-secondary-hover-border: color-mix(in srgb, var(--adm-primary) 35%, var(--border-soft));
+  --adm-btn-primary-bg: linear-gradient(135deg, var(--adm-accent-teal) 0%, var(--adm-accent-indigo) 55%, var(--adm-accent-violet) 100%);
+  --adm-btn-primary-shadow: 0 6px 24px color-mix(in srgb, var(--adm-accent-indigo) 35%, transparent);
+  --adm-gradient-text: linear-gradient(90deg, var(--adm-accent-teal), var(--adm-accent-indigo));
+  --adm-route-arrow-fg: var(--text-muted);
+  --adm-status-available-bg: color-mix(in srgb, var(--adm-success) 16%, var(--surface-1));
+  --adm-status-available-fg: var(--adm-success);
+  --adm-status-unavailable-bg: color-mix(in srgb, var(--text-muted) 14%, var(--surface-1));
+  --adm-status-unavailable-fg: var(--text-muted);
+}
+
+:root[data-theme="dark"] {
+  --adm-modal-overlay: color-mix(in srgb, #020617 78%, transparent);
+  --adm-modal-shadow-elevated: 0 25px 80px color-mix(in srgb, #000 55%, transparent);
+  --adm-modal-glow-line: color-mix(in srgb, var(--adm-accent-teal) 10%, transparent);
+  --adm-dialog-content-bg: linear-gradient(
+    165deg,
+    color-mix(in srgb, var(--surface-1) 94%, #020617) 0%,
+    color-mix(in srgb, var(--surface-2) 90%, #020617) 50%,
+    color-mix(in srgb, var(--surface-1) 92%, #020617) 100%
+  );
+  --adm-dialog-footer-bg: color-mix(in srgb, #000 28%, var(--surface-1));
+  --adm-dialog-shell-bg: var(--surface-1);
+  --adm-section-bg: color-mix(in srgb, #000 22%, var(--surface-1));
+  --adm-section-shadow: 0 4px 24px color-mix(in srgb, #000 35%, transparent);
+  --adm-text-subtle: #64748b;
+  --adm-icon-wrap-bg: color-mix(in srgb, #fff 8%, var(--surface-2));
+  --adm-icon-wrap-border: var(--glass-border);
+  --adm-icon-wrap-fg: #5eead4;
+  --adm-chip-bg: color-mix(in srgb, #000 35%, var(--surface-1));
+  --adm-chip-hover-bg: color-mix(in srgb, var(--adm-accent-teal) 14%, var(--surface-1));
+  --adm-input-bg: color-mix(in srgb, #000 40%, var(--surface-1));
+  --adm-input-border: var(--glass-border);
+  --adm-price-inner-bg: color-mix(in srgb, #000 35%, var(--surface-1));
+  --adm-price-badge-fg: #5eead4;
+  --adm-slider-handle-border: #1e293b;
+  --adm-danger-text: #fca5a5;
+  --adm-color-scheme: dark;
+  --adm-btn-secondary-fg: #cbd5e1;
+  --adm-btn-secondary-border: color-mix(in srgb, #fff 18%, transparent);
 }
 
 
@@ -781,4 +910,36 @@ html[data-theme="light"] .p-dropdown-panel .p-dropdown-items-wrapper::-webkit-sc
 }
 html[data-theme="light"] .p-dropdown-panel .p-dropdown-items-wrapper::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
+}
+
+/* RTL (Arabic): logical properties where helpful */
+[dir='rtl'] .navbar,
+[dir='rtl'] .nav-links,
+[dir='rtl'] .nav-actions,
+[dir='rtl'] .footer-content {
+  direction: rtl;
+}
+
+[dir='rtl'] .nav-links {
+  flex-direction: row-reverse;
+}
+
+[dir='rtl'] .footer-text {
+  text-align: left;
+  align-items: flex-start;
+}
+
+[dir='rtl'] input,
+[dir='rtl'] textarea,
+[dir='rtl'] select {
+  text-align: start;
+}
+
+/* BUG 1: discourage browser “Translate this page?” prompts */
+html {
+  -webkit-translate: none;
+}
+
+* {
+  translate: none;
 }

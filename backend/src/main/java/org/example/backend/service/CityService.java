@@ -78,7 +78,7 @@ public class CityService {
 
     public City findCity(Integer id) {
         return cityRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Ville introuvable: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("api.error.city_not_found"));
     }
 
     private void apply(City city, CityRequest request) {

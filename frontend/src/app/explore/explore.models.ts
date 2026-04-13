@@ -67,6 +67,8 @@ export interface PublicReview {
   reviewId: number;
   userId: number;
   username: string;
+  userEmail: string | null;
+  profileImageUrl: string | null;
   stars: number;
   commentText: string;
   createdAt: string;
@@ -115,6 +117,10 @@ export interface ActivityReservationResponse {
   numberOfPeople: number;
   totalPrice: number;
   status: 'PENDING' | 'CONFIRMED' | 'CANCELLED';
+  statusLabel?: string;
+  cityId?: number | null;
+  cityLabel?: string | null;
+  nameLabel?: string | null;
 }
 
 export interface ActivityAvailabilityDay {
@@ -135,7 +141,32 @@ export interface ActivityReservationListItem {
   numberOfPeople: number;
   totalPrice: number;
   status: 'PENDING' | 'CONFIRMED' | 'CANCELLED';
+  statusLabel?: string;
+  nameLabel?: string;
+  cityLabel?: string;
   userId: number | null;
   username: string | null;
   userEmail: string | null;
 }
+
+export interface ActivityCheckoutSessionResponse {
+  sessionId: string;
+  sessionUrl: string;
+}
+
+export interface VoiceTranscriptionResponse {
+  text: string;
+  detectedLanguage: string | null;
+  provider: string;
+}
+
+export interface OpenMeteoCurrentResponse {
+  current?: {
+    time?: string;
+    temperature_2m?: number;
+    weather_code?: number;
+    wind_speed_10m?: number;
+  };
+}
+
+

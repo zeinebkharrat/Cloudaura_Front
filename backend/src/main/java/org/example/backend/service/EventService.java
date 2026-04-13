@@ -1,15 +1,16 @@
 package org.example.backend.service;
 
-import jakarta.transaction.Transactional;
+import java.util.List;
+import java.util.Optional;
+import org.example.backend.i18n.CatalogKeyUtil;
 import org.example.backend.model.City;
 import org.example.backend.model.Event;
 import org.example.backend.repository.CityRepository;
 import org.example.backend.repository.EventRepository;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.Optional;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class EventService {
@@ -17,16 +18,31 @@ public class EventService {
     @Autowired
     private EventRepository eventRepository;
 
-    // --- ajoute ceci ---
     @Autowired
     private CityRepository cityRepository;
+
+    @Autowired
+    private CatalogTranslationService catalogTranslationService;
 
     public List<Event> getAllEvents() {
         return eventRepository.findAll();
     }
 
+    /**
+     * Same as {@link #getAllEvents()} with titles resolved from the {@code translations} table for the request language.
+     */
+    @Transactional(readOnly = true)
+    public List<Event> getAllEventsLocalized() {
+        return getAllEvents().stream().map(this::withTranslatedCopy).toList();
+    }
+
     public Optional<Event> getEventById(Integer id) {
         return eventRepository.findById(id);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<Event> getEventByIdLocalized(Integer id) {
+        return getEventById(id).map(this::withTranslatedCopy);
     }
 
     @Transactional
@@ -45,5 +61,28 @@ public class EventService {
 
     public void deleteEvent(Integer id) {
         eventRepository.deleteById(id);
+    }
+
+    private Event withTranslatedCopy(Event e) {
+        if (e == null) {
+            return null;
+        }
+        Event out = new Event();
+        BeanUtils.copyProperties(e, out, "city", "title", "venue");
+        out.setCity(e.getCity());
+        int eventId = e.getEventId() != null ? e.getEventId() : 0;
+        String rawTitle = e.getTitle();
+        if (CatalogKeyUtil.looksLikeCatalogKey(rawTitle)) {
+            out.setTitle(null);
+        } else {
+            out.setTitle(catalogTranslationService.resolveEntityField(eventId, "event", "name", rawTitle));
+        }
+        String rawVenue = e.getVenue();
+        if (rawVenue == null || CatalogKeyUtil.looksLikeCatalogKey(rawVenue)) {
+            out.setVenue(rawVenue);
+        } else {
+            out.setVenue(catalogTranslationService.resolveEntityField(eventId, "event", "venue", rawVenue));
+        }
+        return out;
     }
 }

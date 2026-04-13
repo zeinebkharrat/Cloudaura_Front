@@ -99,11 +99,37 @@ public class PublicReviewService {
         return toResponse(activityReviewRepository.save(review));
     }
 
+    @Transactional
+    public void deleteRestaurantReview(Integer restaurantId) {
+        restaurantService.findRestaurant(restaurantId);
+        User user = currentAuthenticatedUser();
+
+        RestaurantReview review = restaurantReviewRepository
+            .findByRestaurantRestaurantIdAndUserUserId(restaurantId, user.getUserId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.review_not_found"));
+
+        restaurantReviewRepository.delete(review);
+    }
+
+    @Transactional
+    public void deleteActivityReview(Integer activityId) {
+        activityService.findActivity(activityId);
+        User user = currentAuthenticatedUser();
+
+        ActivityReview review = activityReviewRepository
+            .findByActivityActivityIdAndUserUserId(activityId, user.getUserId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.review_not_found"));
+
+        activityReviewRepository.delete(review);
+    }
+
     private PublicReviewResponse toResponse(RestaurantReview review) {
         return new PublicReviewResponse(
             review.getReviewId(),
             review.getUser().getUserId(),
             review.getUser().getUsername(),
+            review.getUser().getEmail(),
+            review.getUser().getProfileImageUrl(),
             review.getStars(),
             review.getCommentText(),
             review.getCreatedAt()
@@ -115,6 +141,8 @@ public class PublicReviewService {
             review.getReviewId(),
             review.getUser().getUserId(),
             review.getUser().getUsername(),
+            review.getUser().getEmail(),
+            review.getUser().getProfileImageUrl(),
             review.getStars(),
             review.getCommentText(),
             review.getCreatedAt()
@@ -124,11 +152,11 @@ public class PublicReviewService {
     private User currentAuthenticatedUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentification requise");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.review_auth_required");
         }
 
         String username = authentication.getName();
-        return userRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(username, username)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Utilisateur authentifié introuvable"));
+        return userRepository.findFirstByUsernameIgnoreCaseOrEmailIgnoreCaseOrderByUserIdAsc(username, username)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.review_user_missing"));
     }
 }

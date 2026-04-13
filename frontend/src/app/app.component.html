@@ -1,13 +1,13 @@
 @if (!isAdminArea()) {
-<nav class="navbar animate-in" [class.navbar--scrolled]="isScrolled()">
+<nav class="navbar animate-in" [class.navbar--scrolled]="isScrolled()" [class.navbar--overlay]="isHeroRoute() && !isScrolled()">
   <div class="logo">
-    <a routerLink="/" class="logo-link" aria-label="Yalla TN — home">
+    <a routerLink="/" class="logo-link" [attr.aria-label]="'NAV.LOGO_HOME' | translate">
       <img
         class="logo-img"
         src="assets/logo/yallatn-logo.png"
         width="280"
         height="90"
-        alt="Yalla TN — Your journey to Tunisia"
+        [attr.alt]="'NAV.LOGO_ALT' | translate"
       />
     </a>
     
@@ -20,16 +20,16 @@
   </div>
   <ul class="nav-links">
     <li>
-      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Home</a>
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">{{ 'NAV.HOME' | translate }}</a>
     </li>
     <li>
-      <a routerLink="/destination-map" routerLinkActive="active">Destinations</a>
+      <a routerLink="/destination-map" routerLinkActive="active">{{ 'NAV.DESTINATIONS' | translate }}</a>
     </li>
     <li>
-      <a routerLink="/transport" routerLinkActive="active">Transport</a>
+      <a routerLink="/transport" routerLinkActive="active">{{ 'NAV.TRANSPORT' | translate }}</a>
     </li>
     <li>
-      <a routerLink="/planifier-voyage" [class.active]="isStaysNavActive()">Stays</a>
+      <a routerLink="/planifier-voyage" [class.active]="isStaysNavActive()">{{ 'NAV.STAYS' | translate }}</a>
     </li>
     <li class="services-menu-wrap" (click)="$event.stopPropagation()">
       <button
@@ -39,56 +39,55 @@
         [class.active]="isServicesMenuOpen()"
         [attr.aria-expanded]="isServicesMenuOpen()"
       >
-        Our Services
+        {{ 'NAV.SERVICES' | translate }}
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="m6 9 6 6 6-6" />
         </svg>
       </button>
       @if (isServicesMenuOpen()) {
         <div class="services-dropdown">
-          <a class="services-dd-item" routerLink="/services/restaurants" routerLinkActive="active" (click)="closeServicesMenu()">Restaurants</a>
-          <a class="services-dd-item" routerLink="/services/activities" routerLinkActive="active" (click)="closeServicesMenu()">Activities</a>
+          <a class="services-dd-item" routerLink="/services/restaurants" routerLinkActive="active" (click)="closeServicesMenu()">{{ 'NAV.RESTAURANTS' | translate }}</a>
+          <a class="services-dd-item" routerLink="/services/activities" routerLinkActive="active" (click)="closeServicesMenu()">{{ 'NAV.ACTIVITIES_LINK' | translate }}</a>
         </div>
       }
     </li>
     <li>
-      <a routerLink="/activites" routerLinkActive="active">Activités</a>
+      <a routerLink="/activites" routerLinkActive="active">{{ 'NAV.ACTIVITIES_LINK' | translate }}</a>
     </li>
     <li>
-      <a routerLink="/artisanat" routerLinkActive="active">Crafts</a>
+      <a routerLink="/artisanat" routerLinkActive="active">{{ 'NAV.ARTISANAT' | translate }}</a>
     </li>
     <li>
-      <a routerLink="/communaute" routerLinkActive="active">Community</a>
-    </li>
-    @if (isAuthenticated()) {
-    <li>
-      <a routerLink="/chat" routerLinkActive="active">Chat</a>
-    </li>
-    }
-    <li>
-      <a routerLink="/games" routerLinkActive="active">Games &amp; quizzes</a>
+      <a routerLink="/communaute" routerLinkActive="active">{{ 'NAV.COMMUNITY' | translate }}</a>
     </li>
     <li>
-      <a routerLink="/virtual-tour" routerLinkActive="active">360° Tour</a>
+      <a routerLink="/games" routerLinkActive="active">{{ 'NAV.GAMES' | translate }}</a>
     </li>
-    <li><a routerLink="/" fragment="story">Our story</a></li>
+    <li>
+      <a routerLink="/virtual-tour" routerLinkActive="active">{{ 'NAV.TOUR360' | translate }}</a>
+    </li>
+    <li><a routerLink="/" fragment="story">{{ 'NAV.STORY' | translate }}</a></li>
   </ul>
   <div class="nav-actions">
     @if (!isAuthenticated()) {
-      <a class="connexion-btn" routerLink="/signin" routerLinkActive="active-connexion">Sign in</a>
-      <a class="signup-btn" routerLink="/signup" routerLinkActive="active-signup">Create account</a>
+      <a class="connexion-btn" routerLink="/signin" routerLinkActive="active-connexion">{{ 'NAV.SIGN_IN' | translate }}</a>
+      <a class="signup-btn" routerLink="/signup" routerLinkActive="active-signup">{{ 'NAV.SIGN_UP' | translate }}</a>
     } @else {
       @if (isAdmin()) {
-        <a class="signup-btn" routerLink="/admin/dashboard">Backoffice</a>
+        <a class="signup-btn" routerLink="/admin/dashboard">{{ 'NAV.BACKOFFICE' | translate }}</a>
       }
       <div class="user-menu-wrap" (click)="$event.stopPropagation()">
         <button type="button" class="user-chip" (click)="toggleUserMenu($event)">
           @if (currentUser()?.profileImageUrl) {
-            <img class="user-avatar" [src]="currentUser()!.profileImageUrl!" alt="Profile photo" />
+            <img class="user-avatar" [src]="currentUser()!.profileImageUrl!" [attr.alt]="'NAV.PROFILE' | translate" />
           } @else {
             <span class="user-avatar fallback">{{ (currentUser()?.firstName || currentUser()?.username || 'U').charAt(0).toUpperCase() }}</span>
           }
-          <span class="nav-user">Hi, {{ currentUser()?.firstName || currentUser()?.username }}</span>
+          <span class="nav-user">{{ 'NAV.USER_HI' | translate: { name: (currentUser()?.firstName || currentUser()?.username || '') } }}</span>
+          <div class="user-score-badge">
+            <span class="coin-icon">💰</span>
+            <span class="score-value">{{ userPoints() }}</span>
+          </div>
           <svg class="user-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="m6 9 6 6 6-6" />
           </svg>
@@ -96,27 +95,44 @@
 
         @if (isUserMenuOpen()) {
           <div class="user-dropdown">
+            @if (userBadgeCollection().length > 0) {
+              <div class="badges-mini-shelf">
+                <span class="shelf-label">{{ 'NAV.BADGES' | translate }}</span>
+                <div class="shelf-grid">
+                  @for (b of userBadgeCollection(); track b.badgeId) {
+                    <div class="mini-badge" [title]="b.name + ': ' + b.description">
+                      @if (b.iconUrl) {
+                        <img [src]="b.iconUrl" [attr.alt]="'COMMON.BADGE' | translate" />
+                      } @else {
+                        <span class="badge-placeholder">🏅</span>
+                      }
+                    </div>
+                  }
+                </div>
+              </div>
+              <div class="dd-divider"></div>
+            }
             <a class="user-dd-item" [routerLink]="isArtisan() ? '/mes-ordres' : '/mes-commandes'" (click)="closeUserMenu()">
               <i class="pi pi-box"></i>
-              <span>{{ isArtisan() ? 'Seller orders' : 'My purchases' }}</span>
+              <span>{{ isArtisan() ? ('NAV.SELLER_ORDERS' | translate) : ('NAV.MY_PURCHASES' | translate) }}</span>
             </a>
             <a class="user-dd-item" routerLink="/favoris" (click)="closeUserMenu()">
               <i class="pi pi-heart"></i>
-              <span>Favorites</span>
+              <span>{{ 'NAV.FAVORITES' | translate }}</span>
             </a>
             <a class="user-dd-item" routerLink="/profile" (click)="closeUserMenu()">
               <i class="pi pi-user"></i>
-              <span>My profile</span>
+              <span>{{ 'NAV.PROFILE' | translate }}</span>
             </a>
             @if (isAdmin()) {
               <a class="user-dd-item" routerLink="/admin/dashboard" (click)="closeUserMenu()">
                 <i class="pi pi-cog"></i>
-                <span>Backoffice admin</span>
+                <span>{{ 'NAV.ADMIN_BO' | translate }}</span>
               </a>
             }
             <button type="button" class="user-dd-item danger" (click)="logout()">
               <i class="pi pi-power-off"></i>
-              <span>Sign out</span>
+              <span>{{ 'NAV.SIGN_OUT' | translate }}</span>
             </button>
           </div>
         }
@@ -125,11 +141,11 @@
 
     @if (!isArtisan()) {
       @if (isAuthenticated()) {
-        <a routerLink="/favoris" routerLinkActive="active" class="nav-icon-btn" aria-label="Favorites" title="Favorites">
+        <a routerLink="/favoris" routerLinkActive="active" class="nav-icon-btn" [attr.aria-label]="'NAV.FAVORITES_A11Y' | translate" [attr.title]="'NAV.FAVORITES' | translate">
           <i class="pi pi-heart nav-icon"></i>
         </a>
       }
-      <a routerLink="/panier" routerLinkActive="active" class="nav-cart-btn" aria-label="Cart" title="Cart">
+      <a routerLink="/panier" routerLinkActive="active" class="nav-cart-btn" [attr.aria-label]="'NAV.CART_A11Y' | translate" [attr.title]="'NAV.CART' | translate">
         <i class="pi pi-shopping-bag nav-cart-icon"></i>
         @if (shop.cartCount() > 0) {
           <span class="nav-cart-count">{{ shop.cartCount() }}</span>
@@ -137,7 +153,69 @@
       </a>
     }
 
-    <button type="button" class="theme-toggle-btn" (click)="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">
+    @if (isAuthenticated() && !isArtisan()) {
+      <div class="challenges-wrap" (click)="$event.stopPropagation()">
+        <button type="button" class="nav-icon-btn challenges-btn" (click)="toggleChallengesPopup($event)" [attr.aria-label]="'NAV.CHALLENGES_A11Y' | translate" [attr.title]="'CHALLENGES.TITLE' | translate">
+          <i class="pi pi-bell nav-icon"></i>
+          @if (challengeCount() > 0) {
+            <span class="nav-badge pulse-badge">{{ challengeCount() }}</span>
+          }
+        </button>
+
+        @if (isChallengesPopupOpen()) {
+          <div class="challenges-popup animate-up">
+            <div class="cp-header">
+              <h3>{{ 'CHALLENGES.TITLE' | translate }}</h3>
+              <button type="button" class="btn-close-sm" (click)="closeChallengesPopup()" [attr.aria-label]="'CHALLENGES.CLOSE' | translate">✕</button>
+            </div>
+            <div class="cp-body">
+              @if (activeChallenges().length === 0) {
+                <p class="empty-msg">{{ 'CHALLENGES.EMPTY' | translate }}</p>
+              } @else {
+                @for (c of activeChallenges(); track c.challengeId) {
+                  <div class="challenge-item" [class.completed]="c.completed">
+                    <div class="ci-left">
+                      <div class="ci-icon">
+                        @if (c.gameKind === 'QUIZ') { 🧪 }
+                        @else if (c.gameKind === 'CROSSWORD') { 🧩 }
+                        @else { 🎯 }
+                      </div>
+                    </div>
+                    <div class="ci-right">
+                      <h4 class="ci-title">{{ c.title }}</h4>
+                      <p class="ci-desc">{{ c.description || ('CHALLENGES.DEFAULT_DESC' | translate) }}</p>
+                      <div class="ci-foot">
+                        <span class="ci-points">💰 {{ 'CHALLENGES.PTS' | translate: { n: c.pointsReward } }}</span>
+                        @if (c.completed) {
+                          <span class="ci-status done">✓ {{ 'CHALLENGES.COMPLETED' | translate }}</span>
+                        } @else {
+                          @if (c.gameKind === 'QUIZ' && c.targetId) {
+                            <a [routerLink]="['/games/quiz', c.targetId]" (click)="closeChallengesPopup()" class="ci-link">{{ 'CHALLENGES.PLAY_NOW' | translate }}</a>
+                          } @else if (c.gameKind === 'CROSSWORD' && c.targetId) {
+                            <a [routerLink]="['/games/crossword', c.targetId]" (click)="closeChallengesPopup()" class="ci-link">{{ 'CHALLENGES.PLAY_NOW' | translate }}</a>
+                          } @else if (c.gameKind === 'PUZZLE' && c.targetId) {
+                            <a [routerLink]="['/games/puzzle', c.targetId]" (click)="closeChallengesPopup()" class="ci-link">{{ 'CHALLENGES.PLAY_NOW' | translate }}</a>
+                          } @else if (c.gameKind === 'LUDO') {
+                            <a [routerLink]="['/games/ludo']" (click)="closeChallengesPopup()" class="ci-link">{{ 'CHALLENGES.PLAY_NOW' | translate }}</a>
+                          } @else {
+                            <a [routerLink]="['/games']" (click)="closeChallengesPopup()" class="ci-link">{{ 'CHALLENGES.VIEW_GAMES' | translate }}</a>
+                          }
+                        }
+                      </div>
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    <app-currency-selector class="nav-currency" />
+    <app-language-selector class="nav-lang" />
+
+    <button type="button" class="theme-toggle-btn" (click)="toggleTheme()" [attr.aria-label]="'NAV.THEME' | translate" [attr.title]="'NAV.THEME' | translate">
       @if (isDarkMode()) {
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -165,6 +243,49 @@
   </div>
 }
 
+@if (loginPrompt.open() && !isAuthenticated()) {
+  <div class="login-gate" (click)="closeLoginPrompt()">
+    <div class="login-gate__panel" (click)="$event.stopPropagation()">
+      <button type="button" class="login-gate__close" (click)="closeLoginPrompt()" [attr.aria-label]="'LOGIN_GATE.CLOSE' | translate">×</button>
+      <div class="login-gate__head">
+        <div class="login-gate__brand">
+          <img src="assets/logo/yallatn-logo.png" alt="YallaTN" class="login-gate__logo" />
+          <div class="login-gate__travel" aria-hidden="true">
+            <span class="login-gate__pill"><img src="icones/city.png" alt="" width="14" height="14" /> {{ 'LOGIN_GATE.PILL_CITIES' | translate }}</span>
+            <span class="login-gate__pill"><img src="icones/actitvity.png" alt="" width="14" height="14" /> {{ 'LOGIN_GATE.PILL_ACTIVITIES' | translate }}</span>
+            <span class="login-gate__pill"><img src="icones/bus.png" alt="" width="14" height="14" /> {{ 'LOGIN_GATE.PILL_TRANSPORT' | translate }}</span>
+          </div>
+        </div>
+        <h3>{{ loginPrompt.title() }}</h3>
+        <p>{{ loginPrompt.message() }}</p>
+      </div>
+
+      <div class="auth-switch" [class.auth-switch--signup]="authModalMode() === 'signup'">
+        <span class="auth-switch__thumb" aria-hidden="true"></span>
+        <button type="button" class="auth-switch__btn" [class.active]="authModalMode() === 'signin'" (click)="goToSignInFromPrompt()">{{ 'LOGIN_GATE.SIGN_IN_TAB' | translate }}</button>
+        <button type="button" class="auth-switch__btn" [class.active]="authModalMode() === 'signup'" (click)="goToSignUpFromPrompt()">{{ 'LOGIN_GATE.SIGN_UP_TAB' | translate }}</button>
+      </div>
+
+      <div class="auth-stage" [class.auth-stage--signup]="authModalMode() === 'signup'">
+        @if (authModalMode() === 'signin') {
+          <app-sign-in
+            [embedded]="true"
+            [returnUrlOverride]="loginPrompt.returnUrl()"
+            (switchMode)="goToSignUpFromPrompt()"
+            (authenticated)="handlePopupAuthSuccess()"
+          ></app-sign-in>
+        } @else {
+          <app-sign-up
+            [embedded]="true"
+            (switchMode)="goToSignInFromPrompt()"
+            (signupCompleted)="handlePopupSignupDone()"
+          ></app-sign-up>
+        }
+      </div>
+    </div>
+  </div>
+}
+
 <router-outlet />
 
 @if (!isAdminArea()) {
@@ -180,12 +301,13 @@
       />
     </div>
     <div class="footer-text">
-      © 2026 YallaTN+ — travel, activities, destinations, crafts & recommendations for Tunisia.
+      <app-language-selector class="footer-lang" />
+      {{ 'FOOTER.COPY' | translate }}
     </div>
   </div>
 </footer>
 }
 
-@if (isAuthenticated()) {
+@if (isAuthenticated() && !isAdminArea()) {
   <app-chat-bubble></app-chat-bubble>
 }

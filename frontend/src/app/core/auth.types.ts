@@ -12,6 +12,8 @@ export interface UserProfile {
   status: string;
   artisanRequestPending: boolean;
   profileImageUrl?: string | null;
+  /** Gamification points (also returned by GET /api/profile and /api/auth/me). */
+  points?: number | null;
 }
 
 export interface AuthResponse {

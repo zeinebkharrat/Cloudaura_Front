@@ -1,6 +1,8 @@
 package org.example.backend.service;
 
 import org.example.backend.dto.ludification.RoadmapNodeRequest;
+import org.example.backend.i18n.ApiRequestLang;
+import org.example.backend.i18n.CatalogKeyUtil;
 import org.example.backend.model.RoadmapNode;
 import org.example.backend.repository.CrosswordRepository;
 import org.example.backend.repository.QuizRepository;
@@ -18,20 +20,37 @@ public class RoadmapNodeService {
     private final QuizRepository quizRepo;
     private final CrosswordRepository crossRepo;
     private final UserRoadmapCompletionRepository roadmapCompletionRepo;
+    private final TranslationService translationService;
 
     public RoadmapNodeService(
             RoadmapNodeRepository roadRepo,
             QuizRepository quizRepo,
             CrosswordRepository crossRepo,
-            UserRoadmapCompletionRepository roadmapCompletionRepo) {
+            UserRoadmapCompletionRepository roadmapCompletionRepo,
+            TranslationService translationService) {
         this.roadRepo = roadRepo;
         this.quizRepo = quizRepo;
         this.crossRepo = crossRepo;
         this.roadmapCompletionRepo = roadmapCompletionRepo;
+        this.translationService = translationService;
     }
 
+    @Transactional(readOnly = true)
     public List<RoadmapNode> findAllOrdered() {
-        return roadRepo.findAllByOrderByStepOrderAsc();
+        List<RoadmapNode> nodes = roadRepo.findAllByOrderByStepOrderAsc();
+        String lang = ApiRequestLang.get();
+        for (RoadmapNode n : nodes) {
+            String label = n.getNodeLabel();
+            if (label == null || label.isBlank()) {
+                continue;
+            }
+            if (CatalogKeyUtil.looksLikeCatalogKey(label)) {
+                n.setNodeLabel(null);
+            } else {
+                n.setNodeLabel(translationService.safeTranslate(label, lang));
+            }
+        }
+        return nodes;
     }
 
     @Transactional

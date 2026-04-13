@@ -28,10 +28,14 @@ import { TransportPaymentCancelComponent } from './transport-payment-cancel/tran
 import { TransportRouteMapComponent } from './transport-route-map/transport-route-map.component';
 import { TunisiaCityMatchService } from './tunisia-city-match.service';
 import { TransportTrackingSseService } from './transport-tracking-sse.service';
+import { DualCurrencyPipe } from '../../core/pipes/dual-currency.pipe';
+import { TranslateModule } from '@ngx-translate/core';
 
 @NgModule({
   imports: [
     CommonModule,
+    TranslateModule,
+    DualCurrencyPipe,
     FormsModule,
     ReactiveFormsModule,
     RouterModule.forChild(TRANSPORT_ROUTES),

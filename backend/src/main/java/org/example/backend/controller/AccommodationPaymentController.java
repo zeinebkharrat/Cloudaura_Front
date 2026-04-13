@@ -42,7 +42,7 @@ public class AccommodationPaymentController {
             @Valid @RequestBody AccommodationReservationRequest body, Authentication authentication) {
         Integer uid = userIdentityResolver.resolveUserId(authentication);
         if (uid == null) {
-            throw new AccessDeniedException("Authentication required");
+            throw new AccessDeniedException("api.error.unauthorized");
         }
 
         log.info("Accommodation Stripe key present: {}", stripeApiKey != null && !stripeApiKey.isBlank());
@@ -59,7 +59,7 @@ public class AccommodationPaymentController {
             log.info("Accommodation checkout branch: stripe_checkout_session");
         }
         if (url == null || url.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "No checkout URL");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "api.error.transport_payment.checkout_url_missing");
         }
         return ApiResponse.success(Map.of("url", url));
     }
@@ -69,10 +69,10 @@ public class AccommodationPaymentController {
             @RequestParam("session_id") String sessionId, Authentication authentication) {
         Integer uid = userIdentityResolver.resolveUserId(authentication);
         if (uid == null) {
-            throw new AccessDeniedException("Authentication required");
+            throw new AccessDeniedException("api.error.unauthorized");
         }
         if (sessionId == null || sessionId.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "session_id requis.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.transport_payment.session_required");
         }
         return ApiResponse.success(
                 accommodationReservationService.confirmAccommodationStripeSession(sessionId.trim(), uid));

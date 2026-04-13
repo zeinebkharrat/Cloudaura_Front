@@ -8,7 +8,9 @@ import {
   HostListener,
   viewChild,
   ElementRef,
+  DestroyRef,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { TripContextStore } from '../../../core/stores/trip-context.store';
@@ -17,27 +19,39 @@ import { AccommodationCardComponent } from '../../../shared/components/accommoda
 import { Accommodation, City } from '../../../core/models/travel.models';
 import { FormsModule, ReactiveFormsModule, FormControl, FormGroup } from '@angular/forms';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
+import { DualCurrencyPipe } from '../../../core/pipes/dual-currency.pipe';
+import { createCurrencyDisplaySyncEffect } from '../../../core/utils/currency-display-sync';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { LanguageService } from '../../../core/services/language.service';
 
 @Component({
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, RouterModule, AccommodationCardComponent, FormsModule, ReactiveFormsModule],
+  imports: [
+    CommonModule,
+    RouterModule,
+    AccommodationCardComponent,
+    FormsModule,
+    ReactiveFormsModule,
+    DualCurrencyPipe,
+    TranslateModule,
+  ],
   template: `
     <div class="page-wrap">
 
       <!-- Hero Header -->
       <div class="hero-header">
         <div class="hero-content">
-          <span class="hero-label">STAYS</span>
+          <span class="hero-label">{{ 'HEBERG.LIST.HERO_KICKER' | translate }}</span>
           <h1>
-            @if (currentCity(); as city) {
-              Stay in <span class="city-highlight">{{ city.name }}</span>
+            @if (currentCityDisplay(); as city) {
+              {{ 'HEBERG.LIST.HERO_STAY' | translate }} <span class="city-highlight">{{ city.name }}</span>
             } @else {
-              Discover places to stay in <span class="city-highlight">Tunisia</span>
+              {{ 'HEBERG.LIST.HERO_DISCOVER' | translate }} <span class="city-highlight">{{ 'HEBERG.LIST.HERO_TUNISIA' | translate }}</span>
             }
           </h1>
           <p class="hero-sub">
-            {{ currentCity()?.description || 'Hand-picked hotels, guest houses and rural stays for your trip.' }}
+            {{ currentCityDisplay()?.description || ('HEBERG.LIST.HERO_DEFAULT_DESC' | translate) }}
           </p>
           
         </div>
@@ -49,15 +63,15 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
         <!-- Sidebar Filters -->
         <aside class="filter-panel">
           <div class="filter-header">
-            <h3>Filters</h3>
-            <button class="btn-clear" (click)="resetFilters()">Clear</button>
+            <h3>{{ 'HEBERG.LIST.FILTERS' | translate }}</h3>
+            <button class="btn-clear" (click)="resetFilters()">{{ 'HEBERG.LIST.CLEAR' | translate }}</button>
           </div>
 
           <form [formGroup]="filterForm">
             
             <!-- City Selector -->
             <div class="filter-block">
-              <label class="filter-label"><img src="/icones/city.png" alt="" class="filter-label-icon" /> City</label>
+              <label class="filter-label"><img src="/icones/city.png" alt="" class="filter-label-icon" /> {{ 'HEBERG.LIST.CITY' | translate }}</label>
               <div class="city-picker-root" #cityPickerRoot>
                 <button type="button" class="city-picker-trigger" [class.open]="cityOpen()"
                         (click)="toggleCityMenu($event)" [attr.aria-expanded]="cityOpen()">
@@ -65,10 +79,10 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
                   <span class="city-picker-chevron" [class.up]="cityOpen()" aria-hidden="true"></span>
                 </button>
                 @if (cityOpen()) {
-                  <div class="city-picker-panel" role="listbox" aria-label="Cities">
+                  <div class="city-picker-panel" role="listbox" [attr.aria-label]="'HEBERG.LIST.CITIES_ARIA' | translate">
                     <button type="button" role="option" class="city-picker-option"
                             [class.active]="cityFilterId() === 0"
-                            (click)="selectCity(0, $event)">All cities</button>
+                            (click)="selectCity(0, $event)">{{ 'HEBERG.LIST.ALL_CITIES' | translate }}</button>
                     @for (city of cities(); track city.id) {
                       <button type="button" role="option" class="city-picker-option"
                               [class.active]="cityFilterId() === city.id"
@@ -81,35 +95,35 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
 
             <!-- Type -->
             <div class="filter-block">
-              <label class="filter-label"><img src="/icones/hotel.png" alt="Type" class="filter-label-icon" /> Type</label>
+              <label class="filter-label"><img src="/icones/hotel.png" alt="" class="filter-label-icon" /> {{ 'HEBERG.LIST.TYPE' | translate }}</label>
               <div class="type-chips">
                 <button class="chip" [class.active]="filterForm.value.type === ''" 
-                        (click)="setType('')">All</button>
+                        (click)="setType('')">{{ 'HEBERG.LIST.TYPE_ALL' | translate }}</button>
                 <button class="chip" [class.active]="filterForm.value.type === 'HOTEL'"
-                        (click)="setType('HOTEL')"><img src="/icones/hotel.png" alt="Hotel" class="chip-icon" /> Hotel</button>
+                        (click)="setType('HOTEL')"><img src="/icones/hotel.png" alt="" class="chip-icon" /> {{ 'HEBERG.TYPE.HOTEL' | translate }}</button>
                 <button class="chip" [class.active]="filterForm.value.type === 'MAISON_HOTE'"
-                        (click)="setType('MAISON_HOTE')"><img src="/icones/home.png" alt="Guest house" class="chip-icon" /> Guest house</button>
+                        (click)="setType('MAISON_HOTE')"><img src="/icones/home.png" alt="" class="chip-icon" /> {{ 'HEBERG.TYPE.MAISON_HOTE' | translate }}</button>
                 <button class="chip" [class.active]="filterForm.value.type === 'GUESTHOUSE'"
-                        (click)="setType('GUESTHOUSE')"><img src="/icones/home.png" alt="Rural stay" class="chip-icon" /> Rural stay</button>
+                        (click)="setType('GUESTHOUSE')"><img src="/icones/home.png" alt="" class="chip-icon" /> {{ 'HEBERG.TYPE.GUESTHOUSE' | translate }}</button>
               </div>
             </div>
 
             <!-- Price Range -->
             <div class="filter-block">
               <label class="filter-label">
-                <img src="/icones/money-bag.png" alt="Budget" class="filter-label-icon" /> Max budget
-                <span class="price-display">{{ filterForm.value.maxPrice }} TND</span>
+                <img src="/icones/money-bag.png" alt="" class="filter-label-icon" /> {{ 'HEBERG.LIST.MAX_BUDGET' | translate }}
+                <span class="price-display">{{ filterForm.value.maxPrice | dualCurrency }}</span>
               </label>
               <input type="range" formControlName="maxPrice" min="50" max="800" step="10" class="range-input">
               <div class="range-labels">
-                <span>50 TND</span>
-                <span>800 TND</span>
+                <span>{{ 50 | dualCurrency }}</span>
+                <span>{{ 800 | dualCurrency }}</span>
               </div>
             </div>
 
             <!-- Star Rating -->
             <div class="filter-block">
-              <label class="filter-label"><i class="pi pi-star-fill filter-label-pi" aria-hidden="true"></i> Minimum rating</label>
+              <label class="filter-label"><i class="pi pi-star-fill filter-label-pi" aria-hidden="true"></i> {{ 'HEBERG.LIST.MIN_RATING' | translate }}</label>
               <div class="star-picker">
                 @for (star of [1,2,3,4,5]; track star) {
                   <button class="star-btn" 
@@ -119,7 +133,10 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
                   </button>
                 }
                 @if (filterForm.value.minRating && filterForm.value.minRating > 0) {
-                  <button class="star-clear" (click)="setRating(0)">✕</button>
+                  <button type="button" class="star-clear" (click)="setRating(0)"
+                          [attr.aria-label]="'HEBERG.LIST.CLEAR_RATING_ARIA' | translate">
+                    {{ 'HEBERG.LIST.CLEAR_RATING' | translate }}
+                  </button>
                 }
               </div>
             </div>
@@ -134,9 +151,9 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
           <div class="results-header">
             <div class="results-count">
               @if (loading()) {
-                <span class="pulse-dot"></span> Searching...
+                <span class="pulse-dot"></span> {{ 'HEBERG.LIST.SEARCHING' | translate }}
               } @else {
-                <strong>{{ accommodations().length }}</strong> listing(s) found
+                <strong>{{ accommodations().length }}</strong> {{ 'HEBERG.LIST.LISTINGS_FOUND' | translate }}
               }
             </div>
           </div>
@@ -167,14 +184,14 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
               <!-- Empty State -->
               <div class="empty-state">
                 <div class="empty-icon" aria-hidden="true"><i class="pi pi-search"></i></div>
-                <h3>No listings found</h3>
-                <p>Try widening your filters or picking another city.</p>
+                <h3>{{ 'HEBERG.LIST.EMPTY_TITLE' | translate }}</h3>
+                <p>{{ 'HEBERG.LIST.EMPTY_DESC' | translate }}</p>
                 <div class="empty-actions">
                   <button class="btn-reset" (click)="resetFilters()">
-                    <i class="pi pi-refresh"></i> Reset filters
+                    <i class="pi pi-refresh"></i> {{ 'HEBERG.LIST.RESET_FILTERS' | translate }}
                   </button>
                   <button class="btn-home" routerLink="/">
-                    <img src="/icones/home.png" alt="Home" style="width:1rem;height:1rem;object-fit:contain;vertical-align:middle;margin-right:0.25rem;" /> Pick a city
+                    <img src="/icones/home.png" [attr.alt]="'HEBERG.LIST.HOME_ALT' | translate" style="width:1rem;height:1rem;object-fit:contain;vertical-align:middle;margin-right:0.25rem;" /> {{ 'HEBERG.LIST.PICK_CITY' | translate }}
                   </button>
                 </div>
               </div>
@@ -569,9 +586,14 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
   `]
 })
 export class AccommodationListPageComponent implements OnInit {
+  private readonly _currencyDisplaySync = createCurrencyDisplaySyncEffect();
+
   store = inject(TripContextStore);
   dataSource = inject(DATA_SOURCE_TOKEN);
   router = inject(Router);
+  private translate = inject(TranslateService);
+  private language = inject(LanguageService);
+  private destroyRef = inject(DestroyRef);
 
   cityPickerRoot = viewChild<ElementRef<HTMLElement>>('cityPickerRoot');
 
@@ -590,16 +612,28 @@ export class AccommodationListPageComponent implements OnInit {
     minRating: new FormControl(0)
   });
 
-  currentCity = computed(() => {
+  currentCityDisplay = computed(() => {
     const id = this.activeCityId() || this.store.selectedCityId();
-    return this.cities().find(c => c.id === Number(id));
+    return this.cities().find((c) => c.id === Number(id));
   });
 
   cityLabel = computed(() => {
+    void this.language.currentLang();
     const n = this.cityFilterId();
-    if (!n) return 'All cities';
-    return this.cities().find((c) => c.id === n)?.name ?? 'All cities';
+    if (!n) {
+      return this.translate.instant('HEBERG.LIST.ALL_CITIES');
+    }
+    return this.cities().find((c) => c.id === n)?.name ?? this.translate.instant('HEBERG.LIST.ALL_CITIES');
   });
+
+  constructor() {
+    this.language.langChangedDebounced$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.loadCities();
+        this.loadData();
+      });
+  }
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(ev: MouseEvent): void {
@@ -653,7 +687,7 @@ export class AccommodationListPageComponent implements OnInit {
   }
 
   loadCities() {
-    this.dataSource.getCities().subscribe(data => this.cities.set(data));
+    this.dataSource.getCities().subscribe((data) => this.cities.set(data));
   }
 
   loadData() {
@@ -675,7 +709,7 @@ export class AccommodationListPageComponent implements OnInit {
       error: () => {
         this.accommodations.set([]);
         this.loading.set(false);
-      }
+      },
     });
   }
 
@@ -693,7 +727,8 @@ export class AccommodationListPageComponent implements OnInit {
   }
 
   onSelect(acc: Accommodation) {
-    this.store.selectedAccommodation.set(acc);
+    const original = this.accommodations().find((a) => a.id === acc.id) ?? acc;
+    this.store.selectedAccommodation.set(original);
     this.router.navigate(['/hebergement', acc.id]);
   }
 }

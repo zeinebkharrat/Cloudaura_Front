@@ -2,38 +2,65 @@
   <div class="qp-container animate-up">
     @if (isLoading()) {
       <div class="qp-loading">
-        <p>Loading quiz…</p>
+        <p>{{ 'QUIZ_PLAYER.LOADING' | translate }}</p>
       </div>
     } @else if (quiz() && loadError()) {
       <div class="qp-loading">
-        <p>{{ loadError() }}</p>
-        <button class="btn-primary" (click)="backToHub()">Back to games hub</button>
+        <p>{{ displayLoadError() }}</p>
+        <button class="btn-primary" (click)="backToHub()">{{ 'QUIZ_PLAYER.BACK_GAMES' | translate }}</button>
       </div>
     } @else if (quiz()) {
       <header class="qp-header">
-        <button class="btn-back" (click)="backToHub()">⟵ Quitter</button>
+        <button class="btn-back" (click)="backToHub()">{{ 'QUIZ_PLAYER.QUIT' | translate }}</button>
         <div class="qp-progress">
-          Question {{ currentQuestion() + 1 }} / {{ questions().length }}
+          {{ 'QUIZ_PLAYER.QUESTION_OF' | translate: { cur: currentQuestion() + 1, tot: questions().length } }}
         </div>
       </header>
+
+      @if (coverImageSrc(); as cover) {
+        <div class="qp-cover-wrap">
+          <img [src]="cover" [attr.alt]="quiz()?.title || ('QUIZ_PLAYER.QUIZ_COVER_ALT' | translate)" class="qp-cover-img" />
+        </div>
+      }
+
+      @if (!isFinished() && questions().length > 0 && remainingSeconds() !== null) {
+        <div class="qp-timer-row">
+          <div class="qp-timer">
+            <span class="qp-timer-label">{{ 'QUIZ_PLAYER.TIME' | translate }}</span>
+            <span class="qp-timer-value">{{ remainingSeconds() }}s</span>
+            <span class="qp-timer-hint">{{ 'QUIZ_PLAYER.TIME_HINT' | translate: { tot: totalTimeSeconds } }}</span>
+          </div>
+          <div class="qp-stars-live" [attr.aria-label]="'QUIZ_PLAYER.STARS_ARIA' | translate">
+            @for (s of [1, 2, 3]; track s) {
+              <span class="qp-star" [class.qp-star--on]="timeStarsDisplay() >= s">★</span>
+            }
+          </div>
+        </div>
+      }
 
       @if (!isFinished() && questions().length > 0) {
         <div class="qp-body">
           <h2 class="q-text">{{ questions()[currentQuestion()].text }}</h2>
           <div class="q-options">
             @for (opt of questions()[currentQuestion()].options; track opt; let i = $index) {
-              <button 
-                class="opt-btn" 
+              <button
+                type="button"
+                class="opt-btn"
                 [class.selected]="selectedOption() === i"
                 [class.correct]="selectedOption() !== null && i === questions()[currentQuestion()].correct"
                 [class.wrong]="selectedOption() === i && i !== questions()[currentQuestion()].correct"
-                [disabled]="selectedOption() !== null"
-                (click)="selectOption(i)">
+                [disabled]="selectedOption() !== null || timedOut()"
+                (click)="selectOption(i)"
+              >
                 <span class="opt-letter">{{ ['A', 'B', 'C', 'D'][i] }}</span>
                 <span class="opt-text">{{ opt }}</span>
                 @if (selectedOption() !== null) {
-                  <span class="opt-icon" *ngIf="i === questions()[currentQuestion()].correct">✅</span>
-                  <span class="opt-icon" *ngIf="selectedOption() === i && i !== questions()[currentQuestion()].correct">❌</span>
+                  @if (i === questions()[currentQuestion()].correct) {
+                    <span class="opt-icon">✅</span>
+                  }
+                  @if (selectedOption() === i && i !== questions()[currentQuestion()].correct) {
+                    <span class="opt-icon">❌</span>
+                  }
                 }
               </button>
             }
@@ -41,29 +68,43 @@
         </div>
       } @else if (!isFinished() && questions().length === 0) {
         <div class="qp-loading">
-          <p>{{ loadError() || 'This quiz has no valid questions yet.' }}</p>
-          <button class="btn-primary" (click)="backToHub()">Back to games hub</button>
+          <p>{{ loadError() ? displayLoadError() : ('QUIZ_PLAYER.NO_QUESTIONS' | translate) }}</p>
+          <button class="btn-primary" (click)="backToHub()">{{ 'QUIZ_PLAYER.BACK_GAMES' | translate }}</button>
         </div>
       } @else {
         <div class="qp-result">
+          @if (timedOut()) {
+            <p class="qp-timeout-msg">{{ 'QUIZ_PLAYER.TIMEOUT' | translate }}</p>
+          }
+          <div class="qp-stars-final" [attr.aria-label]="'QUIZ_PLAYER.STARS_ARIA' | translate">
+            @for (s of [1, 2, 3]; track s) {
+              <span class="qp-star qp-star--big" [class.qp-star--on]="timeStarsFinal() >= s">★</span>
+            }
+          </div>
+          <p class="qp-time-stars-desc">{{ 'QUIZ_PLAYER.TIME_STARS_DESC' | translate: { k: timeStarsFinal() } }}</p>
           <div class="qr-score-circle">
             <span class="sr-num">{{ score() }}</span>
             <span class="sr-tot">/ {{ questions().length }}</span>
           </div>
           <h2 class="qr-title">
-            @if (score() === questions().length) { Perfect! 🏆 }
-            @else if (score() > 0) { Well done! 👍 }
-            @else { Oops… 😅 }
+            @if (!timedOut() && score() === questions().length) {
+              {{ 'QUIZ_PLAYER.RESULT_PERFECT' | translate }}
+            } @else if (!timedOut() && score() > 0) {
+              {{ 'QUIZ_PLAYER.RESULT_GOOD' | translate }}
+            } @else if (timedOut()) {
+              {{ 'QUIZ_PLAYER.RESULT_RETRY' | translate }}
+            } @else {
+              {{ 'QUIZ_PLAYER.RESULT_OOPS' | translate }}
+            }
           </h2>
-          <p class="qr-desc">You finished the quiz <strong>{{ quiz()?.title }}</strong>.</p>
-          <button class="btn-primary" (click)="backToHub()">Back to games hub</button>
+          <p class="qr-desc">Quiz <strong>{{ quiz()?.title }}</strong></p>
+          <button class="btn-primary" (click)="backToHub()">{{ 'QUIZ_PLAYER.BACK_GAMES' | translate }}</button>
         </div>
       }
-
     } @else {
       <div class="qp-loading">
-        <p>{{ loadError() || 'Quiz not found.' }}</p>
-        <button class="btn-primary" (click)="backToHub()">Back to games hub</button>
+        <p>{{ loadError() ? displayLoadError() : ('QUIZ_PLAYER.NOT_FOUND' | translate) }}</p>
+        <button class="btn-primary" (click)="backToHub()">{{ 'QUIZ_PLAYER.BACK_GAMES' | translate }}</button>
       </div>
     }
   </div>

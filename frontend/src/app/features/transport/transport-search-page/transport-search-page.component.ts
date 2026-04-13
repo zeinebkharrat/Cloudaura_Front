@@ -2,6 +2,7 @@ import { Component, inject, signal, computed, OnInit, OnDestroy, ChangeDetection
 import { FormBuilder, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
+import { skip } from 'rxjs/operators';
 import { DropdownModule } from 'primeng/dropdown';
 import { CalendarModule } from 'primeng/calendar';
 import { InputNumberModule } from 'primeng/inputnumber';
@@ -13,10 +14,12 @@ import { DATA_SOURCE_TOKEN } from '../../../core/adapters/data-source.adapter';
 import { AppAlertsService } from '../../../core/services/app-alerts.service';
 import { City, TransportType, TRANSPORT_TYPE_META, TransportTypeAvailability } from '../../../core/models/travel.models';
 import { TunisiaCityMatchService } from '../tunisia-city-match.service';
+import { TranslateService } from '@ngx-translate/core';
+import { LanguageService } from '../../../core/services/language.service';
 
 interface TypeCard {
   type: TransportType;
-  label: string;
+  labelKey: string;
   iconPath: string;
   available: boolean;
   reason?: string;
@@ -34,8 +37,8 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
       <section class="hero">
         <div class="hero-glow"></div>
         <div class="hero-content">
-          <h1 class="hero-title">Find your ride</h1>
-          <p class="hero-sub">Compare and book buses, taxis, car rentals and flights across Tunisia</p>
+          <h1 class="hero-title">{{ 'TRANSPORT_SEARCH.HERO_TITLE' | translate }}</h1>
+          <p class="hero-sub">{{ 'TRANSPORT_SEARCH.HERO_SUB' | translate }}</p>
         </div>
       </section>
 
@@ -46,7 +49,7 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
           <div class="sb-field sb-city">
             <span class="sb-icon"><i class="pi pi-map-marker"></i></span>
             <div class="sb-inner">
-              <span class="sb-label">From</span>
+              <span class="sb-label">{{ 'TRANSPORT_SEARCH.FROM' | translate }}</span>
               <p-dropdown
                 formControlName="from"
                 [options]="cities()"
@@ -54,7 +57,7 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
                 optionValue="id"
                 [filter]="true"
                 filterBy="name"
-                placeholder="Departure city"
+                [placeholder]="'TRANSPORT_SEARCH.PLACEHOLDER_FROM' | translate"
                 [showClear]="false"
                 appendTo="body"
                 styleClass="sb-dropdown">
@@ -64,7 +67,7 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
 
           <!-- Swap -->
           <button type="button" class="sb-swap" (click)="swapCities()" pRipple
-                  pTooltip="Swap cities" tooltipPosition="top">
+                  [pTooltip]="'TRANSPORT_SEARCH.SWAP_TT' | translate" tooltipPosition="top">
             <i class="pi pi-arrows-h"></i>
           </button>
 
@@ -72,7 +75,7 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
           <div class="sb-field sb-city">
             <span class="sb-icon"><i class="pi pi-flag"></i></span>
             <div class="sb-inner">
-              <span class="sb-label">To</span>
+              <span class="sb-label">{{ 'TRANSPORT_SEARCH.TO' | translate }}</span>
               <p-dropdown
                 formControlName="to"
                 [options]="cities()"
@@ -80,7 +83,7 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
                 optionValue="id"
                 [filter]="true"
                 filterBy="name"
-                placeholder="Arrival city"
+                [placeholder]="'TRANSPORT_SEARCH.PLACEHOLDER_TO' | translate"
                 [showClear]="false"
                 appendTo="body"
                 styleClass="sb-dropdown">
@@ -94,7 +97,7 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
           <div class="sb-field sb-date">
             <span class="sb-icon"><i class="pi pi-calendar"></i></span>
             <div class="sb-inner">
-              <span class="sb-label">Date &amp; time</span>
+              <span class="sb-label">{{ 'TRANSPORT_SEARCH.DATE_TIME' | translate }}</span>
               <p-calendar
                 formControlName="date"
                 dateFormat="dd/mm/yy"
@@ -107,7 +110,7 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
                 [showButtonBar]="true"
                 [showIcon]="false"
                 [touchUI]="true"
-                placeholder="Departure date & time"
+                [placeholder]="'TRANSPORT_SEARCH.PLACEHOLDER_DATE' | translate"
                 appendTo="body"
                 styleClass="sb-calendar"
                 panelStyleClass="transport-search-calendar-panel">
@@ -121,7 +124,7 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
           <div class="sb-field sb-pax">
             <span class="sb-icon"><i class="pi pi-users"></i></span>
             <div class="sb-inner">
-              <span class="sb-label">Passengers</span>
+              <span class="sb-label">{{ 'TRANSPORT_SEARCH.PASSENGERS' | translate }}</span>
               <div class="sb-pax-shell">
                 <p-inputNumber
                   formControlName="passengers"
@@ -150,7 +153,7 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
       <!-- Transport Types -->
       <section class="types-section">
         <h2 class="types-title">
-          {{ hasBothCities() ? 'Choose how you want to travel' : 'Select cities to see available modes' }}
+          {{ (hasBothCities() ? 'TRANSPORT_SEARCH.TYPES_TITLE_BOTH' : 'TRANSPORT_SEARCH.TYPES_TITLE_WAIT') | translate }}
         </h2>
 
         <div class="types-grid">
@@ -163,13 +166,13 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
                  tooltipPosition="top"
                  (click)="onTypeClick(card)">
 
-              <div class="tcard-icon"><img [src]="card.iconPath" [alt]="card.label" class="tcard-img" /></div>
-              <span class="tcard-name">{{ card.label }}</span>
+              <div class="tcard-icon"><img [src]="card.iconPath" [alt]="card.labelKey | translate" class="tcard-img" /></div>
+              <span class="tcard-name">{{ card.labelKey | translate }}</span>
 
               @if (card.available) {
-                <span class="tcard-badge tcard-ok">Available</span>
+                <span class="tcard-badge tcard-ok">{{ 'TRANSPORT_SEARCH.AVAILABLE' | translate }}</span>
               } @else if (hasBothCities()) {
-                <span class="tcard-badge tcard-no">Unavailable</span>
+                <span class="tcard-badge tcard-no">{{ 'TRANSPORT_SEARCH.UNAVAILABLE' | translate }}</span>
               }
             </div>
           }
@@ -178,12 +181,12 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
 
       <!-- Popular Routes -->
       <section class="popular">
-        <h3 class="popular-heading">Popular routes</h3>
+        <h3 class="popular-heading">{{ 'TRANSPORT_SEARCH.POPULAR_HEADING' | translate }}</h3>
         <div class="popular-list">
-          @for (r of popularRoutes; track r.label) {
+          @for (r of popularRoutes; track r.labelKey) {
             <button class="pop-chip" pRipple (click)="quickSearch(r)">
               <img [src]="r.icon" [alt]="r.type" class="pop-icon-img" />
-              {{ r.label }}
+              {{ r.labelKey | translate }}
               <i class="pi pi-chevron-right pop-arrow"></i>
             </button>
           }
@@ -519,6 +522,8 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
   private cdr = inject(ChangeDetectorRef);
   private alerts = inject(AppAlertsService);
   private cityMatch = inject(TunisiaCityMatchService);
+  private translate = inject(TranslateService);
+  private language = inject(LanguageService);
   private subs = new Subscription();
 
   cities = signal<City[]>([]);
@@ -537,6 +542,7 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
   hasBothCities = computed(() => !!this.fromCityId() && !!this.toCityId());
 
   typeCards = computed<TypeCard[]>(() => {
+    void this.language.currentLang();
     const fromId = this.fromCityId();
     const toId = this.toCityId();
     const fromCity = this.cities().find(c => c.id === fromId);
@@ -550,11 +556,17 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
       if (fromCity && toCity) {
         if (meta.requiresFrom && !fromCity.stations?.[meta.requiresFrom]) {
           available = false;
-          reason = `No ${this.infraLabel(meta.requiresFrom)} in ${fromCity.name}`;
+          reason = this.translate.instant('TRANSPORT_SEARCH.REASON_NO_INFRA', {
+            infra: this.translate.instant('TRANSPORT.INFRA.' + meta.requiresFrom),
+            city: fromCity.name,
+          });
         }
         if (available && meta.requiresTo && !toCity.stations?.[meta.requiresTo]) {
           available = false;
-          reason = `No ${this.infraLabel(meta.requiresTo)} in ${toCity.name}`;
+          reason = this.translate.instant('TRANSPORT_SEARCH.REASON_NO_INFRA', {
+            infra: this.translate.instant('TRANSPORT.INFRA.' + meta.requiresTo),
+            city: toCity.name,
+          });
         }
       } else {
         available = false;
@@ -562,7 +574,7 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
 
       return {
         type,
-        label: meta.label,
+        labelKey: `TRANSPORT.TYPE.${type}`,
         iconPath: this.iconFor(type),
         available,
         reason,
@@ -571,57 +583,22 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
   });
 
   popularRoutes = [
-    { fromId: 1, toId: 3, type: 'BUS',   label: 'Tunis → Sousse',     icon: '/icones/bus.png' },
-    { fromId: 1, toId: 8, type: 'PLANE', label: 'Tunis → Djerba',     icon: '/icones/plane.png' },
-    { fromId: 3, toId: 5, type: 'TAXI',  label: 'Sousse → Hammamet',  icon: '/icones/taxi.png' },
-    { fromId: 1, toId: 4, type: 'CAR',   label: 'Tunis → Sfax',       icon: '/icones/car.png' },
+    { fromId: 1, toId: 3, type: 'BUS', labelKey: 'TRANSPORT_SEARCH.POP_TUNIS_SOUSSE', icon: '/icones/bus.png' },
+    { fromId: 1, toId: 8, type: 'PLANE', labelKey: 'TRANSPORT_SEARCH.POP_TUNIS_DJERBA', icon: '/icones/plane.png' },
+    { fromId: 3, toId: 5, type: 'TAXI', labelKey: 'TRANSPORT_SEARCH.POP_SOUSSE_HAMMAMET', icon: '/icones/taxi.png' },
+    { fromId: 1, toId: 4, type: 'CAR', labelKey: 'TRANSPORT_SEARCH.POP_TUNIS_SFAX', icon: '/icones/car.png' },
   ];
 
   ngOnInit() {
     const qp = this.route.snapshot.queryParams;
 
-    this.dataSource.getCities().subscribe(data => {
-      this.cities.set(data);
+    this.loadCities(qp, true);
 
-      if (typeof navigator !== 'undefined' && navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            void this.cityMatch
-              .reverseGeocodeThenNearestCity(pos.coords.latitude, pos.coords.longitude, data)
-              .then((match) => {
-                if (!match || qp['from']) {
-                  return;
-                }
-                this.searchForm.patchValue({ from: match.id });
-                this.fromCityId.set(match.id);
-                this.cdr.markForCheck();
-              });
-          },
-          () => {
-            /* denied */
-          },
-          { maximumAge: 120_000, timeout: 15_000, enableHighAccuracy: false }
-        );
-      }
-
-      if (qp['from']) {
-        const fromId = Number(qp['from']);
-        this.searchForm.patchValue({ from: fromId });
-        this.fromCityId.set(fromId);
-      } else {
-        const current = data.find(c => c.id === this.store.selectedCityId());
-        if (current) {
-          this.searchForm.patchValue({ from: current.id });
-          this.fromCityId.set(current.id);
-        }
-      }
-
-      if (qp['to']) {
-        const toId = Number(qp['to']);
-        this.searchForm.patchValue({ to: toId });
-        this.toCityId.set(toId);
-      }
-    });
+    this.subs.add(
+      this.language.langChanged$.pipe(skip(1)).subscribe(() => {
+        this.loadCities(this.route.snapshot.queryParams, false);
+      })
+    );
 
     if (qp['date']) {
       this.searchForm.patchValue({ date: new Date(qp['date']) });
@@ -647,6 +624,72 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
 
   }
 
+  /**
+   * Reloads city labels from the API (honours {@code lang} via HTTP interceptor).
+   * @param runGeo when true, may auto-pick nearest city from browser geolocation (first load only).
+   */
+  private loadCities(qp: Record<string, string | undefined>, runGeo: boolean): void {
+    const preserveFrom = this.searchForm.get('from')?.value as number | null | undefined;
+    const preserveTo = this.searchForm.get('to')?.value as number | null | undefined;
+
+    this.dataSource.getCities().subscribe((data) => {
+      this.cities.set(data);
+      this.cdr.markForCheck();
+
+      if (runGeo && typeof navigator !== 'undefined' && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            void this.cityMatch
+              .reverseGeocodeThenNearestCity(pos.coords.latitude, pos.coords.longitude, data)
+              .then((match) => {
+                if (!match || qp['from']) {
+                  return;
+                }
+                this.searchForm.patchValue({ from: match.id });
+                this.fromCityId.set(match.id);
+                this.cdr.markForCheck();
+              });
+          },
+          () => {
+            /* denied */
+          },
+          { maximumAge: 120_000, timeout: 15_000, enableHighAccuracy: false }
+        );
+      }
+
+      if (runGeo) {
+        if (qp['from']) {
+          const fromId = Number(qp['from']);
+          this.searchForm.patchValue({ from: fromId });
+          this.fromCityId.set(fromId);
+        } else {
+          const current = data.find((c) => c.id === this.store.selectedCityId());
+          if (current) {
+            this.searchForm.patchValue({ from: current.id });
+            this.fromCityId.set(current.id);
+          }
+        }
+
+        if (qp['to']) {
+          const toId = Number(qp['to']);
+          this.searchForm.patchValue({ to: toId });
+          this.toCityId.set(toId);
+        }
+      } else {
+        if (preserveFrom != null) {
+          this.searchForm.patchValue({ from: preserveFrom });
+          this.fromCityId.set(preserveFrom);
+        }
+        if (preserveTo != null) {
+          this.searchForm.patchValue({ to: preserveTo });
+          this.toCityId.set(preserveTo);
+        }
+      }
+
+      this.cdr.markForCheck();
+    });
+  }
+
   cityById(id: number | null): City | null {
     if (id == null) {
       return null;
@@ -667,7 +710,10 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
     }
     if (this.searchForm.invalid) {
       this.searchForm.markAllAsTouched();
-      void this.alerts.warning('Check your search', 'Please fill in all required fields correctly.');
+      void this.alerts.warning(
+        this.translate.instant('TRANSPORT_SEARCH.ALERT_CHECK_SEARCH'),
+        this.translate.instant('TRANSPORT_SEARCH.ALERT_CHECK_SEARCH_BODY'),
+      );
       return;
     }
 
@@ -687,15 +733,21 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
     this.searchForm.patchValue({ from: t, to: f });
   }
 
-  quickSearch(route: { fromId: number; toId: number; type: string }) {
+  quickSearch(route: { fromId: number; toId: number; type: string; labelKey: string }) {
     if (route.fromId === route.toId) {
-      void this.alerts.warning('Invalid route', 'Departure and destination must be different.');
+      void this.alerts.warning(
+        this.translate.instant('TRANSPORT_SEARCH.ALERT_INVALID_ROUTE'),
+        this.translate.instant('TRANSPORT_SEARCH.ALERT_SAME_CITY'),
+      );
       return;
     }
     this.searchForm.patchValue({ from: route.fromId, to: route.toId });
     const dateVal = this.searchForm.get('date')?.value ?? new Date();
     if (!this.isDateNotInPast(dateVal)) {
-      void this.alerts.warning('Invalid date', 'Departure date and time cannot be in the past.');
+      void this.alerts.warning(
+        this.translate.instant('TRANSPORT_SEARCH.ALERT_INVALID_DATE'),
+        this.translate.instant('TRANSPORT_SEARCH.ALERT_PAST_DATE'),
+      );
       return;
     }
     const dateStr = this.travelDateTimeLocalIso(dateVal);
@@ -729,35 +781,37 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
     return `${y}-${mo}-${day}T${h}:${mi}:${s}`;
   }
 
-  private infraLabel(key: string): string {
-    const map: Record<string, string> = {
-      bus: 'bus station',
-      airport: 'airport',
-      ferry: 'ferry port',
-      train: 'train station',
-    };
-    return map[key] ?? key;
-  }
-
   /** Business rules before navigating to results. */
   private validateSearchBusinessRules(): boolean {
     const v = this.searchForm.getRawValue();
     if (v.from == null || v.to == null || !v.date) {
       this.searchForm.markAllAsTouched();
-      void this.alerts.warning('Incomplete search', 'Please select departure city, arrival city, and departure date & time.');
+      void this.alerts.warning(
+        this.translate.instant('TRANSPORT_SEARCH.ALERT_INCOMPLETE'),
+        this.translate.instant('TRANSPORT_SEARCH.ALERT_INCOMPLETE_BODY'),
+      );
       return false;
     }
     if (v.from === v.to) {
-      void this.alerts.warning('Invalid route', 'Departure and destination must be different cities.');
+      void this.alerts.warning(
+        this.translate.instant('TRANSPORT_SEARCH.ALERT_INVALID_ROUTE'),
+        this.translate.instant('TRANSPORT_SEARCH.ALERT_SAME_CITIES'),
+      );
       return false;
     }
     if (!this.isDateNotInPast(v.date)) {
-      void this.alerts.warning('Invalid date', 'Departure date and time cannot be in the past.');
+      void this.alerts.warning(
+        this.translate.instant('TRANSPORT_SEARCH.ALERT_INVALID_DATE'),
+        this.translate.instant('TRANSPORT_SEARCH.ALERT_PAST_DATE'),
+      );
       return false;
     }
     const p = v.passengers ?? 1;
     if (p < 1 || p > 20) {
-      void this.alerts.warning('Passengers', 'Number of passengers must be between 1 and 20.');
+      void this.alerts.warning(
+        this.translate.instant('TRANSPORT_SEARCH.ALERT_PASSENGERS'),
+        this.translate.instant('TRANSPORT_SEARCH.ALERT_PASSENGERS_BODY'),
+      );
       return false;
     }
     return true;

@@ -22,6 +22,7 @@ import org.example.backend.model.OrderStatus;
 import org.example.backend.model.Product;
 import org.example.backend.model.User;
 import org.example.backend.model.ProductVariant;
+import org.example.backend.i18n.CatalogKeyUtil;
 import org.example.backend.model.PromoCode;
 import org.example.backend.repository.CartItemRepository;
 import org.example.backend.repository.CartRepository;
@@ -36,6 +37,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+/**
+ * Panier / commandes artisan : les libellés catalogue proviennent des clés {@code product.*} via
+ * {@link CatalogTranslationService#resolveEntityField(long, String, String, String)} — il n'y a pas d'entité
+ * {@code Shop} ni de clés {@code shop.*} côté métier.
+ */
 @Service
 public class ShopService {
 
@@ -49,6 +55,7 @@ public class ShopService {
     private final PromoCodeRepository promoCodeRepository;
     private final EmailService emailService;
     private final PaymentService paymentService;
+    private final CatalogTranslationService catalogTranslationService;
 
     public ShopService(
         UserRepository userRepository,
@@ -60,7 +67,8 @@ public class ShopService {
         ProductVariantRepository productVariantRepository,
         PromoCodeRepository promoCodeRepository,
         EmailService emailService,
-        PaymentService paymentService
+        PaymentService paymentService,
+        CatalogTranslationService catalogTranslationService
     ) {
         this.userRepository = userRepository;
         this.cartRepository = cartRepository;
@@ -72,13 +80,25 @@ public class ShopService {
         this.promoCodeRepository = promoCodeRepository;
         this.emailService = emailService;
         this.paymentService = paymentService;
+        this.catalogTranslationService = catalogTranslationService;
     }
 
+    private String translatedCatalogProductName(Product p) {
+        int pid = p.getProductId();
+        String raw = p.getName();
+        String resolved = catalogTranslationService.resolveEntityField(pid, "product", "name", raw);
+        if (CatalogKeyUtil.isBadI18nPlaceholder(raw, resolved)) {
+            return "";
+        }
+        return resolved;
+    }
+
+    @Transactional(readOnly = true)
     public ShopCartDto getCart(String username) {
         if (username == null || username.isBlank()) {
             return newEmptyCart();
         }
-        return userRepository.findByUsernameIgnoreCase(username.trim())
+        return userRepository.findFirstByUsernameIgnoreCaseOrderByUserIdAsc(username.trim())
             .flatMap(u -> cartRepository.findByUser_UserId(u.getUserId()))
             .map(this::toCartDto)
             .orElseGet(this::newEmptyCart);
@@ -98,22 +118,22 @@ public class ShopService {
     @Transactional
     public ShopCartDto addToCart(String username, AddToCartRequest request) {
         if (request.getProductId() == null || request.getQuantity() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "productId et quantity requis");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.shop.product_quantity_required");
         }
         int qty = request.getQuantity();
         if (qty <= 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "quantity > 0");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.shop.quantity_positive");
         }
         User user = findUser(username);
         Product product = productRepository.findById(request.getProductId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Produit introuvable"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.shop.product_not_found"));
         
         ProductVariant variant = null;
         if (request.getVariantId() != null) {
             variant = productVariantRepository.findById(request.getVariantId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Variante introuvable"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.shop.variant_not_found"));
             if (!variant.getProduct().getProductId().equals(product.getProductId())) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Variante non liée à ce produit");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.shop.variant_wrong_product");
             }
         }
 
@@ -121,7 +141,7 @@ public class ShopService {
         int available = getAvailableStock(product, variant, cart.getCartId());
         
         if (available < qty) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Stock insuffisant (déjà réservé par d'autres)");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.shop.insufficient_stock");
         }
 
         // Find existing item with same product AND same variant
@@ -139,7 +159,7 @@ public class ShopService {
             int newQty = existing.getQuantity() + qty;
             if (newQty > available + existing.getQuantity()) {
                  // Technically covered by 'available' logic above but good to be safe
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Stock insuffisant pour ce panier");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.shop.insufficient_stock_cart");
             }
             existing.setQuantity(newQty);
             existing.setReservedUntil(reservationEnd);
@@ -160,11 +180,11 @@ public class ShopService {
     public ShopCartDto removeCartItem(String username, Integer cartItemId) {
         User user = findUser(username);
         CartItem line = cartItemRepository.findById(cartItemId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ligne introuvable"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.shop.line_not_found"));
         Cart cart = line.getCart();
         if (cart == null || cart.getUser() == null
             || !cart.getUser().getUserId().equals(user.getUserId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Ligne non autorisée");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "api.error.shop.line_forbidden");
         }
         cartItemRepository.deleteById(cartItemId);
         return cartRepository.findByUser_UserId(user.getUserId())
@@ -175,16 +195,16 @@ public class ShopService {
     @Transactional
     public ShopCartDto updateCartItemQuantity(String username, Integer cartItemId, UpdateCartItemRequest request) {
         if (request.getQuantity() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "quantity requise");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.shop.line_quantity_required");
         }
         int qty = request.getQuantity();
         User user = findUser(username);
         CartItem line = cartItemRepository.findById(cartItemId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ligne introuvable"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.shop.line_not_found"));
         Cart cart = line.getCart();
         if (cart == null || cart.getUser() == null
             || !cart.getUser().getUserId().equals(user.getUserId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Ligne non autorisée");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "api.error.shop.line_forbidden");
         }
         
         if (qty <= 0) {
@@ -192,7 +212,7 @@ public class ShopService {
         } else {
             int available = getAvailableStock(line.getProduct(), line.getVariant(), cart.getCartId());
             if (qty > available + line.getQuantity()) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Stock insuffisant");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.shop.insufficient_stock");
             }
             line.setQuantity(qty);
             line.setReservedUntil(new Date(System.currentTimeMillis() + 15 * 60 * 1000));
@@ -208,10 +228,10 @@ public class ShopService {
         User user = findUser(username);
         String pm = (paymentMethod != null && paymentMethod.equalsIgnoreCase("COD")) ? "COD" : "CARD";
         Cart cart = cartRepository.findByUser_UserId(user.getUserId())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Panier vide"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.shop.cart_empty"));
         List<CartItem> lines = cartItemRepository.findByCartIdWithProduct(cart.getCartId());
         if (lines.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Panier vide");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.shop.cart_empty");
         }
 
         double subtotal = 0;
@@ -222,7 +242,7 @@ public class ShopService {
             int qty = line.getQuantity();
             int available = getAvailableStock(line.getProduct(), line.getVariant(), cart.getCartId());
             if (available < 0) {
-                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Stock plus disponible pour " + line.getProduct().getName());
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.shop.stock_unavailable_product");
             }
 
             // Delivery fee logic
@@ -312,7 +332,7 @@ public class ShopService {
             OrderLineDto lineDto = new OrderLineDto(
                 oi.getOrderItemId(),
                 p.getProductId(),
-                p.getName(),
+                translatedCatalogProductName(p),
                 qty,
                 price,
                 price * qty
@@ -400,7 +420,7 @@ public class ShopService {
     public CheckoutOrderDto getMyOrderDetail(String username, Integer orderId) {
         User u = findUser(username);
         OrderEntity order = orderEntityRepository.findById(orderId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Commande introuvable"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "payment.error.order_not_found"));
             
         // Check if buyer
         boolean isBuyer = order.getUser() != null && order.getUser().getUserId().equals(u.getUserId());
@@ -412,7 +432,7 @@ public class ShopService {
                             oi.getProduct().getUser().getUserId().equals(u.getUserId()));
 
         if (!isBuyer && !isArtisanOfOrder) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Accès refuse");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "api.error.shop.order_access_denied");
         }
         
         User buyer = order.getUser();
@@ -426,7 +446,7 @@ public class ShopService {
             OrderLineDto ldto = new OrderLineDto(
                 oi.getOrderItemId(),
                 p.getProductId(),
-                p.getName(),
+                translatedCatalogProductName(p),
                 qty,
                 price,
                 price * qty
@@ -451,11 +471,11 @@ public class ShopService {
     public void updateOrderItemStatus(Integer orderItemId, OrderStatus newStatus, String artisanUsername) {
         User artisan = findUser(artisanUsername);
         OrderItem item = orderItemRepository.findById(orderItemId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ligne de commande introuvable"));
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.shop.order_line_not_found"));
         
         if (item.getProduct() == null || item.getProduct().getUser() == null || 
             !item.getProduct().getUser().getUserId().equals(artisan.getUserId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Non autorisé à modifier cet article");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "api.error.shop.order_line_modify_forbidden");
         }
         
         if (newStatus == OrderStatus.SHIPPED || newStatus == OrderStatus.DELIVERED) {
@@ -487,12 +507,12 @@ public class ShopService {
 
     private User findUser(String username) {
         if (username == null || username.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Utilisateur requis");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.shop.user_required");
         }
         String identifier = username.trim();
-        return userRepository.findByUsernameIgnoreCase(identifier)
-            .or(() -> userRepository.findByEmailIgnoreCase(identifier))
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur inconnu"));
+        return userRepository.findFirstByUsernameIgnoreCaseOrderByUserIdAsc(identifier)
+            .or(() -> userRepository.findFirstByEmailIgnoreCaseOrderByUserIdAsc(identifier))
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.shop.user_not_found"));
     }
 
     private Cart getOrCreateCart(User user) {
@@ -538,7 +558,7 @@ public class ShopService {
             ShopCartLineDto ldto = new ShopCartLineDto(
                 line.getCartItemId(),
                 p.getProductId(),
-                p.getName(),
+                translatedCatalogProductName(p),
                 p.getImageUrl(),
                 price,
                 qty,

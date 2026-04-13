@@ -64,7 +64,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let ev of filteredEvents">
+          <tr *ngFor="let ev of paginatedEvents">
             <td class="primary-cell">{{ ev.title }}</td>
             <td>
               <div class="venue-text">📍 {{ ev.venue }}</div>
@@ -95,6 +95,15 @@
 
       <div *ngIf="filteredEvents.length === 0" class="no-results-msg">
         <p>No events match your current filters. Try resetting them!</p>
+      </div>
+
+      <div class="table-footer" *ngIf="filteredEvents.length > 0">
+        <div class="table-total">Total: {{ filteredEvents.length }}</div>
+        <div class="pagination-controls">
+          <button type="button" class="pager-btn" (click)="goToPreviousPage()" [disabled]="currentPage <= 1">Previous</button>
+          <span class="page-indicator">Page {{ currentPage }} / {{ totalPages }}</span>
+          <button type="button" class="pager-btn pager-btn--primary" (click)="goToNextPage()" [disabled]="currentPage >= totalPages">Next</button>
+        </div>
       </div>
     </div>
   </div>

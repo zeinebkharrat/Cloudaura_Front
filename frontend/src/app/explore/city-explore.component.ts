@@ -1,15 +1,35 @@
 import { Component, HostListener, OnDestroy, OnInit, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { ExploreService } from './explore.service';
-import { Activity, PublicCityDetailsResponse, Restaurant } from './explore.models';
+import { Activity, OpenMeteoCurrentResponse, PublicCityDetailsResponse, Restaurant } from './explore.models';
+
+interface WeeklyWeatherDay {
+  date: string;
+  minTemp: number | null;
+  maxTemp: number | null;
+  windMax: number | null;
+  weatherCode: number;
+}
+
+interface OpenMeteoWeeklyResponse {
+  daily?: {
+    time?: string[];
+    weather_code?: number[];
+    temperature_2m_max?: number[];
+    temperature_2m_min?: number[];
+    wind_speed_10m_max?: number[];
+  };
+}
 
 const HOME_MAP_RETURN_CONTEXT_KEY = 'homeMapReturnContext';
 
 @Component({
   selector: 'app-city-explore',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, TranslateModule],
   templateUrl: './city-explore.component.html',
   styleUrl: './city-explore.component.css',
 })
@@ -25,6 +45,16 @@ export class CityExploreComponent implements OnInit, OnDestroy {
   activitiesPerPage = signal(2);
   restaurantPageIndex = signal(0);
   activityPageIndex = signal(0);
+  weatherLoading = signal(false);
+  weatherError = signal('');
+  weatherLabel = signal('');
+  weatherIcon = signal('⛅');
+  weatherTemperature = signal<number | null>(null);
+  weatherWind = signal<number | null>(null);
+  weatherDrawerOpen = signal(false);
+  weeklyWeatherLoading = signal(false);
+  weeklyWeatherError = signal('');
+  weeklyForecast = signal<WeeklyWeatherDay[]>([]);
 
   media = computed(() => this.details()?.media ?? []);
   currentMedia = computed(() => {
@@ -85,7 +115,8 @@ export class CityExploreComponent implements OnInit, OnDestroy {
   constructor(
     private readonly route: ActivatedRoute,
     private readonly exploreService: ExploreService,
-    private readonly router: Router
+    private readonly router: Router,
+    private readonly http: HttpClient
   ) {}
 
   ngOnInit(): void {
@@ -112,6 +143,7 @@ export class CityExploreComponent implements OnInit, OnDestroy {
         this.loadActivityImages(details.activities);
         this.loadActivityRatings(details.activities);
         this.currentImageIndex.set(0);
+        this.loadCurrentWeather(details.city.latitude, details.city.longitude);
         this.startAutoSlide();
         this.startRestaurantsAutoSlide();
         this.startActivitiesAutoSlide();
@@ -301,6 +333,28 @@ export class CityExploreComponent implements OnInit, OnDestroy {
     this.goBack();
   }
 
+  openWeatherDrawer(): void {
+    this.weatherDrawerOpen.set(true);
+    const city = this.details()?.city;
+    this.loadWeeklyWeather(city?.latitude ?? null, city?.longitude ?? null);
+  }
+
+  closeWeatherDrawer(): void {
+    this.weatherDrawerOpen.set(false);
+  }
+
+  weeklyDayLabel(dateIso: string): string {
+    const parsed = new Date(dateIso);
+    if (Number.isNaN(parsed.getTime())) {
+      return dateIso;
+    }
+    return parsed.toLocaleDateString('en-US', { weekday: 'short', day: '2-digit', month: 'short' });
+  }
+
+  weeklyDaySummary(code: number): { label: string; icon: string } {
+    return this.describeWeatherCode(code);
+  }
+
   activityCardImage(activity: Activity): string {
     return (
       this.activityImageById()[activity.activityId] ||
@@ -487,5 +541,116 @@ export class CityExploreComponent implements OnInit, OnDestroy {
 
   private restartActivitiesAutoSlide(): void {
     this.startActivitiesAutoSlide();
+  }
+
+  private loadCurrentWeather(latitude: number | null, longitude: number | null): void {
+    if (latitude == null || longitude == null) {
+      this.weatherError.set('Weather unavailable for this city coordinates.');
+      this.weatherLoading.set(false);
+      return;
+    }
+
+    this.weatherLoading.set(true);
+    this.weatherError.set('');
+
+    const params = new HttpParams()
+      .set('latitude', latitude)
+      .set('longitude', longitude)
+      .set('current', 'temperature_2m,weather_code,wind_speed_10m')
+      .set('timezone', 'auto');
+
+    this.http.get<OpenMeteoCurrentResponse>('https://api.open-meteo.com/v1/forecast', { params }).subscribe({
+      next: (response: OpenMeteoCurrentResponse) => {
+        const current = response.current;
+        if (!current) {
+          this.weatherError.set('Weather data unavailable right now.');
+          this.weatherLoading.set(false);
+          return;
+        }
+
+        this.weatherTemperature.set(
+          typeof current.temperature_2m === 'number' ? current.temperature_2m : null
+        );
+        this.weatherWind.set(
+          typeof current.wind_speed_10m === 'number' ? current.wind_speed_10m : null
+        );
+
+        const summary = this.describeWeatherCode(current.weather_code ?? 0);
+        this.weatherLabel.set(summary.label);
+        this.weatherIcon.set(summary.icon);
+        this.weatherLoading.set(false);
+      },
+      error: () => {
+        this.weatherLoading.set(false);
+        this.weatherError.set('Unable to load weather now.');
+      },
+    });
+  }
+
+  private loadWeeklyWeather(latitude: number | null, longitude: number | null): void {
+    if (latitude == null || longitude == null) {
+      this.weeklyWeatherError.set('Weekly weather unavailable for this city coordinates.');
+      this.weeklyWeatherLoading.set(false);
+      this.weeklyForecast.set([]);
+      return;
+    }
+
+    this.weeklyWeatherLoading.set(true);
+    this.weeklyWeatherError.set('');
+
+    const params = new HttpParams()
+      .set('latitude', latitude)
+      .set('longitude', longitude)
+      .set('daily', 'weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max')
+      .set('forecast_days', 7)
+      .set('timezone', 'auto');
+
+    this.http.get<OpenMeteoWeeklyResponse>('https://api.open-meteo.com/v1/forecast', { params }).subscribe({
+      next: (response) => {
+        const daily = response.daily;
+        const dates = daily?.time ?? [];
+        const codes = daily?.weather_code ?? [];
+        const maxTemps = daily?.temperature_2m_max ?? [];
+        const minTemps = daily?.temperature_2m_min ?? [];
+        const winds = daily?.wind_speed_10m_max ?? [];
+
+        const mapped: WeeklyWeatherDay[] = dates.map((date, index) => ({
+          date,
+          weatherCode: Number.isFinite(codes[index]) ? codes[index] : 0,
+          maxTemp: Number.isFinite(maxTemps[index]) ? maxTemps[index] : null,
+          minTemp: Number.isFinite(minTemps[index]) ? minTemps[index] : null,
+          windMax: Number.isFinite(winds[index]) ? winds[index] : null,
+        }));
+
+        this.weeklyForecast.set(mapped);
+        this.weeklyWeatherLoading.set(false);
+      },
+      error: () => {
+        this.weeklyWeatherLoading.set(false);
+        this.weeklyWeatherError.set('Unable to load weekly weather now.');
+      },
+    });
+  }
+
+  private describeWeatherCode(code: number): { label: string; icon: string } {
+    if (code === 0) {
+      return { label: 'Clear sky', icon: '☀️' };
+    }
+    if (code >= 1 && code <= 3) {
+      return { label: 'Partly cloudy', icon: '⛅' };
+    }
+    if (code >= 45 && code <= 48) {
+      return { label: 'Foggy', icon: '🌫️' };
+    }
+    if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) {
+      return { label: 'Rainy', icon: '🌧️' };
+    }
+    if (code >= 71 && code <= 77) {
+      return { label: 'Snowy', icon: '❄️' };
+    }
+    if (code >= 95) {
+      return { label: 'Stormy', icon: '⛈️' };
+    }
+    return { label: 'Variable weather', icon: '🌤️' };
   }
 }

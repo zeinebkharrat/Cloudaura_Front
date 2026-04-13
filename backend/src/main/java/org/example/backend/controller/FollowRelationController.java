@@ -1,6 +1,7 @@
 package org.example.backend.controller;
 
 import org.example.backend.model.User;
+import org.example.backend.repository.UserRepository;
 import org.example.backend.service.CustomUserDetailsService;
 import org.example.backend.service.FollowRelationService;
 import org.springframework.http.HttpStatus;
@@ -21,9 +22,11 @@ import java.util.stream.Collectors;
 public class FollowRelationController {
 
     private final FollowRelationService followRelationService;
+    private final UserRepository userRepository;
 
-    public FollowRelationController(FollowRelationService followRelationService) {
+    public FollowRelationController(FollowRelationService followRelationService, UserRepository userRepository) {
         this.followRelationService = followRelationService;
+        this.userRepository = userRepository;
     }
 
     @PostMapping("/toggle/{targetUserId}")
@@ -77,6 +80,27 @@ public class FollowRelationController {
         return ResponseEntity.ok(payload);
     }
 
+    @GetMapping("/user-summary/{userId}")
+    public ResponseEntity<Map<String, Object>> userSummary(@PathVariable Integer userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.user_not_found"));
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("userId", user.getUserId());
+        payload.put("username", user.getUsername() == null ? "" : user.getUsername());
+        payload.put("firstName", user.getFirstName() == null ? "" : user.getFirstName());
+        payload.put("lastName", user.getLastName() == null ? "" : user.getLastName());
+        payload.put("profileImageUrl", user.getProfileImageUrl() == null ? "" : user.getProfileImageUrl());
+        String nationality = user.getNationality() == null ? "" : user.getNationality();
+        payload.put("country", nationality);
+        payload.put("nationality", nationality);
+        payload.put("cityName", user.getCity() != null ? user.getCity().getName() : "");
+        payload.put("age", null);
+        payload.put("followersCount", followRelationService.followersCount(userId));
+        payload.put("followingCount", followRelationService.followingCount(userId));
+        return ResponseEntity.ok(payload);
+    }
+
     private Map<String, Object> toUserSummary(User user) {
         Map<String, Object> summary = new LinkedHashMap<>();
         if (user == null) {
@@ -99,7 +123,7 @@ public class FollowRelationController {
     private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.unauthorized");
         }
 
         Object principal = authentication.getPrincipal();
@@ -107,6 +131,6 @@ public class FollowRelationController {
             return ((CustomUserDetailsService.CustomUserDetails) principal).getUser();
         }
 
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid authentication principal");
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.invalid_principal");
     }
 }

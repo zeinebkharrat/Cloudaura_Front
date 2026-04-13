@@ -33,9 +33,9 @@ public class SavedPostService {
     @Transactional
     public Map<String, Object> toggleSave(Integer userId, Integer postId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.user_not_found"));
         Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.post_not_found"));
 
         return savedPostRepository.findByUserUserIdAndPostPostId(userId, postId)
                 .map(existing -> {

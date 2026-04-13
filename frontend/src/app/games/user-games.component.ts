@@ -1,13 +1,14 @@
-import { Component, signal, OnInit } from '@angular/core';
+import { Component, signal, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { LudificationService, PuzzleImage, RoadmapNode, LudoCard } from '../core/ludification.service';
 import { AuthService } from '../core/auth.service';
 
 @Component({
   selector: 'app-user-games',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, TranslateModule],
   templateUrl: './user-games.component.html',
   styleUrl: './user-games.component.css',
 })
@@ -23,11 +24,18 @@ export class UserGamesComponent implements OnInit {
   crosswords = signal<{ crosswordId?: number; published?: boolean }[]>([]);
   roadmapNotice = signal<string | null>(null);
 
+  private readonly translate = inject(TranslateService);
+
   constructor(
     private api: LudificationService,
     private router: Router,
     private auth: AuthService,
   ) {}
+
+  /** Accès au Ludo réservé aux utilisateurs connectés (voir route `games/ludo` + authGuard). */
+  isLoggedIn(): boolean {
+    return this.auth.isAuthenticated();
+  }
 
   ngOnInit() {
     this.api.getQuizzes().subscribe((list) => {
@@ -98,7 +106,7 @@ export class UserGamesComponent implements OnInit {
         let fallbacks: RoadmapNode[] = quizzes.map((q, i) => ({
           nodeId: q.quizId,
           stepOrder: i,
-          nodeLabel: q.title || `Niveau ${i + 1}`,
+          nodeLabel: q.title || this.translate.instant('GAMES_HUB.FALLBACK_LEVEL', { n: i + 1 }),
           quizId: q.quizId,
         }));
 
@@ -106,7 +114,7 @@ export class UserGamesComponent implements OnInit {
           fallbacks = Array.from({ length: 6 }, (_, i) => ({
             nodeId: i + 100,
             stepOrder: i,
-            nodeLabel: `Épreuve secrète ${i + 1}`,
+            nodeLabel: this.translate.instant('GAMES_HUB.FALLBACK_SECRET', { n: i + 1 }),
           }));
         }
         this.roadmapNodes.set(fallbacks);
@@ -115,7 +123,7 @@ export class UserGamesComponent implements OnInit {
         const fallbacks = Array.from({ length: 6 }, (_, i) => ({
           nodeId: i + 100,
           stepOrder: i,
-          nodeLabel: `Épreuve réseau ${i + 1}`,
+          nodeLabel: this.translate.instant('GAMES_HUB.FALLBACK_NETWORK', { n: i + 1 }),
         }));
         this.roadmapNodes.set(fallbacks);
       },
@@ -152,8 +160,12 @@ export class UserGamesComponent implements OnInit {
   }
 
   playNode(node: RoadmapNode, index: number) {
+    if (!this.isLoggedIn()) {
+      this.router.navigate(['/login']);
+      return;
+    }
     if (!this.isUnlocked(index)) {
-      this.roadmapNotice.set('This step is locked. Complete the previous step first.');
+      this.roadmapNotice.set(this.translate.instant('GAMES_HUB.MSG_STEP_LOCKED'));
       return;
     }
 
@@ -194,17 +206,17 @@ export class UserGamesComponent implements OnInit {
       const fallbackPuzzleId = firstRoadmapPlayable.puzzleId;
 
       if (fallbackQuizId) {
-        this.roadmapNotice.set('This step is not set up yet. Redirecting to a playable step.');
+        this.roadmapNotice.set(this.translate.instant('GAMES_HUB.MSG_REDIRECT_PLAYABLE'));
         this.router.navigate(['/games/quiz', fallbackQuizId], { queryParams: rq });
         return;
       }
       if (fallbackCrosswordId) {
-        this.roadmapNotice.set('This step is not set up yet. Redirecting to a playable step.');
+        this.roadmapNotice.set(this.translate.instant('GAMES_HUB.MSG_REDIRECT_PLAYABLE'));
         this.router.navigate(['/games/crossword', fallbackCrosswordId], { queryParams: rq });
         return;
       }
       if (fallbackPuzzleId) {
-        this.roadmapNotice.set('This step is not set up yet. Redirecting to a playable step.');
+        this.roadmapNotice.set(this.translate.instant('GAMES_HUB.MSG_REDIRECT_PLAYABLE'));
         this.router.navigate(['/games/puzzle', fallbackPuzzleId], { queryParams: rq });
         return;
       }
@@ -212,33 +224,41 @@ export class UserGamesComponent implements OnInit {
 
     const firstQuiz = this.quizzes()[0]?.quizId;
     if (firstQuiz) {
-      this.roadmapNotice.set("Aucune liaison directe sur cette étape. Ouverture d'un quiz disponible.");
+      this.roadmapNotice.set(this.translate.instant('GAMES_HUB.MSG_FALLBACK_QUIZ'));
       this.router.navigate(['/games/quiz', firstQuiz]);
       return;
     }
 
     const firstCrossword = this.crosswords()[0]?.crosswordId;
     if (firstCrossword) {
-      this.roadmapNotice.set('No direct link on this step. Opening an available crossword.');
+      this.roadmapNotice.set(this.translate.instant('GAMES_HUB.MSG_FALLBACK_CROSSWORD'));
       this.router.navigate(['/games/crossword', firstCrossword]);
       return;
     }
 
     const firstPuzzle = this.puzzles()[0]?.puzzleId;
     if (firstPuzzle) {
-      this.roadmapNotice.set('No direct link on this step. Opening an available puzzle.');
+      this.roadmapNotice.set(this.translate.instant('GAMES_HUB.MSG_FALLBACK_PUZZLE'));
       this.router.navigate(['/games/puzzle', firstPuzzle]);
       return;
     }
 
-    this.roadmapNotice.set('This step has no game configured yet.');
+    this.roadmapNotice.set(this.translate.instant('GAMES_HUB.MSG_NO_GAME'));
   }
 
   playPuzzle(puzzleId: number): void {
+    if (!this.isLoggedIn()) {
+      this.router.navigate(['/login']);
+      return;
+    }
     this.router.navigate(['/games/puzzle', puzzleId]);
   }
 
   playLudo(): void {
+    if (!this.isLoggedIn()) {
+      this.router.navigate(['/login']);
+      return;
+    }
     this.router.navigate(['/games/ludo']);
   }
 }

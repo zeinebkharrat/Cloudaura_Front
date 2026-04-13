@@ -122,7 +122,24 @@ export interface ActivityReservationListItem {
   numberOfPeople: number;
   totalPrice: number;
   status: ReservationStatus;
+  statusLabel?: string;
+  nameLabel?: string;
+  cityLabel?: string;
   userId: number | null;
   username: string | null;
   userEmail: string | null;
+}
+
+export interface AdminPost {
+  postId: number;
+  authorId: number | null;
+  authorUsername: string | null;
+  content: string | null;
+  hashtags: string | null;
+  location: string | null;
+  visibility: string | null;
+  likesCount: number;
+  commentsCount: number;
+  createdAt: string | null;
+  repostOfPostId: number | null;
 }

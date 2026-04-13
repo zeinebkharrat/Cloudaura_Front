@@ -1,7 +1,7 @@
 <section class="page" *ngIf="!loading; else loadingTpl">
-  <button class="back-btn floating-back" type="button" (click)="goBack()" aria-label="Back">←</button>
+  <button class="back-btn floating-back" type="button" (click)="goBack()" [attr.aria-label]="'COMMON.BACK' | translate">←</button>
   <header class="topbar animate-in">
-    <a class="city-link" *ngIf="restaurant" [routerLink]="['/city', restaurant.cityId]">View city</a>
+    <a class="city-link" *ngIf="restaurant" [routerLink]="['/city', restaurant.cityId]">{{ 'EXPLORE_RESTAURANT.VIEW_CITY' | translate }}</a>
   </header>
 
   <div class="error" *ngIf="error">{{ error }}</div>
@@ -11,38 +11,38 @@
       <div class="image-panel">
         <img class="cover-image" [src]="heroImage" [alt]="restaurant.name" />
         <div class="image-overlay"></div>
-        <span class="badge">Restaurant</span>
+        <span class="badge">{{ 'EXPLORE_RESTAURANT.BADGE' | translate }}</span>
       </div>
 
       <div class="content-panel">
-        <p class="kicker">Expérience culinaire</p>
+        <p class="kicker">{{ 'EXPLORE_RESTAURANT.KICKER' | translate }}</p>
         <h1>{{ restaurant.name }}</h1>
-        <p class="description">{{ restaurant.description || 'An authentic culinary experience awaits you.' }}</p>
+        <p class="description">{{ restaurant.description || ('EXPLORE_RESTAURANT.DESC_FALLBACK' | translate) }}</p>
 
         <div class="rating-row">
-          <div class="stars" aria-label="restaurant rating">
+          <div class="stars" [attr.aria-label]="'EXPLORE_RESTAURANT.RATING_A11Y' | translate">
             @for (state of starStates(ratingValue()); track $index) {
               <span [class.filled]="state === 'full'">★</span>
             }
           </div>
           <strong>{{ ratingValue() | number:'1.1-1' }}/5</strong>
-          <small>({{ reviewSummary.totalReviews }} reviews)</small>
+          <small>{{ 'EXPLORE_RESTAURANT.REVIEWS_COUNT' | translate: { n: reviewSummary.totalReviews } }}</small>
         </div>
 
         <div class="chips-row">
-          <span class="chip">{{ restaurant.cuisineType || 'Local cuisine' }}</span>
+          <span class="chip">{{ restaurant.cuisineType || ('EXPLORE_RESTAURANT.CUISINE_DEFAULT' | translate) }}</span>
           <span class="chip" *ngIf="restaurant.rating != null">★ {{ restaurant.rating }}/5</span>
           <span class="chip">{{ restaurant.cityName }}</span>
         </div>
 
         <div class="info-grid">
           <article class="info-card">
-            <span>City</span>
+            <span>{{ 'EXPLORE_RESTAURANT.CITY' | translate }}</span>
             <strong>{{ restaurant.cityName }}</strong>
           </article>
           <article class="info-card">
-            <span>Address</span>
-            <strong>{{ restaurant.address || 'Not provided' }}</strong>
+            <span>{{ 'EXPLORE_RESTAURANT.ADDRESS' | translate }}</span>
+            <strong>{{ restaurant.address || ('EXPLORE_RESTAURANT.ADDRESS_MISSING' | translate) }}</strong>
           </article>
         </div>
       </div>
@@ -50,37 +50,55 @@
 
     <article class="map-card animate-in delay-2">
       <div class="card-head">
-        <h2>Location & directions</h2>
-        <p>Check the exact location and open navigation instantly.</p>
+        <h2>{{ 'EXPLORE_RESTAURANT.MAP_TITLE' | translate }}</h2>
+        <p>{{ 'EXPLORE_RESTAURANT.MAP_SUB' | translate }}</p>
       </div>
 
       <div id="restaurantMap" class="map" *ngIf="restaurant.latitude && restaurant.longitude"></div>
       <p class="empty" *ngIf="!restaurant.latitude || !restaurant.longitude">
-        Coordinates are not available for this restaurant.
+        {{ 'EXPLORE_RESTAURANT.COORDS_MISSING' | translate }}
       </p>
 
       <button class="primary-btn" type="button" (click)="openDirectionsFromCurrentPosition()" [disabled]="!restaurant.latitude || !restaurant.longitude">
-        Directions from my location
+        {{ 'EXPLORE_RESTAURANT.DIRECTIONS_BTN' | translate }}
       </button>
     </article>
 
     <article class="map-card animate-in delay-2 review-card">
       <div class="card-head">
-        <h2>User reviews</h2>
-        <p>Read travelers' feedback and add your own comment.</p>
+        <h2>{{ 'EXPLORE_RESTAURANT.REVIEWS_TITLE' | translate }}</h2>
+        <p>{{ 'EXPLORE_RESTAURANT.REVIEWS_SUB' | translate }}</p>
       </div>
 
       <div class="reviews-list">
         @if (reviews.length === 0) {
-          <p class="empty">No comments yet.</p>
+          <p class="empty">{{ 'EXPLORE_RESTAURANT.NO_COMMENTS' | translate }}</p>
         } @else {
           @for (review of reviews; track review.reviewId) {
             <article class="review-item">
               <div class="review-top">
-                <strong>{{ review.username }}</strong>
-                <div class="stars compact" aria-label="review stars">
-                  @for (state of starStates(review.stars); track $index) {
-                    <span [class.filled]="state === 'full'">★</span>
+                <div class="review-author">
+                  @if (review.profileImageUrl) {
+                    <img class="review-avatar" [src]="review.profileImageUrl" [alt]="'EXPLORE_RESTAURANT.REVIEWER_ALT' | translate" />
+                  } @else {
+                    <span class="review-avatar review-avatar-fallback">{{ reviewAuthorInitial(review) }}</span>
+                  }
+                  <div class="review-meta">
+                    <strong>{{ reviewAuthorEmail(review) }}</strong>
+                    <small>{{ review.username }}</small>
+                  </div>
+                </div>
+                <div class="review-right">
+                  <div class="stars compact" [attr.aria-label]="'EXPLORE_RESTAURANT.REVIEW_STARS_A11Y' | translate">
+                    @for (state of starStates(review.stars); track $index) {
+                      <span [class.filled]="state === 'full'">★</span>
+                    }
+                  </div>
+                  @if (isOwnReview(review)) {
+                    <div class="review-actions">
+                      <button type="button" class="mini-btn" (click)="startEditReview(review)" [disabled]="reviewSubmitting">{{ 'EXPLORE_RESTAURANT.EDIT' | translate }}</button>
+                      <button type="button" class="mini-btn danger" (click)="deleteOwnReview()" [disabled]="reviewSubmitting">{{ 'EXPLORE_RESTAURANT.DELETE' | translate }}</button>
+                    </div>
                   }
                 </div>
               </div>
@@ -92,7 +110,7 @@
 
       <form class="review-form" (ngSubmit)="submitReview()">
         <label>
-          Your rating
+          {{ 'EXPLORE_RESTAURANT.YOUR_RATING' | translate }}
           <div class="stars selectable">
             @for (star of [1,2,3,4,5]; track star) {
               <button type="button" class="star-btn" [class.filled]="reviewForm.stars >= star" (click)="setReviewStars(star)">★</button>
@@ -100,12 +118,20 @@
           </div>
         </label>
         <label>
-          Your comment
-          <textarea rows="4" [(ngModel)]="reviewForm.commentText" name="reviewComment" placeholder="Share your experience..."></textarea>
+          {{ 'EXPLORE_RESTAURANT.YOUR_COMMENT' | translate }}
+          <textarea rows="4" [(ngModel)]="reviewForm.commentText" name="reviewComment" [placeholder]="'EXPLORE_RESTAURANT.COMMENT_PH' | translate"></textarea>
         </label>
+        <div class="emoji-row" [attr.aria-label]="'EXPLORE_RESTAURANT.EMOJI_A11Y' | translate">
+          @for (emoji of commentEmojis; track emoji) {
+            <button type="button" class="emoji-btn" (click)="appendEmoji(emoji)">{{ emoji }}</button>
+          }
+        </div>
         <button class="primary-btn" type="submit" [disabled]="reviewSubmitting || !reviewForm.commentText.trim()">
-          {{ reviewSubmitting ? 'Sending...' : 'Post comment' }}
+          {{ reviewSubmitting ? ('EXPLORE_RESTAURANT.SENDING' | translate) : (editingReviewId ? ('EXPLORE_RESTAURANT.SAVE_CHANGES' | translate) : ('EXPLORE_RESTAURANT.POST_COMMENT' | translate)) }}
         </button>
+        @if (editingReviewId) {
+          <button class="mini-btn" type="button" (click)="cancelEditReview()" [disabled]="reviewSubmitting">{{ 'EXPLORE_RESTAURANT.CANCEL_EDIT' | translate }}</button>
+        }
       </form>
     </article>
   </ng-container>
@@ -113,6 +139,6 @@
 
 <ng-template #loadingTpl>
   <section class="page">
-    <div class="loading-card">Loading restaurant...</div>
+    <div class="loading-card">{{ 'EXPLORE_RESTAURANT.LOADING' | translate }}</div>
   </section>
 </ng-template>

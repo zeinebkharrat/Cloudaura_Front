@@ -2,6 +2,9 @@ HELP.md
 # Secrets Spring (copie locale, jamais versionnée)
 src/main/resources/application-local.properties
 target/
+
+# Secrets locaux (Stripe, etc.) — ne pas committer
+src/main/resources/application-local.properties
 .mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
@@ -33,3 +36,8 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Local backend config (contains environment-specific values)
+src/main/resources/application.properties
+src/main/resources/application-local.properties
+src/main/resources/.env

@@ -1,23 +1,30 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnInit, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject, OnInit, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { AuthService } from './core/auth.service';
 import { extractApiErrorMessage } from './api-error.util';
 
 @Component({
   selector: 'app-sign-in',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, TranslateModule],
   templateUrl: './sign-in.component.html',
   styleUrls: ['./sign-in.component.css', './auth-pages.shared.css'],
 })
 export class SignInComponent implements OnInit {
+    @Input() embedded = false;
+    @Input() returnUrlOverride: string | null = null;
+    @Output() switchMode = new EventEmitter<'signup'>();
+    @Output() authenticated = new EventEmitter<void>();
+
   private readonly fb = inject(FormBuilder);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly translate = inject(TranslateService);
 
   readonly isLoading = signal(false);
   readonly isResendingVerification = signal(false);
@@ -38,9 +45,9 @@ export class SignInComponent implements OnInit {
   passwordErrorMessage(): string {
     const control = this.form.controls.password;
     if (control.hasError('required')) {
-      return 'Password is required.';
+      return this.translate.instant('AUTH_SIGNIN.ERR_PASSWORD_REQUIRED');
     }
-    return 'Invalid password.';
+    return this.translate.instant('AUTH_SIGNIN.ERR_PASSWORD_INVALID');
   }
 
   ngOnInit() {
@@ -51,10 +58,10 @@ export class SignInComponent implements OnInit {
 
     const token = this.route.snapshot.queryParamMap.get('token');
     const socialError = this.route.snapshot.queryParamMap.get('error');
-    const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/';
+    const returnUrl = this.getReturnUrl();
 
     if (socialError) {
-      this.formError.set('Social sign-in failed. Try another provider.');
+      this.formError.set(this.translate.instant('AUTH_SIGNIN.MSG_SOCIAL_FAILED'));
       return;
     }
 
@@ -65,15 +72,11 @@ export class SignInComponent implements OnInit {
     this.isLoading.set(true);
     this.authService.completeSocialSignin(token).subscribe({
       next: () => {
-        if (this.authService.hasRole('ROLE_ADMIN')) {
-          this.router.navigateByUrl('/admin/dashboard');
-          return;
-        }
-        this.router.navigateByUrl(returnUrl);
+        this.finishAuthFlow(returnUrl);
       },
       error: (error: HttpErrorResponse) => {
         this.isLoading.set(false);
-        this.formError.set(extractApiErrorMessage(error, 'Invalid social token. Please try again.'));
+        this.formError.set(extractApiErrorMessage(error, this.translate.instant('AUTH_SIGNIN.MSG_SOCIAL_TOKEN_INVALID')));
       },
       complete: () => this.isLoading.set(false),
     });
@@ -91,12 +94,8 @@ export class SignInComponent implements OnInit {
 
     this.authService.signin(this.form.getRawValue()).subscribe({
       next: () => {
-        if (this.authService.hasRole('ROLE_ADMIN')) {
-          this.router.navigateByUrl('/admin/dashboard');
-          return;
-        }
-        const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/';
-        this.router.navigateByUrl(returnUrl);
+        const returnUrl = this.getReturnUrl();
+        this.finishAuthFlow(returnUrl);
       },
       error: (error: HttpErrorResponse) => {
         this.isLoading.set(false);
@@ -105,20 +104,36 @@ export class SignInComponent implements OnInit {
           this.formError.set(
             fromApi && fromApi.trim().length > 0
               ? fromApi
-              : 'Your email is not verified yet. Check your inbox or use “Resend verification email” below.'
+              : this.translate.instant('AUTH_SIGNIN.MSG_VERIFY_REMINDER')
           );
           return;
         }
-        this.formError.set(extractApiErrorMessage(error, 'Sign-in failed. Check your credentials.'));
+        this.formError.set(extractApiErrorMessage(error, this.translate.instant('AUTH_SIGNIN.MSG_SIGNIN_FAILED')));
       },
       complete: () => this.isLoading.set(false),
     });
   }
 
+  private getReturnUrl(): string {
+    return this.returnUrlOverride || this.route.snapshot.queryParamMap.get('returnUrl') || '/';
+  }
+
+  private finishAuthFlow(returnUrl: string): void {
+    if (this.embedded) {
+      this.authenticated.emit();
+      return;
+    }
+    if (this.authService.hasRole('ROLE_ADMIN')) {
+      this.router.navigateByUrl('/admin/dashboard');
+      return;
+    }
+    this.router.navigateByUrl(returnUrl);
+  }
+
   resendVerificationEmail() {
     const identifier = this.form.controls.identifier.value.trim();
     if (!identifier) {
-      this.formError.set('Enter your email or username to resend the verification link.');
+      this.formError.set(this.translate.instant('AUTH_SIGNIN.MSG_RESEND_NEED_IDENTIFIER'));
       return;
     }
     if (this.isResendingVerification()) {
@@ -132,7 +147,7 @@ export class SignInComponent implements OnInit {
     this.authService.resendVerification({ identifier }).subscribe({
       next: (response) => this.formSuccess.set(response.message),
       error: (error: HttpErrorResponse) => {
-        this.formError.set(extractApiErrorMessage(error, 'Could not resend the verification link.'));
+        this.formError.set(extractApiErrorMessage(error, this.translate.instant('AUTH_SIGNIN.MSG_RESEND_FAILED')));
       },
       complete: () => this.isResendingVerification.set(false),
     });
@@ -140,7 +155,7 @@ export class SignInComponent implements OnInit {
 
   loginWithGoogle() {
     if (!this.socialProviders().google) {
-      this.formError.set('Google sign-in is not configured on the server. Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.');
+      this.formError.set(this.translate.instant('AUTH_SIGNIN.MSG_GOOGLE_NOT_CONFIGURED'));
       return;
     }
     this.authService.startSocialLogin('google');
@@ -148,7 +163,7 @@ export class SignInComponent implements OnInit {
 
   loginWithGithub() {
     if (!this.socialProviders().github) {
-      this.formError.set('GitHub sign-in is not configured on the server. Set GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET.');
+      this.formError.set(this.translate.instant('AUTH_SIGNIN.MSG_GITHUB_NOT_CONFIGURED'));
       return;
     }
     this.authService.startSocialLogin('github');
@@ -156,7 +171,7 @@ export class SignInComponent implements OnInit {
 
   loginWithFacebook() {
     if (!this.socialProviders().facebook) {
-      this.formError.set('Facebook sign-in is not configured on the server. Set FACEBOOK_CLIENT_ID and FACEBOOK_CLIENT_SECRET.');
+      this.formError.set(this.translate.instant('AUTH_SIGNIN.MSG_FACEBOOK_NOT_CONFIGURED'));
       return;
     }
     this.authService.startSocialLogin('facebook');
@@ -164,7 +179,7 @@ export class SignInComponent implements OnInit {
 
   loginWithInstagram() {
     if (!this.socialProviders().instagram) {
-      this.formError.set('Instagram sign-in is not configured on the server. Set INSTAGRAM_CLIENT_ID and INSTAGRAM_CLIENT_SECRET.');
+      this.formError.set(this.translate.instant('AUTH_SIGNIN.MSG_INSTAGRAM_NOT_CONFIGURED'));
       return;
     }
     this.authService.startSocialLogin('instagram');

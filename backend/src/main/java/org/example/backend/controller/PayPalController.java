@@ -66,15 +66,12 @@ public class PayPalController {
             @Valid @RequestBody TransportPayPalCreateRequest body, Authentication authentication) {
         Integer uid = userIdentityResolver.resolveUserId(authentication);
         if (uid == null) {
-            throw new AccessDeniedException("Authentication required");
+            throw new AccessDeniedException("api.error.unauthorized");
         }
         if (!isPayPalConfigured()) {
             log.warn("PayPal create rejected: client id/secret missing or blank");
             throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "PayPal n'est pas configuré. Ajoutez paypal.client.id et paypal.client.secret dans "
-                            + "application-local.properties (profil local), ou les variables PAYPAL_CLIENT_ID et "
-                            + "PAYPAL_CLIENT_SECRET, puis redémarrez le backend.");
+                    HttpStatus.SERVICE_UNAVAILABLE, "payment.error.paypal_not_configured");
         }
 
         log.info(
@@ -96,7 +93,7 @@ public class PayPalController {
         String approvalUrl = PayPalService.extractApprovalUrl(orderResponse);
         if (approvalUrl == null || approvalUrl.isBlank()) {
             log.error("PayPal order missing approve link for reservationId={}", reservation.getTransportReservationId());
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "PayPal n'a pas renvoyé de lien d'approbation.");
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "api.error.paypal.no_approval_url");
         }
 
         log.info(
@@ -117,15 +114,14 @@ public class PayPalController {
             Authentication authentication) {
         Integer uid = userIdentityResolver.resolveUserId(authentication);
         if (uid == null) {
-            throw new AccessDeniedException("Authentication required");
+            throw new AccessDeniedException("api.error.unauthorized");
         }
         if (token == null || token.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "token (PayPal order id) requis.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.paypal.token_required");
         }
         if (!isPayPalConfigured()) {
             throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "PayPal n'est pas configuré. Définissez les clés Sandbox (voir message du POST create).");
+                    HttpStatus.SERVICE_UNAVAILABLE, "payment.error.paypal_not_configured");
         }
 
         log.info("PayPal capture request: userId={} reservationId={} tokenLen={}", uid, reservationId, token.length());
@@ -139,12 +135,7 @@ public class PayPalController {
             data.put("reservation", dto);
             return ResponseEntity.ok(ApiResponse.success(data));
         } catch (ResponseStatusException e) {
-            if (e.getStatusCode() == HttpStatus.BAD_REQUEST
-                    && e.getReason() != null
-                    && "FAILED".equalsIgnoreCase(e.getReason())) {
-                log.warn("PayPal capture failed reservationId={}", reservationId);
-                return ResponseEntity.badRequest().body(Map.of("status", "FAILED"));
-            }
+            log.warn("PayPal capture rejected reservationId={}", reservationId, e);
             throw e;
         }
     }

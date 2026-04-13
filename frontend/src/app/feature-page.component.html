@@ -3,7 +3,7 @@
   <div class="feature-page__mesh" aria-hidden="true"></div>
 
   <a routerLink="/" class="back-home">
-    <i class="pi pi-arrow-left"></i> Home
+    <i class="pi pi-arrow-left"></i> {{ 'FEATURE_CATALOG.BACK_HOME' | translate }}
   </a>
 
   <header class="feature-page__hero glass-panel">
@@ -21,18 +21,15 @@
     <div class="catalog-header">
       <div class="catalog-header__text">
         <h2 id="catalog-heading" class="catalog-header__title">
-          {{ isArtisan() ? '🎨 My creations' : '🛍️ Tunisian crafts' }}
+          {{ (isArtisan() ? 'FEATURE_CATALOG.CATALOG_TITLE_ARTISAN' : 'FEATURE_CATALOG.CATALOG_TITLE_SHOPPER') | translate }}
         </h2>
         <p class="catalog-header__sub">
-          {{ isArtisan()
-            ? 'Manage your products, variants, and stock in real time.'
-            : 'Discover unique handmade pieces by Tunisian artisans.'
-          }}
+          {{ (isArtisan() ? 'FEATURE_CATALOG.CATALOG_SUB_ARTISAN' : 'FEATURE_CATALOG.CATALOG_SUB_SHOPPER') | translate }}
         </p>
       </div>
       <button *ngIf="isArtisan()" type="button" class="btn-new-product" (click)="openProductForm()">
         <i class="pi pi-plus"></i>
-        <span>New product</span>
+        <span>{{ 'FEATURE_CATALOG.NEW_PRODUCT' | translate }}</span>
       </button>
     </div>
 
@@ -44,22 +41,22 @@
           type="text"
           [ngModel]="searchQuery()"
           (ngModelChange)="searchQuery.set($event)"
-          placeholder="Search product, artisan, city…"
+          [placeholder]="'FEATURE_CATALOG.SEARCH_PLACEHOLDER' | translate"
           class="filter-search__input"
         />
       </div>
       <div class="filter-selects">
         <select [ngModel]="selectedCategory()" (ngModelChange)="selectedCategory.set($event)" class="filter-select">
-          <option [value]="null">All categories</option>
-          <option value="BIJOUX">💎 Bijoux</option>
-          <option value="TEXTILE">🧵 Textile</option>
-          <option value="CERAMIQUE">🏺 Céramique</option>
-          <option value="BOIS">🪵 Bois</option>
-          <option value="TAPIS">🪬 Tapis</option>
-          <option value="AUTRE">✦ Autre</option>
+          <option [value]="null">{{ 'FEATURE_CATALOG.ALL_CATEGORIES' | translate }}</option>
+          <option value="BIJOUX">{{ 'FEATURE_CATALOG.CAT.BIJOUX' | translate }}</option>
+          <option value="TEXTILE">{{ 'FEATURE_CATALOG.CAT.TEXTILE' | translate }}</option>
+          <option value="CERAMIQUE">{{ 'FEATURE_CATALOG.CAT.CERAMIQUE' | translate }}</option>
+          <option value="BOIS">{{ 'FEATURE_CATALOG.CAT.BOIS' | translate }}</option>
+          <option value="TAPIS">{{ 'FEATURE_CATALOG.CAT.TAPIS' | translate }}</option>
+          <option value="AUTRE">{{ 'FEATURE_CATALOG.CAT.AUTRE' | translate }}</option>
         </select>
         <select *ngIf="!isArtisan()" [ngModel]="selectedCityId()" (ngModelChange)="onCityChange($event)" class="filter-select">
-          <option [value]="null">All cities</option>
+          <option [value]="null">{{ 'FEATURE_CATALOG.ALL_CITIES' | translate }}</option>
           <option *ngFor="let c of cities()" [value]="c.cityId">{{ c.name }}</option>
         </select>
       </div>
@@ -69,17 +66,17 @@
     <!-- ─── VUE ARTISAN ─── -->
     <div *ngIf="isArtisan()">
       <div *ngIf="artisanProductsLoading()" class="catalog-state">
-        <i class="pi pi-spin pi-spinner"></i> Loading your products…
+        <i class="pi pi-spin pi-spinner"></i> {{ 'FEATURE_CATALOG.LOADING_ARTISAN' | translate }}
       </div>
       <div *ngIf="artisanProductsError()" class="catalog-state catalog-state--error">
-        <i class="pi pi-exclamation-triangle"></i> {{ artisanProductsError() }}
+        <i class="pi pi-exclamation-triangle"></i> {{ artisanProductsError() | translate }}
       </div>
       <div *ngIf="!artisanProductsLoading() && filteredArtisanProducts().length === 0" class="catalog-empty">
         <div class="catalog-empty__icon">🎨</div>
-        <h3>No products yet</h3>
-        <p>Add your first handmade piece to get started.</p>
+        <h3>{{ 'FEATURE_CATALOG.EMPTY_ARTISAN_TITLE' | translate }}</h3>
+        <p>{{ 'FEATURE_CATALOG.EMPTY_ARTISAN_DESC' | translate }}</p>
         <button type="button" class="btn-new-product" (click)="openProductForm()">
-          <i class="pi pi-plus"></i> Create a product
+          <i class="pi pi-plus"></i> {{ 'FEATURE_CATALOG.CREATE_PRODUCT' | translate }}
         </button>
       </div>
 
@@ -93,7 +90,7 @@
         >
           <!-- Status Badge -->
           <div class="artisan-card__status" [attr.data-status]="p.status">
-            {{ getStatusLabel(p.status) }}
+            {{ statusLabelKey(p.status) | translate }}
           </div>
 
           <!-- Image -->
@@ -102,27 +99,27 @@
               (error)="onCatalogImageError(p.productId)" class="artisan-card__img" />
             <div *ngIf="!showCatalogImage(p)" class="artisan-card__placeholder">
               <span>✦</span>
-              <span class="artisan-card__placeholder-label">No image</span>
+              <span class="artisan-card__placeholder-label">{{ 'FEATURE_CATALOG.NO_IMAGE' | translate }}</span>
             </div>
             <!-- Hover overlay -->
             <div class="artisan-card__overlay">
-              <span><i class="pi pi-eye"></i> View details</span>
+              <span><i class="pi pi-eye"></i> {{ 'FEATURE_CATALOG.VIEW_DETAILS' | translate }}</span>
             </div>
           </div>
 
           <!-- Body -->
           <div class="artisan-card__body">
             <h3 class="artisan-card__name">{{ p.name }}</h3>
-            <span class="artisan-card__category" *ngIf="p.category">{{ p.category }}</span>
+            <span class="artisan-card__category" *ngIf="p.category">{{ ('FEATURE_CATALOG.CAT.' + p.category) | translate }}</span>
             <div class="artisan-card__meta">
               <span class="artisan-card__price">{{ formatPrice(p.price) }}</span>
               <span class="artisan-card__stock" [class.stock--low]="(p.stock ?? 0) < 5">
-                Stock: {{ p.stock ?? 0 }}
+                {{ 'FEATURE_CATALOG.STOCK_N' | translate: { n: p.stock ?? 0 } }}
               </span>
             </div>
             <div class="artisan-card__actions" (click)="$event.stopPropagation()">
               <button class="btn-card-edit" (click)="editProduct(p, $event)">
-                <i class="pi pi-pencil"></i> Edit
+                <i class="pi pi-pencil"></i> {{ 'FEATURE_CATALOG.EDIT' | translate }}
               </button>
               <button class="btn-card-delete" (click)="deleteProduct(p.productId, $event)">
                 <i class="pi pi-trash"></i>
@@ -137,15 +134,15 @@
     <!-- ─── VUE CLIENT / TOURISTE ─── -->
     <div *ngIf="!isArtisan()">
       <div *ngIf="catalogLoading" class="catalog-state">
-        <i class="pi pi-spin pi-spinner"></i> Loading catalog…
+        <i class="pi pi-spin pi-spinner"></i> {{ 'FEATURE_CATALOG.LOADING_CATALOG' | translate }}
       </div>
       <div *ngIf="catalogError" class="catalog-state catalog-state--error">
-        <i class="pi pi-exclamation-triangle"></i> {{ catalogError }}
+        <i class="pi pi-exclamation-triangle"></i> {{ catalogError | translate }}
       </div>
       <div *ngIf="!catalogLoading && !catalogError && filteredCatalogProducts().length === 0" class="catalog-empty">
         <div class="catalog-empty__icon">🔍</div>
-        <h3>No products found</h3>
-        <p>Try adjusting your filters or search.</p>
+        <h3>{{ 'FEATURE_CATALOG.EMPTY_SHOPPER_TITLE' | translate }}</h3>
+        <p>{{ 'FEATURE_CATALOG.EMPTY_SHOPPER_DESC' | translate }}</p>
       </div>
 
       <div *ngIf="!catalogLoading && filteredCatalogProducts().length" class="horizontal-scroll-container">
@@ -158,7 +155,7 @@
           role="button"
           tabindex="0"
           (keydown.enter)="openProductDetails(p)"
-          [attr.aria-label]="'View details: ' + p.name"
+          [attr.aria-label]="'FEATURE_CATALOG.ARIA_VIEW_DETAILS' | translate: { name: p.name }"
         >
           <!-- Favorite Button -->
           <button
@@ -166,7 +163,7 @@
             class="product-card__fav"
             [class.active]="p.isFavorite"
             (click)="toggleFavorite(p, $event)"
-            [title]="p.isFavorite ? 'Remove from favorites' : 'Add to favorites'"
+            [title]="(p.isFavorite ? 'FEATURE_CATALOG.FAV_REMOVE' : 'FEATURE_CATALOG.FAV_ADD') | translate"
           >
             <i class="pi" [class.pi-heart-fill]="p.isFavorite" [class.pi-heart]="!p.isFavorite"></i>
           </button>
@@ -185,13 +182,13 @@
             </div>
             <!-- Variant chip preview -->
             <div class="product-card__variant-hint" *ngIf="p.category === 'TEXTILE' && p.variants && p.variants.length">
-              {{ p.variants.length }} option{{ p.variants.length > 1 ? 's' : '' }} available
+              {{ (p.variants.length === 1 ? 'FEATURE_CATALOG.OPTIONS_ONE' : 'FEATURE_CATALOG.OPTIONS_N') | translate: { count: p.variants.length } }}
             </div>
           </div>
 
           <!-- Body -->
           <div class="product-card__body">
-            <div class="product-card__category-badge" *ngIf="p.category">{{ p.category }}</div>
+            <div class="product-card__category-badge" *ngIf="p.category">{{ ('FEATURE_CATALOG.CAT.' + p.category) | translate }}</div>
             <h3 class="product-card__name">{{ p.name }}</h3>
             <p class="product-card__desc" *ngIf="p.description">{{ p.description }}</p>
             <p *ngIf="p.user?.username" class="product-card__vendor">
@@ -201,8 +198,8 @@
             <div class="product-card__footer">
               <div class="product-card__price-row">
                 <span class="product-card__price">{{ formatPrice(p.price) }}</span>
-                <span class="product-card__stock-badge stock-badge--none" *ngIf="p.stock != null && p.stock <= 0">Out of stock</span>
-                <span class="product-card__stock-badge" *ngIf="p.stock != null && p.stock > 0">{{ p.stock }} in stock</span>
+                <span class="product-card__stock-badge stock-badge--none" *ngIf="p.stock != null && p.stock <= 0">{{ 'FEATURE_CATALOG.OUT_OF_STOCK' | translate }}</span>
+                <span class="product-card__stock-badge" *ngIf="p.stock != null && p.stock > 0">{{ 'FEATURE_CATALOG.IN_STOCK_N' | translate: { n: p.stock } }}</span>
               </div>
               <button
                 type="button"
@@ -212,7 +209,7 @@
                 *ngIf="auth.isAuthenticated() && !needsVariantChoice(p)"
               >
                 <i class="pi" [class.pi-shopping-cart]="addingProductId() !== p.productId" [class.pi-spin]="addingProductId() === p.productId" [class.pi-spinner]="addingProductId() === p.productId"></i>
-                {{ addingProductId() === p.productId ? '…' : 'Add to cart' }}
+                {{ addingProductId() === p.productId ? '…' : ('FEATURE_CATALOG.ADD_TO_CART' | translate) }}
               </button>
               <a
                 *ngIf="!auth.isAuthenticated()"
@@ -221,7 +218,7 @@
                 class="product-card__cta product-card__cta--ghost"
                 (click)="$event.stopPropagation()"
               >
-                Sign in
+                {{ 'FEATURE_CATALOG.SIGN_IN' | translate }}
               </a>
             </div>
           </div>
@@ -238,19 +235,30 @@
       [style.animation-delay.ms]="i * 70">
       <div class="feature-block__head">
         <span class="feature-block__icon" *ngIf="block.icon">{{ block.icon }}</span>
-        <h2 class="feature-block__title">{{ block.title }}</h2>
+        <h2 class="feature-block__title">{{ block.titleKey ? (block.titleKey | translate) : block.title }}</h2>
       </div>
       <ul class="feature-block__list">
-        <li *ngFor="let item of block.items">
-          <span class="feature-block__bullet"></span>{{ item }}
-        </li>
+        <ng-container *ngIf="block.itemKeys?.length">
+          <li *ngFor="let key of block.itemKeys">
+            <span class="feature-block__bullet"></span>{{ key | translate }}
+          </li>
+        </ng-container>
+        <ng-container *ngIf="!block.itemKeys?.length">
+          <li *ngFor="let item of block.items || []">
+            <span class="feature-block__bullet"></span>{{ item }}
+          </li>
+        </ng-container>
       </ul>
     </article>
   </div>
 
-  <section class="events-section" *ngIf="title === 'Events' && events.length > 0" [class.events-section--blurred]="selectedEvent">
-    <h2 class="events-title">Our Events</h2>
-    <div class="events-grid">
+  <section class="events-section" *ngIf="isEventFeed" [class.events-section--blurred]="selectedEvent">
+    <h2 class="events-title">{{ 'FEATURE_CATALOG.EVENTS_TITLE' | translate }}</h2>
+    <p class="feature-page__empty" *ngIf="isLoadingEvents">{{ 'FEATURE_CATALOG.EVENTS_LOADING' | translate }}</p>
+    <p class="feature-page__empty" *ngIf="!isLoadingEvents && eventsLoadError">{{ eventsLoadError }}</p>
+    <p class="feature-page__empty" *ngIf="!isLoadingEvents && !eventsLoadError && events.length === 0">{{ 'FEATURE_CATALOG.EVENTS_EMPTY' | translate }}</p>
+
+    <div class="events-grid" *ngIf="!isLoadingEvents && !eventsLoadError && events.length > 0">
       <article 
         class="event-card glass-panel" 
         *ngFor="let event of events; let i = index" 
@@ -266,8 +274,8 @@
         <div class="event-card__content">
           <h3 class="event-card__title">{{ event.title }}</h3>
           <p class="event-card__venue">📍 {{ event.venue }}</p>
-          <p class="event-card__detail"><strong>Type:</strong> {{ event.eventType }}</p>
-          <p class="event-card__detail"><strong>Status:</strong> {{ event.status }}</p>
+          <p class="event-card__detail"><strong>{{ 'FEATURE_CATALOG.EVENT_TYPE' | translate }}:</strong> {{ event.eventType }}</p>
+          <p class="event-card__detail"><strong>{{ 'FEATURE_CATALOG.EVENT_STATUS' | translate }}:</strong> {{ event.status }}</p>
         </div>
         
       </article>
@@ -290,33 +298,31 @@
           <div class="detail-grid">
             <p class="detail-row">
               <img src="icones/city.png" alt="" class="detail-ico" width="18" height="18" />
-              <span><strong>Venue:</strong> {{ selectedEvent.venue }}</span>
+              <span><strong>{{ 'FEATURE_CATALOG.EVENT_VENUE' | translate }}:</strong> {{ selectedEvent.venue }}</span>
             </p>
             <p class="detail-row">
               <img src="icones/actitvity.png" alt="" class="detail-ico" width="18" height="18" />
-              <span><strong>Type:</strong> {{ selectedEvent.eventType }}</span>
+              <span><strong>{{ 'FEATURE_CATALOG.EVENT_TYPE' | translate }}:</strong> {{ selectedEvent.eventType }}</span>
             </p>
             <p class="detail-row">
               <i class="pi pi-calendar detail-pi" aria-hidden="true"></i>
-              <span><strong>Date:</strong> {{ selectedEvent.startDate | date:'dd MMM yyyy' }}</span>
+              <span><strong>{{ 'FEATURE_CATALOG.EVENT_DATE' | translate }}:</strong> {{ selectedEvent.startDate | date:'dd MMM yyyy' }}</span>
             </p>
             <p class="detail-row detail-price">
               <img src="icones/money-bag.png" alt="" class="detail-ico" width="18" height="18" />
-              <span><strong>Price:</strong>
+              <span><strong>{{ 'FEATURE_CATALOG.EVENT_PRICE' | translate }}:</strong>
                 <span class="price-amount">
-                  {{ isPaidEvent(selectedEvent) ? (eventPriceAmount(selectedEvent) | number:'1.2-2') + ' TND' : 'Free' }}
+                  {{ isPaidEvent(selectedEvent) ? (eventPriceAmount(selectedEvent) | number:'1.2-2') + ' TND' : ('FEATURE_CATALOG.EVENT_FREE' | translate) }}
                 </span></span>
             </p>
-            <p class="detail-row"><strong>Status:</strong> <span class="status-badge">{{ selectedEvent.status }}</span></p>
+            <p class="detail-row"><strong>{{ 'FEATURE_CATALOG.EVENT_STATUS' | translate }}:</strong> <span class="status-badge">{{ selectedEvent.status }}</span></p>
           </div>
-          <p class="join-hint join-hint--paid" *ngIf="isPaidEvent(selectedEvent)">Paid event — use <strong>Pay &amp; join</strong> below for secure Stripe checkout.</p>
-          <p class="join-hint join-hint--free" *ngIf="!isPaidEvent(selectedEvent)">Free event — no payment. Set a price in admin if you need Stripe checkout.</p>
           <p class="event-join-error" *ngIf="eventJoinError() as err">{{ err }}</p>
         </div>
       </div>
 
       <div class="event-detail-footer modal-actions">
-        <button class="btn-secondary" type="button" (click)="closeEventDetails()" [disabled]="eventJoinLoading()">Cancel</button>
+        <button class="btn-secondary" type="button" (click)="closeEventDetails()" [disabled]="eventJoinLoading()">{{ 'FEATURE_CATALOG.BTN_CANCEL' | translate }}</button>
         <button class="btn-join" type="button" (click)="onJoinEvent(selectedEvent); $event.stopPropagation()" [disabled]="eventJoinLoading()">
           <span>{{ eventJoinLoading() ? joinLoadingLabel(selectedEvent) : joinActionLabel(selectedEvent) }}</span>
           <i class="icon-arrow" *ngIf="!eventJoinLoading()">→</i>
@@ -325,22 +331,14 @@
     </article>
   </div>
 
-  <p class="feature-page__empty" *ngIf="isLoadingEvents">
-    Loading events...
-  </p>
-
-  <p class="feature-page__empty" *ngIf="title === 'Events' && !isLoadingEvents && events.length === 0">
-    No events created yet.
-  </p>
-
   <div class="modal-root" *ngIf="showProductForm()">
     <div class="modal-overlay" (click)="closeProductForm()">
       <div class="modal-card" (click)="$event.stopPropagation()">
         <header class="modal-head">
           <div class="modal-head__icon">{{ editingProductId() ? '✏️' : '➕' }}</div>
           <div>
-            <h2 class="modal-title">{{ editingProductId() ? 'Edit product' : 'New product' }}</h2>
-            <p class="modal-subtitle">Fill in the details of your handmade piece.</p>
+            <h2 class="modal-title">{{ (editingProductId() ? 'FEATURE_CATALOG.MODAL_TITLE_EDIT' : 'FEATURE_CATALOG.MODAL_TITLE_NEW') | translate }}</h2>
+            <p class="modal-subtitle">{{ 'FEATURE_CATALOG.MODAL_SUB' | translate }}</p>
           </div>
           <button type="button" class="modal-close" (click)="closeProductForm()">
             <i class="pi pi-times"></i>
@@ -351,41 +349,41 @@
           <div class="modal-form-body">
             <!-- Nom -->
             <div class="form-group">
-              <label class="form-label">Product name <span class="required">*</span></label>
+              <label class="form-label">{{ 'FEATURE_CATALOG.FORM_PRODUCT_NAME' | translate }} <span class="required">*</span></label>
               <input type="text" [(ngModel)]="newProduct().name" name="name" required
-                placeholder="e.g. Handwoven Kairouan rug" class="form-input" />
+                [placeholder]="'FEATURE_CATALOG.FORM_NAME_PH' | translate" class="form-input" />
             </div>
 
             <!-- Description -->
             <div class="form-group">
-              <label class="form-label">Description</label>
+              <label class="form-label">{{ 'FEATURE_CATALOG.FORM_DESCRIPTION' | translate }}</label>
               <textarea [(ngModel)]="newProduct().description" name="description" rows="3"
-                placeholder="Materials, story, dimensions…" class="form-textarea"></textarea>
+                [placeholder]="'FEATURE_CATALOG.FORM_DESC_PH' | translate" class="form-textarea"></textarea>
             </div>
 
             <div class="form-row-2">
               <!-- Catégorie -->
               <div class="form-group">
-                <label class="form-label">Category <span class="required">*</span></label>
+                <label class="form-label">{{ 'FEATURE_CATALOG.FORM_CATEGORY' | translate }} <span class="required">*</span></label>
                 <select [(ngModel)]="newProduct().category" name="category" required class="form-select">
-                  <option value="">Select</option>
-                  <option value="BIJOUX">💎 Bijoux</option>
-                  <option value="TEXTILE">🧵 Textile</option>
-                  <option value="CERAMIQUE">🏺 Céramique</option>
-                  <option value="BOIS">🪵 Bois</option>
-                  <option value="TAPIS">🪬 Tapis</option>
-                  <option value="AUTRE">✦ Autre</option>
+                  <option value="">{{ 'FEATURE_CATALOG.FORM_SELECT' | translate }}</option>
+                  <option value="BIJOUX">{{ 'FEATURE_CATALOG.CAT.BIJOUX' | translate }}</option>
+                  <option value="TEXTILE">{{ 'FEATURE_CATALOG.CAT.TEXTILE' | translate }}</option>
+                  <option value="CERAMIQUE">{{ 'FEATURE_CATALOG.CAT.CERAMIQUE' | translate }}</option>
+                  <option value="BOIS">{{ 'FEATURE_CATALOG.CAT.BOIS' | translate }}</option>
+                  <option value="TAPIS">{{ 'FEATURE_CATALOG.CAT.TAPIS' | translate }}</option>
+                  <option value="AUTRE">{{ 'FEATURE_CATALOG.CAT.AUTRE' | translate }}</option>
                 </select>
               </div>
 
               <!-- Statut -->
               <div class="form-group">
-                <label class="form-label">Status</label>
+                <label class="form-label">{{ 'FEATURE_CATALOG.FORM_STATUS' | translate }}</label>
                 <select [(ngModel)]="newProduct().status" name="status" class="form-select">
-                  <option value="PENDING">Pending approval</option>
-                  <option value="DRAFT">Draft (not submitted)</option>
-                  <option *ngIf="auth.hasRole('ROLE_ADMIN')" value="PUBLISHED">Published</option>
-                  <option *ngIf="auth.hasRole('ROLE_ADMIN')" value="REJECTED">Rejected</option>
+                  <option value="PENDING">{{ 'FEATURE_CATALOG.STATUS_OPT_PENDING' | translate }}</option>
+                  <option value="DRAFT">{{ 'FEATURE_CATALOG.STATUS_OPT_DRAFT' | translate }}</option>
+                  <option *ngIf="auth.hasRole('ROLE_ADMIN')" value="PUBLISHED">{{ 'FEATURE_CATALOG.STATUS_OPT_PUBLISHED' | translate }}</option>
+                  <option *ngIf="auth.hasRole('ROLE_ADMIN')" value="REJECTED">{{ 'FEATURE_CATALOG.STATUS_OPT_REJECTED' | translate }}</option>
                 </select>
               </div>
             </div>
@@ -393,13 +391,13 @@
             <div class="form-row-2">
               <!-- Prix -->
               <div class="form-group">
-                <label class="form-label">Price (TND) <span class="required">*</span></label>
+                <label class="form-label">{{ 'FEATURE_CATALOG.FORM_PRICE' | translate }} <span class="required">*</span></label>
                 <input type="number" [(ngModel)]="newProduct().price" name="price"
                   step="0.01" min="0" placeholder="0.00" required class="form-input" />
               </div>
               <!-- Stock -->
               <div class="form-group">
-                <label class="form-label">Total stock <span class="required">*</span></label>
+                <label class="form-label">{{ 'FEATURE_CATALOG.FORM_STOCK' | translate }} <span class="required">*</span></label>
                 <input type="number" [(ngModel)]="newProduct().stock" name="stock"
                   min="0" placeholder="0" required class="form-input" />
               </div>
@@ -408,50 +406,50 @@
             <!-- Variants -->
             <div class="form-section" *ngIf="newProduct().category === 'TEXTILE'">
               <div class="form-section__head">
-                <h3 class="form-section__title">Variants (size / color)</h3>
+                <h3 class="form-section__title">{{ 'FEATURE_CATALOG.VARIANTS_TITLE' | translate }}</h3>
                 <button type="button" class="btn-add-variant" (click)="addVariant()">
-                  <i class="pi pi-plus"></i> Add
+                  <i class="pi pi-plus"></i> {{ 'FEATURE_CATALOG.VARIANT_ADD' | translate }}
                 </button>
               </div>
               <div *ngFor="let v of newProduct().variants; let j = index" class="variant-row">
                 <div class="form-row-2">
                   <div class="form-group">
-                    <label class="form-label-sm">Size</label>
-                    <input type="text" [(ngModel)]="v.size" name="vSize-{{j}}" placeholder="XL, 2×3m…" class="form-input form-input--sm" />
+                    <label class="form-label-sm">{{ 'FEATURE_CATALOG.VARIANT_SIZE' | translate }}</label>
+                    <input type="text" [(ngModel)]="v.size" name="vSize-{{j}}" [placeholder]="'FEATURE_CATALOG.VARIANT_SIZE_PH' | translate" class="form-input form-input--sm" />
                   </div>
                   <div class="form-group">
-                    <label class="form-label-sm">Color</label>
-                    <input type="text" [(ngModel)]="v.color" name="vColor-{{j}}" placeholder="Red, blue…" class="form-input form-input--sm" />
+                    <label class="form-label-sm">{{ 'FEATURE_CATALOG.VARIANT_COLOR' | translate }}</label>
+                    <input type="text" [(ngModel)]="v.color" name="vColor-{{j}}" [placeholder]="'FEATURE_CATALOG.VARIANT_COLOR_PH' | translate" class="form-input form-input--sm" />
                   </div>
                 </div>
                 <div class="form-row-2">
                   <div class="form-group">
-                    <label class="form-label-sm">Variant stock</label>
+                    <label class="form-label-sm">{{ 'FEATURE_CATALOG.VARIANT_STOCK' | translate }}</label>
                     <input type="number" [(ngModel)]="v.stock" name="vStock-{{j}}" placeholder="0" class="form-input form-input--sm" />
                   </div>
                 </div>
                 <button type="button" class="btn-remove-variant" (click)="removeVariant(j)">
-                  <i class="pi pi-trash"></i> Remove
+                  <i class="pi pi-trash"></i> {{ 'FEATURE_CATALOG.VARIANT_REMOVE' | translate }}
                 </button>
               </div>
               <p *ngIf="!newProduct().variants?.length" class="no-variants-hint">
-                No variants yet. Add sizes and colors if needed.
+                {{ 'FEATURE_CATALOG.VARIANTS_HINT' | translate }}
               </p>
             </div>
 
             <!-- Images -->
             <div class="form-section form-section--media">
-              <h3 class="form-section__title">Product photos</h3>
+              <h3 class="form-section__title">{{ 'FEATURE_CATALOG.PHOTOS_TITLE' | translate }}</h3>
               <div class="upload-zone">
                 <input id="productImageUpload" type="file" accept="image/*" multiple
                   class="upload-zone__input" (change)="onFilesSelected($event)" />
                 <label for="productImageUpload" class="upload-zone__label">
                   <i class="pi pi-cloud-upload upload-zone__icon"></i>
-                  <span class="upload-zone__text">Drop or click to add photos</span>
-                  <span class="upload-zone__hint">PNG, JPG up to 10 MB</span>
+                  <span class="upload-zone__text">{{ 'FEATURE_CATALOG.UPLOAD_DROP' | translate }}</span>
+                  <span class="upload-zone__hint">{{ 'FEATURE_CATALOG.UPLOAD_HINT' | translate }}</span>
                 </label>
                 <div *ngIf="selectedFiles().length > 0" class="upload-zone__info">
-                  <span>{{ selectedFiles().length }} file{{ selectedFiles().length > 1 ? 's' : '' }} selected</span>
+                  <span>{{ 'FEATURE_CATALOG.FILES_SELECTED' | translate: { count: selectedFiles().length } }}</span>
                   <button type="button" class="btn-clear-files" (click)="clearFilesSelection()">
                     <i class="pi pi-times"></i>
                   </button>
@@ -459,18 +457,18 @@
               </div>
               <div class="preview-grid" *ngIf="previewUrls().length">
                 <div class="preview-item" *ngFor="let url of previewUrls()">
-                  <img [src]="url" alt="Preview" />
+                  <img [src]="url" [alt]="'FEATURE_CATALOG.PREVIEW_ALT' | translate" />
                 </div>
               </div>
             </div>
           </div>
 
           <div class="modal-footer">
-            <button type="button" class="btn-cancel" (click)="closeProductForm()">Cancel</button>
+            <button type="button" class="btn-cancel" (click)="closeProductForm()">{{ 'FEATURE_CATALOG.BTN_CANCEL' | translate }}</button>
             <button type="submit" class="btn-save"
               [disabled]="submittingProduct() || isUploadingImage() || !newProduct().name?.trim()">
               <i class="pi" [class.pi-check]="!submittingProduct()" [class.pi-spin]="submittingProduct()" [class.pi-spinner]="submittingProduct()"></i>
-              {{ submittingProduct() || isUploadingImage() ? 'Saving…' : 'Save' }}
+              {{ (submittingProduct() || isUploadingImage() ? 'FEATURE_CATALOG.BTN_SAVING' : 'FEATURE_CATALOG.BTN_SAVE') | translate }}
             </button>
           </div>
         </form>
@@ -486,7 +484,7 @@
     [draggable]="false"
     [resizable]="false"
     [style]="{ width: '94vw', maxWidth: 'min(640px, 94vw)', margin: '0 auto' }"
-    [header]="selectedItem()?.name || 'Product details'"
+    [header]="detailDialogHeader()"
     styleClass="detail-dialog"
   >
     <div class="detail-body" *ngIf="selectedItem() as item">
@@ -521,9 +519,9 @@
         <div class="detail-info">
           <!-- Category + Status -->
           <div class="detail-tags">
-            <span class="detail-category" *ngIf="item.category">{{ item.category }}</span>
+            <span class="detail-category" *ngIf="item.category">{{ ('FEATURE_CATALOG.CAT.' + item.category) | translate }}</span>
             <span class="detail-status" [attr.data-status]="item.status" *ngIf="isArtisan()">
-              {{ getStatusLabel(item.status) }}
+              {{ statusLabelKey(item.status) | translate }}
             </span>
           </div>
 
@@ -541,35 +539,35 @@
           <!-- Price -->
           <div class="detail-price-box">
             <span class="detail-price">{{ formatPrice(item.price) }}</span>
-            <span class="detail-stock-badge detail-stock-badge--none" *ngIf="item.stock != null && item.stock <= 0">Out of stock</span>
-            <span class="detail-stock-badge" *ngIf="item.stock != null && item.stock > 0">{{ item.stock }} in stock</span>
+            <span class="detail-stock-badge detail-stock-badge--none" *ngIf="item.stock != null && item.stock <= 0">{{ 'FEATURE_CATALOG.OUT_OF_STOCK' | translate }}</span>
+            <span class="detail-stock-badge" *ngIf="item.stock != null && item.stock > 0">{{ 'FEATURE_CATALOG.IN_STOCK_N' | translate: { n: item.stock } }}</span>
           </div>
 
           <!-- Description -->
           <div class="detail-description">
-            <h4 class="detail-section-label">About this product</h4>
-            <p>{{ item.description || 'A unique handmade piece, crafted with care.' }}</p>
+            <h4 class="detail-section-label">{{ 'FEATURE_CATALOG.DETAIL_ABOUT' | translate }}</h4>
+            <p>{{ item.description || ('FEATURE_CATALOG.DETAIL_FALLBACK_DESC' | translate) }}</p>
           </div>
 
           <!-- Artisan: read-only colors / sizes -->
           <div class="detail-variants-readonly" *ngIf="isArtisan() && item.category === 'TEXTILE' && item.variants && item.variants.length">
-            <h4 class="detail-section-label">Available colors</h4>
+            <h4 class="detail-section-label">{{ 'FEATURE_CATALOG.DETAIL_COLORS' | translate }}</h4>
             <div class="detail-chip-row">
               <span class="detail-chip" *ngFor="let c of distinctColorsInStock(item)">{{ c }}</span>
             </div>
-            <h4 class="detail-section-label">Available sizes</h4>
+            <h4 class="detail-section-label">{{ 'FEATURE_CATALOG.DETAIL_SIZES' | translate }}</h4>
             <div class="detail-chip-row">
               <span class="detail-chip" *ngFor="let s of distinctSizesInStock(item)">{{ s }}</span>
             </div>
-            <p class="detail-hint-muted">Open <strong>Edit product</strong> to change variants or stock.</p>
+            <p class="detail-hint-muted">{{ 'FEATURE_CATALOG.DETAIL_HINT_EDIT' | translate }}</p>
           </div>
 
           <!-- Shoppers: color then size (TEXTILE) -->
           <div class="detail-variants detail-variants--selects" *ngIf="!isArtisan() && item.category === 'TEXTILE' && item.variants && item.variants.length">
-            <h4 class="detail-section-label">Choose options <span class="detail-required">*</span></h4>
+            <h4 class="detail-section-label">{{ 'FEATURE_CATALOG.DETAIL_CHOOSE_OPTIONS' | translate }} <span class="detail-required">*</span></h4>
             <div class="variant-selects">
               <div class="form-group detail-select-group">
-                <label class="form-label-sm" for="detail-color-{{ item.productId }}">Color</label>
+                <label class="form-label-sm" for="detail-color-{{ item.productId }}">{{ 'FEATURE_CATALOG.DETAIL_COLOR' | translate }}</label>
                 <select
                   id="detail-color-{{ item.productId }}"
                   class="form-select detail-select"
@@ -577,12 +575,12 @@
                   (ngModelChange)="onDetailColorSelect(item, $event)"
                   [ngModelOptions]="{ standalone: true }"
                 >
-                  <option [ngValue]="null">Select color…</option>
+                  <option [ngValue]="null">{{ 'FEATURE_CATALOG.DETAIL_SELECT_COLOR' | translate }}</option>
                   <option *ngFor="let c of distinctColorsInStock(item)" [ngValue]="c">{{ c }}</option>
                 </select>
               </div>
               <div class="form-group detail-select-group" *ngIf="detailSelectedColor() != null">
-                <label class="form-label-sm" for="detail-size-{{ item.productId }}">Size</label>
+                <label class="form-label-sm" for="detail-size-{{ item.productId }}">{{ 'FEATURE_CATALOG.DETAIL_SIZE' | translate }}</label>
                 <select
                   id="detail-size-{{ item.productId }}"
                   class="form-select detail-select"
@@ -590,13 +588,13 @@
                   (ngModelChange)="onDetailSizeSelect(item, $event)"
                   [ngModelOptions]="{ standalone: true }"
                 >
-                  <option [ngValue]="null">Select size…</option>
+                  <option [ngValue]="null">{{ 'FEATURE_CATALOG.DETAIL_SELECT_SIZE' | translate }}</option>
                   <option *ngFor="let s of sizesForSelectedColor(item)" [ngValue]="s">{{ s }}</option>
                 </select>
               </div>
             </div>
             <p class="selection-hint" *ngIf="needsVariantChoice(item) && selectedVariantId()[item.productId] == null">
-              <i class="pi pi-info-circle"></i> Choose color and size to add to cart.
+              <i class="pi pi-info-circle"></i> {{ 'FEATURE_CATALOG.DETAIL_CHOOSE_HINT' | translate }}
             </p>
           </div>
 
@@ -605,7 +603,7 @@
             <!-- Artisan: edit button -->
             <ng-container *ngIf="isArtisan()">
               <button type="button" class="btn-detail-edit" (click)="editProduct(item); closeProductDetails()">
-                <i class="pi pi-pencil"></i> Edit product
+                <i class="pi pi-pencil"></i> {{ 'FEATURE_CATALOG.DETAIL_BTN_EDIT' | translate }}
               </button>
             </ng-container>
 
@@ -626,7 +624,7 @@
                   [class.pi-spin]="addingProductId() === item.productId"
                   [class.pi-spinner]="addingProductId() === item.productId"
                 ></i>
-                {{ addingProductId() === item.productId ? 'Adding…' : 'Add to cart' }}
+                {{ addingProductId() === item.productId ? ('FEATURE_CATALOG.DETAIL_ADDING' | translate) : ('FEATURE_CATALOG.ADD_TO_CART' | translate) }}
               </button>
               <button type="button" class="btn-detail-fav" [class.active]="item.isFavorite"
                 (click)="toggleFavorite(item)">

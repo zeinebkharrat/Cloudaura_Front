@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.UUID;
+
+import lombok.extern.slf4j.Slf4j;
 import org.example.backend.dto.ProductCatalogItem;
 import org.example.backend.model.Product;
 import org.example.backend.service.ProductService;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -30,6 +33,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/products")
+@Slf4j
 public class ProductController {
     private final ProductService productService;
     @Value("${app.upload.dir:uploads}")
@@ -109,10 +113,11 @@ public class ProductController {
                 .created(URI.create("/api/products/" + created.productId()))
                 .body(created);
         } catch (NoSuchElementException ex) {
-            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+            log.debug("Product create: not found", ex);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.invalid_payload");
         } catch (Exception ex) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("error", ex.getMessage() != null ? ex.getMessage() : "Unexpected error"));
+            log.error("Product create failed", ex);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "api.error.internal");
         }
     }
 
@@ -123,8 +128,8 @@ public class ProductController {
         } catch (NoSuchElementException ex) {
             return ResponseEntity.notFound().build();
         } catch (Exception ex) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("error", ex.getMessage() != null ? ex.getMessage() : "Unexpected error"));
+            log.error("Product update failed", ex);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "api.error.internal");
         }
     }
 

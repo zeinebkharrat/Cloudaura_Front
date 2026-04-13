@@ -1,5 +1,6 @@
 import {
   Component,
+  OnInit,
   AfterViewInit,
   OnDestroy,
   ViewChild,
@@ -8,14 +9,39 @@ import {
   PLATFORM_ID,
   signal,
   ChangeDetectorRef,
-  HostListener,
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { catchError, forkJoin, map, of, Subscription } from 'rxjs';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import * as echarts from 'echarts';
 import { tunisiaGeoJson } from './tunisia-map';
 import { GOVERNORATE_LABEL_EN, GOVERNORATE_LABEL_FR } from './tunisia-governorate-labels';
 import { ExploreService } from './explore/explore.service';
+import { API_BASE_URL, API_FALLBACK_ORIGIN } from './core/api-url';
+import { LanguageService } from './core/services/language.service';
+
+interface HomeImageCard {
+  title: string;
+  subtitle: string;
+  image: string;
+  route: string;
+  tags?: string[];
+  priceTag?: string;
+  badge?: string;
+  rating?: number;
+  reviewsCount?: number;
+}
+
+interface HomeTransportModeCard {
+  type: string;
+  label: string;
+  icon: string;
+  image: string;
+  description: string;
+  cta: string;
+}
 
 const TUNISIA_MAP_NAME_PROP = '_echartsRegionId';
 const HOME_MAP_RETURN_CONTEXT_KEY = 'homeMapReturnContext';
@@ -64,19 +90,31 @@ function normalizeRegionToken(value: unknown): string {
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, TranslateModule],
   templateUrl: './home.component.html',
   styleUrl: './home.component.css',
 })
-export class HomeComponent implements AfterViewInit, OnDestroy {
+export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('mapContainer', { static: false }) mapContainer!: ElementRef;
-  @ViewChild('heroVideoPlayer') heroVideoPlayer?: ElementRef<HTMLVideoElement>;
+  @ViewChild('heroVideoRef', { static: false }) heroVideoRef?: ElementRef<HTMLVideoElement>;
 
-  /** Place the file at `src/assets/video.mp4` (bundled as `/assets/video.mp4`). */
-  readonly heroVideoSrc = 'assets/video.mp4';
+  readonly heroVideoSrc = '/assets/video.mp4';
   readonly heroVideoPoster = 'assets/sidi_bou.png';
+  readonly heroVideoError = signal(false);
+  readonly videoMuted = signal(false);
+  readonly skeletonCards = Array.from({ length: 4 }, (_, i) => i);
 
-  videoModalOpen = signal(false);
+  readonly activityCards = signal<HomeImageCard[]>([]);
+  readonly restaurantCards = signal<HomeImageCard[]>([]);
+  readonly transportModes = signal<HomeTransportModeCard[]>([]);
+  readonly artisanCards = signal<HomeImageCard[]>([]);
+  readonly currentActivityPage = signal(0);
+  readonly activityPageCount = signal(1);
+
+  readonly loadingActivities = signal(true);
+  readonly loadingTransportModes = signal(true);
+  readonly loadingRestaurants = signal(true);
+  readonly loadingArtisans = signal(true);
 
   mapViewMode = signal<'local' | 'highlights'>('local');
   selectedRegion = signal<{
@@ -92,66 +130,417 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
   private mapGeoData?: any;
   private regionIdToLabelMap?: Map<string, string>;
   private themeObserver?: MutationObserver;
+  private autoSlideIntervals: number[] = [];
+  private langChange?: Subscription;
   private readonly handleWindowResize = () => {
     this.tunisiaMapChart?.resize();
+    this.recalculateActivityPagination();
   };
 
   constructor(
     @Inject(PLATFORM_ID) private platformId: Object,
     private cdr: ChangeDetectorRef,
+    private readonly http: HttpClient,
     private readonly exploreService: ExploreService,
     private readonly router: Router,
-    private readonly route: ActivatedRoute
+    private readonly route: ActivatedRoute,
+    private readonly translate: TranslateService,
+    private readonly language: LanguageService
   ) {}
 
-  @HostListener('document:keydown.escape')
-  onEscapeCloseVideo(): void {
-    if (this.videoModalOpen()) {
-      this.closeHeroVideoModal();
-    }
+  ngOnInit(): void {
+    this.loadHomeSections();
+    this.langChange = this.translate.onLangChange.subscribe(() => {
+      this.loadHomeSections();
+      this.refreshResolvingMapPanel();
+      if (this.tunisiaMapChart) {
+        this.applyMapTheme();
+      }
+    });
   }
 
-  openHeroVideoModal(): void {
+  private refreshResolvingMapPanel(): void {
+    this.selectedRegion.update((prev) => {
+      if (!prev?.resolving) {
+        return prev;
+      }
+      return { ...prev, description: this.translate.instant('HOME.MAP_EXPLORING', { name: prev.name }) };
+    });
+  }
+
+  scrollSlider(containerId: string, direction: 1 | -1): void {
     if (!isPlatformBrowser(this.platformId)) {
       return;
     }
-    this.videoModalOpen.set(true);
-    this.cdr.detectChanges();
-    setTimeout(() => {
-      const el = this.heroVideoPlayer?.nativeElement;
-      if (el) {
-        void el.play().catch(() => {
-          /* autoplay may be blocked until user interacts — controls still work */
-        });
-      }
-    }, 0);
+
+    const container = document.getElementById(containerId);
+    if (!container) {
+      return;
+    }
+
+    const distance = Math.max(280, Math.floor(container.clientWidth * 0.8));
+    container.scrollBy({ left: direction * distance, behavior: 'smooth' });
   }
 
-  closeHeroVideoModal(): void {
-    const el = this.heroVideoPlayer?.nativeElement;
-    el?.pause();
-    this.videoModalOpen.set(false);
+  scrollActivities(direction: 1 | -1): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const totalPages = this.activityPageCount();
+    if (totalPages <= 1) {
+      return;
+    }
+
+    const next = (this.currentActivityPage() + direction + totalPages) % totalPages;
+    this.goToActivityPage(next);
   }
 
-  onHeroVideoBackdrop(event: MouseEvent): void {
-    if ((event.target as HTMLElement).classList.contains('hero-video-backdrop')) {
-      this.closeHeroVideoModal();
+  goToActivityPage(page: number): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const slider = document.getElementById('activities-slider');
+    if (!slider) {
+      return;
+    }
+
+    const boundedPage = Math.max(0, Math.min(page, this.activityPageCount() - 1));
+    slider.scrollTo({ left: boundedPage * slider.clientWidth, behavior: 'smooth' });
+    this.currentActivityPage.set(boundedPage);
+  }
+
+  onActivitiesSliderScroll(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const slider = document.getElementById('activities-slider');
+    if (!slider || !slider.clientWidth) {
+      return;
+    }
+
+    const page = Math.round(slider.scrollLeft / slider.clientWidth);
+    this.currentActivityPage.set(Math.max(0, Math.min(page, this.activityPageCount() - 1)));
+  }
+
+  activityPages(): number[] {
+    return Array.from({ length: this.activityPageCount() }, (_, i) => i);
+  }
+
+  onHeroVideoError(): void {
+    this.heroVideoError.set(true);
+  }
+
+  toggleHeroVideoMute(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const video = this.heroVideoRef?.nativeElement;
+    if (!video) {
+      return;
+    }
+
+    const nextMuted = !video.muted;
+    video.muted = nextMuted;
+    this.videoMuted.set(nextMuted);
+
+    if (video.paused) {
+      void video.play().catch(() => {
+        this.heroVideoError.set(true);
+      });
     }
   }
 
   ngAfterViewInit(): void {
+    this.ensureVideoMutedAutoplay();
     if (isPlatformBrowser(this.platformId)) {
       this.initMap();
       this.startThemeObserver();
       this.playReturnZoomOutIfRequested();
+      this.startAutoSliders();
+      setTimeout(() => this.recalculateActivityPagination(), 120);
     }
   }
 
   ngOnDestroy(): void {
+    this.langChange?.unsubscribe();
     if (isPlatformBrowser(this.platformId)) {
       window.removeEventListener('resize', this.handleWindowResize);
+      this.stopAutoSliders();
     }
     this.themeObserver?.disconnect();
+  }
+
+  private startAutoSliders(): void {
+    this.stopAutoSliders();
+    const setup = (containerId: string, intervalMs: number) => {
+      const id = window.setInterval(() => {
+        if (containerId === 'activities-slider') {
+          this.advanceActivitiesPage();
+          return;
+        }
+        this.scrollSlider(containerId, 1);
+      }, intervalMs);
+      this.autoSlideIntervals.push(id);
+    };
+
+    setup('activities-slider', 3600);
+    setup('artisan-slider', 4200);
+  }
+
+  private stopAutoSliders(): void {
+    for (const id of this.autoSlideIntervals) {
+      window.clearInterval(id);
+    }
+    this.autoSlideIntervals = [];
+  }
+
+  private advanceActivitiesPage(): void {
+    const totalPages = this.activityPageCount();
+    if (totalPages <= 1) {
+      return;
+    }
+
+    const next = (this.currentActivityPage() + 1) % totalPages;
+    this.goToActivityPage(next);
+  }
+
+  private recalculateActivityPagination(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    const slider = document.getElementById('activities-slider');
+    if (!slider || !slider.clientWidth) {
+      return;
+    }
+
+    const pages = Math.max(1, Math.ceil(slider.scrollWidth / slider.clientWidth));
+    this.activityPageCount.set(pages);
+    const safePage = Math.min(this.currentActivityPage(), pages - 1);
+    this.currentActivityPage.set(safePage);
+  }
+
+  private ensureVideoMutedAutoplay(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+
+    setTimeout(() => {
+      const video = this.heroVideoRef?.nativeElement;
+      if (!video) {
+        return;
+      }
+
+      video.defaultMuted = false;
+      video.muted = false;
+      video.volume = 1;
+      this.videoMuted.set(false);
+
+      void video.play().catch(() => {
+        // Autoplay with sound can be blocked by browsers; fallback to muted autoplay.
+        video.defaultMuted = true;
+        video.muted = true;
+        this.videoMuted.set(true);
+        void video.play().catch(() => {
+          this.heroVideoError.set(true);
+        });
+      });
+    }, 0);
+  }
+
+  private loadHomeSections(): void {
+    this.loadActivityCards();
+    this.loadTransportCards();
+    this.loadRestaurantCards();
+    this.loadArtisanCards();
+  }
+
+  private loadActivityCards(): void {
+    this.exploreService
+      .listActivities({
+        q: '',
+        cityId: null,
+        minPrice: null,
+        maxPrice: null,
+        date: null,
+        participants: 1,
+        page: 0,
+        size: 18,
+        sort: 'activityId,desc',
+      })
+      .pipe(catchError(() => of({ content: [] })))
+      .subscribe((res: any) => {
+        const content = Array.isArray(res?.content) ? res.content : [];
+        const dbImageActivities = content.filter((item: any) => !!item?.imageUrl).slice(0, 12);
+        const activitySource = dbImageActivities.length ? dbImageActivities : content.slice(0, 12);
+
+        if (!activitySource.length) {
+          this.activityCards.set([]);
+          this.loadingActivities.set(false);
+          setTimeout(() => this.recalculateActivityPagination(), 30);
+          return;
+        }
+
+        forkJoin(
+          activitySource.map((item: any) =>
+            this.exploreService.getActivityReviewSummary(item.activityId).pipe(
+              map((summary) => ({ item, summary })),
+              catchError(() => of({ item, summary: { averageStars: 0, totalReviews: 0 } }))
+            )
+          )
+        )
+          .pipe(map((items: any) => items as Array<{ item: any; summary: any }>))
+          .subscribe((itemsWithSummary) => {
+          const mapped: HomeImageCard[] = itemsWithSummary.map(({ item, summary }: { item: any; summary: any }) => ({
+            title: item.name,
+            subtitle:
+              item.description ||
+              item.cityName ||
+              this.translate.instant('HOME.ACTIVITY_BOOK_SUBTITLE'),
+            image: item.imageUrl || '',
+            route: `/activities/${item.activityId}`,
+            tags: [
+              item.cityName || this.translate.instant('HOME.TAG_TUNISIA'),
+              item.type || this.translate.instant('HOME.TAG_EXPERIENCE'),
+            ],
+            priceTag:
+              item.price != null
+                ? this.translate.instant('HOME.PRICE_FROM', { price: String(Math.round(item.price)) })
+                : undefined,
+            badge: this.translate.instant('HOME.BADGE_ACTIVITY'),
+            rating: Number(summary?.averageStars) || 0,
+            reviewsCount: Number(summary?.totalReviews) || 0,
+          }));
+          this.activityCards.set(mapped);
+          this.loadingActivities.set(false);
+          setTimeout(() => this.recalculateActivityPagination(), 30);
+        });
+      });
+  }
+
+  private loadRestaurantCards(): void {
+    const fallback = ['assets/sahara.png', 'assets/el_jem.png', 'assets/sidi_bou.png'];
+    this.exploreService
+      .listRestaurants({
+        q: '',
+        cityId: null,
+        cuisineType: null,
+        page: 0,
+        size: 24,
+        sort: 'restaurantId,desc',
+      })
+      .pipe(catchError(() => of({ content: [] })))
+      .subscribe((res: any) => {
+        const mapped: HomeImageCard[] = (res.content ?? []).map((item: any, index: number) => ({
+          title: item.name,
+          subtitle:
+            item.description ||
+            item.cityName ||
+            this.translate.instant('HOME.RESTAURANT_TASTE_SUBTITLE'),
+          image: item.imageUrl || fallback[index % fallback.length],
+          route: `/restaurants/${item.restaurantId}`,
+          tags: [
+            item.cityName || this.translate.instant('HOME.TAG_TUNISIA'),
+            item.cuisineType || this.translate.instant('HOME.TAG_CUISINE'),
+          ],
+          badge: this.translate.instant('HOME.BADGE_RESTAURANT'),
+        }));
+        this.restaurantCards.set(mapped);
+        this.loadingRestaurants.set(false);
+      });
+  }
+
+  private loadTransportCards(): void {
+    this.transportModes.set([
+      {
+        type: 'BUS',
+        label: this.translate.instant('HOME.TRANSPORT_BUS_LABEL'),
+        icon: 'BUS',
+        image: '/assets/transport/bus.jpg',
+        description: this.translate.instant('HOME.TRANSPORT_BUS_DESC'),
+        cta: this.translate.instant('HOME.TRANSPORT_BUS_CTA'),
+      },
+      {
+        type: 'TAXI',
+        label: this.translate.instant('HOME.TRANSPORT_TAXI_LABEL'),
+        icon: 'TAXI',
+        image: '/assets/transport/taxi.jpg',
+        description: this.translate.instant('HOME.TRANSPORT_TAXI_DESC'),
+        cta: this.translate.instant('HOME.TRANSPORT_TAXI_CTA'),
+      },
+      {
+        type: 'CAR',
+        label: this.translate.instant('HOME.TRANSPORT_CAR_LABEL'),
+        icon: 'CAR',
+        image: '/assets/transport/car.jfif',
+        description: this.translate.instant('HOME.TRANSPORT_CAR_DESC'),
+        cta: this.translate.instant('HOME.TRANSPORT_CAR_CTA'),
+      },
+      {
+        type: 'PLANE',
+        label: this.translate.instant('HOME.TRANSPORT_FLIGHT_LABEL'),
+        icon: 'FLIGHT',
+        image: '/assets/transport/avion.jpg',
+        description: this.translate.instant('HOME.TRANSPORT_FLIGHT_DESC'),
+        cta: this.translate.instant('HOME.TRANSPORT_FLIGHT_CTA'),
+      },
+    ]);
+    this.loadingTransportModes.set(false);
+  }
+
+  private loadArtisanCards(): void {
+    const fallbackImages = ['assets/el_jem.png', 'assets/sidi_bou.png', 'assets/sahara.png'];
+    const lang = this.language.currentLang();
+    const langQ = `lang=${encodeURIComponent(lang)}`;
+    const primary = `${API_BASE_URL}/api/products?${langQ}`;
+    const fallback = `${API_FALLBACK_ORIGIN}/api/products?${langQ}`;
+    const canTryFallback = API_BASE_URL === '';
+
+    this.http
+      .get<any>(primary)
+      .pipe(
+        catchError(() => {
+          if (!canTryFallback) {
+            return of([]);
+          }
+          return this.http.get<any>(fallback).pipe(catchError(() => of([])));
+        })
+      )
+      .subscribe((res) => {
+        const list = Array.isArray(res) ? res : res?.data ?? res?.content ?? [];
+        const mapped: HomeImageCard[] = (Array.isArray(list) ? list : [])
+          .slice(0, 10)
+          .map((item: any, index: number) => ({
+            title: item.name || this.translate.instant('HOME.ARTISAN_PRODUCT_DEFAULT'),
+            subtitle:
+              item.description ||
+              item.category ||
+              this.translate.instant('HOME.ARTISAN_DEFAULT_SUBTITLE'),
+            image: item.imageUrl || fallbackImages[index % fallbackImages.length],
+            route: '/artisanat',
+            tags: [
+              item.category || this.translate.instant('HOME.TAG_ARTISAN'),
+              item.user?.cityName || this.translate.instant('HOME.TAG_TUNISIA'),
+            ],
+            priceTag:
+              item.price != null
+                ? this.translate.instant('HOME.PRICE_AMOUNT', { price: String(Math.round(item.price)) })
+                : undefined,
+            badge: this.translate.instant('HOME.BADGE_ARTISAN'),
+          }));
+
+        this.artisanCards.set(mapped);
+        this.loadingArtisans.set(false);
+      });
+  }
+
+  activityStars(rating?: number): Array<'full' | 'empty'> {
+    const safeRating = Math.max(0, Math.min(5, Math.round(rating ?? 0)));
+    return Array.from({ length: 5 }, (_, index) => (index < safeRating ? 'full' : 'empty'));
   }
 
   setMapView(mode: 'local' | 'highlights'): void {
@@ -171,22 +560,23 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
     this.applyMapTheme();
 
     this.tunisiaMapChart.on('click', (params: any) => {
-      const label = this.displayName(params);
+      const displayLabel = this.mapRegionLabel(params);
+      const apiName = ((params?.data?.gouv_fr as string | undefined) ?? '').trim() || displayLabel;
       this.selectedRegion.set({
-        name: label,
-        description: `Exploring ${label}...`,
+        name: displayLabel,
+        description: this.translate.instant('HOME.MAP_EXPLORING', { name: displayLabel }),
         cityId: null,
         resolving: true,
         mapRegionId: params?.name ?? null,
       });
 
-      this.exploreService.resolveCityByName(label).subscribe({
+      this.exploreService.resolveCityByName(apiName).subscribe({
         next: (resolved) => {
           this.selectedRegion.set({
             name: resolved.city.name,
             description:
               resolved.city.description ||
-              `Discover ${resolved.city.name}, a Tunisian destination rich in experiences.`,
+              this.translate.instant('HOME.MAP_CITY_FALLBACK_DESC', { name: resolved.city.name }),
             cityId: resolved.city.cityId,
             resolving: false,
             mapRegionId: params?.name ?? null,
@@ -198,8 +588,7 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
             prev
               ? {
                   ...prev,
-                  description:
-                    `No linked city found in the database for ${label}.`,
+                  description: this.translate.instant('HOME.MAP_NO_CITY', { name: displayLabel }),
                   cityId: null,
                   resolving: false,
                   mapRegionId: params?.name ?? null,
@@ -216,16 +605,24 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
     window.addEventListener('resize', this.handleWindowResize);
   }
 
-  private displayName(p: { name?: string; data?: any }): string {
+  private mapRegionLabel(p: { name?: string; data?: any }): string {
+    const gid = p?.data?.gouv_id as string | undefined;
+    if (gid) {
+      const key = `MAP.GOV.${gid}`;
+      const translated = this.translate.instant(key);
+      if (translated !== key) {
+        return translated;
+      }
+    }
     const m = this.regionIdToLabelMap!;
-    return m.get(p.name ?? '') ?? p.data?.gouv_fr ?? p.name ?? '';
+    return m.get(p?.name ?? '') ?? p?.data?.gouv_fr ?? p?.name ?? '';
   }
 
   private applyMapTheme(): void {
     if (!this.tunisiaMapChart || !this.mapGeoData) return;
 
     const mapGeo = this.mapGeoData;
-    const displayName = (p: any) => this.displayName(p);
+    const mapLabel = (p: any) => this.mapRegionLabel(p);
     const mode = this.mapViewMode();
     const isLocal = mode === 'local';
     const isDark = this.isDarkTheme();
@@ -242,7 +639,7 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
       backgroundColor: isDark ? '#0f172a' : '#ffffff',
       tooltip: {
         trigger: 'item' as const,
-        formatter: (p: any) => displayName(p),
+        formatter: (p: any) => mapLabel(p),
         backgroundColor: isDark ? 'rgba(15,23,42,0.96)' : 'rgba(255,255,255,0.96)',
         borderColor: isDark ? '#334155' : '#b6deee',
         textStyle: { color: isDark ? '#e2e8f0' : '#0f172a' },
@@ -288,7 +685,7 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
               color: isDark ? '#f8fafc' : '#0f172a',
               fontSize: isLocal ? 16 : 17,
               fontWeight: 'bold' as const,
-              formatter: (p: any) => displayName(p),
+              formatter: (p: any) => mapLabel(p),
             },
             itemStyle: isLocal
               ? {
@@ -310,7 +707,7 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
               color: isDark ? '#f8fafc' : '#0f172a',
               fontSize: 18,
               fontWeight: 'bold' as const,
-              formatter: (p: any) => displayName(p),
+              formatter: (p: any) => mapLabel(p),
             },
             itemStyle: {
               areaColor: isDark
@@ -324,6 +721,7 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
             name: f.properties[TUNISIA_MAP_NAME_PROP],
             value: index % 5,
             gouv_fr: f.properties.gouv_fr,
+            gouv_id: f.properties.gouv_id,
           })),
         },
       ],
@@ -540,10 +938,12 @@ export class HomeComponent implements AfterViewInit, OnDestroy {
       this.applyRegionSelection(selectedMapRegionId);
       if (selectedMapRegionId) {
         const selectedName =
-          cityLabel ?? this.regionIdToLabelMap?.get(selectedMapRegionId) ?? 'Selected city';
+          cityLabel ??
+          this.regionIdToLabelMap?.get(selectedMapRegionId) ??
+          this.translate.instant('HOME.MAP_SELECTED_FALLBACK');
         this.selectedRegion.set({
           name: selectedName,
-          description: `Exploring ${selectedName}...`,
+          description: this.translate.instant('HOME.MAP_EXPLORING', { name: selectedName }),
           cityId: cityId ?? null,
           resolving: false,
           mapRegionId: selectedMapRegionId,

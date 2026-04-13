@@ -74,16 +74,16 @@ public class PostMediaController {
             @RequestParam(value = "orderIndex", required = false) Integer orderIndex
     ) throws IOException {
         if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("Fichier media vide.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.post_media_empty");
         }
 
         Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new IllegalArgumentException("Post introuvable : " + postId));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.post_not_found"));
 
         // Check if current user is the post owner
         User currentUser = getCurrentUser();
         if (!post.getAuthor().getUserId().equals(currentUser.getUserId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the post owner can upload media");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "api.error.post_media_owner_only");
         }
 
         // Store uploads under: <project>/uploads/post-media/
@@ -116,7 +116,7 @@ public class PostMediaController {
     private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.unauthorized");
         }
         
         // Extract User entity from CustomUserDetails
@@ -125,7 +125,7 @@ public class PostMediaController {
             return ((org.example.backend.service.CustomUserDetailsService.CustomUserDetails) principal).getUser();
         }
         
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid authentication principal");
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.invalid_principal");
     }
 }
 

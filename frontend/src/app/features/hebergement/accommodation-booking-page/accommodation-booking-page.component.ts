@@ -15,22 +15,27 @@ import { DATA_SOURCE_TOKEN } from '../../../core/adapters/data-source.adapter';
 import { AuthService } from '../../../core/auth.service';
 import { AppAlertsService } from '../../../core/services/app-alerts.service';
 import { Accommodation } from '../../../core/models/travel.models';
+import { LoginRequiredPromptService } from '../../../core/login-required-prompt.service';
 import {
   AccommodationRoomCategory,
   nightlyRateForCategory,
 } from '../../../core/utils/accommodation-quote.util';
+import { CurrencyService } from '../../../core/services/currency.service';
+import { DualCurrencyPipe } from '../../../core/pipes/dual-currency.pipe';
+import { createCurrencyDisplaySyncEffect } from '../../../core/utils/currency-display-sync';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, DualCurrencyPipe, TranslateModule],
   template: `
     <div class="page-container">
       <div class="booking-wrapper" [class.confirmation-mode]="step() === 3">
         @if (editingReservationId() != null) {
           <div class="heb-edit-banner" role="status">
             <i class="pi pi-pencil" aria-hidden="true"></i>
-            <span>Updating your stay — save to apply new dates to this booking (same room).</span>
+            <span>{{ 'ACCOMM.EDIT_BANNER' | translate }}</span>
           </div>
         }
 
@@ -42,7 +47,7 @@ import {
             @for (s of steps; track s.num) {
               <div class="step-item" [class.active]="step() === s.num" [class.done]="step() > s.num">
                 <div class="step-circle">{{ step() > s.num ? '✓' : s.num }}</div>
-                <span>{{ s.label }}</span>
+                <span>{{ s.labelKey | translate }}</span>
               </div>
               @if (!$last) { <div class="step-line" [class.filled]="step() > s.num"></div> }
             }
@@ -51,46 +56,46 @@ import {
           <!-- Step 1: Guest Info -->
           @if (step() === 1) {
             <div class="step-content">
-              <h2 class="step-h2"><i class="pi pi-user step-h2-ico"></i> Guest details</h2>
+              <h2 class="step-h2"><i class="pi pi-user step-h2-ico"></i> {{ 'ACCOMM.GUEST_DETAILS_TITLE' | translate }}</h2>
               <form [formGroup]="guestForm" (ngSubmit)="nextStep()">
                 <div class="form-row">
                   <div class="form-field">
-                    <label>First name *</label>
-                    <input type="text" formControlName="firstName" placeholder="First name">
+                    <label>{{ 'ACCOMM.LABEL_FIRST_NAME' | translate }}</label>
+                    <input type="text" formControlName="firstName" [placeholder]="'ACCOMM.PH_FIRST_NAME' | translate">
                     @if (guestForm.get('firstName')?.invalid && guestForm.get('firstName')?.touched) {
-                      <span class="field-error">At least 2 characters</span>
+                      <span class="field-error">{{ 'ACCOMM.ERR_MIN_CHARS' | translate }}</span>
                     }
                   </div>
                   <div class="form-field">
-                    <label>Last name *</label>
-                    <input type="text" formControlName="lastName" placeholder="Last name">
+                    <label>{{ 'ACCOMM.LABEL_LAST_NAME' | translate }}</label>
+                    <input type="text" formControlName="lastName" [placeholder]="'ACCOMM.PH_LAST_NAME' | translate">
                     @if (guestForm.get('lastName')?.invalid && guestForm.get('lastName')?.touched) {
-                      <span class="field-error">At least 2 characters</span>
+                      <span class="field-error">{{ 'ACCOMM.ERR_MIN_CHARS' | translate }}</span>
                     }
                   </div>
                 </div>
                 <div class="form-field">
-                  <label>Email *</label>
-                  <input type="email" formControlName="email" placeholder="you@example.com">
+                  <label>{{ 'ACCOMM.LABEL_EMAIL' | translate }}</label>
+                  <input type="email" formControlName="email" [placeholder]="'ACCOMM.PH_EMAIL' | translate">
                   @if (guestForm.get('email')?.invalid && guestForm.get('email')?.touched) {
-                    <span class="field-error">Valid email required</span>
+                    <span class="field-error">{{ 'ACCOMM.ERR_EMAIL' | translate }}</span>
                   }
                 </div>
                 <div class="form-field">
-                  <label>Phone (optional)</label>
-                  <input type="tel" formControlName="phone" placeholder="+216 XX XXX XXX">
+                  <label>{{ 'ACCOMM.LABEL_PHONE_OPT' | translate }}</label>
+                  <input type="tel" formControlName="phone" [placeholder]="'ACCOMM.PH_PHONE' | translate">
                   @if (guestForm.get('phone')?.invalid && guestForm.get('phone')?.touched) {
-                    <span class="field-error">Use +216 and 8+ digits, or leave empty</span>
+                    <span class="field-error">{{ 'ACCOMM.ERR_PHONE' | translate }}</span>
                   }
                 </div>
                 <div class="form-field">
-                  <label>Special requests (optional)</label>
-                  <textarea formControlName="notes" placeholder="e.g. quiet room, late arrival…"></textarea>
+                  <label>{{ 'ACCOMM.LABEL_SPECIAL_OPT' | translate }}</label>
+                  <textarea formControlName="notes" [placeholder]="'ACCOMM.PH_SPECIAL' | translate"></textarea>
                 </div>
                 <div class="step-actions">
-                  <button type="button" class="btn-ghost" (click)="goBack()">← Back</button>
+                  <button type="button" class="btn-ghost" (click)="goBack()">{{ 'ACCOMM.BTN_BACK' | translate }}</button>
                   <button type="submit" class="btn-primary" [disabled]="guestForm.invalid">
-                    Continue →
+                    {{ 'ACCOMM.BTN_CONTINUE' | translate }}
                   </button>
                 </div>
               </form>
@@ -100,57 +105,57 @@ import {
           <!-- Step 2: Summary & Payment -->
           @if (step() === 2) {
             <div class="step-content">
-              <h2 class="step-h2"><img src="icones/money-bag.png" alt="" class="step-h2-img" width="24" height="24" /> Summary &amp; payment</h2>
+              <h2 class="step-h2"><img src="icones/money-bag.png" alt="" class="step-h2-img" width="24" height="24" /> {{ 'ACCOMM.SUMMARY_PAYMENT_TITLE' | translate }}</h2>
 
               <div class="summary-box">
                 <div class="summary-row">
-                  <span>Guest</span>
+                  <span>{{ 'ACCOMM.SUM_GUEST' | translate }}</span>
                   <strong>{{ guestForm.value.firstName }} {{ guestForm.value.lastName }}</strong>
                 </div>
                 <div class="summary-row">
-                  <span>Email</span>
+                  <span>{{ 'ACCOMM.SUM_EMAIL' | translate }}</span>
                   <strong>{{ guestForm.value.email }}</strong>
                 </div>
                 <div class="summary-row">
-                  <span>Property</span>
+                  <span>{{ 'ACCOMM.SUM_PROPERTY' | translate }}</span>
                   <strong>{{ store.selectedAccommodation()?.name }}</strong>
                 </div>
                 <div class="summary-row">
-                  <span>City</span>
+                  <span>{{ 'ACCOMM.SUM_CITY' | translate }}</span>
                   <strong>{{ store.selectedAccommodation()?.cityName }}</strong>
                 </div>
                 <div class="summary-row">
-                  <span>Check-in</span>
+                  <span>{{ 'ACCOMM.SUM_CHECKIN' | translate }}</span>
                   <strong>{{ store.dates().checkIn }}</strong>
                 </div>
                 <div class="summary-row">
-                  <span>Check-out</span>
+                  <span>{{ 'ACCOMM.SUM_CHECKOUT' | translate }}</span>
                   <strong>{{ store.dates().checkOut }}</strong>
                 </div>
                 <div class="summary-row">
-                  <span>Length of stay</span>
-                  <strong>{{ nightCount() }} night(s)</strong>
+                  <span>{{ 'ACCOMM.SUM_STAY_LEN' | translate }}</span>
+                  <strong>{{ nightCount() }} {{ 'ACCOMM.NIGHTS_UNIT' | translate }}</strong>
                 </div>
                 <div class="summary-row">
-                  <span>Guests</span>
-                  <strong>{{ store.pax().adults }} guest(s)</strong>
+                  <span>{{ 'ACCOMM.SUM_GUESTS' | translate }}</span>
+                  <strong>{{ store.pax().adults }} {{ 'ACCOMM.GUESTS_UNIT' | translate }}</strong>
                 </div>
                 <div class="summary-row">
-                  <span>Room</span>
+                  <span>{{ 'ACCOMM.SUM_ROOM' | translate }}</span>
                   <strong>{{ selectedRoomLabel() }}</strong>
                 </div>
                 <hr class="sum-divider">
                 <div class="summary-row price-row">
-                  <span>{{ quoteNightly() | number:'1.0-0' }} TND × {{ nightCount() }} night(s)</span>
-                  <span>{{ baseTotal() | number:'1.0-0' }} TND</span>
+                  <span>{{ quoteNightly() | dualCurrency }} {{ 'ACCOMM.X_NIGHTS' | translate: { n: nightCount() } }}</span>
+                  <span>{{ baseTotal() | dualCurrency }}</span>
                 </div>
                 <div class="summary-row price-row">
-                  <span>Taxes (10%)</span>
-                  <span>{{ taxAmount() | number:'1.0-0' }} TND</span>
+                  <span>{{ 'ACCOMM.TAXES_PCT' | translate }}</span>
+                  <span>{{ taxAmount() | dualCurrency }}</span>
                 </div>
                 <div class="summary-row total-row">
-                  <strong>Total due</strong>
-                  <strong class="total-amount">{{ grandTotal() | number:'1.0-0' }} TND</strong>
+                  <strong>{{ 'ACCOMM.TOTAL_DUE' | translate }}</strong>
+                  <strong class="total-amount">{{ grandTotal() | dualCurrency }}</strong>
                 </div>
               </div>
 
@@ -158,32 +163,25 @@ import {
                 <div class="payment-section">
                   <h3 class="pay-title">
                     <img src="icones/money-bag.png" alt="" class="pay-title-ico" width="22" height="22" />
-                    Secure payment
+                    {{ 'ACCOMM.SECURE_PAYMENT' | translate }}
                   </h3>
                   <div class="payment-flow-hint" role="note">
-                    <p class="payment-flow-hint__en" lang="en">
-                      A secure payment page opens so you can complete your booking.<br />
-                      Your card details are never stored on YallaTN — they are processed safely by our certified payment partner only.
-                    </p>
-                    <p class="payment-flow-hint__fr" lang="fr">
-                      Une page de paiement sécurisée s’ouvre pour finaliser votre réservation.<br />
-                      Vos données de carte ne sont jamais stockées sur YallaTN — elles sont traitées en toute sécurité uniquement par notre prestataire de paiement certifié.
-                    </p>
+                    <p class="payment-flow-hint__text">{{ 'ACCOMM.PAYMENT_FLOW' | translate }}</p>
                   </div>
                 </div>
               } @else {
                 <p class="secure-note edit-pay-note">
                   <i class="pi pi-info-circle secure-note-ico"></i>
-                  Updating dates only — no new payment.
+                  {{ 'ACCOMM.EDIT_PAY_NOTE' | translate }}
                 </p>
               }
 
               <div class="step-actions">
-                <button type="button" class="btn-ghost" (click)="step.set(1)">← Edit</button>
+                <button type="button" class="btn-ghost" (click)="step.set(1)">{{ 'ACCOMM.BTN_EDIT' | translate }}</button>
                 <button type="button" class="btn-primary" (click)="confirmBooking()" [disabled]="payButtonDisabled()">
-                  @if (loading()) { <span class="spinner-sm"></span> Processing... }
-                  @else if (editingReservationId() != null) { <i class="pi pi-save"></i> Update booking }
-                  @else { <i class="pi pi-check-circle"></i> Pay & confirm }
+                  @if (loading()) { <span class="spinner-sm"></span> {{ 'ACCOMM.PROCESSING' | translate }} }
+                  @else if (editingReservationId() != null) { <i class="pi pi-save"></i> {{ 'ACCOMM.UPDATE_BOOKING' | translate }} }
+                  @else { <i class="pi pi-check-circle"></i> {{ 'ACCOMM.PAY_CONFIRM' | translate }} }
                 </button>
               </div>
             </div>
@@ -197,22 +195,22 @@ import {
                   <i class="pi pi-check conf-check"></i>
                 </div>
               </div>
-              <h2 class="conf-title-heb">{{ editingReservationId() != null ? 'Stay updated' : 'Booking confirmed' }}</h2>
+              <h2 class="conf-title-heb">{{ (editingReservationId() != null ? 'ACCOMM.CONF_TITLE_UPDATE' : 'ACCOMM.CONF_TITLE_BOOKED') | translate }}</h2>
               <p class="conf-desc">
                 @if (editingReservationId() != null) {
-                  Your dates at <strong>{{ store.selectedAccommodation()?.name }}</strong> have been updated.
+                  {{ 'ACCOMM.CONF_DESC_UPDATE' | translate: { name: store.selectedAccommodation()?.name ?? '' } }}
                 } @else {
-                  Your stay at <strong>{{ store.selectedAccommodation()?.name }}</strong> has been reserved.
+                  {{ 'ACCOMM.CONF_DESC_BOOKED' | translate: { name: store.selectedAccommodation()?.name ?? '' } }}
                 }
               </p>
               <div class="conf-welcome">
                 <span class="conf-wave"><i class="pi pi-heart-fill"></i></span>
-                <p class="conf-welcome-msg">Thank you <strong>{{ guestForm.value.firstName }}</strong>, you’re all set.</p>
+                <p class="conf-welcome-msg">{{ 'ACCOMM.CONF_THANKS' | translate: { name: guestForm.value.firstName ?? '' } }}</p>
               </div>
-              <p class="conf-email">A confirmation summary was sent to <strong>{{ guestForm.value.email }}</strong></p>
+              <p class="conf-email">{{ 'ACCOMM.CONF_EMAIL_SENT' | translate: { email: guestForm.value.email ?? '' } }}</p>
               <div class="conf-actions">
-                <button class="btn-ghost" (click)="router.navigate(['/'])"><img src="icones/home.png" alt="" class="btn-ico" width="18" height="18" /> Home</button>
-                <button class="btn-primary" (click)="router.navigate(['/transport'])"><img src="icones/bus.png" alt="" class="btn-ico" width="18" height="18" /> Find transport</button>
+                <button class="btn-ghost" (click)="router.navigate(['/'])"><img src="icones/home.png" alt="" class="btn-ico" width="18" height="18" /> {{ 'ACCOMM.BTN_HOME' | translate }}</button>
+                <button class="btn-primary" (click)="router.navigate(['/transport'])"><img src="icones/bus.png" alt="" class="btn-ico" width="18" height="18" /> {{ 'ACCOMM.BTN_TRANSPORT' | translate }}</button>
               </div>
             </div>
           }
@@ -236,27 +234,27 @@ import {
               </div>
               <div class="stay-dates">
                 <div class="date-block">
-                  <span class="date-lbl">CHECK-IN</span>
+                  <span class="date-lbl">{{ 'ACCOMM.CHECK_IN_UC' | translate }}</span>
                   <span class="date-val">{{ store.dates().checkIn || '—' }}</span>
                 </div>
-                <div class="nights-block">{{ nightCount() }} <span>nights</span></div>
+                <div class="nights-block">{{ nightCount() }} <span>{{ 'ACCOMM.NIGHTS_MID' | translate }}</span></div>
                 <div class="date-block">
-                  <span class="date-lbl">CHECK-OUT</span>
+                  <span class="date-lbl">{{ 'ACCOMM.CHECK_OUT_UC' | translate }}</span>
                   <span class="date-val">{{ store.dates().checkOut || '—' }}</span>
                 </div>
               </div>
               <div class="stay-total">
-                <span>Estimated total</span>
-                <strong>{{ grandTotal() | number:'1.0-0' }} TND</strong>
+                <span>{{ 'ACCOMM.ESTIMATED_TOTAL' | translate }}</span>
+                <strong>{{ grandTotal() | dualCurrency }}</strong>
               </div>
             </div>
 
             <!-- Guarantees -->
             <div class="guarantees">
-              <div class="guarantee-item"><i class="pi pi-check-circle g-ico"></i><span>Flexible cancellation (where applicable)</span></div>
-              <div class="guarantee-item"><i class="pi pi-lock g-ico"></i><span>Secure checkout</span></div>
-              <div class="guarantee-item"><i class="pi pi-star-fill g-ico"></i><span>Best price focus</span></div>
-              <div class="guarantee-item"><i class="pi pi-phone g-ico"></i><span>24/7 assistance</span></div>
+              <div class="guarantee-item"><i class="pi pi-check-circle g-ico"></i><span>{{ 'ACCOMM.GUARANTEE_FLEX' | translate }}</span></div>
+              <div class="guarantee-item"><i class="pi pi-lock g-ico"></i><span>{{ 'ACCOMM.GUARANTEE_SECURE' | translate }}</span></div>
+              <div class="guarantee-item"><i class="pi pi-star-fill g-ico"></i><span>{{ 'ACCOMM.GUARANTEE_PRICE' | translate }}</span></div>
+              <div class="guarantee-item"><i class="pi pi-phone g-ico"></i><span>{{ 'ACCOMM.GUARANTEE_SUPPORT' | translate }}</span></div>
             </div>
           </div>
         }
@@ -342,13 +340,7 @@ import {
     .payment-flow-hint {
       font-size: 0.85rem; color: var(--text-muted); line-height: 1.55; margin: 0 0 1rem 0;
     }
-    .payment-flow-hint__en,
-    .payment-flow-hint__fr { margin: 0 0 0.65rem 0; }
-    .payment-flow-hint__fr {
-      padding-top: 0.65rem;
-      border-top: 1px solid var(--border-soft);
-      margin-bottom: 0;
-    }
+    .payment-flow-hint__text { margin: 0; white-space: pre-line; }
     .stripe-card-field { margin-bottom: 0.5rem; }
     .stripe-card-input { font-family: ui-monospace, monospace; letter-spacing: 0.04em; }
 
@@ -419,14 +411,19 @@ import {
   `]
 })
 export class AccommodationBookingPageComponent implements OnInit {
+  private readonly _currencyDisplaySync = createCurrencyDisplaySyncEffect();
+  private readonly currency = inject(CurrencyService);
+
   fb = inject(FormBuilder);
   store = inject(TripContextStore);
   dataSource = inject(DATA_SOURCE_TOKEN);
   router = inject(Router);
   route = inject(ActivatedRoute);
   auth = inject(AuthService);
+  private loginPrompt = inject(LoginRequiredPromptService);
   private alerts = inject(AppAlertsService);
   private cdr = inject(ChangeDetectorRef);
+  private translate = inject(TranslateService);
 
   step = signal(1);
   loading = signal(false);
@@ -437,9 +434,9 @@ export class AccommodationBookingPageComponent implements OnInit {
   editingRoomId = signal<number | null>(null);
 
   steps = [
-    { num: 1, label: 'Guest' },
-    { num: 2, label: 'Payment' },
-    { num: 3, label: 'Done' },
+    { num: 1, labelKey: 'ACCOMM.STEP_GUEST' },
+    { num: 2, labelKey: 'ACCOMM.STEP_PAYMENT' },
+    { num: 3, labelKey: 'ACCOMM.STEP_DONE' },
   ];
 
   guestForm = this.fb.group({
@@ -469,12 +466,10 @@ export class AccommodationBookingPageComponent implements OnInit {
   grandTotal = computed(() => this.baseTotal() + this.taxAmount());
 
   selectedRoomLabel(): string {
-    const labels: Record<AccommodationRoomCategory, string> = {
-      SINGLE: 'Single room',
-      DOUBLE: 'Double room',
-      SUITE: 'Luxury suite',
-    };
-    return labels[this.store.accommodationRoomCategory()];
+    const cat = this.store.accommodationRoomCategory();
+    const key =
+      cat === 'SINGLE' ? 'ACCOMM.ROOM_SINGLE' : cat === 'DOUBLE' ? 'ACCOMM.ROOM_DOUBLE' : 'ACCOMM.ROOM_SUITE';
+    return this.translate.instant(key);
   }
 
   payButtonDisabled(): boolean {
@@ -535,7 +530,10 @@ export class AccommodationBookingPageComponent implements OnInit {
             }
           },
           error: () => {
-            void this.alerts.error('Booking', 'Could not load your stay reservation.');
+            void this.alerts.error(
+              this.translate.instant('ACCOMM.ERR_RES_LOAD_TITLE'),
+              this.translate.instant('ACCOMM.ERR_RES_LOAD_TEXT')
+            );
           },
         });
       }
@@ -561,17 +559,26 @@ export class AccommodationBookingPageComponent implements OnInit {
   nextStep() {
     if (!this.guestForm.valid) {
       this.guestForm.markAllAsTouched();
-      void this.alerts.warning('Guest details', 'Please complete all required fields correctly.');
+      void this.alerts.warning(
+        this.translate.instant('ACCOMM.WARN_GUEST_TITLE'),
+        this.translate.instant('ACCOMM.WARN_GUEST_TEXT')
+      );
       return;
     }
     const ci = this.store.dates().checkIn;
     const co = this.store.dates().checkOut;
     if (!ci || !co) {
-      void this.alerts.warning('Stay dates', 'Check-in and check-out are required for this booking.');
+      void this.alerts.warning(
+        this.translate.instant('ACCOMM.WARN_STAY_DATES_TITLE'),
+        this.translate.instant('ACCOMM.WARN_STAY_DATES_TEXT')
+      );
       return;
     }
     if (new Date(co) <= new Date(ci)) {
-      void this.alerts.warning('Invalid dates', 'Check-out must be after check-in.');
+      void this.alerts.warning(
+        this.translate.instant('ACCOMM.WARN_DATES_ORDER_TITLE'),
+        this.translate.instant('ACCOMM.WARN_DATES_ORDER_TEXT')
+      );
       return;
     }
     this.step.set(2);
@@ -585,27 +592,39 @@ export class AccommodationBookingPageComponent implements OnInit {
   async confirmBooking() {
     const user = this.auth.currentUser();
     if (!user) {
-      void this.alerts.warning('Sign in required', 'Please sign in to complete your stay booking.');
-      this.router.navigate(['/signin']);
+      this.loginPrompt.show({
+        title: this.translate.instant('ACCOMM.LOGIN_PROMPT_TITLE'),
+        message: this.translate.instant('ACCOMM.LOGIN_PROMPT_MSG'),
+        returnUrl: this.router.url,
+      });
       return;
     }
 
     const acc = this.store.selectedAccommodation();
     if (!acc) {
-      void this.alerts.error('Missing listing', 'No property selected. Please choose an accommodation again.');
+      void this.alerts.error(
+        this.translate.instant('ACCOMM.ERR_NO_PROPERTY_TITLE'),
+        this.translate.instant('ACCOMM.ERR_NO_PROPERTY_TEXT')
+      );
       return;
     }
 
     const ci = this.store.dates().checkIn;
     const co = this.store.dates().checkOut;
     if (!ci || !co || new Date(co) <= new Date(ci)) {
-      void this.alerts.warning('Invalid stay', 'Check-in and check-out dates must be valid.');
+      void this.alerts.warning(
+        this.translate.instant('ACCOMM.WARN_STAY_INVALID_TITLE'),
+        this.translate.instant('ACCOMM.WARN_STAY_INVALID_TEXT')
+      );
       return;
     }
 
     const guests = this.store.pax().adults;
     if (guests < 1 || guests > 20) {
-      void this.alerts.warning('Guests', 'Number of guests must be between 1 and 20.');
+      void this.alerts.warning(
+        this.translate.instant('ACCOMM.WARN_GUESTS_COUNT_TITLE'),
+        this.translate.instant('ACCOMM.WARN_GUESTS_COUNT_TEXT')
+      );
       return;
     }
 
@@ -633,18 +652,19 @@ export class AccommodationBookingPageComponent implements OnInit {
     const roomPick = this.resolveRoomIdForSubmit(acc);
     if (!roomPick) {
       void this.alerts.error(
-        'No room available',
-        'This listing has no room that fits your dates or guest count. Try other dates or another property.'
+        this.translate.instant('ACCOMM.ERR_NO_ROOM_TITLE'),
+        this.translate.instant('ACCOMM.ERR_NO_ROOM_TEXT')
       );
       return;
     }
 
     const total = this.grandTotal();
+    const totalLabel = this.currency.formatDual(total);
     const confirm = await this.alerts.confirm({
-      title: 'Confirm payment',
-      html: `<p style="margin:0 0 0.75rem 0;text-align:left">A secure payment page will open to pay <strong>${total} TND</strong> for this stay. Continue?</p><p style="margin:0;text-align:left;border-top:1px solid rgba(255,255,255,0.14);padding-top:0.75rem" lang="fr">Une page de paiement sécurisée s’ouvrira pour payer <strong>${total} TND</strong> pour ce séjour. Continuer&nbsp;?</p>`,
-      confirmText: 'Continue',
-      cancelText: 'Cancel',
+      title: this.translate.instant('ACCOMM.PAY_CONFIRM_TITLE'),
+      html: `<p style="margin:0;text-align:left">${this.translate.instant('ACCOMM.PAY_CONFIRM_HTML', { amount: totalLabel })}</p>`,
+      confirmText: this.translate.instant('ACCOMM.BTN_CONTINUE_PAY'),
+      cancelText: this.translate.instant('COMMUNITY.CANCEL'),
       icon: 'question',
     });
     if (!confirm.isConfirmed) {
@@ -668,7 +688,10 @@ export class AccommodationBookingPageComponent implements OnInit {
           this.cdr.markForCheck();
           const url = (checkout.url ?? '').trim();
           if (!url) {
-            void this.alerts.error('Checkout', 'Invalid payment response from server.');
+            void this.alerts.error(
+              this.translate.instant('ACCOMM.ERR_CHECKOUT_TITLE'),
+              this.translate.instant('ACCOMM.ERR_CHECKOUT_INVALID')
+            );
             return;
           }
           let stripeHost = '';
@@ -689,7 +712,10 @@ export class AccommodationBookingPageComponent implements OnInit {
             window.location.assign(url);
             return;
           }
-          void this.alerts.error('Checkout', 'Invalid payment response from server.');
+          void this.alerts.error(
+            this.translate.instant('ACCOMM.ERR_CHECKOUT_TITLE'),
+            this.translate.instant('ACCOMM.ERR_CHECKOUT_INVALID')
+          );
         },
         error: (err: unknown) => {
           this.loading.set(false);
@@ -701,8 +727,8 @@ export class AccommodationBookingPageComponent implements OnInit {
               ? String((body as { message?: string }).message)
               : typeof body === 'string'
                 ? body
-                : 'Could not start payment.';
-          void this.alerts.error('Checkout', msg);
+                : this.translate.instant('ACCOMM.ERR_PAYMENT_START');
+          void this.alerts.error(this.translate.instant('ACCOMM.ERR_CHECKOUT_TITLE'), msg);
         },
       });
   }
@@ -721,13 +747,9 @@ export class AccommodationBookingPageComponent implements OnInit {
 
   formatType(type?: string): string {
     if (!type) return '';
-    const map: Record<string, string> = {
-      HOTEL: 'Hotel',
-      MAISON_HOTE: 'Guest house',
-      GUESTHOUSE: 'Rural guesthouse',
-      AUTRE: 'Stay',
-    };
-    return map[type] || type;
+    const key = `ACCOMM.TYPE_${type}`;
+    const t = this.translate.instant(key);
+    return t !== key ? t : type;
   }
 
   typeIconSrc(type?: string): string {

@@ -23,7 +23,8 @@ public record ProfileUpdateRequest(
         @Size(max = 100, message = "Nationality is too long")
         String nationality,
         Integer cityId,
-        @Size(max = 100000, message = "Profile image URL is too long")
+        /** URLs hébergées ou data URLs (base64) ; aligné sur MEDIUMTEXT côté base. */
+        @Size(max = 16_000_000, message = "Profile image URL is too long")
         String profileImageUrl
 ) {
 }

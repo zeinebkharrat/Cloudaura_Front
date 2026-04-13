@@ -1,30 +1,30 @@
 <section class="services-page">
   <header class="services-hero animate-in">
-    <p class="kicker">Our Services</p>
-    <h1>Activities in Tunisia</h1>
-    <p>Discover activities with advanced filters and classic pagination.</p>
+    <p class="kicker">{{ 'EXPLORE_SERVICES_ACTIVITIES.HERO_KICKER' | translate }}</p>
+    <h1>{{ 'EXPLORE_SERVICES_ACTIVITIES.TITLE' | translate }}</h1>
+    <p>{{ 'EXPLORE_SERVICES_ACTIVITIES.SUB' | translate }}</p>
   </header>
 
   <section class="services-panel animate-in delay-1">
     <div class="services-layout">
       <aside class="filters-sidebar">
-        <h3>Filters</h3>
+        <h3>{{ 'EXPLORE_SERVICES_ACTIVITIES.FILTERS' | translate }}</h3>
 
-        <label class="filter-field">
-          <span>City</span>
+        <label class="filter-field" [class.filter-detected]="voiceDetectedFilters().city">
+          <span>{{ 'EXPLORE_SERVICES_ACTIVITIES.CITY' | translate }}</span>
           <select [ngModel]="selectedCityId()" (ngModelChange)="onCityFilterChange($event)">
-            <option value="all">All cities</option>
+            <option value="all">{{ 'EXPLORE_SERVICES_ACTIVITIES.ALL_CITIES' | translate }}</option>
             @for (city of cities(); track city.cityId) {
               <option [ngValue]="city.cityId">{{ city.name }}</option>
             }
           </select>
         </label>
 
-        <div class="filter-field">
-          <span>Price</span>
+        <div class="filter-field" [class.filter-detected]="voiceDetectedFilters().budget">
+          <span>{{ 'EXPLORE_SERVICES_ACTIVITIES.PRICE' | translate }}</span>
           <div class="price-inputs">
             <input type="number" [ngModel]="minPrice()" (ngModelChange)="onMinPriceInputChange($event)" />
-            <span>to</span>
+            <span>{{ 'EXPLORE_SERVICES_ACTIVITIES.TO' | translate }}</span>
             <input type="number" [ngModel]="maxPrice()" (ngModelChange)="onMaxPriceInputChange($event)" />
           </div>
 
@@ -34,38 +34,66 @@
           </div>
         </div>
 
-        <label class="filter-field">
-          <span>Availability date</span>
+        <label class="filter-field" [class.filter-detected]="voiceDetectedFilters().date">
+          <span>{{ 'EXPLORE_SERVICES_ACTIVITIES.AVAIL_DATE' | translate }}</span>
           <input type="date" [ngModel]="selectedDate()" (ngModelChange)="onDateChange($event)" />
         </label>
 
-        <label class="filter-field">
-          <span>Participants</span>
+        <label class="filter-field" [class.filter-detected]="voiceDetectedFilters().participants">
+          <span>{{ 'EXPLORE_SERVICES_ACTIVITIES.PARTICIPANTS' | translate }}</span>
           <input type="number" min="1" [ngModel]="participants()" (ngModelChange)="onParticipantsChange($event)" />
         </label>
 
-        <button class="ghost-filter-btn" type="button" (click)="clearAvailabilityFilter()">Clear availability</button>
+        <button class="ghost-filter-btn" type="button" (click)="clearAvailabilityFilter()">{{ 'EXPLORE_SERVICES_ACTIVITIES.CLEAR_AVAIL' | translate }}</button>
       </aside>
 
       <div class="services-content">
         <div class="toolbar">
-          <div class="search-wrap">
-            <input type="text" [ngModel]="q()" (ngModelChange)="onSearchChange($event)" placeholder="Search activity..." />
+          <div class="search-wrap modern-voice">
+            <input type="text" [ngModel]="q()" (ngModelChange)="onSearchChange($event)" [placeholder]="'EXPLORE_SERVICES_ACTIVITIES.SEARCH_PH' | translate" />
+            <button
+              class="voice-btn"
+              type="button"
+              (click)="onVoiceSearchClick()"
+              [disabled]="!voiceSupported() || voiceProcessing()"
+              [class.active]="voiceListening()"
+              [attr.aria-label]="voiceListening() ? ('EXPLORE_SERVICES_ACTIVITIES.VOICE_STOP' | translate) : ('EXPLORE_SERVICES_ACTIVITIES.VOICE_START' | translate)"
+              [title]="'EXPLORE_SERVICES_ACTIVITIES.VOICE_TITLE' | translate"
+            >
+              🎤
+            </button>
+            <span class="voice-counter" [class.active]="voiceListening()">{{ (voiceDetectedFilters().city ? 1 : 0) + (voiceDetectedFilters().budget ? 1 : 0) + (voiceDetectedFilters().date ? 1 : 0) + (voiceDetectedFilters().participants ? 1 : 0) }}</span>
           </div>
           <select [ngModel]="sort()" (ngModelChange)="onSortChange($event)">
-            <option value="activityId,desc">Newest</option>
-            <option value="name,asc">Name A → Z</option>
-            <option value="price,asc">Price low → high</option>
-            <option value="price,desc">Price high → low</option>
+            <option value="activityId,desc">{{ 'EXPLORE_SERVICES_ACTIVITIES.SORT_NEWEST' | translate }}</option>
+            <option value="name,asc">{{ 'EXPLORE_SERVICES_ACTIVITIES.SORT_NAME' | translate }}</option>
+            <option value="price,asc">{{ 'EXPLORE_SERVICES_ACTIVITIES.SORT_PRICE_ASC' | translate }}</option>
+            <option value="price,desc">{{ 'EXPLORE_SERVICES_ACTIVITIES.SORT_PRICE_DESC' | translate }}</option>
           </select>
         </div>
 
+        @if (voiceListening()) {
+          <p class="voice-state">{{ 'EXPLORE_SERVICES_ACTIVITIES.VOICE_LISTENING' | translate }}</p>
+        }
+        @if (voiceProcessing()) {
+          <p class="voice-state">{{ 'EXPLORE_SERVICES_ACTIVITIES.VOICE_ANALYZING' | translate }}</p>
+        }
+        @if (lastTranscript()) {
+          <p class="voice-state transcript">“{{ lastTranscript() }}”</p>
+        }
+        @if (voiceSuggestion()) {
+          <p class="voice-state">{{ voiceSuggestion() }}</p>
+        }
+        @if (voiceError()) {
+          <p class="voice-state error">{{ voiceError() }}</p>
+        }
+
         @if (loading()) {
-          <p class="state">Loading activities...</p>
+          <p class="state">{{ 'EXPLORE_SERVICES_ACTIVITIES.LOADING' | translate }}</p>
         } @else if (error()) {
           <p class="state error">{{ error() }}</p>
         } @else if (activities().length === 0) {
-          <p class="state">No activities match your filters.</p>
+          <p class="state">{{ 'EXPLORE_SERVICES_ACTIVITIES.EMPTY' | translate }}</p>
         } @else {
           <div class="cards-grid">
             @for (activity of activities(); track activity.activityId) {
@@ -73,13 +101,23 @@
                 <img [src]="activity.imageUrl || 'assets/sidi_bou.png'" [alt]="activity.name" loading="lazy" />
                 <div class="content">
                   <h3>{{ activity.name }}</h3>
-                  <p>{{ activity.description || ('Type: ' + (activity.type || 'Tourist activity')) }}</p>
+                  @if (activity.description) {
+                    <p>{{ activity.description }}</p>
+                  } @else {
+                    <p>{{ 'EXPLORE_CITY.TYPE_PREFIX' | translate: { type: (activity.type || ('EXPLORE_CITY.TOURIST_ACTIVITY' | translate)) } }}</p>
+                  }
                   <div class="city-row">
-                    <span class="city-chip">{{ activity.cityName || 'Unknown city' }}</span>
+                    <span class="city-chip">{{ activity.cityName || ('EXPLORE_SERVICES_ACTIVITIES.UNKNOWN_CITY' | translate) }}</span>
                   </div>
                   <div class="meta-row">
-                    <span>{{ activity.type || 'Tourist activity' }}</span>
-                    <span>{{ activity.price ?? '—' }} DT</span>
+                    <span>{{ activity.type || ('EXPLORE_CITY.TOURIST_ACTIVITY' | translate) }}</span>
+                    <span>
+                      @if (activity.price != null) {
+                        {{ activity.price | dualCurrency }}
+                      } @else {
+                        {{ 'COMMON.DASH' | translate }}
+                      }
+                    </span>
                   </div>
                   <div class="rating-badge">
                     <span class="stars">
@@ -88,10 +126,10 @@
                       }
                     </span>
                     @if (!hasActivityReviews(activity.activityId)) {
-                      <small>No reviews</small>
+                      <small>{{ 'EXPLORE_SERVICES_ACTIVITIES.NO_REVIEWS' | translate }}</small>
                     }
                   </div>
-                  <a class="btn" [routerLink]="['/activities', activity.activityId]">View details</a>
+                  <a class="btn" [routerLink]="['/activities', activity.activityId]">{{ 'EXPLORE_SERVICES_ACTIVITIES.VIEW_DETAILS' | translate }}</a>
                 </div>
               </article>
             }
@@ -99,13 +137,13 @@
 
           @if (totalPages() > 1) {
             <div class="pagination">
-              <button class="pager-btn" type="button" (click)="previousPage()" [disabled]="page() === 0">Previous</button>
+              <button class="pager-btn" type="button" (click)="previousPage()" [disabled]="page() === 0">{{ 'EXPLORE_SERVICES_ACTIVITIES.PREV' | translate }}</button>
               <div class="pager-numbers">
                 @for (p of pageNumbers(); track p) {
                   <button class="pager-num" type="button" [class.active]="p === page()" (click)="goToPage(p)">{{ p + 1 }}</button>
                 }
               </div>
-              <button class="pager-btn" type="button" (click)="nextPage()" [disabled]="page() + 1 >= totalPages()">Next</button>
+              <button class="pager-btn" type="button" (click)="nextPage()" [disabled]="page() + 1 >= totalPages()">{{ 'EXPLORE_SERVICES_ACTIVITIES.NEXT' | translate }}</button>
             </div>
           }
         }

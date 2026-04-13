@@ -8,6 +8,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 @Service
@@ -19,10 +20,19 @@ public class CustomUserDetailsService implements UserDetailsService {
         this.userRepository = userRepository;
     }
 
+    /**
+     * Même logique que {@link AuthService} pour résoudre l’identifiant (email ou pseudo) :
+     * une seule requête OR + ordre par id, pour éviter un utilisateur différent de celui de
+     * {@code findByIdentifier} (tentatives / verrou) et des échecs de connexion incohérents.
+     */
     @Override
     public UserDetails loadUserByUsername(String identifier) throws UsernameNotFoundException {
-        User user = userRepository.findByEmailIgnoreCase(identifier)
-                .or(() -> userRepository.findByUsernameIgnoreCase(identifier))
+        if (identifier == null || identifier.isBlank()) {
+            throw new UsernameNotFoundException("User not found");
+        }
+        String normalized = identifier.trim().toLowerCase(Locale.ROOT);
+        User user = userRepository
+                .findFirstByUsernameIgnoreCaseOrEmailIgnoreCaseOrderByUserIdAsc(normalized, normalized)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
         return new CustomUserDetails(user);

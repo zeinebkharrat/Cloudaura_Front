@@ -1,4 +1,6 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { forkJoin } from 'rxjs';
 import { ActivatedRoute, Data, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -11,16 +13,24 @@ import { ShopService } from './core/shop.service';
 import { EventService } from './event.service';
 import { Event as TravelEvent } from './models/event';
 import { NotificationService } from './core/notification.service';
+import { LoginRequiredPromptService } from './core/login-required-prompt.service';
+import { LanguageService } from './core/services/language.service';
 import { DialogModule } from 'primeng/dialog';
 import { GalleriaModule } from 'primeng/galleria';
 import { ButtonModule } from 'primeng/button';
 import { CarouselModule } from 'primeng/carousel';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
+import Swal from 'sweetalert2';
 
 export interface FeatureBlock {
-  title: string;
-  items: string[];
+  /** Legacy: plain title when not using i18n */
+  title?: string;
+  /** i18n key for title (e.g. FEATURE.ARTISANAT_BLOCKS.B1.TITLE) */
+  titleKey?: string;
+  items?: string[];
+  /** i18n keys for bullet items */
+  itemKeys?: string[];
   icon?: string;
 }
 
@@ -48,6 +58,7 @@ export interface CatalogProduct {
     CommonModule,
     RouterLink,
     FormsModule,
+    TranslateModule,
     DialogModule,
     GalleriaModule,
     ButtonModule,
@@ -60,21 +71,29 @@ export interface CatalogProduct {
 })
 export class FeaturePageComponent implements OnInit {
   private route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly translate = inject(TranslateService);
+  private readonly language = inject(LanguageService);
   private http = inject(HttpClient);
   readonly router = inject(Router);
   readonly auth = inject(AuthService);
   readonly shop = inject(ShopService);
   private readonly eventService = inject(EventService);
   private readonly notifier = inject(NotificationService);
+  private readonly loginPrompt = inject(LoginRequiredPromptService);
 
   kicker = '';
   title = '';
   description = '';
+  /** Route `data.i18n` id (e.g. DESTINATIONS) → keys under FEATURE.{id}.* */
+  private featureI18nId: string | null = null;
   accent: FeatureAccent = 'coral';
   highlights: string[] = [];
   blocks: FeatureBlock[] = [];
   events: TravelEvent[] = [];
+  isEventFeed = false;
   isLoadingEvents = false;
+  eventsLoadError: string | null = null;
   selectedEvent: TravelEvent | null = null;
   readonly eventJoinLoading = signal(false);
   readonly eventJoinError = signal<string | null>(null);
@@ -316,6 +335,11 @@ export class FeaturePageComponent implements OnInit {
   readonly isUploadingImage = signal(false);
 
   ngOnInit(): void {
+    this.translate.onLangChange.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      if (this.featureI18nId) {
+        this.applyI18nHeadings();
+      }
+    });
     this.applyData(this.route.snapshot.data);
     this.route.data.subscribe((d) => this.applyData(d));
     if (this.isArtisan()) {
@@ -323,10 +347,28 @@ export class FeaturePageComponent implements OnInit {
     }
   }
 
+  private applyI18nHeadings(): void {
+    const id = this.featureI18nId;
+    if (!id) {
+      return;
+    }
+    const base = `FEATURE.${id}`;
+    this.kicker = String(this.translate.instant(`${base}.KICKER`));
+    this.title = String(this.translate.instant(`${base}.TITLE`));
+    this.description = String(this.translate.instant(`${base}.DESC`));
+  }
+
   private applyData(d: Data): void {
-    this.kicker = String(d['kicker'] ?? 'Module');
-    this.title = String(d['title'] ?? '');
-    this.description = String(d['description'] ?? '');
+    const i18nId = d['i18n'];
+    if (typeof i18nId === 'string' && i18nId.length > 0) {
+      this.featureI18nId = i18nId;
+      this.applyI18nHeadings();
+    } else {
+      this.featureI18nId = null;
+      this.kicker = String(d['kicker'] ?? 'Module');
+      this.title = String(d['title'] ?? '');
+      this.description = String(d['description'] ?? '');
+    }
     const a = d['accent'];
     if (typeof a === 'string' && ['coral', 'blue', 'gold', 'violet', 'sand', 'emerald', 'rose'].includes(a)) {
       this.accent = a as FeatureAccent;
@@ -345,11 +387,14 @@ export class FeaturePageComponent implements OnInit {
       this.catalogError = null;
     }
 
-    if (this.title === 'Events') {
+    const shouldLoadEvents = d['eventFeed'] === true || this.featureI18nId === 'EVENEMENTS';
+    this.isEventFeed = shouldLoadEvents;
+    if (shouldLoadEvents) {
       this.loadEvents();
     } else {
       this.events = [];
       this.isLoadingEvents = false;
+      this.eventsLoadError = null;
       this.selectedEvent = null;
     }
   }
@@ -369,9 +414,11 @@ export class FeaturePageComponent implements OnInit {
   loadProducts(): void {
     this.catalogLoading = true;
     const cityId = this.selectedCityId();
-    let primary = `${API_BASE_URL}/api/products`;
-    if (cityId) primary += `?cityId=${cityId}`;
-    const fallback = `${API_FALLBACK_ORIGIN}/api/products${cityId ? `?cityId=${cityId}` : ''}`;
+    const lang = this.language.currentLang();
+    const langParam = `lang=${encodeURIComponent(lang)}`;
+    let primary = `${API_BASE_URL}/api/products?${langParam}`;
+    if (cityId) primary += `&cityId=${cityId}`;
+    const fallback = `${API_FALLBACK_ORIGIN}/api/products?${langParam}${cityId ? `&cityId=${cityId}` : ''}`;
     const tryFallback = API_BASE_URL === '';
 
     this.http.get<CatalogProduct[]>(primary).subscribe({
@@ -389,14 +436,12 @@ export class FeaturePageComponent implements OnInit {
               this.catalogImageFailed.set(new Set());
             },
             error: () => {
-              this.catalogError =
-                'Could not load the catalog. Start the backend (default port 9091) and run `ng serve` with the Angular proxy.';
+              this.catalogError = 'FEATURE_CATALOG.ERR_CATALOG_PROXY';
               this.catalogLoading = false;
             },
           });
         } else {
-          this.catalogError =
-            'Could not load the catalog. Check that the backend is running (e.g. port 9091) and that the Angular proxy is configured.';
+          this.catalogError = 'FEATURE_CATALOG.ERR_CATALOG_BACKEND';
           this.catalogLoading = false;
         }
       },
@@ -424,8 +469,12 @@ export class FeaturePageComponent implements OnInit {
   }
 
   formatPrice(p: number | null | undefined): string {
-    if (p == null || Number.isNaN(Number(p))) return '—';
-    return new Intl.NumberFormat('en-US', {
+    if (p == null || Number.isNaN(Number(p))) {
+      return this.translate.instant('FEATURE_CATALOG.PRICE_DASH');
+    }
+    const lang = this.language.currentLang();
+    const locale = lang === 'ar' ? 'ar-TN' : lang === 'fr' ? 'fr-FR' : 'en-US';
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: 'TND',
       minimumFractionDigits: 2,
@@ -460,13 +509,13 @@ export class FeaturePageComponent implements OnInit {
     }
     const varId = this.selectedVariantId()[p.productId];
     if (this.needsVariantChoice(p) && !varId) {
-      this.notifier.show('Please select a color and size.', 'info');
+      this.notifier.show(this.translate.instant('FEATURE_CATALOG.NOTIF_SELECT_VARIANTS'), 'info');
       return;
     }
     if (!this.needsVariantChoice(p)) {
       const stock = p.stock ?? 0;
       if (stock <= 0) {
-        this.notifier.show('This product is unavailable (out of stock).', 'error');
+        this.notifier.show(this.translate.instant('FEATURE_CATALOG.NOTIF_UNAVAILABLE'), 'error');
         return;
       }
     }
@@ -475,11 +524,14 @@ export class FeaturePageComponent implements OnInit {
       next: () => {
         this.addingProductId.set(null);
         this.shop.refreshCartCount();
-        this.notifier.show(`"${p.name}" added to cart.`, 'success');
+        this.notifier.show(
+          this.translate.instant('FEATURE_CATALOG.NOTIF_ADDED_CART', { name: p.name }),
+          'success'
+        );
       },
       error: () => {
         this.addingProductId.set(null);
-        this.notifier.show('Could not add to cart (stock or connection issue).', 'error');
+        this.notifier.show(this.translate.instant('FEATURE_CATALOG.NOTIF_CART_FAIL'), 'error');
       },
     });
   }
@@ -499,13 +551,14 @@ export class FeaturePageComponent implements OnInit {
   private loadArtisanProducts(): void {
     this.artisanProductsLoading.set(true);
     this.artisanProductsError.set(null);
-    this.http.get<CatalogProduct[]>(`${API_BASE_URL}/api/products/my-products`).subscribe({
+    const langQ = `lang=${encodeURIComponent(this.language.currentLang())}`;
+    this.http.get<CatalogProduct[]>(`${API_BASE_URL}/api/products/my-products?${langQ}`).subscribe({
       next: (list) => {
         this.artisanProducts.set(list ?? []);
         this.artisanProductsLoading.set(false);
       },
       error: () => {
-        const fallback = `${API_FALLBACK_ORIGIN}/api/products/my-products`;
+        const fallback = `${API_FALLBACK_ORIGIN}/api/products/my-products?${langQ}`;
         const tryFallback = API_BASE_URL === '';
         if (tryFallback) {
           this.http.get<CatalogProduct[]>(fallback).subscribe({
@@ -514,12 +567,12 @@ export class FeaturePageComponent implements OnInit {
               this.artisanProductsLoading.set(false);
             },
             error: () => {
-              this.artisanProductsError.set('Could not load your products.');
+              this.artisanProductsError.set('FEATURE_CATALOG.ERR_ARTISAN_PRODUCTS');
               this.artisanProductsLoading.set(false);
             },
           });
         } else {
-          this.artisanProductsError.set('Could not load your products.');
+          this.artisanProductsError.set('FEATURE_CATALOG.ERR_ARTISAN_PRODUCTS');
           this.artisanProductsLoading.set(false);
         }
       },
@@ -615,7 +668,7 @@ export class FeaturePageComponent implements OnInit {
           this.persistProduct(p);
         },
         error: () => {
-          this.notifier.show('Error uploading images.', 'error');
+          this.notifier.show(this.translate.instant('FEATURE_CATALOG.NOTIF_UPLOAD_ERR'), 'error');
           this.isUploadingImage.set(false);
           this.submittingProduct.set(false);
         }
@@ -642,7 +695,8 @@ export class FeaturePageComponent implements OnInit {
       error: (err) => {
         this.isUploadingImage.set(false);
         this.submittingProduct.set(false);
-        const msg = err?.error?.error ?? 'Could not save the product.';
+        const msg =
+          err?.error?.error ?? this.translate.instant('FEATURE_CATALOG.NOTIF_SAVE_FAIL');
         this.notifier.show(`✕ ${msg}`, 'error');
       }
     });
@@ -651,10 +705,10 @@ export class FeaturePageComponent implements OnInit {
   private afterProductSaved(prod: CatalogProduct, isEdit: boolean): void {
     if (isEdit) {
       this.artisanProducts.update(list => list.map(p => p.productId === prod.productId ? prod : p));
-      this.notifier.show('Product updated.', 'success');
+      this.notifier.show(this.translate.instant('FEATURE_CATALOG.NOTIF_PRODUCT_UPDATED'), 'success');
     } else {
       this.artisanProducts.update(list => [prod, ...list]);
-      this.notifier.show('Product added.', 'success');
+      this.notifier.show(this.translate.instant('FEATURE_CATALOG.NOTIF_PRODUCT_ADDED'), 'success');
     }
     this.submittingProduct.set(false);
     this.closeProductForm();
@@ -662,7 +716,7 @@ export class FeaturePageComponent implements OnInit {
 
   deleteProduct(productId: number, event?: Event): void {
     event?.stopPropagation();
-    if (!confirm('Delete this product?')) {
+    if (!confirm(this.translate.instant('FEATURE_CATALOG.CONFIRM_DELETE_PRODUCT'))) {
       return;
     }
 
@@ -672,7 +726,7 @@ export class FeaturePageComponent implements OnInit {
 
     const onDeleted = () => {
       this.artisanProducts.update((products) => products.filter((p) => p.productId !== productId));
-      this.notifier.show('Product deleted.', 'success');
+      this.notifier.show(this.translate.instant('FEATURE_CATALOG.NOTIF_PRODUCT_DELETED'), 'success');
     };
 
     this.http.delete(primary).subscribe({
@@ -681,10 +735,11 @@ export class FeaturePageComponent implements OnInit {
         if (tryFallback) {
           this.http.delete(fallback).subscribe({
             next: onDeleted,
-            error: () => this.notifier.show('Could not delete the product.', 'error'),
+            error: () =>
+              this.notifier.show(this.translate.instant('FEATURE_CATALOG.NOTIF_DELETE_FAIL'), 'error'),
           });
         } else {
-          this.notifier.show('Could not delete the product.', 'error');
+          this.notifier.show(this.translate.instant('FEATURE_CATALOG.NOTIF_DELETE_FAIL'), 'error');
         }
       },
     });
@@ -692,16 +747,64 @@ export class FeaturePageComponent implements OnInit {
 
   private loadEvents(): void {
     this.isLoadingEvents = true;
+    this.eventsLoadError = null;
     this.eventService.getEvents().subscribe({
       next: (events) => {
-        this.events = events;
+        this.events = events.map((event) => ({
+          ...event,
+          status: this.normalizeEventStatus(event.status),
+          imageUrl: this.normalizeEventImageUrl(event.imageUrl),
+        })).filter((event) => this.shouldDisplayInFrontOffice(event.status));
         this.isLoadingEvents = false;
       },
       error: (err) => {
         console.error('Error loading events:', err);
+        this.eventsLoadError = 'Could not load events right now.';
         this.isLoadingEvents = false;
       }
     });
+  }
+
+  private normalizeEventStatus(status: unknown): string {
+    const normalized = String(status ?? '').trim();
+    if (!normalized) {
+      return 'UPCOMING';
+    }
+    const upper = normalized.toUpperCase();
+    const compact = upper.replace(/[^A-Z]/g, '');
+
+    if (compact === 'UPCOMING' || compact === 'ONGOING' || compact === 'COMPLETED') {
+      return compact;
+    }
+
+    // Accept common typos coming from legacy/admin inputs.
+    if (compact === 'COMPELETED' || compact === 'COMPELETD' || compact === 'COMPLETED' || compact === 'COMPLETEDD') {
+      return 'COMPLETED';
+    }
+
+    return upper;
+  }
+
+  private shouldDisplayInFrontOffice(status: unknown): boolean {
+    const normalized = this.normalizeEventStatus(status);
+    return normalized === 'UPCOMING' || normalized === 'ONGOING';
+  }
+
+  private normalizeEventImageUrl(url: string | undefined): string | undefined {
+    if (!url) {
+      return undefined;
+    }
+    const value = String(url).trim();
+    if (!value) {
+      return undefined;
+    }
+    if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('/')) {
+      return value;
+    }
+    if (value.startsWith('uploads/')) {
+      return `/${value}`;
+    }
+    return `/${value}`;
   }
 
   selectEvent(event: TravelEvent): void {
@@ -744,11 +847,29 @@ export class FeaturePageComponent implements OnInit {
     return this.isPaidEvent(event) ? 'Opening payment…' : 'Registering…';
   }
 
+  private toJoinUserMessage(err: HttpErrorResponse, fallback: string): string {
+    const raw = extractApiErrorMessage(err, fallback);
+    const lowered = raw.toLowerCase();
+    if (
+      lowered.includes('stripe is not configured') ||
+      lowered.includes('stripe.api.key') ||
+      lowered.includes('stripe_secret_key') ||
+      lowered.includes('stripe error')
+    ) {
+      return 'Online payment is temporarily unavailable. Please try again later.';
+    }
+    return raw;
+  }
+
   onJoinEvent(event: TravelEvent): void {
     this.eventJoinError.set(null);
 
     if (!this.auth.isAuthenticated()) {
-      this.router.navigate(['/signin'], { queryParams: { returnUrl: this.router.url } });
+      this.loginPrompt.show({
+        title: 'Sign in to reserve this event',
+        message: 'Create an account or sign in to continue with your event reservation.',
+        returnUrl: this.router.url,
+      });
       return;
     }
 
@@ -775,11 +896,11 @@ export class FeaturePageComponent implements OnInit {
               window.location.href = res.sessionUrl;
               return;
             }
-            this.eventJoinError.set('Payment did not return a Stripe checkout link. Check the backend Stripe key.');
+            this.eventJoinError.set('Payment is temporarily unavailable. Please try again later.');
           },
           error: (err: HttpErrorResponse) => {
             this.eventJoinLoading.set(false);
-            this.eventJoinError.set(extractApiErrorMessage(err, 'Could not start payment.'));
+            this.eventJoinError.set(this.toJoinUserMessage(err, 'Could not start payment.'));
           },
         });
       return;
@@ -795,27 +916,41 @@ export class FeaturePageComponent implements OnInit {
     this.eventService.createReservation(reservationData).subscribe({
       next: (res) => {
         this.eventJoinLoading.set(false);
-        alert(`You're registered! Reservation #${res.event_reservation_id} created.`);
+        const emailSent = res?.emailSent !== false;
+        Swal.fire({
+          icon: 'success',
+          title: "You're registered!",
+          text: emailSent
+            ? 'Thanks for joining this event. A confirmation email has been sent.'
+            : 'Thanks for joining this event. Registration is confirmed, but the email could not be sent now.',
+          confirmButtonText: 'Great'
+        });
         this.closeEventDetails();
       },
       error: (err: HttpErrorResponse) => {
         this.eventJoinLoading.set(false);
-        this.eventJoinError.set(extractApiErrorMessage(err, 'Could not complete registration.'));
+        const apiMessage = extractApiErrorMessage(err, 'Could not complete registration.');
+        const providerError = typeof err?.error?.emailError === 'string' ? err.error.emailError.trim() : '';
+        this.eventJoinError.set(providerError ? `${apiMessage} (${providerError})` : apiMessage);
       },
     });
   }
 
-  getStatusLabel(status: string | undefined): string {
-    switch (status) {
-      case 'PUBLISHED':
-        return 'Published';
-      case 'REJECTED':
-        return 'Rejected';
-      case 'DRAFT':
-        return 'Draft';
-      default:
-        return 'Pending';
+  /** ngx-translate key under FEATURE_CATALOG.STATUS_* */
+  statusLabelKey(status: string | undefined): string {
+    const u = (status ?? 'PENDING').toUpperCase();
+    if (u === 'PUBLISHED' || u === 'REJECTED' || u === 'DRAFT' || u === 'PENDING') {
+      return `FEATURE_CATALOG.STATUS_${u}`;
     }
+    return 'FEATURE_CATALOG.STATUS_PENDING';
+  }
+
+  detailDialogHeader(): string {
+    const item = this.selectedItem();
+    if (item?.name) {
+      return item.name;
+    }
+    return this.translate.instant('FEATURE_CATALOG.PRODUCT_DETAILS');
   }
 
   getStatusSeverity(status: string | undefined): string {
