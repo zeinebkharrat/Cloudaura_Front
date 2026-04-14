@@ -16,6 +16,8 @@ import org.example.backend.model.Restaurant;
 import org.example.backend.model.Transport;
 import org.example.backend.repository.AccommodationRepository;
 import org.example.backend.repository.ActivityRepository;
+import org.example.backend.repository.ActivityReservationRepository;
+import org.example.backend.repository.ActivityReviewRepository;
 import org.example.backend.repository.CityRepository;
 import org.example.backend.repository.EventRepository;
 import org.example.backend.repository.EventReservationRepository;
@@ -36,6 +38,7 @@ import java.nio.charset.StandardCharsets;
 import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.temporal.TemporalAdjusters;
 import java.time.ZoneId;
 import java.time.YearMonth;
@@ -61,6 +64,8 @@ public class ChatbotAssistantService {
     private final CityRepository cityRepository;
     private final RestaurantRepository restaurantRepository;
     private final ActivityRepository activityRepository;
+    private final ActivityReservationRepository activityReservationRepository;
+    private final ActivityReviewRepository activityReviewRepository;
     private final AccommodationRepository accommodationRepository;
     private final EventRepository eventRepository;
     private final EventReservationRepository eventReservationRepository;
@@ -126,7 +131,11 @@ public class ChatbotAssistantService {
         }
 
         Intent intent = detectIntent(normalizedQuestion);
-        if (intent == Intent.GENERAL_TUNISIA && isLowSignalQuestion(normalizedQuestion) && !normalizedConversation.isBlank()) {
+        if (intent == Intent.GENERAL_TUNISIA
+            && isLowSignalQuestion(normalizedQuestion)
+            && !containsAny(normalizedQuestion,
+                "ville tunisienne", "propose moi une ville", "plage", "beach", "sahel", "desert", "dessert", "montagne", "mountain", "cap bon")
+            && !normalizedConversation.isBlank()) {
             Intent conversationIntent = detectIntent(normalizedConversation);
             if (conversationIntent != Intent.GENERAL_TUNISIA) {
                 intent = conversationIntent;
@@ -167,14 +176,22 @@ public class ChatbotAssistantService {
             return Intent.SMALL_TALK;
         }
 
+        boolean asksCitySuggestion = containsAny(normalizedQuestion,
+            "propose moi une ville", "propose une ville", "ville tunisienne", "ville en tunisie", "suggest a city", "recommend city", "city in tunisia", "ville avec plage", "beach city", "sahel");
         boolean asksInfo = containsAny(normalizedQuestion, "info", "infos", "information", "informations", "detail", "details", "detailles", "detaillé", "details");
         boolean asksCityList = containsAny(normalizedQuestion,
             "nom des villes", "noms des villes", "villes tunisiennes", "toutes les villes", "tous les villes", "all cities", "city names");
-        boolean asksBest = containsAny(normalizedQuestion, "best", "meilleur", "top", "highest", "mieux", "افضل");
+        boolean asksBest = asksBestKeyword(normalizedQuestion);
         boolean asksRestaurant = containsAny(normalizedQuestion, "restaurant", "restaurants", "cuisine", "food", "مطعم", "مطاعم");
+        boolean asksRestaurantStars = asksRestaurant
+            && containsAny(normalizedQuestion, "notation", "note", "rating", "etoile", "etoiles", "star", "stars")
+            && (containsAny(normalizedQuestion, "superieur", "inferieur", "plus de", "moins de", "above", "below", ">", "<")
+                || extractFirstNumber(normalizedQuestion) != null);
         boolean asksActivity = containsAny(normalizedQuestion, "activity", "activities", "activite", "activites", "activies", "activis", "visit", "thing to do", "نشاط", "انشطة");
         boolean asksAccommodation = containsAny(normalizedQuestion, "hotel", "accommodation", "accommodations", "accomodation", "accomodations", "stay", "guesthouse", "maison d hote", "hebergement", "سكن", "اقامة");
-        boolean asksTransport = containsAny(normalizedQuestion, "transport", "tansport", "transports", "bus", "train", "taxi", "plane", "ferry", "route", "trajet", "نقل", "حافلة", "قطار");
+        boolean asksTransport = containsAny(normalizedQuestion,
+            "transport", "tansport", "transports", "bus", "train", "taxi", "plane", "ferry", "route", "trajet", "voyage", "travel", "trip", "departure", "destination", "from", "to", "vers", "نقل", "حافلة", "قطار")
+            || isTravelRouteQuery(normalizedQuestion);
         boolean asksEvent = containsAny(normalizedQuestion,
             "event", "events", "even", "evnt", "festival", "concert",
             "evenement", "evenements", "evenemnt", "evenemnts", "enennement", "enennements", "manifestation",
@@ -183,7 +200,17 @@ public class ChatbotAssistantService {
         boolean asksAppHelp = containsAny(normalizedQuestion,
             "application", "app", "compte", "account", "login", "connexion", "inscription", "reservation", "booking", "payment",
             "cart", "panier", "checkout", "commande", "order", "favoris", "profile", "profil");
+        boolean asksReservationAvailability = containsAny(normalizedQuestion,
+            "reserver", "reservation", "booking", "book", "reserve")
+            && (extractRequestedDate(normalizedQuestion) != null || extractRequestedActivityMonth(normalizedQuestion) != null
+                || containsAny(normalizedQuestion, "personne", "personnes", "participant", "participants", "pax"));
 
+        if (asksCitySuggestion) {
+            return Intent.GENERAL_TUNISIA;
+        }
+        if (asksRestaurantStars) {
+            return Intent.RESTAURANT;
+        }
         if (asksBest && asksRestaurant) {
             return Intent.BEST_RESTAURANT;
         }
@@ -196,17 +223,20 @@ public class ChatbotAssistantService {
         if (asksRestaurant) {
             return Intent.RESTAURANT;
         }
+        if (asksReservationAvailability) {
+            return Intent.ACTIVITY;
+        }
         if (asksActivity) {
             return Intent.ACTIVITY;
         }
         if (asksAccommodation) {
             return Intent.ACCOMMODATION;
         }
-        if (asksTransport) {
-            return Intent.TRANSPORT;
-        }
         if (asksEvent) {
             return Intent.EVENT;
+        }
+        if (asksTransport) {
+            return Intent.TRANSPORT;
         }
         if (asksProduct || asksPriceQuestionWithoutDomain(normalizedQuestion)) {
             return Intent.PRODUCT;
@@ -540,12 +570,36 @@ public class ChatbotAssistantService {
     private IntentAnswer answerRestaurantOverview(Optional<City> cityOpt, Language language, String normalizedQuestion) {
         boolean asksPrice = asksCheapest(normalizedQuestion) || asksMostExpensive(normalizedQuestion) || containsAny(normalizedQuestion, "prix", "price", "cost", "coute");
         boolean asksDetails = asksDetailsQuery(normalizedQuestion);
+        Double minStars = extractMinStars(normalizedQuestion);
+        Double maxStars = extractMaxStars(normalizedQuestion);
         Map<Integer, Double> avgRatingByRestaurant = buildRestaurantAverageRatingMap();
         Map<Integer, Long> reviewCountByRestaurant = buildRestaurantReviewCountMap();
 
         List<Restaurant> allRestaurants = cityOpt
             .map(city -> restaurantRepository.findByCityCityIdOrderByRestaurantIdDesc(city.getCityId()))
             .orElseGet(restaurantRepository::findAll);
+
+        if (cityOpt.isEmpty() && (minStars != null || maxStars != null)) {
+            String starsConstraint = minStars != null
+                ? t(language,
+                    "avec note supérieure ou égale à " + String.format(Locale.ROOT, "%.0f", minStars) + " étoiles",
+                    "with rating greater than or equal to " + String.format(Locale.ROOT, "%.0f", minStars) + " stars",
+                    "بتقييم أكبر أو يساوي " + String.format(Locale.ROOT, "%.0f", minStars) + " نجوم")
+                : t(language,
+                    "avec note inférieure ou égale à " + String.format(Locale.ROOT, "%.0f", maxStars) + " étoiles",
+                    "with rating less than or equal to " + String.format(Locale.ROOT, "%.0f", maxStars) + " stars",
+                    "بتقييم أقل أو يساوي " + String.format(Locale.ROOT, "%.0f", maxStars) + " نجوم");
+
+            return new IntentAnswer(
+                t(language,
+                    "Pour filtrer les restaurants " + starsConstraint + ", indiquez une ville tunisienne (ex: Tunis, Sousse, Sfax, Nabeul, Hammamet).",
+                    "To filter restaurants " + starsConstraint + ", please mention a Tunisian city (for example: Tunis, Sousse, Sfax, Nabeul, Hammamet).",
+                    "لتصفية المطاعم " + starsConstraint + "، اذكر مدينة تونسية مثل تونس أو سوسة أو صفاقس أو نابل أو الحمامات."),
+                "NeedCityForRestaurantStars",
+                List.of("cities", "restaurants"),
+                0.9
+            );
+        }
 
         if (asksDetails) {
             Optional<Restaurant> matched = findMentionedRestaurant(normalizedQuestion, allRestaurants);
@@ -574,6 +628,8 @@ public class ChatbotAssistantService {
             List<Restaurant> restaurants = allRestaurants
                 .stream()
                 .filter(restaurant -> matchesRestaurantType(restaurant, normalizedQuestion))
+                .filter(restaurant -> minStars == null || avgRatingByRestaurant.getOrDefault(restaurant.getRestaurantId(), 0.0) >= minStars)
+                .filter(restaurant -> maxStars == null || avgRatingByRestaurant.getOrDefault(restaurant.getRestaurantId(), 0.0) <= maxStars)
                 .sorted(restaurantComparator(normalizedQuestion, avgRatingByRestaurant))
                 .limit(5)
                 .toList();
@@ -593,13 +649,14 @@ public class ChatbotAssistantService {
             String names = restaurants.stream()
                 .map(restaurant -> {
                     String rating = formatRestaurantRatingText(restaurant.getRestaurantId(), avgRatingByRestaurant, reviewCountByRestaurant);
-                    return restaurant.getName()
-                    + optionalText(rating, " (rating: ")
-                    + (rating.isBlank() ? "" : ")")
-                    + optionalText(restaurant.getAddress(), " - ")
-                    + optionalText(shorten(restaurant.getDescription(), 70), " - ");
+                    String title = "• " + restaurant.getName()
+                        + optionalText(rating, " (rating: ")
+                        + (rating.isBlank() ? "" : ")");
+                    String address = optionalText(restaurant.getAddress(), "\n📍 ");
+                    String desc = optionalText(shorten(restaurant.getDescription(), 120), "\n➤ ");
+                    return title + address + desc;
                 })
-                .collect(Collectors.joining("; "));
+                .collect(Collectors.joining("\n"));
             String priceNote = asksPrice
                 ? t(language,
                     " Remarque: le prix restaurant n'est pas disponible dans la base actuelle, je classe donc selon la note et la pertinence.",
@@ -608,9 +665,9 @@ public class ChatbotAssistantService {
                 : "";
             return new IntentAnswer(
                 t(language,
-                    "À " + city.getName() + ", voici des restaurants pertinents: " + names + ".",
-                    "In " + city.getName() + ", relevant restaurants are: " + names + ".",
-                    "في " + city.getName() + " هذه مطاعم مناسبة: " + names + ".") + priceNote,
+                    "À " + city.getName() + ", voici des restaurants pertinents:\n" + names,
+                    "In " + city.getName() + ", relevant restaurants are:\n" + names,
+                    "في " + city.getName() + " هذه مطاعم مناسبة:\n" + names) + priceNote,
                 "City=" + city.getName() + "; Restaurants=" + names,
                 List.of("restaurants", "cities"),
                 0.84
@@ -619,17 +676,19 @@ public class ChatbotAssistantService {
 
         List<Restaurant> restaurants = allRestaurants.stream()
             .filter(restaurant -> matchesRestaurantType(restaurant, normalizedQuestion))
+            .filter(restaurant -> minStars == null || avgRatingByRestaurant.getOrDefault(restaurant.getRestaurantId(), 0.0) >= minStars)
+            .filter(restaurant -> maxStars == null || avgRatingByRestaurant.getOrDefault(restaurant.getRestaurantId(), 0.0) <= maxStars)
             .sorted(restaurantComparator(normalizedQuestion, avgRatingByRestaurant))
             .limit(6)
             .toList();
         String names = restaurants.stream()
-            .map(Restaurant::getName)
-            .collect(Collectors.joining(", "));
+            .map(restaurant -> "• " + restaurant.getName())
+            .collect(Collectors.joining("\n"));
         return new IntentAnswer(
             t(language,
-                "Côté restaurants en Tunisie: " + (names.isBlank() ? "pas encore de données" : names) + ".",
-                "Restaurant options in Tunisia include: " + (names.isBlank() ? "no data yet" : names) + ".",
-                "خيارات المطاعم في تونس تشمل: " + (names.isBlank() ? "لا توجد بيانات بعد" : names) + "."),
+                "Côté restaurants en Tunisie:\n" + (names.isBlank() ? "Je suis désolé, je n'ai trouvé aucun restaurant pour cette demande." : names),
+                "Restaurant options in Tunisia include:\n" + (names.isBlank() ? "I am sorry, I could not find any restaurant for this request." : names),
+                "خيارات المطاعم في تونس تشمل:\n" + (names.isBlank() ? "عذرا، لم أجد مطاعم مطابقة لهذا الطلب." : names)),
             "Restaurants=" + names,
             List.of("restaurants"),
             0.75
@@ -640,19 +699,81 @@ public class ChatbotAssistantService {
         Double maxPrice = extractMaxPrice(normalizedQuestion);
         Double minPrice = extractMinPrice(normalizedQuestion);
         Double exactPrice = extractExactPrice(normalizedQuestion);
+        Double minStars = extractMinStars(normalizedQuestion);
+        Double maxStars = extractMaxStars(normalizedQuestion);
+        int requestedParticipants = extractRequestedParticipants(normalizedQuestion);
+        LocalDate requestedDate = extractRequestedDate(normalizedQuestion);
+        YearMonth requestedMonth = extractRequestedActivityMonth(normalizedQuestion);
+        boolean asksAll = asksAllResults(normalizedQuestion);
         boolean asksRating = asksTopRated(normalizedQuestion) || asksLowestRated(normalizedQuestion) || containsAny(normalizedQuestion, "note", "rating", "rated");
         boolean asksDetails = asksDetailsQuery(normalizedQuestion);
+        boolean asksYesNo = containsAny(normalizedQuestion, "est ce", "y a", "is there", "are there", "existe", "exists");
 
-        List<Activity> allActivities = cityOpt
-            .map(city -> activityRepository.findByCityCityIdOrderByActivityIdDesc(city.getCityId()))
-            .orElseGet(activityRepository::findAll);
+        Map<Integer, Double> avgRatingByActivity = buildActivityAverageRatingMap();
+        Map<Integer, Long> reviewCountByActivity = buildActivityReviewCountMap();
+
+        if (requestedDate != null && requestedDate.isBefore(LocalDate.now())) {
+            return new IntentAnswer(
+                t(language,
+                    "Je suis désolé, la date demandée est déjà passée. Merci de choisir une date future.",
+                    "I am sorry, the requested date is already in the past. Please choose a future date.",
+                    "عذرا، التاريخ المطلوب في الماضي. يرجى اختيار تاريخ قادم."),
+                "Activities=date-in-past",
+                List.of("activities"),
+                0.9
+            );
+        }
+
+        boolean asksAllCities = containsAny(normalizedQuestion, "toutes les villes", "de toutes les villes", "all cities", "all city");
+
+        List<Activity> allActivities = (cityOpt.isPresent() && !asksAllCities)
+            ? activityRepository.findByCityCityIdOrderByActivityIdDesc(cityOpt.get().getCityId())
+            : activityRepository.findAll();
+
+        Optional<Activity> askedActivity = findMentionedActivity(normalizedQuestion, allActivities)
+            .or(() -> findActivityByKeyword(normalizedQuestion, allActivities));
+
+        if (asksYesNo && askedActivity.isPresent()) {
+            Activity activity = askedActivity.get();
+            boolean available = isActivityAvailableForFilter(activity, requestedDate, requestedMonth, requestedParticipants)
+                && (exactPrice == null || (activity.getPrice() != null && Math.abs(activity.getPrice() - exactPrice) <= 0.5))
+                && (maxPrice == null || (activity.getPrice() != null && activity.getPrice() <= maxPrice))
+                && (minPrice == null || (activity.getPrice() != null && activity.getPrice() >= minPrice))
+                && (minStars == null || avgRatingByActivity.getOrDefault(activity.getActivityId(), 0.0) >= minStars)
+                && (maxStars == null || avgRatingByActivity.getOrDefault(activity.getActivityId(), 0.0) <= maxStars);
+
+            String ratingText = formatActivityRatingText(activity.getActivityId(), avgRatingByActivity, reviewCountByActivity);
+            String details = "• " + activity.getName()
+                + optionalText(activity.getType(), "\n➤ type: ")
+                + optionalText(ratingText, "\n➤ rating: ")
+                + optionalText(activity.getPrice() == null ? null : String.format(Locale.ROOT, "%.0f DT", activity.getPrice()), "\n➤ prix: ")
+                + optionalText(activity.getAddress(), "\n📍 ")
+                + optionalText(shorten(activity.getDescription(), 120), "\n➤ ");
+
+            return new IntentAnswer(
+                available
+                    ? t(language,
+                        "Oui, cette activité est disponible:\n" + details,
+                        "Yes, this activity is available:\n" + details,
+                        "نعم، هذا النشاط متاح:\n" + details)
+                    : t(language,
+                        "Je suis désolé, cette activité n'est pas disponible selon vos critères pour le moment.",
+                        "I am sorry, this activity is not available for your criteria at the moment.",
+                        "عذرا، هذا النشاط غير متاح حاليا حسب المعايير المطلوبة."),
+                "ActivityYesNo=" + activity.getName() + "; available=" + available,
+                List.of("activities"),
+                0.94
+            );
+        }
 
         if (asksDetails) {
             Optional<Activity> matched = findMentionedActivity(normalizedQuestion, allActivities);
             if (matched.isPresent()) {
                 Activity activity = matched.get();
+                String ratingText = formatActivityRatingText(activity.getActivityId(), avgRatingByActivity, reviewCountByActivity);
                 String details = activity.getName()
                     + optionalText(activity.getType(), " - ")
+                    + optionalText(ratingText, " - ")
                     + optionalText(activity.getPrice() == null ? null : String.format(Locale.ROOT, "%.0f DT", activity.getPrice()), " - ")
                     + optionalText(activity.getAddress(), " - ")
                     + optionalText(activity.getDescription(), " - ");
@@ -668,25 +789,66 @@ public class ChatbotAssistantService {
             }
         }
 
-        int resultLimit = (asksCheapest(normalizedQuestion) || asksMostExpensive(normalizedQuestion)) ? 1 : 6;
+        int resultLimit = asksAll ? 200 : (asksCheapest(normalizedQuestion) || asksMostExpensive(normalizedQuestion)) ? 1 : 6;
+
+        if (asksAll && requestedDate == null && exactPrice == null && minPrice == null && maxPrice == null && minStars == null && maxStars == null) {
+            List<Activity> activitiesAll = allActivities.stream()
+                .sorted(activityComparator("", avgRatingByActivity))
+                .limit(resultLimit)
+                .toList();
+
+            String namesAll = activitiesAll.stream()
+                .map(activity -> "• " + activity.getName()
+                    + optionalText(formatActivityRatingText(activity.getActivityId(), avgRatingByActivity, reviewCountByActivity), " - ")
+                    + optionalText(activity.getPrice() == null ? null : String.format(Locale.ROOT, " - %.0f DT", activity.getPrice()), "")
+                    + optionalText(activity.getAddress(), "\n📍 "))
+                .collect(Collectors.joining("\n"));
+
+            return new IntentAnswer(
+                t(language,
+                    "Activités disponibles en Tunisie:\n" + (namesAll.isBlank() ? "Je suis désolé, je n'ai trouvé aucune activité disponible pour le moment." : namesAll),
+                    "Available activities in Tunisia:\n" + (namesAll.isBlank() ? "I am sorry, I could not find any available activity for now." : namesAll),
+                    "الأنشطة المتاحة في تونس:\n" + (namesAll.isBlank() ? "عذرا، لم أجد أي نشاط متاح حاليا." : namesAll)),
+                "Activities=" + namesAll,
+                List.of("activities"),
+                0.86
+            );
+        }
 
         if (cityOpt.isPresent()) {
             City city = cityOpt.get();
             List<Activity> activities = allActivities
                 .stream()
                 .filter(activity -> matchesActivityType(activity, normalizedQuestion))
+                .filter(activity -> isActivityAvailableForFilter(activity, requestedDate, requestedMonth, requestedParticipants))
                 .filter(activity -> exactPrice == null || (activity.getPrice() != null && Math.abs(activity.getPrice() - exactPrice) <= 0.5))
                 .filter(activity -> activity.getPrice() == null || maxPrice == null || activity.getPrice() <= maxPrice)
                 .filter(activity -> activity.getPrice() == null || minPrice == null || activity.getPrice() >= minPrice)
-                .sorted(activityComparator(normalizedQuestion))
+                .filter(activity -> minStars == null || avgRatingByActivity.getOrDefault(activity.getActivityId(), 0.0) >= minStars)
+                .filter(activity -> maxStars == null || avgRatingByActivity.getOrDefault(activity.getActivityId(), 0.0) <= maxStars)
+                .sorted(activityComparator(normalizedQuestion, avgRatingByActivity))
                 .limit(resultLimit)
                 .toList();
+
+            if (activities.isEmpty() && asksAll && requestedDate == null && exactPrice == null && minPrice == null && maxPrice == null && minStars == null && maxStars == null) {
+                activities = allActivities.stream()
+                    .sorted(activityComparator("", avgRatingByActivity))
+                    .limit(50)
+                    .toList();
+            }
+
             if (activities.isEmpty()) {
                 return new IntentAnswer(
                     t(language,
-                        "Aucune activité disponible pour le moment à " + city.getName() + ".",
-                        "No activities are currently available in " + city.getName() + ".",
-                        "لا توجد أنشطة متاحة حاليا في " + city.getName() + "."),
+                        requestedDate != null
+                            ? "Je suis désolé, je n'ai trouvé aucune activité disponible à " + city.getName() + " pour la date demandée."
+                            : "Je suis désolé, je n'ai trouvé aucune activité disponible pour le moment à " + city.getName() + ".",
+                        requestedDate != null
+                            ? "I am sorry, I could not find any available activity in " + city.getName() + " for the requested date."
+                            : "I am sorry, I could not find any available activity in " + city.getName() + " at the moment.",
+                        requestedDate != null
+                            ? "عذرا، لم أجد أنشطة متاحة في " + city.getName() + " للتاريخ المطلوب."
+                            : "عذرا، لم أجد أنشطة متاحة حاليا في " + city.getName() + "."),
                     "No activities in city.",
                     List.of("activities"),
                     0.8
@@ -694,23 +856,22 @@ public class ChatbotAssistantService {
             }
 
             String names = activities.stream()
-                .map(activity -> activity.getName()
-                    + optionalText(activity.getType(), " - ")
-                    + optionalText(activity.getPrice() == null ? null : String.format(Locale.ROOT, "%.0f DT", activity.getPrice()), " - ")
-                    + optionalText(activity.getAddress(), " - ")
-                    + optionalText(shorten(activity.getDescription(), 70), " - "))
-                .collect(Collectors.joining("; "));
-            String ratingNote = asksRating
-                ? t(language,
-                    " Remarque: la note d'activité n'est pas disponible dans la base actuelle; je filtre selon type, localisation et prix.",
-                    " Note: activity rating is not available in the current dataset; I filter by type, location, and price.",
-                    " ملاحظة: تقييم الأنشطة غير متوفر حاليا؛ أعتمد على النوع والموقع والسعر.")
-                : "";
+                .map(activity -> {
+                    String rating = formatActivityRatingText(activity.getActivityId(), avgRatingByActivity, reviewCountByActivity);
+                    return activity.getName()
+                    + optionalText(activity.getType(), "\n➤ type: ")
+                    + optionalText(rating, "\n➤ rating: ")
+                    + optionalText(activity.getPrice() == null ? null : String.format(Locale.ROOT, "%.0f DT", activity.getPrice()), "\n➤ prix: ")
+                    + optionalText(activity.getAddress(), "\n📍 ")
+                    + optionalText(shorten(activity.getDescription(), 120), "\n➤ ");
+                })
+                .map(line -> "• " + line)
+                .collect(Collectors.joining("\n"));
             return new IntentAnswer(
                 t(language,
-                    "À " + city.getName() + ", activités proposées: " + names + ".",
-                    "In " + city.getName() + ", available activities include: " + names + ".",
-                    "في " + city.getName() + " الأنشطة المتاحة تشمل: " + names + ".") + ratingNote,
+                    "À " + city.getName() + ", activités proposées:\n" + names,
+                    "In " + city.getName() + ", available activities include:\n" + names,
+                    "في " + city.getName() + " الأنشطة المتاحة تشمل:\n" + names),
                 "City=" + city.getName() + "; Activities=" + names,
                 List.of("activities", "cities"),
                 0.82
@@ -719,18 +880,34 @@ public class ChatbotAssistantService {
 
         List<Activity> activities = allActivities.stream()
             .filter(activity -> matchesActivityType(activity, normalizedQuestion))
+            .filter(activity -> isActivityAvailableForFilter(activity, requestedDate, requestedMonth, requestedParticipants))
             .filter(activity -> exactPrice == null || (activity.getPrice() != null && Math.abs(activity.getPrice() - exactPrice) <= 0.5))
             .filter(activity -> activity.getPrice() == null || maxPrice == null || activity.getPrice() <= maxPrice)
             .filter(activity -> activity.getPrice() == null || minPrice == null || activity.getPrice() >= minPrice)
-            .sorted(activityComparator(normalizedQuestion))
+            .filter(activity -> minStars == null || avgRatingByActivity.getOrDefault(activity.getActivityId(), 0.0) >= minStars)
+            .filter(activity -> maxStars == null || avgRatingByActivity.getOrDefault(activity.getActivityId(), 0.0) <= maxStars)
+            .sorted(activityComparator(normalizedQuestion, avgRatingByActivity))
             .limit(resultLimit)
             .toList();
-        String names = activities.stream().map(Activity::getName).collect(Collectors.joining(", "));
+
+        if (activities.isEmpty() && asksAll && requestedDate == null && exactPrice == null && minPrice == null && maxPrice == null && minStars == null && maxStars == null) {
+            activities = allActivities.stream()
+                .sorted(activityComparator("", avgRatingByActivity))
+                .limit(50)
+                .toList();
+        }
+
+        String names = activities.stream()
+            .map(activity -> "• " + activity.getName()
+                + optionalText(formatActivityRatingText(activity.getActivityId(), avgRatingByActivity, reviewCountByActivity), " - ")
+                + optionalText(activity.getPrice() == null ? null : String.format(Locale.ROOT, " - %.0f DT", activity.getPrice()), "")
+                + optionalText(activity.getAddress(), "\n📍 "))
+            .collect(Collectors.joining("\n"));
         return new IntentAnswer(
             t(language,
-                "Activités disponibles en Tunisie: " + (names.isBlank() ? "pas encore de données" : names) + ".",
-                "Available activities in Tunisia: " + (names.isBlank() ? "no data yet" : names) + ".",
-                "الأنشطة المتاحة في تونس: " + (names.isBlank() ? "لا توجد بيانات بعد" : names) + "."),
+                "Activités disponibles en Tunisie:\n" + (names.isBlank() ? "Je suis désolé, je n'ai trouvé aucune activité disponible pour cette demande." : names),
+                "Available activities in Tunisia:\n" + (names.isBlank() ? "I am sorry, I could not find any available activity for this request." : names),
+                "الأنشطة المتاحة في تونس:\n" + (names.isBlank() ? "عذرا، لم أجد أنشطة متاحة لهذا الطلب." : names)),
             "Activities=" + names,
             List.of("activities"),
             0.74
@@ -842,9 +1019,12 @@ public class ChatbotAssistantService {
             if (transports.isEmpty()) {
                 return new IntentAnswer(
                     t(language,
-                        "Je n'ai pas trouvé de trajet actif de " + from.getName() + " vers " + to.getName() + " pour le moment.",
-                        "I could not find active transport from " + from.getName() + " to " + to.getName() + " right now.",
-                        "لم أجد رحلات نقل نشطة من " + from.getName() + " إلى " + to.getName() + " حاليا."),
+                        "Je n'ai pas trouvé de trajet actif de " + from.getName() + " vers " + to.getName() + " pour le moment. "
+                            + routeDistanceDurationText(from, to, language),
+                        "I could not find active transport from " + from.getName() + " to " + to.getName() + " right now. "
+                            + routeDistanceDurationText(from, to, language),
+                        "لم أجد رحلات نقل نشطة من " + from.getName() + " إلى " + to.getName() + " حاليا. "
+                            + routeDistanceDurationText(from, to, language)),
                     "No route transport found.",
                     List.of("transport", "cities"),
                     0.82
@@ -860,32 +1040,72 @@ public class ChatbotAssistantService {
                 .limit(3)
                 .map(this::describeTransport)
                 .collect(Collectors.joining("; "));
+            String routeStats = routeDistanceDurationText(from, to, language);
             String answer = t(language,
-                "Pour aller de " + from.getName() + " à " + to.getName() + ", une option recommandée est " + type + " à " + price + ". Prochains trajets: " + nextDepartures + ".",
-                "For traveling from " + from.getName() + " to " + to.getName() + ", a recommended option is " + type + " at " + price + ". Next departures: " + nextDepartures + ".",
-                "للتنقل من " + from.getName() + " إلى " + to.getName() + "، خيار مناسب هو " + type + " بسعر " + price + ". الرحلات القادمة: " + nextDepartures + ".");
+                "Pour aller de " + from.getName() + " à " + to.getName() + ", une option recommandée est " + type + " à " + price + ". " + routeStats + " Prochains trajets: " + nextDepartures + ".",
+                "For traveling from " + from.getName() + " to " + to.getName() + ", a recommended option is " + type + " at " + price + ". " + routeStats + " Next departures: " + nextDepartures + ".",
+                "للتنقل من " + from.getName() + " إلى " + to.getName() + "، خيار مناسب هو " + type + " بسعر " + price + ". " + routeStats + " الرحلات القادمة: " + nextDepartures + ".");
 
             return new IntentAnswer(answer, "Route=" + from.getName() + "->" + to.getName() + "; Type=" + type + "; Price=" + price + "; Next=" + nextDepartures, List.of("transport", "cities"), 0.91);
         }
 
-        transports = transportRepository.findTop5ByIsActiveTrueOrderByDepartureTimeAsc().stream()
+        transports = transportRepository.findByIsActiveTrue().stream()
             .filter(transport -> matchesTransportType(transport, normalizedQuestion))
             .filter(transport -> transport.getPrice() == null || maxPrice == null || transport.getPrice() <= maxPrice)
             .filter(transport -> transport.getPrice() == null || minPrice == null || transport.getPrice() >= minPrice)
+            .sorted(Comparator.comparing(Transport::getDepartureTime, Comparator.nullsLast(LocalDateTime::compareTo)))
             .toList();
         if (transports.isEmpty()) {
             return new IntentAnswer(
                 t(language,
-                    "Aucune option de transport active pour le moment.",
-                    "No active transport options are available right now.",
-                    "لا توجد خيارات نقل نشطة حاليا."),
+                    "Je suis désolé, je n'ai trouvé aucune option de transport active pour le moment.",
+                    "I am sorry, I could not find any active transport option at the moment.",
+                    "عذرا، لم أجد أي خيار نقل نشط حاليا."),
                 "No active transports.",
                 List.of("transport"),
                 0.8
             );
         }
 
+        Set<String> departureCities = transports.stream()
+            .map(Transport::getDepartureCity)
+            .map(this::safeCityName)
+            .filter(name -> name != null && !name.isBlank() && !"?".equals(name))
+            .collect(Collectors.toCollection(TreeSet::new));
+        Set<String> arrivalCities = transports.stream()
+            .map(Transport::getArrivalCity)
+            .map(this::safeCityName)
+            .filter(name -> name != null && !name.isBlank() && !"?".equals(name))
+            .collect(Collectors.toCollection(TreeSet::new));
+        String routeExamples = transports.stream()
+            .map(t -> safeCityName(t.getDepartureCity()) + " -> " + safeCityName(t.getArrivalCity()))
+            .filter(route -> !route.contains("?"))
+            .distinct()
+            .limit(8)
+            .collect(Collectors.joining(", "));
+
+        if (mentionedCities.size() < 2 && !asksTransportMeansOnly(normalizedQuestion)) {
+            String answer = t(language,
+                "Je peux vous aider à trouver le meilleur trajet. De quelle ville partez-vous et vers quelle ville allez-vous ?"
+                    + (departureCities.isEmpty() ? "" : " Villes de départ connues: " + String.join(", ", departureCities) + ".")
+                    + (arrivalCities.isEmpty() ? "" : " Villes d'arrivée connues: " + String.join(", ", arrivalCities) + ".")
+                    + (routeExamples.isBlank() ? "" : " Exemples de routes: " + routeExamples + ".")
+                    + " Vous pouvez aussi préciser votre budget (ex: moins de 50 DT) et le type (bus, taxi, train...).",
+                "I can help you find the best route. What is your departure city and destination?"
+                    + (departureCities.isEmpty() ? "" : " Known departure cities: " + String.join(", ", departureCities) + ".")
+                    + (arrivalCities.isEmpty() ? "" : " Known arrival cities: " + String.join(", ", arrivalCities) + ".")
+                    + (routeExamples.isBlank() ? "" : " Example routes: " + routeExamples + ".")
+                    + " You can also provide a budget (for example under 50 DT) and transport type (bus, taxi, train...).",
+                "يمكنني مساعدتك في اختيار أفضل رحلة. من أي مدينة ستنطلق وإلى أي مدينة تريد الذهاب؟"
+                    + (departureCities.isEmpty() ? "" : " مدن الانطلاق المتاحة: " + String.join(", ", departureCities) + ".")
+                    + (arrivalCities.isEmpty() ? "" : " مدن الوصول المتاحة: " + String.join(", ", arrivalCities) + ".")
+                    + (routeExamples.isBlank() ? "" : " أمثلة مسارات: " + routeExamples + ".")
+                    + " ويمكنك أيضا تحديد الميزانية ونوع النقل.");
+            return new IntentAnswer(answer, "TransportConversation=need-route-details", List.of("transport", "cities"), 0.92);
+        }
+
         String lines = transports.stream()
+            .limit(8)
             .map(this::describeTransport)
             .collect(Collectors.joining("; "));
         return new IntentAnswer(
@@ -900,6 +1120,7 @@ public class ChatbotAssistantService {
     }
 
     private IntentAnswer answerEventOverview(Optional<City> cityOpt, Language language, String normalizedQuestion) {
+        LocalDate requestedDate = extractRequestedDate(normalizedQuestion);
         boolean asksThisMonth = containsAny(normalizedQuestion,
             "ce mois", "du mois", "this month", "current month", "mois actuel", "هذا الشهر", "الشهر الحالي");
         boolean asksNextMonth = containsAny(normalizedQuestion,
@@ -931,7 +1152,7 @@ public class ChatbotAssistantService {
         LocalDate weekendEnd = today.with(TemporalAdjusters.nextOrSame(java.time.DayOfWeek.SUNDAY));
 
         boolean hasExplicitStatusFilter = asksUpcoming || asksOngoing || asksCompleted;
-        boolean hasExplicitTimeFilter = asksThisMonth || asksNextMonth || requestedMonth != null || asksToday || asksTomorrow || asksThisWeek || asksWeekend;
+        boolean hasExplicitTimeFilter = asksThisMonth || asksNextMonth || requestedMonth != null || requestedDate != null || asksToday || asksTomorrow || asksThisWeek || asksWeekend;
 
         List<Event> baseEvents = cityOpt.map(city -> eventRepository.findByCityCityId(city.getCityId()))
             .orElseGet(eventRepository::findAll);
@@ -968,6 +1189,7 @@ public class ChatbotAssistantService {
             .filter(event -> !asksThisMonth || isInCurrentMonth(event.getStartDate(), event.getEndDate()))
             .filter(event -> !asksNextMonth || isInNextMonth(event.getStartDate(), event.getEndDate()))
             .filter(event -> requestedMonth == null || isInMonth(event.getStartDate(), event.getEndDate(), requestedMonth))
+            .filter(event -> requestedDate == null || isOnDate(event.getStartDate(), event.getEndDate(), requestedDate))
             .filter(event -> !asksToday || isOnDate(event.getStartDate(), event.getEndDate(), today))
             .filter(event -> !asksTomorrow || isOnDate(event.getStartDate(), event.getEndDate(), tomorrow))
             .filter(event -> !asksThisWeek || intersectsRange(event.getStartDate(), event.getEndDate(), weekStart, weekEnd))
@@ -988,8 +1210,14 @@ public class ChatbotAssistantService {
         if (events.isEmpty()) {
             return new IntentAnswer(
                 t(language,
+                    exactPrice != null
+                        ? "Je n'ai trouvé aucun événement à " + String.format(Locale.ROOT, "%.0f DT", exactPrice) + "."
+                        :
                     requestedMonth != null
                         ? "Je n'ai pas trouvé d'événements disponibles pour " + formatYearMonthLabel(requestedMonth, language) + "."
+                        :
+                    requestedDate != null
+                        ? "Je suis désolé, je n'ai trouvé aucun événement disponible pour cette date."
                         :
                     asksThisMonth
                         ? "Je n'ai pas trouvé d'événements disponibles pour ce mois."
@@ -1007,9 +1235,15 @@ public class ChatbotAssistantService {
                                                 ? "Je n'ai pas trouvé d'événements terminés correspondant à votre demande."
                                                 : asksOngoing
                                                     ? "Je n'ai pas trouvé d'événements en cours correspondant à votre demande."
-                            : "Je n'ai pas encore d'événements disponibles dans l'application.",
+                                            : "Je suis désolé, je n'ai pas encore d'événements disponibles dans l'application.",
+                    exactPrice != null
+                        ? "I could not find any event at " + String.format(Locale.ROOT, "%.0f DT", exactPrice) + "."
+                        :
                     requestedMonth != null
                         ? "I could not find available events for " + formatYearMonthLabel(requestedMonth, language) + "."
+                        :
+                    requestedDate != null
+                        ? "I am sorry, I could not find any available event for that date."
                         :
                     asksThisMonth
                         ? "I could not find available events for this month."
@@ -1027,15 +1261,21 @@ public class ChatbotAssistantService {
                                                 ? "I could not find completed events matching your request."
                                                 : asksOngoing
                                                     ? "I could not find ongoing events matching your request."
-                            : "I do not have events available in the app yet.",
+                                            : "I am sorry, I do not have events available in the app yet.",
+                    exactPrice != null
+                        ? "لم أجد أي فعالية بسعر " + String.format(Locale.ROOT, "%.0f DT", exactPrice) + "."
+                        :
                     requestedMonth != null
                         ? "لم أجد فعاليات متاحة في هذا الشهر المحدد."
+                        :
+                    requestedDate != null
+                        ? "عذرا، لم أجد أي فعالية متاحة لهذا التاريخ."
                         :
                     asksThisMonth
                         ? "لم أجد فعاليات متاحة لهذا الشهر."
                         : asksNextMonth
                             ? "لم أجد فعاليات متاحة للشهر القادم."
-                            : "لا توجد فعاليات متاحة حاليا في التطبيق."),
+                            : "عذرا، لا توجد فعاليات متاحة حاليا في التطبيق."),
                 "No events.",
                 List.of("events"),
                 0.78
@@ -1068,6 +1308,9 @@ public class ChatbotAssistantService {
                 requestedMonth != null
                     ? "Événements disponibles pour " + formatYearMonthLabel(requestedMonth, language) + ": " + lines + "."
                     :
+                requestedDate != null
+                    ? "Événements disponibles pour la date demandée: " + lines + "."
+                    :
                 asksThisMonth
                     ? "Événements disponibles ce mois: " + lines + "."
                     : asksNextMonth
@@ -1088,6 +1331,9 @@ public class ChatbotAssistantService {
                 requestedMonth != null
                     ? "Available events for " + formatYearMonthLabel(requestedMonth, language) + ": " + lines + "."
                     :
+                requestedDate != null
+                    ? "Available events for the requested date: " + lines + "."
+                    :
                 asksThisMonth
                     ? "Available events this month: " + lines + "."
                     : asksNextMonth
@@ -1107,6 +1353,9 @@ public class ChatbotAssistantService {
                     : "Available events: " + lines + ".",
                 requestedMonth != null
                     ? "الفعاليات المتاحة للشهر المحدد: " + lines + "."
+                    :
+                requestedDate != null
+                    ? "الفعاليات المتاحة للتاريخ المطلوب: " + lines + "."
                     :
                 asksThisMonth
                     ? "الفعاليات المتاحة هذا الشهر: " + lines + "."
@@ -1251,6 +1500,83 @@ public class ChatbotAssistantService {
     }
 
     private IntentAnswer answerGeneral(List<City> allCities, Optional<City> mentionedCity, Language language, String normalizedQuestion) {
+        boolean asksDesert = containsAny(normalizedQuestion, "desert", "dessert", "sahara");
+        boolean asksMountain = containsAny(normalizedQuestion, "montagne", "mountain", "montagneuse");
+        if (asksDesert || asksMountain) {
+            List<City> desertCities = allCities.stream().filter(this::looksDesertCity).limit(10).toList();
+            List<City> mountainCities = allCities.stream().filter(this::looksMountainCity).limit(10).toList();
+
+            String desertList = desertCities.stream().map(City::getName).collect(Collectors.joining(", "));
+            String mountainList = mountainCities.stream().map(City::getName).collect(Collectors.joining(", "));
+
+            if (asksDesert && !asksMountain) {
+                return new IntentAnswer(
+                    t(language,
+                        "Villes tunisiennes désertiques: " + (desertList.isBlank() ? "Tozeur, Kebili, Tataouine" : desertList) + ".",
+                        "Tunisian desert cities: " + (desertList.isBlank() ? "Tozeur, Kebili, Tataouine" : desertList) + ".",
+                        "مدن تونسية صحراوية: " + (desertList.isBlank() ? "توزر، قبلي، تطاوين" : desertList) + "."),
+                    "DesertCities=" + desertList,
+                    List.of("cities"),
+                    0.91
+                );
+            }
+
+            if (asksMountain && !asksDesert) {
+                return new IntentAnswer(
+                    t(language,
+                        "Villes/regions tunisiennes montagneuses: " + (mountainList.isBlank() ? "Kasserine, Zaghouan, Jendouba, Le Kef" : mountainList) + ".",
+                        "Tunisian mountain cities/areas: " + (mountainList.isBlank() ? "Kasserine, Zaghouan, Jendouba, Le Kef" : mountainList) + ".",
+                        "مدن/مناطق تونسية جبلية: " + (mountainList.isBlank() ? "القصرين، زغوان، جندوبة، الكاف" : mountainList) + "."),
+                    "MountainCities=" + mountainList,
+                    List.of("cities"),
+                    0.91
+                );
+            }
+
+            return new IntentAnswer(
+                t(language,
+                    "Villes désertiques: " + (desertList.isBlank() ? "Tozeur, Kebili, Tataouine" : desertList)
+                        + ". Villes montagneuses: " + (mountainList.isBlank() ? "Kasserine, Zaghouan, Jendouba, Le Kef" : mountainList) + ".",
+                    "Desert cities: " + (desertList.isBlank() ? "Tozeur, Kebili, Tataouine" : desertList)
+                        + ". Mountain cities: " + (mountainList.isBlank() ? "Kasserine, Zaghouan, Jendouba, Le Kef" : mountainList) + ".",
+                    "مدن صحراوية: " + (desertList.isBlank() ? "توزر، قبلي، تطاوين" : desertList)
+                        + ". مدن جبلية: " + (mountainList.isBlank() ? "القصرين، زغوان، جندوبة، الكاف" : mountainList) + "."),
+                "DesertCities=" + desertList + "; MountainCities=" + mountainList,
+                List.of("cities"),
+                0.9
+            );
+        }
+
+        if (containsAny(normalizedQuestion, "cap bon", "capbon")) {
+            return new IntentAnswer(
+                t(language,
+                    "Le Cap Bon correspond principalement à la région de Nabeul (avec Hammamet, Korba, Kelibia...).",
+                    "Cap Bon mainly refers to the Nabeul region (including Hammamet, Korba, Kelibia...).",
+                    "منطقة الوطن القبلي (Cap Bon) ترتبط أساسا بولاية نابل (الحمامات، قربص، قليبية...)."),
+                "CapBon=Nabeul",
+                List.of("cities"),
+                0.95
+            );
+        }
+
+        if (containsAny(normalizedQuestion, "ville culturelle", "villes culturelles", "cultural city", "cultural cities", "historique", "historical city")) {
+            List<City> culturalCities = allCities.stream()
+                .filter(this::looksCulturalCity)
+                .limit(10)
+                .toList();
+
+            String cityNames = culturalCities.stream().map(City::getName).collect(Collectors.joining(", "));
+            return new IntentAnswer(
+                t(language,
+                    "Villes tunisiennes culturelles/historiques: " + (cityNames.isBlank() ? "Tunis, Kairouan, Sousse, Sfax, Nabeul" : cityNames) + ".",
+                    "Tunisian cultural/historical cities: " + (cityNames.isBlank() ? "Tunis, Kairouan, Sousse, Sfax, Nabeul" : cityNames) + ".",
+                    "مدن تونسية ثقافية/تاريخية: " + (cityNames.isBlank() ? "تونس، القيروان، سوسة، صفاقس، نابل" : cityNames) + "."),
+                "CulturalCities=" + cityNames,
+                List.of("cities"),
+                0.9
+            );
+        }
+
         if (containsAny(normalizedQuestion, "plage", "beach", "sahel", "cote", "coast", "mer", "littoral")) {
             List<City> coastalCities = allCities.stream()
                 .filter(this::looksCoastalCity)
@@ -1299,9 +1625,43 @@ public class ChatbotAssistantService {
             );
         }
 
-        if (mentionedCity.isPresent() && containsAny(normalizedQuestion,
-            "info", "information", "description", "destination", "about", "a propos", "propos", "present", "presentation", "details")) {
+        if (containsAny(normalizedQuestion,
+            "propose moi une ville", "propose une ville", "ville tunisienne", "ville en tunisie", "suggest a city", "recommend city", "city in tunisia")) {
+            String cityNames = allCities.stream()
+                .map(City::getName)
+                .filter(name -> name != null && !name.isBlank())
+                .sorted(String::compareToIgnoreCase)
+                .limit(8)
+                .collect(Collectors.joining(", "));
+            return new IntentAnswer(
+                t(language,
+                    "Voici des villes tunisiennes que je vous propose: " + cityNames + ".",
+                    "Here are Tunisian cities I suggest: " + cityNames + ".",
+                    "هذه مدن تونسية أقترحها عليك: " + cityNames + "."),
+                "CitySuggestions=" + cityNames,
+                List.of("cities"),
+                0.93
+            );
+        }
+
+        if (mentionedCity.isPresent() && (containsAny(normalizedQuestion,
+            "info", "information", "description", "destination", "about", "a propos", "propos", "present", "presentation", "details")
+            || isCityOnlyQuestion(normalizedQuestion, mentionedCity.get()))) {
             City city = mentionedCity.get();
+            List<Restaurant> cityRestaurants = restaurantRepository.findByCityCityIdOrderByRestaurantIdDesc(city.getCityId());
+            List<Activity> cityActivities = activityRepository.findByCityCityIdOrderByActivityIdDesc(city.getCityId());
+
+            String restaurantsSummary = cityRestaurants.stream()
+                .map(Restaurant::getName)
+                .filter(name -> name != null && !name.isBlank())
+                .limit(5)
+                .collect(Collectors.joining(", "));
+            String activitiesSummary = cityActivities.stream()
+                .map(Activity::getName)
+                .filter(name -> name != null && !name.isBlank())
+                .limit(5)
+                .collect(Collectors.joining(", "));
+
             String destinationInfo = city.getName()
                 + optionalText(city.getRegion(), " - ")
                 + optionalText(city.getDescription(), " - ")
@@ -1310,14 +1670,22 @@ public class ChatbotAssistantService {
                 + (city.getHasBusStation() != null && city.getHasBusStation() ? " - bus" : "")
                 + (city.getHasPort() != null && city.getHasPort() ? " - port" : "");
 
+            String cityBundle = t(language,
+                "Informations sur " + city.getName() + ": " + destinationInfo
+                    + ". Restaurants: " + (restaurantsSummary.isBlank() ? "pas encore disponibles" : restaurantsSummary)
+                    + ". Activités: " + (activitiesSummary.isBlank() ? "pas encore disponibles" : activitiesSummary) + ".",
+                "Information about " + city.getName() + ": " + destinationInfo
+                    + ". Restaurants: " + (restaurantsSummary.isBlank() ? "not available yet" : restaurantsSummary)
+                    + ". Activities: " + (activitiesSummary.isBlank() ? "not available yet" : activitiesSummary) + ".",
+                "معلومات عن " + city.getName() + ": " + destinationInfo
+                    + ". المطاعم: " + (restaurantsSummary.isBlank() ? "غير متوفرة حاليا" : restaurantsSummary)
+                    + ". الأنشطة: " + (activitiesSummary.isBlank() ? "غير متوفرة حاليا" : activitiesSummary) + ".");
+
             return new IntentAnswer(
-                t(language,
-                    "Informations destination pour " + city.getName() + ": " + destinationInfo + ".",
-                    "Destination information for " + city.getName() + ": " + destinationInfo + ".",
-                    "معلومات الوجهة لمدينة " + city.getName() + ": " + destinationInfo + "."),
-                "Destination=" + destinationInfo,
-                List.of("cities"),
-                0.9
+                cityBundle,
+                "Destination=" + destinationInfo + "; Restaurants=" + restaurantsSummary + "; Activities=" + activitiesSummary,
+                List.of("cities", "restaurants", "activities"),
+                0.92
             );
         }
 
@@ -1432,15 +1800,15 @@ public class ChatbotAssistantService {
             return true;
         }
         List<String> keywords = Arrays.asList(
-            "tunisia", "tunisie", "tunisian", "city", "cities", "destination", "governorate",
+            "tunisia", "tunisie", "tunisian", "tunisienne", "tunisien", "city", "cities", "ville", "villes", "destination", "governorate",
             "restaurant", "restaurants", "cuisine", "food", "activity", "activities", "visit",
             "hotel", "hotels", "accommodation", "accommodations", "accomodation", "accomodations", "stay", "stays",
             "guesthouse", "guesthouses", "maison d hote", "maison d hotes", "hebergement", "hebergements",
-            "transport", "transports", "bus", "train", "taxi", "route", "trajet", "trajets",
+            "transport", "transports", "bus", "train", "taxi", "route", "trajet", "trajets", "voyage", "travel", "trip", "departure", "destination",
             "event", "events", "evenement", "evenements", "enennement", "enennements", "festival", "festivals",
             "artisanat", "artisan", "artisans", "product", "products", "produit", "produits",
             "reservation", "reservations", "booking", "bookings", "cart", "order", "orders", "combien", "price", "prix", "cost", "ou", "where",
-            "plage", "medina", "voyage", "tourisme", "trip", "app", "application", "login", "compte",
+            "plage", "beach", "sahel", "coast", "medina", "voyage", "tourisme", "trip", "app", "application", "login", "compte",
             "نقل", "سكن", "مطعم", "نشاط", "فعالية", "منتج", "حرف", "تطبيق"
         );
         for (String keyword : keywords) {
@@ -1616,6 +1984,18 @@ public class ChatbotAssistantService {
             "meilleur", "best", "top rated", "highest rated", "meilleure note", "note la plus", "افضل تقييم");
     }
 
+    private boolean asksBestKeyword(String normalizedQuestion) {
+        if (normalizedQuestion == null || normalizedQuestion.isBlank()) {
+            return false;
+        }
+        if (containsExactWord(normalizedQuestion, "best")
+            || containsExactWord(normalizedQuestion, "top")
+            || containsExactWord(normalizedQuestion, "highest")) {
+            return true;
+        }
+        return containsAny(normalizedQuestion, "meilleur", "meilleure", "mieux", "افضل");
+    }
+
     private boolean asksTransportMeansOnly(String normalizedQuestion) {
         return containsAny(normalizedQuestion,
             "moyens de transport", "means of transport", "transport means", "types de transport", "transport types", "les transports disponibles");
@@ -1661,7 +2041,8 @@ public class ChatbotAssistantService {
         if (containsAny(normalizedQuestion, "entre", "between") && values.size() >= 2) {
             return Math.max(values.get(0), values.get(1));
         }
-        if (!containsAny(normalizedQuestion, "moins de", "max", "maximum", "under", "below", "<")) {
+        if (!containsAny(normalizedQuestion,
+            "moins de", "max", "maximum", "under", "below", "<", "ne depasse pas", "depasse pas", "au plus", "at most", "no more than")) {
             return null;
         }
         return extractFirstNumber(normalizedQuestion);
@@ -1672,7 +2053,8 @@ public class ChatbotAssistantService {
         if (containsAny(normalizedQuestion, "entre", "between") && values.size() >= 2) {
             return Math.min(values.get(0), values.get(1));
         }
-        if (!containsAny(normalizedQuestion, "plus de", "min", "minimum", "above", "over", ">")) {
+        if (!containsAny(normalizedQuestion,
+            "plus de", "min", "minimum", "above", "over", ">", "au moins", "at least", "not less than")) {
             return null;
         }
         return extractFirstNumber(normalizedQuestion);
@@ -1682,7 +2064,32 @@ public class ChatbotAssistantService {
         if (containsAny(normalizedQuestion, "entre", "between", "plus de", "moins de", "minimum", "maximum", "above", "below", "under", "over", "<", ">")) {
             return null;
         }
-        if (!containsAny(normalizedQuestion, "a", "dinar", "dinars", "dt", "price", "prix", "exact", "exactement", "for")) {
+
+        boolean explicitExact = containsAny(normalizedQuestion, "exact", "exactement", "exactly")
+            || normalizedQuestion.matches(".*\\b(a|a|for|at)\\s*\\d+(?:[.,]\\d+)?\\b.*")
+            || normalizedQuestion.matches(".*\\b=\\s*\\d+(?:[.,]\\d+)?\\b.*");
+
+        if (!explicitExact) {
+            return null;
+        }
+        return extractFirstNumber(normalizedQuestion);
+    }
+
+    private Double extractMinStars(String normalizedQuestion) {
+        if (!containsAny(normalizedQuestion, "etoile", "etoiles", "star", "stars", "rating", "notation", "note")) {
+            return null;
+        }
+        if (!containsAny(normalizedQuestion, "superieur", "supeieur", "supereur", "sup", "plus de", "above", ">")) {
+            return null;
+        }
+        return extractFirstNumber(normalizedQuestion);
+    }
+
+    private Double extractMaxStars(String normalizedQuestion) {
+        if (!containsAny(normalizedQuestion, "etoile", "etoiles", "star", "stars", "rating", "notation", "note")) {
+            return null;
+        }
+        if (!containsAny(normalizedQuestion, "inferieur", "moins de", "below", "under", "<")) {
             return null;
         }
         return extractFirstNumber(normalizedQuestion);
@@ -1691,6 +2098,230 @@ public class ChatbotAssistantService {
     private Double extractFirstNumber(String normalizedQuestion) {
         List<Double> values = extractAllNumbers(normalizedQuestion);
         return values.isEmpty() ? null : values.get(0);
+    }
+
+    private boolean asksAllResults(String normalizedQuestion) {
+        return containsAny(normalizedQuestion, "tous", "toutes", "all", "toute");
+    }
+
+    private LocalDate extractRequestedDate(String normalizedQuestion) {
+        if (normalizedQuestion == null || normalizedQuestion.isBlank()) {
+            return null;
+        }
+
+        Matcher numericDateMatcher = Pattern.compile("\\b(\\d{1,2})\\s+(\\d{1,2})(?:\\s+(\\d{4}))?\\b").matcher(normalizedQuestion);
+        if (numericDateMatcher.find()) {
+            int day = Integer.parseInt(numericDateMatcher.group(1));
+            int month = Integer.parseInt(numericDateMatcher.group(2));
+            String yearGroup = numericDateMatcher.group(3);
+            Integer year = yearGroup == null ? null : Integer.parseInt(yearGroup);
+            LocalDate numericDate = safeBuildDate(day, month, year);
+            if (numericDate != null) {
+                return numericDate;
+            }
+        }
+
+        Map<String, Integer> months = Map.ofEntries(
+            Map.entry("janvier", 1), Map.entry("january", 1),
+            Map.entry("fevrier", 2), Map.entry("february", 2),
+            Map.entry("mars", 3), Map.entry("march", 3),
+            Map.entry("avril", 4), Map.entry("april", 4),
+            Map.entry("mai", 5), Map.entry("may", 5),
+            Map.entry("juin", 6), Map.entry("june", 6),
+            Map.entry("juillet", 7), Map.entry("july", 7),
+            Map.entry("aout", 8), Map.entry("august", 8),
+            Map.entry("septembre", 9), Map.entry("september", 9),
+            Map.entry("octobre", 10), Map.entry("october", 10),
+            Map.entry("novembre", 11), Map.entry("november", 11),
+            Map.entry("decembre", 12), Map.entry("december", 12)
+        );
+
+        String[] parts = normalizedQuestion.split(" ");
+        Integer day = null;
+        Integer month = null;
+        Integer year = null;
+
+        for (int i = 0; i < parts.length; i++) {
+            String p = parts[i];
+            if (p.matches("\\d{1,2}")) {
+                int d = Integer.parseInt(p);
+                if (d >= 1 && d <= 31) {
+                    day = d;
+                    if (i + 1 < parts.length && months.containsKey(parts[i + 1])) {
+                        month = months.get(parts[i + 1]);
+                        if (i + 2 < parts.length && parts[i + 2].matches("\\d{4}")) {
+                            year = Integer.parseInt(parts[i + 2]);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (day == null || month == null) {
+            return null;
+        }
+
+        return safeBuildDate(day, month, year);
+    }
+
+    private LocalDate safeBuildDate(int day, int month, Integer year) {
+        int resolvedYear = year != null ? year : LocalDate.now().getYear();
+        try {
+            LocalDate date = LocalDate.of(resolvedYear, month, day);
+            if (year == null && date.isBefore(LocalDate.now())) {
+                return date.plusYears(1);
+            }
+            return date;
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private int extractRequestedParticipants(String normalizedQuestion) {
+        if (normalizedQuestion == null || normalizedQuestion.isBlank()) {
+            return 1;
+        }
+
+        Matcher m = Pattern.compile("\\b(\\d{1,3})\\s*(personne|personnes|pers|participant|participants|pax|adult|adults)\\b").matcher(normalizedQuestion);
+        if (m.find()) {
+            try {
+                int value = Integer.parseInt(m.group(1));
+                return value > 0 ? value : 1;
+            } catch (NumberFormatException ignored) {
+                return 1;
+            }
+        }
+        return 1;
+    }
+
+    private YearMonth extractRequestedActivityMonth(String normalizedQuestion) {
+        if (normalizedQuestion == null || normalizedQuestion.isBlank()) {
+            return null;
+        }
+
+        if (containsAny(normalizedQuestion, "ce mois", "ce moins", "this month", "mois actuel")) {
+            return YearMonth.now();
+        }
+        if (containsAny(normalizedQuestion, "mois prochain", "prochain mois", "next month", "moins prochain")) {
+            return YearMonth.now().plusMonths(1);
+        }
+
+        YearMonth m = extractRequestedMonth(normalizedQuestion);
+        return m;
+    }
+
+    private Optional<Activity> findActivityByKeyword(String normalizedQuestion, List<Activity> activities) {
+        if (normalizedQuestion == null || normalizedQuestion.isBlank() || activities == null || activities.isEmpty()) {
+            return Optional.empty();
+        }
+        for (Activity activity : activities) {
+            if (activity.getName() == null || activity.getName().isBlank()) {
+                continue;
+            }
+            String n = normalize(activity.getName());
+            if (containsToken(normalizedQuestion, n)) {
+                return Optional.of(activity);
+            }
+            String[] words = n.split(" ");
+            for (String w : words) {
+                if (w.length() >= 4 && containsExactWord(normalizedQuestion, w)) {
+                    return Optional.of(activity);
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    private boolean isActivityAvailableForFilter(Activity activity, LocalDate requestedDate, YearMonth requestedMonth, int requestedParticipants) {
+        if (requestedDate != null) {
+            return isActivityAvailableForRequestedDate(activity, requestedDate, requestedParticipants);
+        }
+        if (requestedMonth != null) {
+            return isActivityAvailableInMonth(activity, requestedMonth, requestedParticipants);
+        }
+        return true;
+    }
+
+    private boolean isActivityAvailableInMonth(Activity activity, YearMonth month, int requestedParticipants) {
+        if (activity == null || month == null) {
+            return false;
+        }
+
+        LocalDate now = LocalDate.now();
+        LocalDate monthStart = month.atDay(1);
+        LocalDate monthEnd = month.atEndOfMonth();
+        LocalDate startDate = activity.getMaxParticipantsStartDate() != null
+            ? activity.getMaxParticipantsStartDate()
+            : now;
+
+        LocalDate from = monthStart.isBefore(now) ? now : monthStart;
+        if (from.isBefore(startDate)) {
+            from = startDate;
+        }
+        if (from.isAfter(monthEnd)) {
+            return false;
+        }
+
+        int neededParticipants = Math.max(1, requestedParticipants);
+
+        Integer maxPerDay = activity.getMaxParticipantsPerDay();
+        if (maxPerDay == null || maxPerDay <= 0) {
+            return true;
+        }
+
+        for (LocalDate day = from; !day.isAfter(monthEnd); day = day.plusDays(1)) {
+            Date dayStart = Date.from(day.atStartOfDay().toInstant(ZoneOffset.UTC));
+            Date dayEnd = Date.from(day.plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC));
+            Integer reserved = activityReservationRepository.sumPeopleForActivityAndDate(
+                activity.getActivityId(),
+                dayStart,
+                dayEnd,
+                List.of(ReservationStatus.PENDING, ReservationStatus.CONFIRMED)
+            );
+            int used = reserved == null ? 0 : reserved;
+            if (used + neededParticipants <= maxPerDay) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean isActivityAvailableForRequestedDate(Activity activity, LocalDate requestedDate, int requestedParticipants) {
+        if (requestedDate == null) {
+            return true;
+        }
+        if (activity == null || activity.getActivityId() == null) {
+            return false;
+        }
+        if (requestedDate.isBefore(LocalDate.now())) {
+            return false;
+        }
+
+        LocalDate startDate = activity.getMaxParticipantsStartDate() != null
+            ? activity.getMaxParticipantsStartDate()
+            : LocalDate.now();
+        if (requestedDate.isBefore(startDate)) {
+            return false;
+        }
+
+        int neededParticipants = Math.max(1, requestedParticipants);
+
+        Integer maxPerDay = activity.getMaxParticipantsPerDay();
+        if (maxPerDay == null || maxPerDay <= 0) {
+            return true;
+        }
+
+        Date dayStart = Date.from(requestedDate.atStartOfDay().toInstant(ZoneOffset.UTC));
+        Date dayEnd = Date.from(requestedDate.plusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC));
+        Integer reserved = activityReservationRepository.sumPeopleForActivityAndDate(
+            activity.getActivityId(),
+            dayStart,
+            dayEnd,
+            List.of(ReservationStatus.PENDING, ReservationStatus.CONFIRMED)
+        );
+        int used = reserved == null ? 0 : reserved;
+        return used + neededParticipants <= maxPerDay;
     }
 
     private List<Double> extractAllNumbers(String normalizedQuestion) {
@@ -1748,7 +2379,13 @@ public class ChatbotAssistantService {
         return String.format(Locale.ROOT, "%.1f/5 (%d reviews)", avg, reviewCount);
     }
 
-    private Comparator<Activity> activityComparator(String normalizedQuestion) {
+    private Comparator<Activity> activityComparator(String normalizedQuestion, Map<Integer, Double> avgRatingByActivity) {
+        if (asksTopRated(normalizedQuestion)) {
+            return Comparator.comparing((Activity a) -> avgRatingByActivity.getOrDefault(a.getActivityId(), 0.0)).reversed();
+        }
+        if (asksLowestRated(normalizedQuestion)) {
+            return Comparator.comparing(a -> avgRatingByActivity.getOrDefault(a.getActivityId(), 0.0));
+        }
         if (asksMostExpensive(normalizedQuestion)) {
             return Comparator.comparing(Activity::getPrice, Comparator.nullsLast(Double::compareTo)).reversed();
         }
@@ -1756,6 +2393,40 @@ public class ChatbotAssistantService {
             return Comparator.comparing(Activity::getPrice, Comparator.nullsLast(Double::compareTo));
         }
         return Comparator.comparing(Activity::getActivityId, Comparator.nullsLast(Integer::compareTo)).reversed();
+    }
+
+    private Map<Integer, Double> buildActivityAverageRatingMap() {
+        return activityReviewRepository.findAll().stream()
+            .filter(review -> review.getActivity() != null && review.getActivity().getActivityId() != null)
+            .filter(review -> review.getStars() != null)
+            .collect(Collectors.groupingBy(
+                review -> review.getActivity().getActivityId(),
+                HashMap::new,
+                Collectors.averagingInt(review -> review.getStars())
+            ));
+    }
+
+    private Map<Integer, Long> buildActivityReviewCountMap() {
+        return activityReviewRepository.findAll().stream()
+            .filter(review -> review.getActivity() != null && review.getActivity().getActivityId() != null)
+            .filter(review -> review.getStars() != null)
+            .collect(Collectors.groupingBy(
+                review -> review.getActivity().getActivityId(),
+                HashMap::new,
+                Collectors.counting()
+            ));
+    }
+
+    private String formatActivityRatingText(Integer activityId, Map<Integer, Double> avgRatingByActivity, Map<Integer, Long> reviewCountByActivity) {
+        if (activityId == null) {
+            return "";
+        }
+        long reviewCount = reviewCountByActivity.getOrDefault(activityId, 0L);
+        if (reviewCount <= 0) {
+            return "";
+        }
+        double avg = avgRatingByActivity.getOrDefault(activityId, 0.0);
+        return String.format(Locale.ROOT, "%.1f/5 (%d reviews)", avg, reviewCount);
     }
 
     private Comparator<Accommodation> accommodationComparator(String normalizedQuestion) {
@@ -2283,6 +2954,99 @@ public class ChatbotAssistantService {
         return containsAny(name, "sousse", "monastir", "mahdia", "nabeul", "hammamet", "bizerte", "sfax", "gabes", "djerba");
     }
 
+    private boolean looksCulturalCity(City city) {
+        if (city == null) {
+            return false;
+        }
+        String name = normalize(city.getName());
+        String description = normalize(city.getDescription());
+        return containsAny(name, "tunis", "kairouan", "sousse", "sfax", "nabeul", "tozeur", "dougga", "el jem")
+            || containsAny(description, "medina", "historique", "heritage", "culture", "rome", "monument", "mosquee", "kasbah", "archeologique");
+    }
+
+    private boolean looksDesertCity(City city) {
+        if (city == null) {
+            return false;
+        }
+        String name = normalize(city.getName());
+        String region = normalize(city.getRegion());
+        String description = normalize(city.getDescription());
+        return containsAny(name, "tozeur", "kebili", "tatouine", "tataouine", "douz")
+            || containsAny(region, "sud", "desert", "sahara")
+            || containsAny(description, "desert", "sahara", "oasis", "dunes", "sud");
+    }
+
+    private boolean looksMountainCity(City city) {
+        if (city == null) {
+            return false;
+        }
+        String name = normalize(city.getName());
+        String region = normalize(city.getRegion());
+        String description = normalize(city.getDescription());
+        return containsAny(name, "kasserine", "zaghouan", "ain draham", "le kef")
+            || containsAny(region, "montagne", "mountain", "hauteur")
+            || containsAny(description, "montagne", "mountain", "foret", "randonnee", "altitude");
+    }
+
+    private boolean isTravelRouteQuery(String normalizedQuestion) {
+        if (normalizedQuestion == null || normalizedQuestion.isBlank()) {
+            return false;
+        }
+        boolean travelWord = containsAny(normalizedQuestion, "voyage", "travel", "trip", "trajet", "transport", "route");
+        boolean explicitPattern = normalizedQuestion.matches(".*\\b(de|from)\\b.*\\b(a|to|vers)\\b.*")
+            || containsAny(normalizedQuestion, "departure", "destination");
+        return travelWord && explicitPattern;
+    }
+
+    private boolean isCityOnlyQuestion(String normalizedQuestion, City city) {
+        if (city == null || city.getName() == null || city.getName().isBlank()) {
+            return false;
+        }
+        String cityToken = normalize(city.getName());
+        String cleaned = normalizedQuestion == null ? "" : normalizedQuestion.trim();
+        if (cleaned.equals(cityToken)) {
+            return true;
+        }
+        String[] words = cleaned.split(" ");
+        return words.length <= 3 && containsToken(cleaned, cityToken);
+    }
+
+    private String routeDistanceDurationText(City from, City to, Language language) {
+        Double lat1 = from == null ? null : from.getLatitude();
+        Double lon1 = from == null ? null : from.getLongitude();
+        Double lat2 = to == null ? null : to.getLatitude();
+        Double lon2 = to == null ? null : to.getLongitude();
+
+        if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) {
+            return t(language,
+                "Je peux estimer la durée si les coordonnées des villes sont disponibles.",
+                "I can estimate travel duration when city coordinates are available.",
+                "يمكنني تقدير مدة السفر عندما تكون إحداثيات المدن متوفرة.");
+        }
+
+        double distanceKm = haversineKm(lat1, lon1, lat2, lon2);
+        double avgRoadSpeedKmh = 80.0;
+        int totalMinutes = (int) Math.round((distanceKm / avgRoadSpeedKmh) * 60.0);
+        int hours = totalMinutes / 60;
+        int minutes = totalMinutes % 60;
+
+        return t(language,
+            String.format(Locale.ROOT, "Distance estimée: %.1f km, durée estimée: %dh %02d min.", distanceKm, hours, minutes),
+            String.format(Locale.ROOT, "Estimated distance: %.1f km, estimated duration: %dh %02d min.", distanceKm, hours, minutes),
+            String.format(Locale.ROOT, "المسافة التقديرية: %.1f كم، المدة التقديرية: %d س %02d د.", distanceKm, hours, minutes));
+    }
+
+    private double haversineKm(double lat1, double lon1, double lat2, double lon2) {
+        double r = 6371.0;
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+            + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+            * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return r * c;
+    }
+
     private Language detectLanguage(String rawQuestion, String normalizedQuestion) {
         if (rawQuestion != null && rawQuestion.matches(".*[\\u0600-\\u06FF].*")) {
             return Language.AR;
@@ -2290,15 +3054,47 @@ public class ChatbotAssistantService {
         if (containsAny(normalizedQuestion, "salam", "slm", "assalam", "marhba")) {
             return Language.AR;
         }
-        if (containsAny(normalizedQuestion,
-            "bonjour", "bonsoir", "salut", "merci", "pourquoi", "comment", "est ce", "quel", "quelle", "quels", "quelles", "je veux", "affiche", "montre", "evenement", "hebergement", "moyens de transport", "description de")) {
+        int frScore = languageScore(normalizedQuestion, List.of(
+            "bonjour", "bonsoir", "salut", "merci", "pourquoi", "comment", "est ce", "quel", "quelle", "quels", "quelles",
+            "je", "veux", "propose", "ville", "plage", "transport", "moyens", "description", "informations", "avec", "pour", "de", "a"
+        ));
+        int enScore = languageScore(normalizedQuestion, List.of(
+            "hello", "hi", "good", "morning", "evening", "i", "want", "show", "available", "events", "means", "transport", "description", "cities", "please", "thanks"
+        ));
+
+        if (frScore > enScore) {
             return Language.FR;
         }
-        if (containsAny(normalizedQuestion,
-            "hello", "hi", "good morning", "good evening", "i want", "show", "available", "events", "next month", "means of transport", "description of", "cities", "please", "thanks")) {
+        if (enScore > frScore) {
             return Language.EN;
         }
-        return Language.EN;
+
+        if (containsAny(normalizedQuestion, "bonjour", "bonsoir", "salut", "je veux", "propose moi", "ville tunisienne")) {
+            return Language.FR;
+        }
+        if (containsAny(normalizedQuestion, "hello", "hi", "i want", "show", "please")) {
+            return Language.EN;
+        }
+
+        return Language.FR;
+    }
+
+    private int languageScore(String normalizedQuestion, List<String> words) {
+        if (normalizedQuestion == null || normalizedQuestion.isBlank()) {
+            return 0;
+        }
+        int score = 0;
+        for (String word : words) {
+            String normalizedWord = normalize(word);
+            if (normalizedWord.contains(" ")) {
+                if (normalizedQuestion.contains(normalizedWord)) {
+                    score++;
+                }
+            } else if (containsExactWord(normalizedQuestion, normalizedWord)) {
+                score++;
+            }
+        }
+        return score;
     }
 
     private String outOfScope(Language language) {
