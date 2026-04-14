@@ -39,7 +39,7 @@ export class HomeAssistantWidgetComponent {
   readonly messages = signal<AssistantMessage[]>([
     {
       role: 'assistant',
-      text: 'Salam. I am your AI guide. Ask me about transport, accommodations, restaurants, activities, events, artisan products, and any app feature.',
+      text: 'Salam! Welcome to YallaTN, your AI guide for exploring Tunisia. Ask me anything about transport, accommodations, restaurants, activities, events, and artisan products!',
     },
   ]);
 
