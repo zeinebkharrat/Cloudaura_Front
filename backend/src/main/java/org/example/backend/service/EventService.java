@@ -9,7 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
@@ -81,26 +81,26 @@ public class EventService {
             return false;
         }
 
-        LocalDate eventStartDate = toLocalDate(event.getStartDate());
-        LocalDate eventEndDate = toLocalDate(event.getEndDate());
+        LocalDateTime eventStartDateTime = toLocalDateTime(event.getStartDate());
+        LocalDateTime eventEndDateTime = toLocalDateTime(event.getEndDate());
 
-        if (eventStartDate == null && eventEndDate == null) {
+        if (eventStartDateTime == null && eventEndDateTime == null) {
             return false;
         }
 
-        if (eventStartDate == null) {
-            eventStartDate = eventEndDate;
+        if (eventStartDateTime == null) {
+            eventStartDateTime = eventEndDateTime;
         }
-        if (eventEndDate == null) {
-            eventEndDate = eventStartDate;
+        if (eventEndDateTime == null) {
+            eventEndDateTime = eventStartDateTime;
         }
 
-        LocalDate today = LocalDate.now(ZoneId.systemDefault());
+        LocalDateTime now = LocalDateTime.now(ZoneId.systemDefault());
         String desiredStatus;
 
-        if (eventEndDate.isBefore(today)) {
+        if (eventEndDateTime.isBefore(now)) {
             desiredStatus = "COMPLETED";
-        } else if (!eventStartDate.isAfter(today)) {
+        } else if (!eventStartDateTime.isAfter(now)) {
             desiredStatus = "ONGOING";
         } else {
             desiredStatus = "UPCOMING";
@@ -114,13 +114,13 @@ public class EventService {
         return false;
     }
 
-    private LocalDate toLocalDate(java.util.Date date) {
+    private LocalDateTime toLocalDateTime(java.util.Date date) {
         if (date == null) {
             return null;
         }
         return Instant.ofEpochMilli(date.getTime())
                 .atZone(ZoneId.systemDefault())
-                .toLocalDate();
+                .toLocalDateTime();
     }
 
     private void syncStatusesByDateInDatabase() {

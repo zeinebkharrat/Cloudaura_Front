@@ -76,7 +76,7 @@
               </small>
             </td>
             <td class="date-cell">
-              {{ ev.startDate | date:'dd/MM/yy' }} - {{ ev.endDate | date:'dd/MM/yy' }}
+              {{ ev.startDate | date:'dd/MM/yy HH:mm' }} - {{ ev.endDate | date:'dd/MM/yy HH:mm' }}
             </td>
             <td class="price-cell"><strong>{{ ev.price }} TN</strong></td>
             <td>
@@ -189,12 +189,12 @@
 
         <div class="row">
           <div class="form-group col">
-            <label>Start Date</label>
-            <input type="date" name="startDate" [(ngModel)]="currentEvent.startDate" class="form-input" required>
+            <label>Start Date & Time</label>
+            <input type="datetime-local" name="startDate" [(ngModel)]="currentEvent.startDate" class="form-input" required>
           </div>
           <div class="form-group col">
-            <label>End Date</label>
-            <input type="date" name="endDate" [(ngModel)]="currentEvent.endDate" class="form-input" required>
+            <label>End Date & Time</label>
+            <input type="datetime-local" name="endDate" [(ngModel)]="currentEvent.endDate" class="form-input" required>
           </div>
         </div>
 
@@ -277,16 +277,15 @@
             <div class="details-poster__scrim"></div>
             <div class="details-poster__gradient"></div>
 
-            <div class="details-poster__brand">
-              <img src="assets/logo/yallatn-logo.png" alt="YallaTN logo" />
-            </div>
-
             <div class="details-poster__meta">
               <h3 class="details-poster__title">{{ selectedEventDetails.title }}</h3>
               <div class="details-poster__facts">
-                <span class="details-poster__fact">
-                  <span class="details-poster__icon" aria-hidden="true">📅</span>
-                  {{ detailsPosterDateRange(selectedEventDetails) }}
+                <span class="details-poster__fact details-poster__fact--schedule">
+                  <span class="details-poster__icon" aria-hidden="true">🕒</span>
+                  <span class="details-poster__schedule">
+                    <span>{{ detailsPosterDateRange(selectedEventDetails) }}</span>
+                    <span class="details-poster__time-accent" *ngIf="detailsPosterTimeRange(selectedEventDetails) as detailsTimeRange">{{ detailsTimeRange }}</span>
+                  </span>
                 </span>
                 <span class="details-poster__fact">
                   <span class="details-poster__icon" aria-hidden="true">📍</span>
@@ -311,8 +310,8 @@
               {{ selectedEventDetails.status }}
             </span>
           </div>
-          <div><strong>Start:</strong> {{ selectedEventDetails.startDate | date:'dd/MM/yyyy' }}</div>
-          <div><strong>End:</strong> {{ selectedEventDetails.endDate | date:'dd/MM/yyyy' }}</div>
+          <div><strong>Start:</strong> {{ selectedEventDetails.startDate | date:'dd/MM/yyyy HH:mm' }}</div>
+          <div><strong>End:</strong> {{ selectedEventDetails.endDate | date:'dd/MM/yyyy HH:mm' }}</div>
           <div><strong>Price:</strong> {{ selectedEventDetails.price ?? 0 }} TN</div>
         </div>
       </div>

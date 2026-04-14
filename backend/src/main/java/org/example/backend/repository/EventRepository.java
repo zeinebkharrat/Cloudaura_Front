@@ -20,7 +20,7 @@ public interface EventRepository extends JpaRepository<Event, Integer> {
                         update Event e
                         set e.status = 'COMPLETED'
                         where e.endDate is not null
-                            and e.endDate < CURRENT_DATE
+                            and e.endDate < CURRENT_TIMESTAMP
                             and upper(coalesce(e.status, '')) <> 'COMPLETED'
                         """)
         int markCompletedByDate();
@@ -30,8 +30,8 @@ public interface EventRepository extends JpaRepository<Event, Integer> {
                         update Event e
                         set e.status = 'ONGOING'
                         where e.startDate is not null
-                            and e.startDate <= CURRENT_DATE
-                            and (e.endDate is null or e.endDate >= CURRENT_DATE)
+                            and e.startDate <= CURRENT_TIMESTAMP
+                            and (e.endDate is null or e.endDate >= CURRENT_TIMESTAMP)
                             and upper(coalesce(e.status, '')) <> 'ONGOING'
                         """)
         int markOngoingByDate();
@@ -41,7 +41,7 @@ public interface EventRepository extends JpaRepository<Event, Integer> {
                         update Event e
                         set e.status = 'UPCOMING'
                         where e.startDate is not null
-                            and e.startDate > CURRENT_DATE
+                            and e.startDate > CURRENT_TIMESTAMP
                             and upper(coalesce(e.status, '')) <> 'UPCOMING'
                         """)
         int markUpcomingByDate();
