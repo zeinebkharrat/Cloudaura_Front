@@ -19,10 +19,12 @@ public class FollowRelationService {
 
     private final FollowRelationRepository followRepo;
     private final UserRepository userRepo;
+    private final MediaScoreService mediaScoreService;
 
-    public FollowRelationService(FollowRelationRepository followRepo, UserRepository userRepo) {
+    public FollowRelationService(FollowRelationRepository followRepo, UserRepository userRepo, MediaScoreService mediaScoreService) {
         this.followRepo = followRepo;
         this.userRepo = userRepo;
+        this.mediaScoreService = mediaScoreService;
     }
 
     @Transactional
@@ -42,6 +44,7 @@ public class FollowRelationService {
         return followRepo.findByFollowerUserIdAndFollowedUserId(followerId, followedId)
                 .map(existing -> {
                     followRepo.delete(existing);
+                    mediaScoreService.recomputeUserMonthlyScore(followedId);
                 return Map.<String, Object>of(
                             "following", false,
                             "followersCount", followRepo.countByFollowedUserId(followedId),
@@ -54,6 +57,7 @@ public class FollowRelationService {
                     relation.setFollowed(followed);
                     relation.setCreatedAt(new Date());
                     followRepo.save(relation);
+                    mediaScoreService.recomputeUserMonthlyScore(followedId);
                 return Map.<String, Object>of(
                             "following", true,
                             "followersCount", followRepo.countByFollowedUserId(followedId),

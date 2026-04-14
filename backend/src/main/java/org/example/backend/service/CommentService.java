@@ -44,6 +44,12 @@ public class CommentService implements ICommentService {
     JdbcTemplate jdbcTemplate;
 
     @Autowired
+    PostScoreService postScoreService;
+
+    @Autowired
+    MediaScoreService mediaScoreService;
+
+    @Autowired
     SightengineCommentModerationService moderationService;
 
     @Autowired
@@ -177,6 +183,9 @@ public class CommentService implements ICommentService {
                 count != null ? count : 0,
                 postId
         );
+
+            postScoreService.recomputePostScore(postId);
+            mediaScoreService.recomputeAuthorMonthlyScoreFromPost(postId);
     }
 
     private List<Integer> collectDescendantCommentIds(Integer rootCommentId) {

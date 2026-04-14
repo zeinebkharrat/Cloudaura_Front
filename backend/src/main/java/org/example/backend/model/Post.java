@@ -21,6 +21,9 @@ public class Post {
     private Post repostOf;
     private Integer likesCount;
     private Integer commentsCount;
+    private Integer totalViews;
+    private Integer repostCount;
+    private Double postScore;
     private Date createdAt;
     private Date updatedAt;
 }

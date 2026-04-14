@@ -16,6 +16,8 @@ export interface UserProfile {
   profileImageUrl?: string | null;
   /** Gamification points (also returned by GET /api/profile and /api/auth/me). */
   points?: number | null;
+  monthlyScore?: number | null;
+  lifetimeScore?: number | null;
 }
 
 export interface AuthResponse {

@@ -8,6 +8,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -101,6 +103,23 @@ public class FollowRelationController {
         return ResponseEntity.ok(payload);
     }
 
+    @GetMapping("/leaderboard/monthly")
+    public ResponseEntity<Map<String, Object>> monthlyLeaderboard(
+            @RequestParam(name = "limit", defaultValue = "3") int limit
+    ) {
+        int safeLimit = Math.max(1, Math.min(limit, 20));
+        Pageable pageable = PageRequest.of(0, safeLimit);
+
+        List<Map<String, Object>> users = userRepository.findTopByMonthlyScore(pageable)
+                .stream()
+                .map(this::toLeaderboardSummary)
+                .toList();
+
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("users", users == null ? new ArrayList<>() : users);
+        return ResponseEntity.ok(payload);
+    }
+
     private Map<String, Object> toUserSummary(User user) {
         Map<String, Object> summary = new LinkedHashMap<>();
         if (user == null) {
@@ -117,6 +136,19 @@ public class FollowRelationController {
         summary.put("firstName", user.getFirstName() == null ? "" : user.getFirstName());
         summary.put("lastName", user.getLastName() == null ? "" : user.getLastName());
         summary.put("profileImageUrl", user.getProfileImageUrl() == null ? "" : user.getProfileImageUrl());
+        return summary;
+    }
+
+    private Map<String, Object> toLeaderboardSummary(User user) {
+        Map<String, Object> summary = toUserSummary(user);
+        if (user == null) {
+            summary.put("monthlyScore", 0.0);
+            summary.put("points", 0);
+            return summary;
+        }
+
+        summary.put("monthlyScore", user.getMonthlyScore() == null ? 0.0 : user.getMonthlyScore());
+        summary.put("points", user.getPoints() == null ? 0 : user.getPoints());
         return summary;
     }
 

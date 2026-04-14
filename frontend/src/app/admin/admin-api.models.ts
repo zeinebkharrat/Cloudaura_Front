@@ -137,6 +137,8 @@ export interface AdminPost {
   visibility: string | null;
   likesCount: number;
   commentsCount: number;
+  totalViews?: number | null;
+  postScore?: number | null;
   createdAt: string | null;
   repostOfPostId: number | null;
 }

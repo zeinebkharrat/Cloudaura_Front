@@ -19,7 +19,7 @@ import { LikeService, LikesByPostResponse } from './like.service';
 import { PostMediaService } from './post-media.service';
 import { PostService } from './post.service';
 import { CityOption, CityService } from './city.service';
-import { FollowService, HoverUserSummary } from './follow.service';
+import { FollowService, HoverUserSummary, LeaderboardUserSummary } from './follow.service';
 import { SavedPostService } from './saved-post.service';
 import { AuthService } from '../core/auth.service';
 import { OwnershipUtil } from './ownership.util';
@@ -46,6 +46,7 @@ type HoverCardUser = UserRef & {
   followersCount?: number;
   followingCount?: number;
   age?: number | null;
+  coverImageUrl?: string | null;
   country?: string | null;
   nationality?: string | null;
   cityName?: string | null;
@@ -119,6 +120,7 @@ export class CommunityComponent {
   readonly followingByAuthor = signal<Map<number, boolean>>(new Map());
   readonly savedByPost = signal<Map<number, boolean>>(new Map());
   readonly suggestedUsers = signal<UserRef[]>([]);
+  readonly leaderboardUsers = signal<LeaderboardUserSummary[]>([]);
   readonly cities = signal<CityOption[]>([]);
   readonly loadingCities = signal<boolean>(false);
   readonly savedPosts = signal<Post[]>([]);
@@ -197,6 +199,9 @@ export class CommunityComponent {
   private miniMapChart: echarts.ECharts | null = null;
   private hoverCardCloseTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly hoverUserCache = new Map<number, HoverCardUser>();
+  private postViewObserver: IntersectionObserver | null = null;
+  private readonly postViewTimers = new Map<number, ReturnType<typeof setTimeout>>();
+  private readonly sentViewKeys = new Set<string>();
   private feedAutoLoadPending = false;
   private suggestionsRequestSeq = 0;
 
@@ -225,6 +230,12 @@ export class CommunityComponent {
       clearTimeout(this.hoverCardCloseTimer);
       this.hoverCardCloseTimer = null;
     }
+    this.postViewObserver?.disconnect();
+    this.postViewObserver = null;
+    for (const timer of this.postViewTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.postViewTimers.clear();
     this.disposeMiniMapChart();
   }
 
@@ -282,8 +293,10 @@ export class CommunityComponent {
         this.comments.set(comments || []);
         this.medias.set(medias || []);
         void this.refreshSuggestions();
+        void this.refreshLeaderboard();
         this.resetVisiblePostsLimit();
         this.feedLoaded.set(true);
+        setTimeout(() => this.setupPostViewObserver(), 0);
         
         // Load like statuses and nicknames for each post
         this.loadLikeStatusesAndNicknames();
@@ -686,6 +699,12 @@ export class CommunityComponent {
     return 'Not shared';
   }
 
+  hoverCardCover(user?: HoverCardUser | null): string {
+    const cover = (user?.coverImageUrl ?? '').trim();
+    const source = cover.length > 0 ? cover : '/assets/banner.png';
+    return `linear-gradient(180deg, rgba(15, 23, 42, 0.16), rgba(15, 23, 42, 0.42)), url('${source}')`;
+  }
+
   private buildHoverUser(user: UserRef): HoverCardUser {
     const userId = user.userId!;
     const cached = this.hoverUserCache.get(userId);
@@ -700,6 +719,7 @@ export class CommunityComponent {
     return {
       ...user,
       userId,
+      coverImageUrl: (user as UserRef & { coverImageUrl?: string | null }).coverImageUrl ?? null,
       country: user.country ?? null,
       nationality: user.nationality ?? null,
       cityName: user.cityName ?? null,
@@ -730,6 +750,7 @@ export class CommunityComponent {
         firstName: summary.firstName,
         lastName: summary.lastName,
         profileImageUrl: summary.profileImageUrl ?? null,
+        coverImageUrl: summary.coverImageUrl ?? null,
         country: summary.country ?? summary.nationality ?? null,
         nationality: summary.nationality ?? summary.country ?? null,
         cityName: summary.cityName ?? null,
@@ -754,7 +775,7 @@ export class CommunityComponent {
 
   private computeUserHoverPosition(rect: DOMRect): { top: number; left: number } {
     const cardWidth = 340;
-    const cardHeight = 250;
+    const cardHeight = 338;
     const gap = 10;
     const viewportPadding = 12;
 
@@ -1798,6 +1819,7 @@ export class CommunityComponent {
     if (next) {
       await this.loadSavedPosts();
     }
+    setTimeout(() => this.setupPostViewObserver(), 0);
   }
 
   private async loadSavedPosts(): Promise<void> {
@@ -1809,6 +1831,7 @@ export class CommunityComponent {
       const posts = await firstValueFrom(this.savedPostService.mySavedPosts());
       this.savedPosts.set(posts || []);
       this.resetVisiblePostsLimit();
+      setTimeout(() => this.setupPostViewObserver(), 0);
     } catch (error) {
       console.error('Error loading saved posts:', error);
       this.savedPosts.set([]);
@@ -1891,6 +1914,31 @@ export class CommunityComponent {
     this.suggestedUsers.set(shuffled.slice(0, 4));
   }
 
+  private async refreshLeaderboard(): Promise<void> {
+    if (!this.authService.isAuthenticated()) {
+      this.leaderboardUsers.set([]);
+      return;
+    }
+
+    try {
+      const result = await firstValueFrom(
+        this.followService.monthlyLeaderboard(3).pipe(catchError(() => of({ users: [] as LeaderboardUserSummary[] })))
+      );
+      this.leaderboardUsers.set(Array.isArray(result?.users) ? result.users : []);
+    } catch (error) {
+      console.error('Failed to load leaderboard:', error);
+      this.leaderboardUsers.set([]);
+    }
+  }
+
+  leaderboardMonthlyScore(user: LeaderboardUserSummary): string {
+    const value = Number(user.monthlyScore ?? 0);
+    if (!Number.isFinite(value)) {
+      return '0.0';
+    }
+    return value.toFixed(1);
+  }
+
   private randomSuggestionSeeds(count: number): string[] {
     const alphabet = 'abcdefghijklmnopqrstuvwxyz';
     const seeds = new Set<string>();
@@ -1909,6 +1957,7 @@ export class CommunityComponent {
 
     const next = this.visiblePostsLimit() + CommunityComponent.POSTS_PAGE_SIZE;
     this.visiblePostsLimit.set(next);
+    setTimeout(() => this.setupPostViewObserver(), 0);
   }
 
   canLoadMorePosts(): boolean {
@@ -2011,7 +2060,7 @@ export class CommunityComponent {
       ?? this.visiblePosts().find((p) => p.postId === postId);
   }
 
-  private updatePostCounts(postId: number, values: Partial<Pick<Post, 'likesCount' | 'commentsCount'>>): void {
+  private updatePostCounts(postId: number, values: Partial<Pick<Post, 'likesCount' | 'commentsCount' | 'totalViews' | 'postScore'>>): void {
     this.posts.set(
       this.posts().map((post) =>
         post.postId === postId ? { ...post, ...values } : post
@@ -2023,6 +2072,85 @@ export class CommunityComponent {
         post.postId === postId ? { ...post, ...values } : post
       )
     );
+  }
+
+  private setupPostViewObserver(): void {
+    if (!this.authService.isAuthenticated()) {
+      return;
+    }
+
+    this.postViewObserver?.disconnect();
+
+    this.postViewObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const node = entry.target as HTMLElement;
+          const postId = Number(node.dataset['postId']);
+          if (!Number.isFinite(postId) || postId <= 0) {
+            continue;
+          }
+
+          if (entry.isIntersecting) {
+            this.startPostViewTimer(postId);
+          } else {
+            this.stopPostViewTimer(postId);
+          }
+        }
+      },
+      { threshold: 0.5 }
+    );
+
+    const cards = document.querySelectorAll<HTMLElement>('article[data-post-id]');
+    cards.forEach((card) => this.postViewObserver?.observe(card));
+  }
+
+  private startPostViewTimer(postId: number): void {
+    const userId = this.authService.currentUser()?.id;
+    if (!userId) {
+      return;
+    }
+
+    const viewKey = `${userId}:${postId}:${this.currentMonthKeyUtc()}`;
+    if (this.sentViewKeys.has(viewKey) || this.postViewTimers.has(postId)) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      this.postViewTimers.delete(postId);
+      this.postService.recordView(postId).pipe(catchError(() => of({ counted: false }))).subscribe((res) => {
+        if (!res?.counted) {
+          return;
+        }
+
+        this.sentViewKeys.add(viewKey);
+        const post = this.findPostById(postId);
+        const nextViews = (post?.totalViews ?? 0) + 1;
+        const likes = post?.likesCount ?? 0;
+        const comments = post?.commentsCount ?? 0;
+        const reposts = post?.repostCount ?? 0;
+        const score = (likes * 2) + (comments * 3) + (nextViews * 0.5) + 1 + (reposts * 4);
+        this.updatePostCounts(postId, { totalViews: nextViews, postScore: Number(score.toFixed(2)) });
+      });
+    }, 8000);
+
+    this.postViewTimers.set(postId, timer);
+  }
+
+  private stopPostViewTimer(postId: number): void {
+    const timer = this.postViewTimers.get(postId);
+    if (!timer) {
+      return;
+    }
+
+    clearTimeout(timer);
+    this.postViewTimers.delete(postId);
+  }
+
+  private currentMonthKeyUtc(): string {
+    const now = new Date();
+    const year = now.getUTCFullYear();
+    const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
   }
 
   isPostLiked(postId: number): boolean {

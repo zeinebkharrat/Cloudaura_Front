@@ -143,6 +143,8 @@ public class AuthService {
         user.setStatus("ACTIVE");
         user.setCreatedAt(new Date());
         user.setPoints(0);
+        user.setMonthlyScore(0.0);
+        user.setLifetimeScore(0.0);
         boolean becomeArtisant = Boolean.TRUE.equals(request.becomeArtisan());
         user.setArtisanRequestPending(becomeArtisant);
         user.setArtisanRequestedAt(becomeArtisant ? new Date() : null);
@@ -454,6 +456,8 @@ public class AuthService {
         user.setStatus("ACTIVE");
         user.setCreatedAt(new Date());
         user.setPoints(0);
+        user.setMonthlyScore(0.0);
+        user.setLifetimeScore(0.0);
         user.setArtisanRequestPending(false);
         user.setArtisanRequestedAt(null);
         user.setAuthProvider(provider.toUpperCase(Locale.ROOT));
@@ -749,7 +753,9 @@ public class AuthService {
                 user.getStatus(),
                 Boolean.TRUE.equals(user.getArtisanRequestPending()),
                 user.getProfileImageUrl(),
-                user.getPoints()
+                user.getPoints(),
+                user.getMonthlyScore(),
+                user.getLifetimeScore()
         );
     }
 }

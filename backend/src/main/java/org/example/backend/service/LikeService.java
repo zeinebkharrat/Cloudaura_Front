@@ -35,6 +35,12 @@ public class LikeService implements ILikeService {
     @Autowired
     JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    PostScoreService postScoreService;
+
+    @Autowired
+    MediaScoreService mediaScoreService;
+
     @Override
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public List<LikeEntity> retrieveAllLikes() {
@@ -179,5 +185,8 @@ public class LikeService implements ILikeService {
                 count != null ? count : 0,
                 postId
         );
+
+            postScoreService.recomputePostScore(postId);
+            mediaScoreService.recomputeAuthorMonthlyScoreFromPost(postId);
     }
 }
