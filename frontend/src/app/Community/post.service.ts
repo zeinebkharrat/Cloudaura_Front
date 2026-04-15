@@ -37,5 +37,9 @@ export class PostService {
   repost(postId: number, caption = ''): Observable<Post> {
     return this.http.post<Post>(`${this.baseUrl}/post/repost/${postId}`, { caption });
   }
+
+  recordView(postId: number): Observable<{ counted: boolean }> {
+    return this.http.post<{ counted: boolean }>(`${this.baseUrl}/post/recordView/${postId}`, {});
+  }
 }
 

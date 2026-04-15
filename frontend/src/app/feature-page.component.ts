@@ -84,6 +84,7 @@ export class FeaturePageComponent implements OnInit {
   eventMaxPrice = 500;
   eventCityDropdownOpen = false;
   eventCitySearch = '';
+  private deepLinkedEventId: number | null = null;
   isEventFeed = false;
   isLoadingEvents = false;
   eventsLoadError: string | null = null;
@@ -346,6 +347,12 @@ export class FeaturePageComponent implements OnInit {
   ngOnInit(): void {
     this.applyData(this.route.snapshot.data);
     this.route.data.subscribe((d) => this.applyData(d));
+    this.route.queryParamMap.subscribe((params) => {
+      const raw = params.get('eventId');
+      const parsed = raw == null ? Number.NaN : Number(raw);
+      this.deepLinkedEventId = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+      this.tryOpenDeepLinkedEvent();
+    });
     if (this.isArtisan()) {
       this.loadArtisanProducts();
     }
@@ -766,6 +773,7 @@ export class FeaturePageComponent implements OnInit {
         })).filter((event) => this.shouldDisplayInFrontOffice(event.status));
         this.resetEventFilters();
         this.isLoadingEvents = false;
+        this.tryOpenDeepLinkedEvent();
       },
       error: (err) => {
         console.error('Error loading events:', err);
@@ -1017,6 +1025,30 @@ export class FeaturePageComponent implements OnInit {
   selectEvent(event: TravelEvent): void {
     this.selectedEvent = event;
     document.body.classList.add('modal-open');
+  }
+
+  isDeepLinkedEvent(event: TravelEvent): boolean {
+    return this.deepLinkedEventId != null && event.eventId === this.deepLinkedEventId;
+  }
+
+  private tryOpenDeepLinkedEvent(): void {
+    if (!this.isEventFeed || this.deepLinkedEventId == null || this.events.length === 0) {
+      return;
+    }
+
+    const target = this.events.find((item) => item.eventId === this.deepLinkedEventId);
+    if (!target) {
+      return;
+    }
+
+    if (!this.selectedEvent || this.selectedEvent.eventId !== target.eventId) {
+      this.selectEvent(target);
+    }
+
+    setTimeout(() => {
+      const node = document.querySelector(`[data-event-id="${this.deepLinkedEventId}"]`) as HTMLElement | null;
+      node?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
   }
 
   closeEventDetails(): void {

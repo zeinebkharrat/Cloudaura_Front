@@ -33,6 +33,12 @@ public class PostService implements IPostService {
     @Autowired
     JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    PostScoreService postScoreService;
+
+    @Autowired
+    MediaScoreService mediaScoreService;
+
     @Override
     @Transactional(readOnly = true)
     public List<Post> retrievePosts() {
@@ -56,6 +62,12 @@ public class PostService implements IPostService {
         params.put("repost_of_post_id", post.getRepostOf() != null ? post.getRepostOf().getPostId() : null);
         params.put("likes_count", post.getLikesCount());
         params.put("comments_count", post.getCommentsCount());
+        params.put("total_views", post.getTotalViews());
+        params.put("repost_count", post.getRepostCount());
+        params.put("post_score", post.getPostScore());
+        params.put("post_type", post.getPostType());
+        params.put("linked_event_id", post.getLinkedEventId());
+        params.put("comments_enabled", post.getCommentsEnabled());
         params.put("created_at", post.getCreatedAt());
         params.put("updated_at", post.getUpdatedAt());
 
@@ -69,6 +81,12 @@ public class PostService implements IPostService {
                 "repost_of_post_id",
                 "likes_count",
                 "comments_count",
+                "total_views",
+                "repost_count",
+                "post_score",
+                "post_type",
+                "linked_event_id",
+                "comments_enabled",
                 "created_at",
                 "updated_at"
         );
@@ -120,10 +138,26 @@ public class PostService implements IPostService {
         repost.setRepostOf(original);
         repost.setLikesCount(0);
         repost.setCommentsCount(0);
+        repost.setTotalViews(0);
+        repost.setRepostCount(0);
+        repost.setPostScore(1.0);
         Date now = new Date();
         repost.setCreatedAt(now);
         repost.setUpdatedAt(now);
-        return addPost(repost);
+        Post savedRepost = addPost(repost);
+
+        Integer currentRepostCount = original.getRepostCount() == null ? 0 : original.getRepostCount();
+        original.setRepostCount(currentRepostCount + 1);
+        postRepo.save(original);
+
+        postScoreService.recomputePostScore(original.getPostId());
+        if (savedRepost != null && savedRepost.getPostId() != null) {
+            postScoreService.recomputePostScore(savedRepost.getPostId());
+            mediaScoreService.recomputeAuthorMonthlyScoreFromPost(savedRepost.getPostId());
+        }
+        mediaScoreService.recomputeAuthorMonthlyScoreFromPost(original.getPostId());
+
+        return savedRepost;
     }
 
     @Override

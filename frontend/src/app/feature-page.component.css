@@ -154,6 +154,18 @@
   opacity: 0.75;
 }
 
+.event-card--deep-linked {
+  border-color: rgba(255, 93, 61, 0.68);
+  box-shadow: 0 0 0 2px rgba(255, 93, 61, 0.36), 0 20px 44px rgba(110, 34, 18, 0.28);
+  animation: deepLinkPulse 1.2s ease-in-out 2;
+}
+
+@keyframes deepLinkPulse {
+  0% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-2px) scale(1.01); }
+  100% { transform: translateY(0) scale(1); }
+}
+
 /* ── Feature Blocks ── */
 .feature-page__grid {
   display: grid;

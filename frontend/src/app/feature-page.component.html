@@ -357,6 +357,8 @@
             class="event-card glass-panel" 
             *ngFor="let event of filteredEvents; let i = index" 
             [style.animation-delay.ms]="i * 70"
+            [attr.data-event-id]="event.eventId ?? null"
+            [class.event-card--deep-linked]="isDeepLinkedEvent(event)"
             (click)="selectEvent(event)"
           >
             <div class="event-card__image-container" *ngIf="event.imageUrl">
