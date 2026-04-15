@@ -2,6 +2,7 @@ package org.example.backend.service;
 
 import lombok.RequiredArgsConstructor;
 import org.example.backend.dto.PageResponse;
+import org.example.backend.service.CommentModerationResult;
 import org.example.backend.dto.publicapi.CreatePublicReviewRequest;
 import org.example.backend.dto.publicapi.PublicReviewPageResponse;
 import org.example.backend.dto.publicapi.PublicReviewResponse;
@@ -32,6 +33,7 @@ public class PublicReviewService {
     private final RestaurantReviewRepository restaurantReviewRepository;
     private final ActivityReviewRepository activityReviewRepository;
     private final UserRepository userRepository;
+    private final SightengineCommentModerationService moderationService;
 
     @Transactional(readOnly = true)
     public PublicReviewPageResponse listRestaurantReviews(Integer restaurantId, Pageable pageable) {
@@ -77,7 +79,10 @@ public class PublicReviewService {
         review.setRestaurant(restaurant);
         review.setUser(user);
         review.setStars(request.stars());
-        review.setCommentText(request.commentText().trim());
+
+        String incoming = request.commentText().trim();
+        CommentModerationResult moderation = moderationService.moderateComment(incoming);
+        applyModeration(review, moderation);
 
         return toResponse(restaurantReviewRepository.save(review));
     }
@@ -94,9 +99,36 @@ public class PublicReviewService {
         review.setActivity(activity);
         review.setUser(user);
         review.setStars(request.stars());
-        review.setCommentText(request.commentText().trim());
+
+        String incoming = request.commentText().trim();
+        CommentModerationResult moderation = moderationService.moderateComment(incoming);
+        applyModeration(review, moderation);
 
         return toResponse(activityReviewRepository.save(review));
+    }
+
+    @Transactional
+    public void deleteRestaurantReview(Integer restaurantId) {
+        restaurantService.findRestaurant(restaurantId);
+        User user = currentAuthenticatedUser();
+
+        RestaurantReview review = restaurantReviewRepository
+            .findByRestaurantRestaurantIdAndUserUserId(restaurantId, user.getUserId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Avis introuvable"));
+
+        restaurantReviewRepository.delete(review);
+    }
+
+    @Transactional
+    public void deleteActivityReview(Integer activityId) {
+        activityService.findActivity(activityId);
+        User user = currentAuthenticatedUser();
+
+        ActivityReview review = activityReviewRepository
+            .findByActivityActivityIdAndUserUserId(activityId, user.getUserId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Avis introuvable"));
+
+        activityReviewRepository.delete(review);
     }
 
     private PublicReviewResponse toResponse(RestaurantReview review) {
@@ -104,6 +136,8 @@ public class PublicReviewService {
             review.getReviewId(),
             review.getUser().getUserId(),
             review.getUser().getUsername(),
+            review.getUser().getEmail(),
+            review.getUser().getProfileImageUrl(),
             review.getStars(),
             review.getCommentText(),
             review.getCreatedAt()
@@ -115,6 +149,8 @@ public class PublicReviewService {
             review.getReviewId(),
             review.getUser().getUserId(),
             review.getUser().getUsername(),
+            review.getUser().getEmail(),
+            review.getUser().getProfileImageUrl(),
             review.getStars(),
             review.getCommentText(),
             review.getCreatedAt()
@@ -124,11 +160,25 @@ public class PublicReviewService {
     private User currentAuthenticatedUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentification requise");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.review_auth_required");
         }
 
         String username = authentication.getName();
         return userRepository.findFirstByUsernameIgnoreCaseOrEmailIgnoreCaseOrderByUserIdAsc(username, username)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Utilisateur authentifié introuvable"));
+    }
+
+    private void applyModeration(RestaurantReview review, CommentModerationResult moderation) {
+        review.setOriginalCommentText(moderation.originalContent());
+        review.setSanitizedCommentText(moderation.sanitizedContent());
+        review.setCommentText(moderation.sanitizedContent());
+        review.setAbuseCategories(moderation.abuseCategories().isEmpty() ? null : String.join(",", moderation.abuseCategories()));
+    }
+
+    private void applyModeration(ActivityReview review, CommentModerationResult moderation) {
+        review.setOriginalCommentText(moderation.originalContent());
+        review.setSanitizedCommentText(moderation.sanitizedContent());
+        review.setCommentText(moderation.sanitizedContent());
+        review.setAbuseCategories(moderation.abuseCategories().isEmpty() ? null : String.join(",", moderation.abuseCategories()));
     }
 }

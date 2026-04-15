@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
@@ -27,8 +29,13 @@ public class User {
 
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String passwordHash;
+
+    @Column(name = "phone", length = 20)
     private String phone;
     private Integer points;
+    private Double monthlyScore;
+    private Double lifetimeScore;
+    private LocalDateTime lastResetDate;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "level_id")
@@ -43,9 +50,17 @@ public class User {
     @Column(columnDefinition = "MEDIUMTEXT")
     private String profileImageUrl;
     private String nationality;
+    private String gender;
+    private LocalDate dateOfBirth;
     private Boolean emailVerified;
     private Integer failedLoginAttempts;
     private Date lockedUntil;
+    private Integer commentViolationCount;
+    private Date commentMutedUntil;
+    private Integer commentBanCount;
+
+    @Column(columnDefinition = "TEXT")
+    private String e2eePublicKey;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "city_id")
@@ -132,6 +147,30 @@ public class User {
         this.points = points;
     }
 
+    public Double getMonthlyScore() {
+        return monthlyScore;
+    }
+
+    public void setMonthlyScore(Double monthlyScore) {
+        this.monthlyScore = monthlyScore;
+    }
+
+    public Double getLifetimeScore() {
+        return lifetimeScore;
+    }
+
+    public void setLifetimeScore(Double lifetimeScore) {
+        this.lifetimeScore = lifetimeScore;
+    }
+
+    public LocalDateTime getLastResetDate() {
+        return lastResetDate;
+    }
+
+    public void setLastResetDate(LocalDateTime lastResetDate) {
+        this.lastResetDate = lastResetDate;
+    }
+
     @JsonIgnore
     public Level getLevel() {
         return level;
@@ -197,6 +236,22 @@ public class User {
         this.nationality = nationality;
     }
 
+    public String getGender() {
+        return gender;
+    }
+
+    public void setGender(String gender) {
+        this.gender = gender;
+    }
+
+    public LocalDate getDateOfBirth() {
+        return dateOfBirth;
+    }
+
+    public void setDateOfBirth(LocalDate dateOfBirth) {
+        this.dateOfBirth = dateOfBirth;
+    }
+
     public Boolean getEmailVerified() {
         return emailVerified;
     }
@@ -219,6 +274,38 @@ public class User {
 
     public void setLockedUntil(Date lockedUntil) {
         this.lockedUntil = lockedUntil;
+    }
+
+    public Integer getCommentViolationCount() {
+        return commentViolationCount;
+    }
+
+    public void setCommentViolationCount(Integer commentViolationCount) {
+        this.commentViolationCount = commentViolationCount;
+    }
+
+    public Date getCommentMutedUntil() {
+        return commentMutedUntil;
+    }
+
+    public void setCommentMutedUntil(Date commentMutedUntil) {
+        this.commentMutedUntil = commentMutedUntil;
+    }
+
+    public Integer getCommentBanCount() {
+        return commentBanCount;
+    }
+
+    public void setCommentBanCount(Integer commentBanCount) {
+        this.commentBanCount = commentBanCount;
+    }
+
+    public String getE2eePublicKey() {
+        return e2eePublicKey;
+    }
+
+    public void setE2eePublicKey(String e2eePublicKey) {
+        this.e2eePublicKey = e2eePublicKey;
     }
 
     @JsonIgnore

@@ -10,6 +10,7 @@ import org.example.backend.dto.PageResponse;
 import org.example.backend.dto.RestaurantResponse;
 import org.example.backend.dto.publicapi.ActivityAvailabilityDayResponse;
 import org.example.backend.dto.publicapi.ActivityReservationResponse;
+import org.example.backend.dto.publicapi.CityImageDetectionResponse;
 import org.example.backend.dto.publicapi.CityResolveResponse;
 import org.example.backend.dto.publicapi.CreateActivityReservationRequest;
 import org.example.backend.dto.publicapi.CreatePublicReviewRequest;
@@ -17,15 +18,20 @@ import org.example.backend.dto.publicapi.PublicReviewPageResponse;
 import org.example.backend.dto.publicapi.PublicReviewResponse;
 import org.example.backend.dto.publicapi.PublicCityDetailsResponse;
 import org.example.backend.dto.publicapi.ReviewSummaryResponse;
+import org.example.backend.dto.publicapi.VoiceTranscriptionResponse;
 import org.example.backend.service.ActivityReservationService;
 import org.example.backend.service.ActivityService;
 import org.example.backend.service.PublicExploreService;
 import org.example.backend.service.PublicReviewService;
 import org.example.backend.service.RestaurantService;
+import org.example.backend.service.CityImageDetectionService;
+import org.example.backend.service.VoiceTranscriptionService;
+import org.springframework.http.MediaType;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
@@ -43,10 +49,26 @@ public class PublicExploreController {
     private final ActivityService activityService;
     private final ActivityReservationService activityReservationService;
     private final PublicReviewService publicReviewService;
+    private final VoiceTranscriptionService voiceTranscriptionService;
+    private final CityImageDetectionService cityImageDetectionService;
 
     @GetMapping("/cities/resolve")
     public CityResolveResponse resolveCityByName(@RequestParam String name) {
         return publicExploreService.resolveCityByName(name);
+    }
+
+    @PostMapping(value = "/cities/detect-from-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public CityImageDetectionResponse detectCityFromImage(@RequestParam("image") MultipartFile image) {
+        try {
+            return cityImageDetectionService.detectFromImage(image);
+        } catch (ResponseStatusException ex) {
+            if (ex.getStatusCode().value() == HttpStatus.BAD_REQUEST.value()) {
+                throw ex;
+            }
+            return new CityImageDetectionResponse(false, null, 0.0, "No corresponding city found for this image.");
+        } catch (Exception ex) {
+            return new CityImageDetectionResponse(false, null, 0.0, "No corresponding city found for this image.");
+        }
     }
 
     @GetMapping("/cities/all")
@@ -99,6 +121,11 @@ public class PublicExploreController {
         @Valid @RequestBody CreatePublicReviewRequest request
     ) {
         return publicReviewService.upsertRestaurantReview(restaurantId, request);
+    }
+
+    @DeleteMapping("/restaurants/{restaurantId}/reviews/mine")
+    public void deleteRestaurantReview(@PathVariable Integer restaurantId) {
+        publicReviewService.deleteRestaurantReview(restaurantId);
     }
 
     @GetMapping("/restaurants/{restaurantId}/reviews/summary")
@@ -163,6 +190,11 @@ public class PublicExploreController {
         return publicReviewService.upsertActivityReview(activityId, request);
     }
 
+    @DeleteMapping("/activities/{activityId}/reviews/mine")
+    public void deleteActivityReview(@PathVariable Integer activityId) {
+        publicReviewService.deleteActivityReview(activityId);
+    }
+
     @GetMapping("/activities/{activityId}/reviews/summary")
     public ReviewSummaryResponse activityReviewSummary(@PathVariable Integer activityId) {
         return publicReviewService.summaryForActivity(activityId);
@@ -190,6 +222,14 @@ public class PublicExploreController {
         @Valid @RequestBody CreateActivityReservationRequest request
     ) {
         return activityReservationService.create(activityId, request);
+    }
+
+    @PostMapping(value = "/voice/transcribe", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public VoiceTranscriptionResponse transcribeVoice(
+        @RequestParam("audio") MultipartFile audio,
+        @RequestParam(required = false) String language
+    ) {
+        return voiceTranscriptionService.transcribe(audio, language);
     }
 
     @GetMapping("/my/activity-reservations")

@@ -66,9 +66,11 @@ public class ShopController {
     @PostMapping("/checkout")
     public ResponseEntity<CheckoutOrderDto> checkout(
         Authentication authentication,
-        @RequestParam(required = false) String paymentMethod
+        @RequestParam(required = false) String paymentMethod,
+        @RequestParam(required = false) String presentmentCurrency
     ) {
-        return ResponseEntity.ok(shopService.checkout(requireUsername(authentication), paymentMethod));
+        return ResponseEntity.ok(
+                shopService.checkout(requireUsername(authentication), paymentMethod, presentmentCurrency));
     }
 
     @GetMapping("/orders")
@@ -108,7 +110,7 @@ public class ShopController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication requise");
         }
         String name = authentication.getName();
-        if (name == null || name.isBlank()) {
+        if (name == null || name.isBlank() || "anonymousUser".equalsIgnoreCase(name)) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Session invalide");
         }
         return name;

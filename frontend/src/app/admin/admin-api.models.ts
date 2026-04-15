@@ -122,6 +122,9 @@ export interface ActivityReservationListItem {
   numberOfPeople: number;
   totalPrice: number;
   status: ReservationStatus;
+  statusLabel?: string;
+  nameLabel?: string;
+  cityLabel?: string;
   userId: number | null;
   username: string | null;
   userEmail: string | null;
@@ -137,6 +140,8 @@ export interface AdminPost {
   visibility: string | null;
   likesCount: number;
   commentsCount: number;
+  totalViews?: number | null;
+  postScore?: number | null;
   createdAt: string | null;
   repostOfPostId: number | null;
 }

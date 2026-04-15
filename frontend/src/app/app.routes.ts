@@ -1,10 +1,12 @@
 import { Routes } from '@angular/router';
+import { ChefQuestPlayerComponent } from './games/chef-quest-player.component';
 import { HomeComponent } from './home.component';
 import { DestinationMapComponent } from './destination-map.component';
 import { VirtualTourPageComponent } from './virtual-tour-page.component';
 import { FeaturePageComponent } from './feature-page.component';
 import { CommunityComponent } from './Community/community.component';
 import { MyPostsComponent } from './Community/my-posts.component';
+import { DigitalPassportComponent } from './Community/digital-passport.component';
 import { UserProfileComponent } from './Community/user-profile.component';
 import { FollowListComponent } from './Community/follow-list.component';
 import { SignInComponent } from './sign-in.component';
@@ -31,14 +33,17 @@ import { AdminPostsComponent } from './admin/posts/admin-posts.component';
 import { CityExploreComponent } from './explore/city-explore.component';
 import { RestaurantDetailComponent } from './explore/restaurant-detail.component';
 import { ActivityDetailComponent } from './explore/activity-detail.component';
+import { ActivityPaymentSuccessComponent } from './explore/activity-payment-success.component';
 import { ProductsAdminComponent } from './admin/entities/products/products-admin.component';
 import { OrdersAdminComponent } from './admin/entities/orders/orders-admin.component';
 import { CartPageComponent } from './shop/cart-page.component';
 import { MyOrdersComponent } from './shop/my-orders.component';
 import { ChatComponent } from './chat/chat.component';
+import { CommunityShellComponent } from './Community/community-shell.component';
 import { AdminGamesComponent } from './admin/games/admin-games.component';
 import { AdminGamificationComponent } from './admin/gamification/admin-gamification.component';
 import { AdminTicketsComponent } from './admin/tickets/admin-tickets.component';
+import { AdminProfileComponent } from './admin/profile/admin-profile.component';
 import { UserGamesComponent } from './games/user-games.component';
 import { QuizPlayerComponent } from './games/quiz-player.component';
 import { CrosswordPlayerComponent } from './games/crossword-player.component';
@@ -49,10 +54,19 @@ import { ServicesActivitiesComponent } from './explore/services-activities.compo
 import { MockPaymentComponent } from './shop/mock-payment/mock-payment.component';
 import { ArtisanOrdersComponent } from './artisan/artisan-orders.component';
 import { FavoritesComponent } from './shop/favorites.component';
+import { SettingsComponent } from './settings.component';
+
+import { ChkobbaPlayerComponent } from './games/chkobba-player.component';
+import { TunisianMusicPlayerComponent } from './games/tunisian-music-player.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'destination-map', component: DestinationMapComponent },
+  {
+    path: 'planifier-voyage',
+    loadComponent: () =>
+      import('./trip-planning-wizard/trip-planning-wizard.component').then((m) => m.TripPlanningWizardComponent),
+  },
   { path: 'login', component: SignInComponent },
   { path: 'signin', component: SignInComponent },
   { path: 'signup', component: SignUpComponent },
@@ -64,6 +78,7 @@ export const routes: Routes = [
   { path: 'services/restaurants', component: ServicesRestaurantsComponent },
   { path: 'services/activities', component: ServicesActivitiesComponent },
   { path: 'restaurants/:restaurantId', component: RestaurantDetailComponent },
+  { path: 'activities/payment-success', component: ActivityPaymentSuccessComponent },
   { path: 'activities/:activityId', component: ActivityDetailComponent },
   { path: 'panier', component: CartPageComponent, canActivate: [authGuard] },
   { path: 'mes-commandes', component: MyOrdersComponent, canActivate: [authGuard] },
@@ -73,6 +88,32 @@ export const routes: Routes = [
 
   { path: 'virtual-tour', component: VirtualTourPageComponent },
   { path: 'jeux', redirectTo: 'games', pathMatch: 'full' },
+  {
+    path: 'games/governorate-guess',
+    loadComponent: () =>
+      import('./games/governorate-guess-player.component').then((m) => m.GovernorateGuessPlayerComponent),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'games/el-jem-quest',
+    loadComponent: () =>
+      import('./games/el-jem-quest-player.component').then((m) => m.ElJemQuestPlayerComponent),
+    canActivate: [authGuard],
+  },
+  {
+    path: 'games/chef-quest',
+    component: ChefQuestPlayerComponent,
+  },
+  {
+    path: 'games/chkobba',
+    component: ChkobbaPlayerComponent,
+    canActivate: [authGuard]
+  },
+  {
+    path: 'games/music',
+    component: TunisianMusicPlayerComponent,
+    canActivate: [authGuard]
+  },
   { path: 'games', component: UserGamesComponent },
   { path: 'games/quiz/:id', component: QuizPlayerComponent, canActivate: [authGuard] },
   { path: 'games/crossword/:id', component: CrosswordPlayerComponent, canActivate: [authGuard] },
@@ -85,8 +126,7 @@ export const routes: Routes = [
   },
   {
     path: 'transport',
-    loadChildren: () =>
-      import('./features/transport/transport.routes').then((m) => m.TRANSPORT_ROUTES),
+    loadChildren: () => import('./features/transport/transport.module').then(m => m.TransportModule),
   },
   {
     path: 'confirmation',
@@ -117,6 +157,7 @@ export const routes: Routes = [
       { path: 'posts', component: AdminPostsComponent },
       { path: 'orders', component: OrdersAdminComponent },
       { path: 'products', component: ProductsAdminComponent },
+      { path: 'profile', component: AdminProfileComponent },
       { path: 'activity-reservations', component: AdminActivityReservationsComponent },
       {
         path: 'accommodations',
@@ -138,6 +179,7 @@ export const routes: Routes = [
     ],
   },
   { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },
+  { path: 'settings', component: SettingsComponent, canActivate: [authGuard] },
   {
     path: 'mes-reservations',
     component: MesReservationsComponent,
@@ -148,11 +190,8 @@ export const routes: Routes = [
     path: 'destinations',
     component: FeaturePageComponent,
     data: {
-      kicker: 'Cities & journeys',
+      i18n: 'DESTINATIONS',
       accent: 'blue',
-      title: 'Destinations & cities',
-      description:
-        'Your hub for exploring Tunisia by city: rich content, trip ideas, and local offers to plan every journey.',
       blocks: [
         {
           icon: '🏙️',
@@ -276,11 +315,8 @@ export const routes: Routes = [
     path: 'activites',
     component: FeaturePageComponent,
     data: {
-      kicker: 'Experiences',
+      i18n: 'ACTIVITES',
       accent: 'emerald',
-      title: 'Activities',
-      description:
-        'Discover and book experiences: culture, nature, sport, and meet-ups — tied to destinations and recommendations.',
       blocks: [
         {
           icon: '🎭',
@@ -306,7 +342,7 @@ export const routes: Routes = [
     path: 'evenements',
     component: FeaturePageComponent,
     data: {
-      kicker: 'Agenda',
+      i18n: 'EVENEMENTS',
       accent: 'rose',
       title: 'Events',
       eventFeed: true,
@@ -317,49 +353,19 @@ export const routes: Routes = [
     path: 'artisanat',
     component: FeaturePageComponent,
     data: {
-      kicker: 'Living heritage',
+      i18n: 'ARTISANAT',
       accent: 'sand',
-      title: 'Crafts & souvenirs',
       catalog: 'products',
       description:
         'Spotlight artisans and their work: digital storefront, checkout with secure payment (Stripe or mock), and positive impact on the local economy.',
-      blocks: [
-        {
-          icon: '👤',
-          title: 'Tunisian artisans',
-          items: [
-            'Profiles with specialties, location, and contact options.',
-            'Workshop story and craft know-how.',
-          ],
-        },
-        {
-          icon: '🛒',
-          title: 'Catalog & souvenirs',
-          items: [
-            'Handmade products, crafts, and souvenirs.',
-            'Checkout flow with Stripe checkout and mock payment for local testing.',
-          ],
-        },
-        {
-          icon: '🌿',
-          title: 'Promotion & impact',
-          items: [
-            'Highlighting unique products and short supply chains.',
-            'Support for local entrepreneurship and sustainable tourism.',
-          ],
-        },
-      ],
     },
   },
   {
     path: 'recommandations',
     component: FeaturePageComponent,
     data: {
-      kicker: 'Intelligence',
+      i18n: 'RECOMMANDATIONS',
       accent: 'blue',
-      title: 'Recommendations',
-      description:
-        'A consistent suggestion engine for transport, stays, activities, and shopping — transparent, privacy-aware, and customizable.',
       blocks: [
         {
           icon: '🤖',
@@ -382,12 +388,12 @@ export const routes: Routes = [
   },
   {
     path: 'chat',
-    component: ChatComponent,
-    canActivate: [authGuard],
+    redirectTo: 'communaute/chat',
+    pathMatch: 'full',
   },
   {
     path: 'communaute',
-    component: CommunityComponent,
+    component: CommunityShellComponent,
     data: {
       kicker: 'Voyageurs',
       accent: 'violet',
@@ -421,19 +427,41 @@ export const routes: Routes = [
         },
       ],
     },
-  },
-  {
-    path: 'communaute/my-posts',
-    component: MyPostsComponent,
-    canActivate: [authGuard],
-  },
-  {
-    path: 'communaute/user/:userId',
-    component: UserProfileComponent,
-  },
-  {
-    path: 'communaute/user/:userId/follows',
-    component: FollowListComponent,
+    children: [
+      {
+        path: '',
+        component: CommunityComponent,
+      },
+      {
+        path: 'saved',
+        component: CommunityComponent,
+        canActivate: [authGuard],
+        data: { savedOnly: true },
+      },
+      {
+        path: 'my-posts',
+        component: MyPostsComponent,
+        canActivate: [authGuard],
+      },
+      {
+        path: 'digital-passport',
+        component: DigitalPassportComponent,
+        canActivate: [authGuard],
+      },
+      {
+        path: 'chat',
+        component: ChatComponent,
+        canActivate: [authGuard],
+      },
+      {
+        path: 'user/:userId',
+        component: UserProfileComponent,
+      },
+      {
+        path: 'user/:userId/follows',
+        component: FollowListComponent,
+      },
+    ],
   },
   { path: '**', redirectTo: '' },
 ];

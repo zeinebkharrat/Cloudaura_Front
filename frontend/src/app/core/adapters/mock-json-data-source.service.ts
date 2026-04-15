@@ -1,11 +1,17 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, delay, map } from 'rxjs';
-import { DataSourceAdapter, TransportSearchParams } from './data-source.adapter';
+import {
+  DataSourceAdapter,
+  TransportCheckoutResult,
+  TransportPayPalCreatePayload,
+  TransportSearchParams,
+} from './data-source.adapter';
 import {
   City, Accommodation, Transport, Reservation,
   TransportRecommendation, TransportRecommendationRequest,
-  TransportReservationInput, TransportReservation,
+  TransportReservationInput, TransportReservation, TransportReservationUpdatePayload,
+  TransportCheckoutPayload,
   AccommodationReservation,
   EngineRecommendationRequest, EngineRecommendationResponse
 } from '../models/travel.models';
@@ -63,6 +69,83 @@ export class MockJsonDataSource implements DataSourceAdapter {
     );
   }
 
+  createTransportCheckoutSession(payload: TransportCheckoutPayload): Observable<TransportCheckoutResult> {
+    const tid = payload.transportId;
+    return of({
+      url: `/transport/payment/return?local=true&reservationId=1&transportId=${tid}`,
+    }).pipe(delay(400));
+  }
+
+  createAccommodationCheckoutSession(payload: {
+    roomId: number;
+    userId: number;
+    checkIn: string;
+    checkOut: string;
+    offerId?: number | null;
+    presentmentCurrency?: string;
+  }): Observable<TransportCheckoutResult> {
+    const aid = payload.roomId;
+    return of({
+      url: `/hebergement/payment/return?local=true&reservationId=1&accommodationId=${aid}`,
+    }).pipe(delay(400));
+  }
+
+  createTransportPayPalSession(payload: TransportPayPalCreatePayload): Observable<TransportCheckoutResult> {
+    const tid = payload.transportId;
+    return of({
+      url: `/transport/payment/return?method=paypal&token=MOCK_ORDER&reservationId=1&transportId=${tid}`,
+    }).pipe(delay(400));
+  }
+
+  confirmTransportPayPalCapture(_token: string, _reservationId: number): Observable<TransportReservation> {
+    return of({
+      transportReservationId: 1,
+      transportId: 1,
+      reservationRef: 'TR-MOCK-PAYPAL',
+      status: 'CONFIRMED',
+      paymentStatus: 'PAID',
+      paymentMethod: 'PAYPAL',
+      totalPrice: 100,
+      numberOfSeats: 1,
+      travelDate: new Date().toISOString(),
+      passengerFirstName: 'Guest',
+      passengerLastName: 'User',
+      passengerEmail: 'guest@example.com',
+      passengerPhone: '+216 00000000',
+      createdAt: new Date().toISOString(),
+    }).pipe(delay(200));
+  }
+
+  confirmTransportStripeSession(_sessionId: string): Observable<TransportReservation> {
+    return of({
+      transportReservationId: 1,
+      transportId: 1,
+      reservationRef: 'TR-MOCK',
+      status: 'CONFIRMED',
+      paymentStatus: 'PAID',
+      paymentMethod: 'STRIPE',
+      totalPrice: 100,
+      numberOfSeats: 1,
+      travelDate: new Date().toISOString(),
+      passengerFirstName: 'Guest',
+      passengerLastName: 'User',
+      passengerEmail: 'guest@example.com',
+      passengerPhone: '+216 00000000',
+      createdAt: new Date().toISOString(),
+    }).pipe(delay(200));
+  }
+
+  confirmAccommodationStripeSession(_sessionId: string): Observable<Reservation> {
+    return of({
+      id: 1,
+      accommodationId: 1,
+      status: 'CONFIRMED',
+      totalPrice: 199,
+      checkInDate: '2026-04-11',
+      checkOutDate: '2026-04-14',
+    }).pipe(delay(200));
+  }
+
   createTransportReservation(input: TransportReservationInput): Observable<TransportReservation> {
     return of({
       transportReservationId: Math.floor(Math.random() * 10000),
@@ -82,6 +165,48 @@ export class MockJsonDataSource implements DataSourceAdapter {
     }).pipe(delay(1500));
   }
 
+  getTransportReservation(reservationId: number, _userId: number): Observable<TransportReservation> {
+    return of({
+      transportReservationId: reservationId,
+      transportId: 1,
+      reservationRef: 'TR-MOCK',
+      status: 'PENDING',
+      paymentStatus: 'PENDING',
+      paymentMethod: 'CASH',
+      totalPrice: 70,
+      numberOfSeats: 2,
+      travelDate: new Date().toISOString(),
+      passengerFirstName: 'Guest',
+      passengerLastName: 'User',
+      passengerEmail: 'guest@example.com',
+      passengerPhone: '+216 00000000',
+      createdAt: new Date().toISOString(),
+    }).pipe(delay(400));
+  }
+
+  updateTransportReservation(
+    reservationId: number,
+    _userId: number,
+    payload: TransportReservationUpdatePayload
+  ): Observable<TransportReservation> {
+    return of({
+      transportReservationId: reservationId,
+      transportId: 1,
+      reservationRef: 'TR-MOCK',
+      status: 'CONFIRMED',
+      paymentStatus: payload.paymentMethod === 'KONNECT' ? 'PAID' : 'PENDING',
+      paymentMethod: payload.paymentMethod,
+      totalPrice: payload.numberOfSeats * 35,
+      numberOfSeats: payload.numberOfSeats,
+      travelDate: new Date().toISOString(),
+      passengerFirstName: payload.passengerFirstName,
+      passengerLastName: payload.passengerLastName,
+      passengerEmail: payload.passengerEmail,
+      passengerPhone: payload.passengerPhone,
+      createdAt: new Date().toISOString(),
+    }).pipe(delay(800));
+  }
+
   getMyTransportReservations(_userId: number): Observable<TransportReservation[]> {
     return of([]).pipe(delay(500));
   }
@@ -96,6 +221,21 @@ export class MockJsonDataSource implements DataSourceAdapter {
 
   cancelAccommodationReservation(_reservationId: number, _userId: number): Observable<void> {
     return of(undefined).pipe(delay(400));
+  }
+
+  updateAccommodationReservation(
+    reservationId: number,
+    _userId: number,
+    checkIn: string,
+    checkOut: string
+  ): Observable<Reservation> {
+    return of({
+      id: reservationId,
+      status: 'CONFIRMED' as const,
+      totalPrice: 0,
+      checkInDate: checkIn,
+      checkOutDate: checkOut,
+    } as Reservation).pipe(delay(800));
   }
 
   createReservation(reservation: Partial<Reservation> & Record<string, unknown>): Observable<Reservation> {

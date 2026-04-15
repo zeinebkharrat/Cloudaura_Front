@@ -2,6 +2,7 @@ import {
   Component,
   AfterViewInit,
   OnDestroy,
+  OnInit,
   ViewChild,
   ElementRef,
   Inject,
@@ -10,11 +11,26 @@ import {
   ChangeDetectorRef,
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
+import { Subscription } from 'rxjs';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import * as echarts from 'echarts';
 import { tunisiaGeoJson } from './tunisia-map';
 import { GOVERNORATE_LABEL_EN, GOVERNORATE_LABEL_FR } from './tunisia-governorate-labels';
 import { ExploreService } from './explore/explore.service';
+
+interface CityImageDetectionResponse {
+  matched: boolean;
+  city: {
+    cityId: number;
+    name: string;
+    region?: string | null;
+    description: string | null;
+  } | null;
+  confidence: number;
+  message: string;
+}
 
 const TUNISIA_MAP_NAME_PROP = '_echartsRegionId';
 const HOME_MAP_RETURN_CONTEXT_KEY = 'homeMapReturnContext';
@@ -63,11 +79,11 @@ function normalizeRegionToken(value: unknown): string {
 @Component({
   selector: 'app-destination-map',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslateModule],
   templateUrl: './destination-map.component.html',
   styleUrl: './destination-map.component.css',
 })
-export class DestinationMapComponent implements AfterViewInit, OnDestroy {
+export class DestinationMapComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('mapContainer', { static: false }) mapContainer!: ElementRef;
 
   mapViewMode = signal<'local' | 'highlights'>('local');
@@ -79,11 +95,15 @@ export class DestinationMapComponent implements AfterViewInit, OnDestroy {
     mapRegionId: string | null;
   } | null>(null);
   isMapNavigating = signal(false);
+  isImageDetecting = signal(false);
+  imageDetectionMessage = signal('');
+  imageDetectionError = signal(false);
 
   private tunisiaMapChart?: echarts.ECharts;
   private mapGeoData?: any;
   private regionIdToLabelMap?: Map<string, string>;
   private themeObserver?: MutationObserver;
+  private langChange?: Subscription;
   private readonly handleWindowResize = () => {
     this.tunisiaMapChart?.resize();
   };
@@ -92,9 +112,20 @@ export class DestinationMapComponent implements AfterViewInit, OnDestroy {
     @Inject(PLATFORM_ID) private platformId: Object,
     private cdr: ChangeDetectorRef,
     private readonly exploreService: ExploreService,
+    private readonly http: HttpClient,
     private readonly router: Router,
-    private readonly route: ActivatedRoute
+    private readonly route: ActivatedRoute,
+    private readonly translate: TranslateService
   ) {}
+
+  ngOnInit(): void {
+    this.langChange = this.translate.onLangChange.subscribe(() => {
+      if (this.tunisiaMapChart) {
+        this.applyMapTheme();
+      }
+      this.refreshResolvingMapPanel();
+    });
+  }
 
   ngAfterViewInit(): void {
     if (isPlatformBrowser(this.platformId)) {
@@ -105,10 +136,20 @@ export class DestinationMapComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.langChange?.unsubscribe();
     if (isPlatformBrowser(this.platformId)) {
       window.removeEventListener('resize', this.handleWindowResize);
     }
     this.themeObserver?.disconnect();
+  }
+
+  private refreshResolvingMapPanel(): void {
+    this.selectedRegion.update((prev) => {
+      if (!prev?.resolving) {
+        return prev;
+      }
+      return { ...prev, description: this.translate.instant('HOME.MAP_EXPLORING', { name: prev.name }) };
+    });
   }
 
   setMapView(mode: 'local' | 'highlights'): void {
@@ -128,22 +169,23 @@ export class DestinationMapComponent implements AfterViewInit, OnDestroy {
     this.applyMapTheme();
 
     this.tunisiaMapChart.on('click', (params: any) => {
-      const label = this.displayName(params);
+      const displayLabel = this.mapRegionLabel(params);
+      const apiName = ((params?.data?.gouv_fr as string | undefined) ?? '').trim() || displayLabel;
       this.selectedRegion.set({
-        name: label,
-        description: `Exploring ${label}...`,
+        name: displayLabel,
+        description: this.translate.instant('HOME.MAP_EXPLORING', { name: displayLabel }),
         cityId: null,
         resolving: true,
         mapRegionId: params?.name ?? null,
       });
 
-      this.exploreService.resolveCityByName(label).subscribe({
+      this.exploreService.resolveCityByName(apiName).subscribe({
         next: (resolved) => {
           this.selectedRegion.set({
             name: resolved.city.name,
             description:
               resolved.city.description ||
-              `Discover ${resolved.city.name}, a Tunisian destination rich in experiences.`,
+              this.translate.instant('HOME.MAP_CITY_FALLBACK_DESC', { name: resolved.city.name }),
             cityId: resolved.city.cityId,
             resolving: false,
             mapRegionId: params?.name ?? null,
@@ -155,8 +197,7 @@ export class DestinationMapComponent implements AfterViewInit, OnDestroy {
             prev
               ? {
                   ...prev,
-                  description:
-                    `No linked city found in the database for ${label}.`,
+                  description: this.translate.instant('HOME.MAP_NO_CITY', { name: displayLabel }),
                   cityId: null,
                   resolving: false,
                   mapRegionId: params?.name ?? null,
@@ -191,16 +232,68 @@ export class DestinationMapComponent implements AfterViewInit, OnDestroy {
     }, 680);
   }
 
+  onCityImageUpload(event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    const file = input?.files?.[0] ?? null;
+    if (input) {
+      input.value = '';
+    }
+
+    if (!file) {
+      return;
+    }
+
+    this.isImageDetecting.set(true);
+    this.imageDetectionError.set(false);
+    this.imageDetectionMessage.set('Analyzing image and detecting city...');
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    this.http.post<CityImageDetectionResponse>('/api/public/cities/detect-from-image', formData).subscribe({
+      next: (response: CityImageDetectionResponse) => {
+        this.isImageDetecting.set(false);
+
+        if (!response.matched || !response.city) {
+          this.selectedRegion.set(null);
+          this.applyRegionSelection(null);
+          this.imageDetectionError.set(true);
+          this.imageDetectionMessage.set(response.message || 'No corresponding city found.');
+          this.cdr.detectChanges();
+          return;
+        }
+
+        this.highlightDetectedCity(
+          response.city.name,
+          response.city.cityId,
+          response.city.region ?? null,
+          response.city.description,
+          response.confidence
+        );
+      },
+      error: (err: HttpErrorResponse) => {
+        this.isImageDetecting.set(false);
+        this.imageDetectionError.set(true);
+        this.imageDetectionMessage.set(err?.error?.message || 'No corresponding city found.');
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
   private displayName(p: { name?: string; data?: any }): string {
     const m = this.regionIdToLabelMap!;
-    return m.get(p.name ?? '') ?? p.data?.gouv_fr ?? p.name ?? '';
+    return m.get(p?.name ?? '') ?? p?.data?.gouv_fr ?? p?.name ?? '';
+  }
+
+  private mapRegionLabel(p: { name?: string; data?: any }): string {
+    return this.displayName(p);
   }
 
   private applyMapTheme(): void {
     if (!this.tunisiaMapChart || !this.mapGeoData) return;
 
     const mapGeo = this.mapGeoData;
-    const displayName = (p: any) => this.displayName(p);
+    const mapLabel = (p: any) => this.mapRegionLabel(p);
     const mode = this.mapViewMode();
     const isLocal = mode === 'local';
     const isDark = this.isDarkTheme();
@@ -217,7 +310,7 @@ export class DestinationMapComponent implements AfterViewInit, OnDestroy {
       backgroundColor: isDark ? '#0f172a' : '#ffffff',
       tooltip: {
         trigger: 'item' as const,
-        formatter: (p: any) => displayName(p),
+        formatter: (p: any) => mapLabel(p),
         backgroundColor: isDark ? 'rgba(15,23,42,0.96)' : 'rgba(255,255,255,0.96)',
         borderColor: isDark ? '#334155' : '#b6deee',
         textStyle: { color: isDark ? '#e2e8f0' : '#0f172a' },
@@ -263,7 +356,7 @@ export class DestinationMapComponent implements AfterViewInit, OnDestroy {
               color: isDark ? '#f8fafc' : '#0f172a',
               fontSize: isLocal ? 16 : 17,
               fontWeight: 'bold' as const,
-              formatter: (p: any) => displayName(p),
+              formatter: (p: any) => mapLabel(p),
             },
             itemStyle: isLocal
               ? {
@@ -285,7 +378,7 @@ export class DestinationMapComponent implements AfterViewInit, OnDestroy {
               color: isDark ? '#f8fafc' : '#0f172a',
               fontSize: 18,
               fontWeight: 'bold' as const,
-              formatter: (p: any) => displayName(p),
+              formatter: (p: any) => mapLabel(p),
             },
             itemStyle: {
               areaColor: isDark
@@ -299,6 +392,7 @@ export class DestinationMapComponent implements AfterViewInit, OnDestroy {
             name: f.properties[TUNISIA_MAP_NAME_PROP],
             value: index % 5,
             gouv_fr: f.properties.gouv_fr,
+            gouv_id: f.properties.gouv_id,
           })),
         },
       ],
@@ -497,10 +591,12 @@ export class DestinationMapComponent implements AfterViewInit, OnDestroy {
       this.applyRegionSelection(selectedMapRegionId);
       if (selectedMapRegionId) {
         const selectedName =
-          cityLabel ?? this.regionIdToLabelMap?.get(selectedMapRegionId) ?? 'Selected city';
+          cityLabel ??
+          this.regionIdToLabelMap?.get(selectedMapRegionId) ??
+          this.translate.instant('HOME.MAP_SELECTED_FALLBACK');
         this.selectedRegion.set({
           name: selectedName,
-          description: `Exploring ${selectedName}...`,
+          description: this.translate.instant('HOME.MAP_EXPLORING', { name: selectedName }),
           cityId: cityId ?? null,
           resolving: false,
           mapRegionId: selectedMapRegionId,
@@ -645,6 +741,34 @@ export class DestinationMapComponent implements AfterViewInit, OnDestroy {
         },
       ],
     });
+  }
+
+  private highlightDetectedCity(
+    cityName: string,
+    cityId: number,
+    cityRegion: string | null,
+    cityDescription: string | null,
+    confidence: number
+  ): void {
+    const feature = this.findMapFeatureByTokens([cityName, cityRegion]);
+    const mapRegionId = this.getFeatureRegionId(feature);
+
+    if (mapRegionId) {
+      this.applyRegionSelection(mapRegionId);
+      this.zoomToRegion(mapRegionId);
+    }
+
+    this.selectedRegion.set({
+      name: cityName,
+      description: cityDescription || `Detected from image with ${Math.round(confidence * 100)}% confidence.`,
+      cityId,
+      resolving: false,
+      mapRegionId,
+    });
+
+    this.imageDetectionError.set(false);
+    this.imageDetectionMessage.set(`Detected city: ${cityName}`);
+    this.cdr.detectChanges();
   }
 
   private extractFeatureCenter(geometry: any): [number, number] | null {

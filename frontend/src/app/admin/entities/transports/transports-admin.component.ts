@@ -7,11 +7,16 @@ import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { DropdownModule } from 'primeng/dropdown';
-import { ToastModule } from 'primeng/toast';
-import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { InputNumberModule } from 'primeng/inputnumber';
-import { TabViewModule } from 'primeng/tabview';
-import { MessageService, ConfirmationService } from 'primeng/api';
+import { SliderModule } from 'primeng/slider';
+import { AppAlertsService } from '../../../core/services/app-alerts.service';
+
+interface AdminApiEnvelope<T> {
+  success: boolean;
+  data: T;
+  message?: string;
+  errorCode?: string;
+}
 
 interface Transport {
   transportId: number;
@@ -26,42 +31,10 @@ interface Transport {
   departureCityName?: string;
   arrivalCityId: number;
   arrivalCityName?: string;
-  vehicleId?: number;
-  vehicleInfo?: string;
-  vehicleCapacity?: number;
-  driverId?: number;
-  driverName?: string;
   operatorName?: string;
   flightCode?: string;
   availableSeats: number;
   bookedSeats: number;
-}
-
-interface Vehicle {
-  vehicleId: number;
-  brand: string;
-  model: string;
-  type: string;
-  capacity: number;
-  plateNumber: string;
-  pricePerTrip: number;
-  color?: string;
-  year?: number;
-  isActive: boolean;
-  displayLabel?: string;
-}
-
-interface Driver {
-  driverId: number;
-  firstName: string;
-  lastName: string;
-  fullName?: string;
-  licenseNumber: string;
-  phone?: string;
-  email?: string;
-  rating: number;
-  totalTrips: number;
-  isActive: boolean;
 }
 
 interface City {
@@ -76,8 +49,6 @@ interface TransportStats {
   totalTransports: number;
   activeTransports: number;
   totalAvailableSeats: number;
-  totalVehicles: number;
-  totalDrivers: number;
   todayReservations: number;
 }
 
@@ -103,81 +74,51 @@ interface TransportReservation {
   imports: [
     CommonModule, FormsModule, ReactiveFormsModule,
     DialogModule, ButtonModule, InputTextModule,
-    DropdownModule, ToastModule, ConfirmDialogModule,
-    InputNumberModule, TabViewModule,
+    DropdownModule, InputNumberModule, SliderModule,
   ],
-  providers: [MessageService, ConfirmationService],
   templateUrl: './transports-admin.component.html',
   styleUrl: './transports-admin.component.css'
 })
 export class TransportsAdminComponent {
   private http = inject(HttpClient);
   private fb = inject(FormBuilder);
-  private messageService = inject(MessageService);
-  private confirmService = inject(ConfirmationService);
+  private alerts = inject(AppAlertsService);
 
   readonly PAGE_SIZE = 7;
 
-  activeTabIndex = 0;
-
   transports = signal<Transport[]>([]);
-  vehicles   = signal<Vehicle[]>([]);
-  drivers    = signal<Driver[]>([]);
   cities     = signal<City[]>([]);
   reservations = signal<TransportReservation[]>([]);
   stats = signal<TransportStats | null>(null);
 
-  // Available (slot-based) lists for the form
-  availableVehicles = signal<Vehicle[]>([]);
-  availableDrivers  = signal<Driver[]>([]);
-
   selectedTransport = signal<Transport | null>(null);
-  selectedVehicle   = signal<Vehicle | null>(null);
-  selectedDriver    = signal<Driver | null>(null);
 
   isLoading = signal(false);
   showTransportDialog   = false;
-  showVehicleDialog     = false;
-  showDriverDialog      = false;
   showReservationsDialog = false;
 
-  // Dynamic form flags
-  showVehicleField  = true;
-  showDriverField   = true;
   showAirlineField  = false;
-  showCapacityField = false;
-  selectedVehicleCapacity: number | null = null;
   calculatedDuration: string | null = null;
   durationWarning: string | null = null;
   priceWarning: string | null = null;
 
-  // Search signals (reactive)
   transportSearch  = signal('');
   filterTypeValue  = signal('');
-  vehicleSearch    = signal('');
-  driverSearch     = signal('');
 
-  // Pagination signals
   transportPageSig = signal(1);
-  vehiclePageSig   = signal(1);
-  driverPageSig    = signal(1);
 
   get transportPage() { return this.transportPageSig(); }
   set transportPage(v: number) { this.transportPageSig.set(v); }
-  get vehiclePage()   { return this.vehiclePageSig(); }
-  set vehiclePage(v: number)   { this.vehiclePageSig.set(v); }
-  get driverPage()    { return this.driverPageSig(); }
-  set driverPage(v: number)    { this.driverPageSig.set(v); }
 
-  transportTypes = [
-    { label: 'Bus',                 value: 'BUS'   },
-    { label: 'Taxi',                value: 'TAXI'  },
-    { label: 'Van / shared taxi',   value: 'VAN'   },
-    { label: 'Car',                 value: 'CAR'   },
-    { label: 'Plane',               value: 'PLANE' },
-    { label: 'Train',               value: 'TRAIN' },
-    { label: 'Ferry',               value: 'FERRY' },
+  /** Admin UI: only these four modes; legacy DB rows may still use other enum values. */
+  transportTypes: { label: string; value: string; icon: string }[] = [
+    { label: 'Flight', value: 'PLANE', icon: 'pi pi-send' },
+    { label: 'Car', value: 'CAR', icon: 'pi pi-car' },
+    { label: 'Bus', value: 'BUS', icon: 'pi pi-car' },
+    { label: 'Taxi', value: 'TAXI', icon: 'pi pi-map-marker' },
   ];
+
+  readonly capacitySliderMax = 500;
 
   airlines = [
     { label: 'Tunisair',        value: 'Tunisair' },
@@ -187,28 +128,13 @@ export class TransportsAdminComponent {
     { label: 'Air Arabia',      value: 'Air Arabia' },
   ];
 
-  vehicleTypes = [
-    { label: 'Bus',    value: 'BUS'   },
-    { label: 'Taxi',   value: 'TAXI'  },
-    { label: 'Van',    value: 'VAN'   },
-    { label: 'Car',    value: 'CAR'  },
-    { label: 'Train',  value: 'TRAIN' },
-    { label: 'Ferry',  value: 'FERRY' },
-  ];
-
   transportForm: FormGroup;
-  vehicleForm: FormGroup;
-  driverForm: FormGroup;
 
-  // ── Stats from API ──────────────────────────────────
   totalTransportsCount  = computed(() => this.stats()?.totalTransports  ?? this.transports().length);
   activeTransportCount  = computed(() => this.stats()?.activeTransports  ?? this.transports().filter(t => t.isActive).length);
   totalAvailableSeats   = computed(() => this.stats()?.totalAvailableSeats ?? 0);
-  totalVehiclesCount    = computed(() => this.stats()?.totalVehicles    ?? this.vehicles().length);
-  totalDriversCount     = computed(() => this.stats()?.totalDrivers     ?? this.drivers().length);
   todayReservationsCount = computed(() => this.stats()?.todayReservations ?? 0);
 
-  // ── Filtered lists (all attributes, reactive) ─────────
   filteredTransports = computed(() => {
     const q    = this.transportSearch().toLowerCase().trim();
     const type = this.filterTypeValue();
@@ -218,7 +144,6 @@ export class TransportsAdminComponent {
       const haystack = [
         t.type, this.getTypeLabel(t.type),
         t.departureCityName ?? '', t.arrivalCityName ?? '',
-        t.vehicleInfo ?? '', t.driverName ?? '',
         t.operatorName ?? '', t.flightCode ?? '',
         String(t.price), t.isActive ? 'active' : 'inactive',
         t.departureTime, t.arrivalTime,
@@ -228,88 +153,26 @@ export class TransportsAdminComponent {
     });
   });
 
-  filteredVehicles = computed(() => {
-    const q = this.vehicleSearch().toLowerCase().trim();
-    if (!q) return this.vehicles();
-    return this.vehicles().filter(v => {
-      const haystack = [
-        v.brand, v.model, v.plateNumber, v.type,
-        v.color ?? '', String(v.year ?? ''),
-        String(v.pricePerTrip), String(v.capacity),
-        v.isActive ? 'actif' : 'inactif',
-      ].join(' ').toLowerCase();
-      return haystack.includes(q);
-    });
-  });
-
-  filteredDrivers = computed(() => {
-    const q = this.driverSearch().toLowerCase().trim();
-    if (!q) return this.drivers();
-    return this.drivers().filter(d => {
-      const haystack = [
-        d.firstName, d.lastName, d.licenseNumber,
-        d.phone ?? '', d.email ?? '',
-        String(d.rating), String(d.totalTrips),
-        d.isActive ? 'actif' : 'inactif',
-      ].join(' ').toLowerCase();
-      return haystack.includes(q);
-    });
-  });
-
-  // ── Paged lists ────────────────────────────────────────
   pagedTransports = computed(() => {
     const start = (this.transportPageSig() - 1) * this.PAGE_SIZE;
     return this.filteredTransports().slice(start, start + this.PAGE_SIZE);
   });
-  pagedVehicles = computed(() => {
-    const start = (this.vehiclePageSig() - 1) * this.PAGE_SIZE;
-    return this.filteredVehicles().slice(start, start + this.PAGE_SIZE);
-  });
-  pagedDrivers = computed(() => {
-    const start = (this.driverPageSig() - 1) * this.PAGE_SIZE;
-    return this.filteredDrivers().slice(start, start + this.PAGE_SIZE);
-  });
 
   totalTransportPages = computed(() => Math.max(1, Math.ceil(this.filteredTransports().length / this.PAGE_SIZE)));
-  totalVehiclePages   = computed(() => Math.max(1, Math.ceil(this.filteredVehicles().length  / this.PAGE_SIZE)));
-  totalDriverPages    = computed(() => Math.max(1, Math.ceil(this.filteredDrivers().length   / this.PAGE_SIZE)));
 
   constructor() {
     this.transportForm = this.fb.group({
-      type:            ['BUS', Validators.required],
+      type:            ['PLANE', Validators.required],
       departureCityId: [null, Validators.required],
       arrivalCityId:   [null, Validators.required],
       departureTime:   ['', Validators.required],
       arrivalTime:     ['', Validators.required],
-      capacity:        [null],
+      capacity:        [null, [Validators.required, Validators.min(1)]],
       price:           [0, [Validators.required, Validators.min(0)]],
       description:     [''],
-      vehicleId:       [null, Validators.required],
-      driverId:        [null, Validators.required],
       operatorName:    [null],
       flightCode:      [null],
       isActive:        [true],
-    });
-
-    this.vehicleForm = this.fb.group({
-      brand:        ['', [Validators.required, Validators.minLength(2)]],
-      model:        ['', [Validators.required, Validators.minLength(2)]],
-      type:         ['BUS', Validators.required],
-      capacity:     [1,  [Validators.required, Validators.min(1)]],
-      plateNumber:  ['', Validators.required],
-      pricePerTrip: [0,  [Validators.required, Validators.min(0)]],
-      color:        ['', Validators.required],
-      year:         [new Date().getFullYear(), [Validators.required, Validators.min(2000), Validators.max(2030)]],
-      isActive:     [true],
-    });
-
-    this.driverForm = this.fb.group({
-      firstName:     ['', [Validators.required, Validators.minLength(2)]],
-      lastName:      ['', [Validators.required, Validators.minLength(2)]],
-      licenseNumber: ['', Validators.required],
-      phone:         [''],
-      email:         ['', [Validators.required, Validators.email]],
-      isActive:      [true],
     });
 
     this.loadAll();
@@ -318,8 +181,6 @@ export class TransportsAdminComponent {
   loadAll() {
     this.loadCities();
     this.loadTransports();
-    this.loadVehicles();
-    this.loadDrivers();
     this.loadStats();
   }
 
@@ -346,72 +207,22 @@ export class TransportsAdminComponent {
       });
   }
 
-  loadVehicles() {
-    this.http.get<any>('/api/admin/vehicles').pipe(catchError(() => of({ data: [] }))).subscribe(r => {
-      this.vehicles.set(r?.data ?? []);
-      this.vehiclePageSig.set(1);
-    });
-  }
-
-  loadDrivers() {
-    this.http.get<any>('/api/admin/drivers').pipe(catchError(() => of({ data: [] }))).subscribe(r => {
-      this.drivers.set(r?.data ?? []);
-      this.driverPageSig.set(1);
-    });
-  }
-
   loadReservations(transportId: number) {
     this.http.get<any>(`/api/admin/transports/${transportId}/reservations`)
       .pipe(catchError(() => of({ data: [] })))
       .subscribe(r => this.reservations.set(r?.data ?? []));
   }
 
-  loadAvailableVehicles() {
-    const { type, departureTime, arrivalTime } = this.transportForm.value;
-    if (!type || type === 'PLANE') { this.availableVehicles.set([]); return; }
-
-    let url = `/api/admin/transports/available-vehicles?type=${type}`;
-    if (departureTime && arrivalTime) {
-      url += `&departure=${encodeURIComponent(new Date(departureTime).toISOString())}`;
-      url += `&arrival=${encodeURIComponent(new Date(arrivalTime).toISOString())}`;
-    }
-    this.http.get<any>(url).pipe(catchError(() => of({ data: [] }))).subscribe(r => {
-      this.availableVehicles.set(r?.data ?? []);
-    });
-  }
-
-  loadAvailableDrivers() {
-    const { type, departureTime, arrivalTime } = this.transportForm.value;
-    if (!type || type === 'PLANE') { this.availableDrivers.set([]); return; }
-
-    let url = `/api/admin/transports/available-drivers`;
-    if (departureTime && arrivalTime) {
-      url += `?departure=${encodeURIComponent(new Date(departureTime).toISOString())}`;
-      url += `&arrival=${encodeURIComponent(new Date(arrivalTime).toISOString())}`;
-    }
-    this.http.get<any>(url).pipe(catchError(() => of({ data: [] }))).subscribe(r => {
-      this.availableDrivers.set(r?.data ?? []);
-    });
-  }
-
-  // ── Search helpers ────────────────────────────────────
   clearTransportSearch() {
     this.transportSearch.set('');
     this.filterTypeValue.set('');
     this.transportPageSig.set(1);
   }
-  clearVehicleSearch() { this.vehicleSearch.set(''); this.vehiclePageSig.set(1); }
-  clearDriverSearch()  { this.driverSearch.set('');  this.driverPageSig.set(1); }
 
   onTransportSearch(v: string) { this.transportSearch.set(v); this.transportPageSig.set(1); }
-  onVehicleSearch(v: string)   { this.vehicleSearch.set(v);   this.vehiclePageSig.set(1);   }
-  onDriverSearch(v: string)    { this.driverSearch.set(v);    this.driverPageSig.set(1);    }
   onTypeFilter(v: string)      { this.filterTypeValue.set(v); this.transportPageSig.set(1); }
 
-  // ── Pagination helper ─────────────────────────────────
   getTransportPageNumbers() { return this.buildPageArray(this.transportPage, this.totalTransportPages()); }
-  getVehiclePageNumbers()   { return this.buildPageArray(this.vehiclePage,   this.totalVehiclePages());   }
-  getDriverPageNumbers()    { return this.buildPageArray(this.driverPage,    this.totalDriverPages());    }
 
   private buildPageArray(current: number, total: number): number[] {
     if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
@@ -426,45 +237,60 @@ export class TransportsAdminComponent {
     return pages;
   }
 
-  // ── Dynamic form logic ────────────────────────────────
-  onTypeChange(event: any) {
-    const type = event?.value ?? event;
-    this.showVehicleField  = type !== 'PLANE';
-    this.showDriverField   = type !== 'PLANE';
-    this.showAirlineField  = type === 'PLANE';
-    this.showCapacityField = type === 'PLANE';
-    this.selectedVehicleCapacity = null;
-    this.durationWarning = null;
+  private applyTransportTypeValidators(type: string, clearIncompatibleFields: boolean): void {
+    this.showAirlineField = type === 'PLANE';
+
+    if (clearIncompatibleFields) {
+      this.durationWarning = null;
+    }
+
+    const cap = this.transportForm.get('capacity')!;
+    const op = this.transportForm.get('operatorName')!;
 
     if (type === 'PLANE') {
-      this.transportForm.get('vehicleId')!.reset();
-      this.transportForm.get('driverId')!.reset();
-      this.transportForm.get('vehicleId')!.clearValidators();
-      this.transportForm.get('driverId')!.clearValidators();
-      this.transportForm.get('operatorName')!.setValidators([Validators.required]);
-      this.transportForm.get('capacity')!.setValidators([Validators.required, Validators.min(1)]);
+      if (clearIncompatibleFields) {
+        op.reset();
+      }
+      op.setValidators([Validators.required]);
+      cap.setValidators([Validators.required, Validators.min(1)]);
     } else {
-      this.transportForm.get('operatorName')!.reset();
-      this.transportForm.get('flightCode')!.reset();
-      this.transportForm.get('vehicleId')!.setValidators([Validators.required]);
-      this.transportForm.get('driverId')!.setValidators([Validators.required]);
-      this.transportForm.get('operatorName')!.clearValidators();
-      this.transportForm.get('capacity')!.clearValidators();
+      if (clearIncompatibleFields) {
+        this.transportForm.get('operatorName')!.reset();
+        this.transportForm.get('flightCode')!.reset();
+      }
+      op.clearValidators();
+      cap.setValidators([Validators.required, Validators.min(1)]);
     }
-    this.transportForm.get('vehicleId')!.updateValueAndValidity();
-    this.transportForm.get('driverId')!.updateValueAndValidity();
-    this.transportForm.get('operatorName')!.updateValueAndValidity();
-    this.transportForm.get('capacity')!.updateValueAndValidity();
-    this.loadAvailableVehicles();
-    this.loadAvailableDrivers();
+    op.updateValueAndValidity();
+    cap.updateValueAndValidity();
   }
 
-  onVehicleChange(vehicleId: number) {
-    const vehicle = this.availableVehicles().find(v => v.vehicleId === vehicleId)
-                 ?? this.vehicles().find(v => v.vehicleId === vehicleId);
-    if (vehicle) {
-      this.selectedVehicleCapacity = vehicle.capacity;
-    }
+  onTypeChange(event: { value?: string } | string) {
+    const type = typeof event === 'string' ? event : (event?.value ?? '');
+    this.applyTransportTypeValidators(type, true);
+  }
+
+  selectTransportType(value: string): void {
+    this.transportForm.patchValue({ type: value });
+    this.applyTransportTypeValidators(value, true);
+  }
+
+  fieldInvalid(name: string): boolean {
+    const c = this.transportForm.get(name);
+    return !!c && c.invalid && (c.dirty || c.touched);
+  }
+
+  fieldValid(name: string): boolean {
+    const c = this.transportForm.get(name);
+    if (!c || !c.valid || !(c.dirty || c.touched)) return false;
+    const v = c.value;
+    return v != null && v !== '';
+  }
+
+  resizeDescription(ev: Event): void {
+    const el = ev.target as HTMLTextAreaElement;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(Math.max(el.scrollHeight, 52), 220)}px`;
   }
 
   onTimeChange() {
@@ -479,8 +305,6 @@ export class TransportsAdminComponent {
         ? `${diffH}h${diffMin > 0 ? ' ' + diffMin + 'm' : ''}`
         : `${diffMin} min`;
       this.checkDurationWarning(diffH);
-      this.loadAvailableVehicles();
-      this.loadAvailableDrivers();
     }
   }
 
@@ -508,7 +332,6 @@ export class TransportsAdminComponent {
     }
   }
 
-  // ── Seat color helper ─────────────────────────────────
   getSeatClass(t: Transport): string {
     const avail = t.availableSeats ?? 0;
     const cap   = t.capacity ?? 1;
@@ -517,52 +340,27 @@ export class TransportsAdminComponent {
     return 'seats-available';
   }
 
-  getSeatLabel(t: Transport): string {
-    const avail = t.availableSeats ?? 0;
-    if (avail === 0) return 'FULL';
-    return `${avail} / ${t.capacity}`;
-  }
-
-  // ── Transport CRUD ────────────────────────────────────
   openTransportDialog(transport?: Transport) {
     this.calculatedDuration = null;
     this.durationWarning = null;
     this.priceWarning = null;
-    this.selectedVehicleCapacity = null;
 
     if (transport) {
       this.selectedTransport.set(transport);
       const type = transport.type;
-      this.showVehicleField  = type !== 'PLANE';
-      this.showDriverField   = type !== 'PLANE';
-      this.showAirlineField  = type === 'PLANE';
-      this.showCapacityField = type === 'PLANE';
+      this.showAirlineField = type === 'PLANE';
 
       this.transportForm.patchValue({
         ...transport,
         departureTime: this.toDateTimeLocal(transport.departureTime),
         arrivalTime:   this.toDateTimeLocal(transport.arrivalTime),
       });
-      if (transport.vehicleId) {
-        this.selectedVehicleCapacity = transport.vehicleCapacity ?? null;
-      }
-      this.loadAvailableVehicles();
-      this.loadAvailableDrivers();
+      this.applyTransportTypeValidators(type, false);
     } else {
       this.selectedTransport.set(null);
-      this.showVehicleField  = true;
-      this.showDriverField   = true;
-      this.showAirlineField  = false;
-      this.showCapacityField = false;
-      this.transportForm.reset({ type: 'BUS', price: 0, isActive: true });
-      this.transportForm.get('vehicleId')!.setValidators([Validators.required]);
-      this.transportForm.get('driverId')!.setValidators([Validators.required]);
-      this.transportForm.get('operatorName')!.clearValidators();
-      this.transportForm.get('capacity')!.clearValidators();
-      this.transportForm.get('vehicleId')!.updateValueAndValidity();
-      this.transportForm.get('driverId')!.updateValueAndValidity();
-      this.availableVehicles.set([]);
-      this.availableDrivers.set([]);
+      this.showAirlineField = false;
+      this.transportForm.reset({ type: 'BUS', price: 0, capacity: 45, isActive: true });
+      this.applyTransportTypeValidators('BUS', false);
     }
     this.showTransportDialog = true;
   }
@@ -570,16 +368,37 @@ export class TransportsAdminComponent {
   saveTransport() {
     if (this.transportForm.invalid) { this.transportForm.markAllAsTouched(); return; }
 
-    const raw = this.transportForm.value;
+    const raw = this.transportForm.getRawValue();
+    const type = String(raw.type ?? '');
     const fromCity = this.cities().find(c => c.cityId === raw.departureCityId)?.name ?? '';
     const toCity   = this.cities().find(c => c.cityId === raw.arrivalCityId)?.name ?? '';
     const id = this.selectedTransport()?.transportId;
 
-    // Convert datetime-local strings to ISO
+    const departureTime = this.toBackendLocalDateTime(raw.departureTime);
+    const arrivalTime = this.toBackendLocalDateTime(raw.arrivalTime);
+    if (!departureTime || !arrivalTime) {
+      void this.alerts.warning('Validation', 'Departure and arrival times are required.');
+      return;
+    }
+
+    const priceNum = Number(raw.price ?? 0);
+    const price = Number.isFinite(priceNum) ? priceNum : 0;
+
+    const op = raw.operatorName != null ? String(raw.operatorName).trim() : '';
+    const fc = raw.flightCode != null ? String(raw.flightCode).trim() : '';
+
     const payload = {
-      ...raw,
-      departureTime: raw.departureTime ? new Date(raw.departureTime).toISOString() : null,
-      arrivalTime:   raw.arrivalTime   ? new Date(raw.arrivalTime).toISOString()   : null,
+      type,
+      departureCityId: raw.departureCityId != null ? Number(raw.departureCityId) : null,
+      arrivalCityId: raw.arrivalCityId != null ? Number(raw.arrivalCityId) : null,
+      departureTime,
+      arrivalTime,
+      capacity: raw.capacity != null ? Number(raw.capacity) : null,
+      price,
+      description: (raw.description ?? '').toString(),
+      isActive: raw.isActive !== false,
+      operatorName: type === 'PLANE' ? (op || null) : null,
+      flightCode: type === 'PLANE' ? (fc || null) : null,
     };
 
     const req = id
@@ -591,193 +410,94 @@ export class TransportsAdminComponent {
         this.loadTransports();
         this.loadStats();
         this.showTransportDialog = false;
-        this.messageService.add({
-          severity: 'success',
-          summary: id ? 'Transport updated' : 'Transport created',
-          detail: id
+        void this.alerts.success(
+          id ? 'Transport updated' : 'Transport created',
+          id
             ? `Route ${fromCity} → ${toCity} was updated successfully.`
             : `New route ${fromCity} → ${toCity} was created successfully.`,
-          life: 4500,
-        });
+        );
       },
       error: (err) => {
-        const msg = err?.error?.message ?? 'Could not complete this operation.';
-        this.messageService.add({ severity: 'warn', summary: 'Validation', detail: msg, life: 6000 });
+        const msg = this.friendlyApiMessage(err, 'Could not complete this operation.');
+        void this.alerts.warning('Validation', msg);
       },
     });
   }
 
   deleteTransport(transport: Transport) {
-    this.confirmService.confirm({
-      header: 'Confirm deletion',
-      message: `Delete transport <strong>${this.getTypeLabel(transport.type)}</strong> — <strong>${transport.departureCityName} → ${transport.arrivalCityName}</strong>? This cannot be undone.`,
-      icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Yes, delete',
-      rejectLabel: 'Cancel',
-      acceptButtonStyleClass: 'p-button-danger',
-      accept: () => {
-        this.http.delete<any>(`/api/admin/transports/${transport.transportId}`).subscribe({
-          next: () => {
+    void this.alerts
+      .confirm({
+        title: 'Confirm deletion',
+        text: `Delete ${this.getTypeLabel(transport.type)} — ${transport.departureCityName} → ${transport.arrivalCityName}? If there are no linked bookings it will be removed; otherwise it will be deactivated only.`,
+        confirmText: 'Yes, delete',
+        cancelText: 'Cancel',
+        icon: 'warning',
+      })
+      .then((r) => {
+        if (!r.isConfirmed) return;
+        this.http.delete(`/api/admin/transports/${transport.transportId}`, { observe: 'response' }).subscribe({
+          next: (res) => {
             this.loadTransports();
             this.loadStats();
-            this.messageService.add({
-              severity: 'warn',
-              summary: 'Transport deleted',
-              detail: `Route ${transport.departureCityName} → ${transport.arrivalCityName} was removed.`,
-              life: 4500,
-            });
+            if (res.status === 204) {
+              void this.alerts.success(
+                'Transport removed',
+                `Route ${transport.departureCityName} → ${transport.arrivalCityName} was deleted.`,
+              );
+            } else {
+              const body = res.body as AdminApiEnvelope<null> | null;
+              const msg = body?.message;
+              if (msg && msg !== 'OK') {
+                void this.alerts.info('Transport deactivated', msg);
+              } else {
+                void this.alerts.success(
+                  'Transport removed',
+                  `Route ${transport.departureCityName} → ${transport.arrivalCityName} was deleted.`,
+                );
+              }
+            }
           },
           error: (err) => {
-            const msg = err?.error?.message ?? 'Deletion failed.';
-            this.messageService.add({ severity: 'error', summary: 'Could not delete', detail: msg, life: 6000 });
+            const msg = this.friendlyApiMessage(err, 'Deletion failed.');
+            void this.alerts.error('Could not delete', msg);
           },
         });
-      },
-    });
+      });
   }
 
   toggleTransportStatus(transport: Transport) {
     const willActivate = !transport.isActive;
-    this.confirmService.confirm({
-      header: willActivate ? 'Activate transport' : 'Deactivate transport',
-      message: willActivate
-        ? `Activate route <strong>${transport.departureCityName} → ${transport.arrivalCityName}</strong>?`
-        : `Deactivate route <strong>${transport.departureCityName} → ${transport.arrivalCityName}</strong>? New bookings will be blocked.`,
-      icon: willActivate ? 'pi pi-check-circle' : 'pi pi-ban',
-      acceptLabel: willActivate ? 'Yes, activate' : 'Yes, deactivate',
-      rejectLabel: 'Cancel',
-      accept: () => {
-        this.http.patch<any>(`/api/admin/transports/${transport.transportId}/status`, { isActive: willActivate }).subscribe({
-          next: () => {
-            this.loadTransports();
-            this.loadStats();
-            this.messageService.add({
-              severity: willActivate ? 'success' : 'warn',
-              summary: willActivate ? 'Transport activated' : 'Transport deactivated',
-              detail: `Route ${transport.departureCityName} → ${transport.arrivalCityName} is now ${willActivate ? 'active' : 'inactive'}.`,
-              life: 4500,
-            });
-          },
-          error: (err) => {
-            const msg = err?.error?.message ?? 'Could not change status.';
-            this.messageService.add({ severity: 'error', summary: 'Error', detail: msg, life: 6000 });
-          },
-        });
-      },
-    });
+    void this.alerts
+      .confirm({
+        title: willActivate ? 'Activate transport' : 'Deactivate transport',
+        text: willActivate
+          ? `Activate route ${transport.departureCityName} → ${transport.arrivalCityName}?`
+          : `Deactivate route ${transport.departureCityName} → ${transport.arrivalCityName}? New bookings will be blocked.`,
+        confirmText: willActivate ? 'Yes, activate' : 'Yes, deactivate',
+        cancelText: 'Cancel',
+        icon: willActivate ? 'question' : 'warning',
+      })
+      .then((r) => {
+        if (!r.isConfirmed) return;
+        this.http
+          .patch<AdminApiEnvelope<unknown>>(`/api/admin/transports/${transport.transportId}/status`, { isActive: willActivate })
+          .subscribe({
+            next: () => {
+              this.loadTransports();
+              this.loadStats();
+              void this.alerts.success(
+                willActivate ? 'Transport activated' : 'Transport deactivated',
+                `Route ${transport.departureCityName} → ${transport.arrivalCityName} is now ${willActivate ? 'active' : 'inactive'}.`,
+              );
+            },
+            error: (err) => {
+              const msg = this.friendlyApiMessage(err, 'Could not change status.');
+              void this.alerts.error('Error', msg);
+            },
+          });
+      });
   }
 
-  // ── Vehicle CRUD ──────────────────────────────────────
-  openVehicleDialog(vehicle?: Vehicle) {
-    if (vehicle) { this.selectedVehicle.set(vehicle); this.vehicleForm.patchValue(vehicle); }
-    else { this.selectedVehicle.set(null); this.vehicleForm.reset({ type: 'BUS', capacity: 1, year: new Date().getFullYear(), isActive: true }); }
-    this.showVehicleDialog = true;
-  }
-
-  saveVehicle() {
-    if (this.vehicleForm.invalid) { this.vehicleForm.markAllAsTouched(); return; }
-    const data = this.vehicleForm.value;
-    const id   = this.selectedVehicle()?.vehicleId;
-    const req  = id
-      ? this.http.put<any>(`/api/admin/vehicles/${id}`, data)
-      : this.http.post<any>('/api/admin/vehicles', data);
-    req.subscribe({
-      next: () => {
-        this.loadVehicles();
-        this.loadStats();
-        this.showVehicleDialog = false;
-        this.messageService.add({
-          severity: 'success',
-          summary: id ? 'Vehicle updated' : 'Vehicle added',
-          detail: `${data.brand} ${data.model} (${data.plateNumber}) ${id ? 'updated' : 'added to the fleet'}.`,
-          life: 4500,
-        });
-      },
-      error: (err) => {
-        const msg = err?.error?.message ?? 'Could not save this vehicle.';
-        this.messageService.add({ severity: 'warn', summary: 'Validation', detail: msg, life: 6000 });
-      },
-    });
-  }
-
-  deleteVehicle(vehicle: Vehicle) {
-    this.confirmService.confirm({
-      header: 'Delete vehicle',
-      message: `Remove <strong>${vehicle.brand} ${vehicle.model}</strong> (${vehicle.plateNumber}) from the fleet?`,
-      icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Yes, delete', rejectLabel: 'Cancel', acceptButtonStyleClass: 'p-button-danger',
-      accept: () => {
-        this.http.delete<any>(`/api/admin/vehicles/${vehicle.vehicleId}`).subscribe({
-          next: () => {
-            this.loadVehicles();
-            this.loadStats();
-            this.messageService.add({ severity: 'warn', summary: 'Vehicle removed', detail: `${vehicle.brand} ${vehicle.model} removed from the fleet.`, life: 4500 });
-          },
-          error: (err) => {
-            const msg = err?.error?.message ?? 'This vehicle may be assigned to an active route.';
-            this.messageService.add({ severity: 'error', summary: 'Could not delete', detail: msg, life: 6000 });
-          },
-        });
-      },
-    });
-  }
-
-  // ── Driver CRUD ───────────────────────────────────────
-  openDriverDialog(driver?: Driver) {
-    if (driver) { this.selectedDriver.set(driver); this.driverForm.patchValue(driver); }
-    else { this.selectedDriver.set(null); this.driverForm.reset({ isActive: true }); }
-    this.showDriverDialog = true;
-  }
-
-  saveDriver() {
-    if (this.driverForm.invalid) { this.driverForm.markAllAsTouched(); return; }
-    const data = this.driverForm.value;
-    const id   = this.selectedDriver()?.driverId;
-    const req  = id
-      ? this.http.put<any>(`/api/admin/drivers/${id}`, data)
-      : this.http.post<any>('/api/admin/drivers', data);
-    req.subscribe({
-      next: () => {
-        this.loadDrivers();
-        this.loadStats();
-        this.showDriverDialog = false;
-        this.messageService.add({
-          severity: 'success',
-          summary: id ? 'Driver updated' : 'Driver added',
-          detail: `${data.firstName} ${data.lastName} ${id ? 'updated' : 'added to the team'}.`,
-          life: 4500,
-        });
-      },
-      error: (err) => {
-        const msg = err?.error?.message ?? 'Could not save this driver.';
-        this.messageService.add({ severity: 'warn', summary: 'Validation', detail: msg, life: 6000 });
-      },
-    });
-  }
-
-  deleteDriver(driver: Driver) {
-    this.confirmService.confirm({
-      header: 'Delete driver',
-      message: `Remove <strong>${driver.firstName} ${driver.lastName}</strong> from the team?`,
-      icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Yes, delete', rejectLabel: 'Cancel', acceptButtonStyleClass: 'p-button-danger',
-      accept: () => {
-        this.http.delete<any>(`/api/admin/drivers/${driver.driverId}`).subscribe({
-          next: () => {
-            this.loadDrivers();
-            this.loadStats();
-            this.messageService.add({ severity: 'warn', summary: 'Driver removed', detail: `${driver.firstName} ${driver.lastName} was removed from the team.`, life: 4500 });
-          },
-          error: (err) => {
-            const msg = err?.error?.message ?? 'This driver may be assigned to an active route.';
-            this.messageService.add({ severity: 'error', summary: 'Could not delete', detail: msg, life: 6000 });
-          },
-        });
-      },
-    });
-  }
-
-  // ── Reservations ──────────────────────────────────────
   viewReservations(transport: Transport) {
     this.selectedTransport.set(transport);
     this.loadReservations(transport.transportId);
@@ -785,58 +505,98 @@ export class TransportsAdminComponent {
   }
 
   confirmReservation(res: TransportReservation) {
-    this.confirmService.confirm({
-      header: 'Confirm booking',
-      message: `Confirm <strong>${res.reservationRef}</strong> for <strong>${res.passengerFirstName} ${res.passengerLastName}</strong> — ${res.numberOfSeats} seat(s)?`,
-      icon: 'pi pi-check-circle',
-      acceptLabel: 'Yes, confirm', rejectLabel: 'Cancel',
-      accept: () => {
-        this.http.patch<any>(`/api/admin/transport-reservations/${res.transportReservationId}/confirm`, {}).subscribe({
+    void this.alerts
+      .confirm({
+        title: 'Confirm booking',
+        text: `Confirm ${res.reservationRef} for ${res.passengerFirstName} ${res.passengerLastName} — ${res.numberOfSeats} seat(s)?`,
+        confirmText: 'Yes, confirm',
+        cancelText: 'Cancel',
+        icon: 'question',
+      })
+      .then((r) => {
+        if (!r.isConfirmed) return;
+        this.http.patch<AdminApiEnvelope<unknown>>(`/api/admin/transport-reservations/${res.transportReservationId}/confirm`, {}).subscribe({
           next: () => {
             if (this.selectedTransport()) this.loadReservations(this.selectedTransport()!.transportId);
-            this.messageService.add({ severity: 'success', summary: 'Booking confirmed', detail: `${res.reservationRef} — ${res.passengerFirstName} ${res.passengerLastName}`, life: 4500 });
+            void this.alerts.success(
+              'Booking confirmed',
+              `${res.reservationRef} — ${res.passengerFirstName} ${res.passengerLastName}`,
+            );
           },
-          error: () => this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Could not confirm this booking.', life: 5000 }),
+          error: (err) => {
+            const msg = this.friendlyApiMessage(err, 'Could not confirm this booking.');
+            void this.alerts.error('Error', msg);
+          },
         });
-      },
-    });
+      });
   }
 
   cancelReservation(res: TransportReservation) {
-    this.confirmService.confirm({
-      header: 'Cancel booking',
-      message: `Cancel <strong>${res.reservationRef}</strong> for <strong>${res.passengerFirstName} ${res.passengerLastName}</strong>?`,
-      icon: 'pi pi-exclamation-triangle',
-      acceptLabel: 'Yes, cancel', rejectLabel: 'Keep', acceptButtonStyleClass: 'p-button-danger',
-      accept: () => {
-        this.http.patch<any>(`/api/admin/transport-reservations/${res.transportReservationId}/cancel`, { reason: 'Admin' }).subscribe({
-          next: () => {
-            if (this.selectedTransport()) this.loadReservations(this.selectedTransport()!.transportId);
-            this.messageService.add({ severity: 'warn', summary: 'Booking cancelled', detail: `${res.reservationRef} was cancelled.`, life: 4500 });
-          },
-          error: () => this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Could not cancel this booking.', life: 5000 }),
-        });
-      },
-    });
+    void this.alerts
+      .confirm({
+        title: 'Cancel booking',
+        text: `Cancel ${res.reservationRef} for ${res.passengerFirstName} ${res.passengerLastName}?`,
+        confirmText: 'Yes, cancel',
+        cancelText: 'Keep',
+        icon: 'warning',
+      })
+      .then((r) => {
+        if (!r.isConfirmed) return;
+        this.http
+          .patch<AdminApiEnvelope<unknown>>(`/api/admin/transport-reservations/${res.transportReservationId}/cancel`, { reason: 'Admin' })
+          .subscribe({
+            next: () => {
+              if (this.selectedTransport()) this.loadReservations(this.selectedTransport()!.transportId);
+              void this.alerts.success('Booking cancelled', `${res.reservationRef} was cancelled.`);
+            },
+            error: (err) => {
+              const msg = this.friendlyApiMessage(err, 'Could not cancel this booking.');
+              void this.alerts.error('Error', msg);
+            },
+          });
+      });
   }
 
-  // ── Pagination display helpers ────────────────────────
   tPageEnd()  { return Math.min(this.transportPageSig() * this.PAGE_SIZE, this.filteredTransports().length); }
-  vPageEnd()  { return Math.min(this.vehiclePageSig()   * this.PAGE_SIZE, this.filteredVehicles().length); }
-  dPageEnd()  { return Math.min(this.driverPageSig()    * this.PAGE_SIZE, this.filteredDrivers().length); }
 
-  // ── Helpers ───────────────────────────────────────────
   getTypeLabel(type: string): string {
-    return this.transportTypes.find(t => t.value === type)?.label ?? type;
-  }
-
-  getVehicleDisplayLabel(vehicleId: number): string {
-    const v = this.vehicles().find(v => v.vehicleId === vehicleId);
-    return v ? `${v.brand} ${v.model} (${v.plateNumber})` : '—';
+    const hit = this.transportTypes.find((t) => t.value === type)?.label;
+    if (hit) return hit;
+    const legacy: Record<string, string> = {
+      VAN: 'Van',
+      TRAIN: 'Train',
+      FERRY: 'Ferry',
+    };
+    return legacy[type] ?? type;
   }
 
   private toDateTimeLocal(dt: string): string {
     if (!dt) return '';
-    return new Date(dt).toISOString().slice(0, 16);
+    const d = new Date(dt);
+    if (Number.isNaN(d.getTime())) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  private toBackendLocalDateTime(value: string | null | undefined): string | null {
+    if (value == null || value === '') return null;
+    const v = String(value).trim();
+    if (!v) return null;
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v)) return `${v}:00`;
+    return v;
+  }
+
+  private friendlyApiMessage(err: unknown, fallback: string): string {
+    const body = (err as { error?: { message?: string } })?.error;
+    const m = typeof body?.message === 'string' ? body.message.trim() : '';
+    if (!m) return fallback;
+    const lower = m.toLowerCase();
+    if (lower.includes('could not execute statement') || lower.includes('foreign key')) {
+      return 'This action is blocked because related bookings or other records still exist.';
+    }
+    if (lower.startsWith('unexpected server error')) {
+      return 'Something went wrong on the server. Please try again.';
+    }
+    return m;
   }
 }

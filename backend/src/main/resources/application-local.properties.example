@@ -1,12 +1,18 @@
 # 1. Copy this file to: application-local.properties (same folder)
 # 2. application-local.properties is gitignored — put real secrets only there.
-# 3. Run the backend with: --spring.profiles.active=local
+# 3. Run the backend with: --spring.profiles.active=local (recommended for full local overrides)
 #
-# Spring Boot loads application-local.properties when profile "local" is active.
-# You can also set the same keys via environment variables (see application.properties).
+# Base defaults live in application.properties (tracked in git). Profile "local" loads this file
+# on top of those defaults. You can also override any key via environment variables.
 
 # Optional: sign-in without email verification link (dev only)
 # app.auth.require-email-verified-for-signin=false
+
+# Optional: local DB overrides (MySQL)
+# spring.datasource.url=jdbc:mysql://localhost:3306/Yallatn?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+# spring.datasource.username=root
+# spring.datasource.password=
+# spring.jpa.hibernate.ddl-auto=none
 
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
@@ -15,8 +21,14 @@ GITHUB_CLIENT_SECRET=
 FACEBOOK_CLIENT_ID=
 FACEBOOK_CLIENT_SECRET=
 IMGBB_API_KEY=
+CLARIFAI_API_KEY=
 MAIL_USERNAME=
 MAIL_APP_PASSWORD=
 STRIPE_SECRET_KEY=
+GIPHY_API_KEY=
+GEMINI_API_KEY_COMMUNITY=
+GEMINI_API_MODEL_COMMUNITY=
+STREAM_CHAT_API_KEY=
+STREAM_CHAT_SECRET=
 RECAPTCHA_SECRET=
 RECAPTCHA_SITE_KEY=

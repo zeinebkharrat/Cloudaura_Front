@@ -10,14 +10,20 @@ import org.example.backend.repository.EventReservationRepository;
 import org.example.backend.repository.TicketTypeRepository;
 import org.example.backend.repository.UserRepository;
 import org.example.backend.service.EventService;
+import org.example.backend.service.EventPosterAiService;
+import org.example.backend.service.HuggingFacePosterService;
+import org.example.backend.service.ImgBbService;
 import org.example.backend.service.EmailService;
+import org.example.backend.service.PaymentService;
 import org.example.backend.service.QrCodeService;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
@@ -40,12 +46,13 @@ public class EventController {
     private final UserRepository userRepository;
     private final QrCodeService qrCodeService;
     private final EmailService emailService;
+    private final EventPosterAiService eventPosterAiService;
+    private final HuggingFacePosterService huggingFacePosterService;
+    private final ImgBbService imgBbService;
+    private final PaymentService paymentService;
 
     @Value("${app.frontend.base-url:http://localhost:4200}")
     private String frontendBaseUrl;
-
-    @Value("${stripe.checkout.currency:usd}")
-    private String stripeCheckoutCurrency;
 
     @Value("${stripe.api.key:${STRIPE_SECRET_KEY:}}")
     private String stripeApiKey;
@@ -57,7 +64,11 @@ public class EventController {
             TicketTypeRepository ticketTypeRepository,
             UserRepository userRepository,
             QrCodeService qrCodeService,
-            EmailService emailService
+            EmailService emailService,
+            EventPosterAiService eventPosterAiService,
+            HuggingFacePosterService huggingFacePosterService,
+            ImgBbService imgBbService,
+            PaymentService paymentService
     ) {
         this.eventService = eventService;
         this.reservationRepository = reservationRepository;
@@ -66,6 +77,10 @@ public class EventController {
         this.userRepository = userRepository;
         this.qrCodeService = qrCodeService;
         this.emailService = emailService;
+        this.eventPosterAiService = eventPosterAiService;
+        this.huggingFacePosterService = huggingFacePosterService;
+        this.imgBbService = imgBbService;
+        this.paymentService = paymentService;
     }
 
     private String normalizeFrontendBase() {
@@ -80,7 +95,7 @@ public class EventController {
         return eventService.getAllEvents();
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:\\d+}")
     public ResponseEntity<Event> getEvent(@PathVariable Integer id) {
         return eventService.getEventById(id)
                 .map(ResponseEntity::ok)
@@ -102,7 +117,7 @@ public class EventController {
         }
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id:\\d+}")
     public ResponseEntity<Event> updateEvent(@PathVariable Integer id, @RequestBody Event eventDetails) {
         return eventService.getEventById(id).map(event -> {
             event.setTitle(eventDetails.getTitle());
@@ -123,8 +138,82 @@ public class EventController {
         }).orElse(ResponseEntity.notFound().build());
     }
 
+        @PostMapping(
+            value = {"/extract-from-image", "/extract-from-image/", "/admin/extract-from-image", "/admin/extract-from-image/"},
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+        )
+    public ResponseEntity<?> extractFromImage(
+            @RequestParam("file") MultipartFile file,
+            Authentication authentication
+    ) {
+        requireAdmin(authentication);
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Image file is required", "text", ""));
+        }
+
+        try {
+            String text = eventPosterAiService.extractText(file);
+            return ResponseEntity.ok(Map.of("text", text == null ? "" : text));
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of("message", ex.getMessage(), "text", ""));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage(), "text", ""));
+        } catch (Exception ex) {
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                    .body(Map.of("message", "AI extraction failed", "text", ""));
+        }
+    }
+
+    @PostMapping({"/admin/generate-poster", "/admin/generate-poster/", "/generate-poster", "/generate-poster/"})
+    public ResponseEntity<?> generatePoster(
+            @RequestBody Map<String, Object> payload,
+            Authentication authentication
+    ) {
+        requireAdmin(authentication);
+
+        String title = String.valueOf(payload.getOrDefault("title", "")).trim();
+        String city = String.valueOf(payload.getOrDefault("city", "")).trim();
+        String category = String.valueOf(payload.getOrDefault("category", "")).trim();
+        String description = String.valueOf(payload.getOrDefault("description", "")).trim();
+
+        if (title.isBlank() || city.isBlank() || category.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "message", "title, city and category are required"
+            ));
+        }
+
+        try {
+            String prompt = buildPosterPrompt(title, city, category, description);
+            byte[] posterBytes = huggingFacePosterService.generatePoster(prompt);
+            String uploadedUrl = imgBbService.uploadImageBytes(posterBytes, slugify(title) + "-poster.png");
+
+            return ResponseEntity.ok(Map.of(
+                    "prompt", prompt,
+                    "imageUrl", uploadedUrl
+            ));
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(Map.of("message", ex.getMessage()));
+        } catch (Exception ex) {
+            String details = ex.getMessage();
+            if (details == null || details.isBlank()) {
+                Throwable cause = ex.getCause();
+                if (cause != null && cause.getMessage() != null && !cause.getMessage().isBlank()) {
+                    details = cause.getMessage();
+                }
+            }
+            if (details == null || details.isBlank()) {
+                details = "Unexpected error while generating poster";
+            }
+            return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
+                    .body(Map.of("message", "Poster generation failed: " + details));
+        }
+    }
+
     // --- DELETE ---
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:\\d+}")
     public ResponseEntity<Void> deleteEvent(@PathVariable Integer id) {
         eventService.deleteEvent(id);
         return ResponseEntity.noContent().build();
@@ -293,13 +382,15 @@ public class EventController {
             reservationRepository.save(res);
 
             String base = normalizeFrontendBase();
-            String currency = stripeCheckoutCurrency == null || stripeCheckoutCurrency.isBlank()
-                    ? "usd"
-                    : stripeCheckoutCurrency.trim().toLowerCase();
-            long unitAmountMinor = Math.round(ticketPrice * 100);
+            Object prefObj = data.get("presentmentCurrency");
+            String presentmentPref = prefObj != null ? prefObj.toString().trim() : null;
+            String currency = paymentService.resolvePresentmentCurrency(presentmentPref);
+            long unitAmountMinor = paymentService.stripeMinorUnits(ticketPrice, presentmentPref);
             if (unitAmountMinor < 1) {
                 return ResponseEntity.badRequest().body("amount too small for Stripe");
             }
+            long totalMinor = unitAmountMinor * (long) quantity;
+            paymentService.assertTransportStripeChargeable(totalMinor, currency);
 
             Object eventNameObj = data.get("eventName");
             String productName = eventNameObj != null && !eventNameObj.toString().isBlank()
@@ -328,7 +419,45 @@ public class EventController {
                             .build())
                     .build();
 
-            Session session = Session.create(params);
+            Session session;
+            try {
+                session = Session.create(params);
+            } catch (StripeException exCreate) {
+                if ("tnd".equals(currency) && PaymentService.isStripePresentmentCurrencyRejected(exCreate)) {
+                    long eurUnitMinor = paymentService.stripeMinorUnits(ticketPrice, "eur");
+                    long eurTotalMinor = eurUnitMinor * (long) quantity;
+                    paymentService.assertTransportStripeChargeable(eurTotalMinor, "eur");
+                    SessionCreateParams paramsEur =
+                            SessionCreateParams.builder()
+                                    .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
+                                    .setMode(SessionCreateParams.Mode.PAYMENT)
+                                    .setClientReferenceId(String.valueOf(res.getEventReservationId()))
+                                    .putMetadata("reservationId", String.valueOf(res.getEventReservationId()))
+                                    .putMetadata("eventId", String.valueOf(eventId))
+                                    .putMetadata("ticketTypeId", String.valueOf(ticketType.getTicketTypeId()))
+                                    .putMetadata("quantity", String.valueOf(quantity))
+                                    .setSuccessUrl(base + "/success?session_id={CHECKOUT_SESSION_ID}")
+                                    .setCancelUrl(base + "/evenements")
+                                    .addLineItem(
+                                            SessionCreateParams.LineItem.builder()
+                                                    .setQuantity((long) quantity)
+                                                    .setPriceData(
+                                                            SessionCreateParams.LineItem.PriceData.builder()
+                                                                    .setCurrency("eur")
+                                                                    .setUnitAmount(eurUnitMinor)
+                                                                    .setProductData(
+                                                                            SessionCreateParams.LineItem.PriceData
+                                                                                    .ProductData.builder()
+                                                                                    .setName("Event: " + productName)
+                                                                                    .build())
+                                                                    .build())
+                                                    .build())
+                                    .build();
+                    session = Session.create(paramsEur);
+                } else {
+                    throw exCreate;
+                }
+            }
             String url = session.getUrl();
             if (url == null || url.isBlank()) {
                 return ResponseEntity.status(500).body("Stripe did not return a checkout URL");
@@ -574,6 +703,27 @@ public class EventController {
         } catch (NumberFormatException ex) {
             return null;
         }
+    }
+
+    private String buildPosterPrompt(String title, String city, String category, String description) {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("Create a cinematic event background image for Tunisia travel content. ")
+                .append("Event type: ").append(category).append(". ")
+                .append("Event name: ").append(title).append(". ")
+                .append("Location: ").append(city).append(", Tunisia. ")
+            .append("Dynamic composition, high resolution, modern style, clean space for UI overlay text. ")
+            .append("No typography, no words, no letters, no numbers, no watermark, no signature, no logo.");
+
+        if (!description.isBlank() && !"null".equalsIgnoreCase(description)) {
+            prompt.append(" Additional details: ").append(description).append('.');
+        }
+        return prompt.toString();
+    }
+
+    private String slugify(String value) {
+        String normalized = value == null ? "event" : value.toLowerCase().replaceAll("[^a-z0-9]+", "-");
+        normalized = normalized.replaceAll("^-+|-+$", "");
+        return normalized.isBlank() ? "event" : normalized;
     }
 
     private static Double parseDouble(Object value) {

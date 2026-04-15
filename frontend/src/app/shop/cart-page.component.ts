@@ -1,18 +1,26 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ShopService, ShopCart, ShopCartLine, CheckoutOrder, CheckoutBuyer } from '../core/shop.service';
+import { DualCurrencyPipe } from '../core/pipes/dual-currency.pipe';
+import { createCurrencyDisplaySyncEffect } from '../core/utils/currency-display-sync';
+import { CurrencyService } from '../core/services/currency.service';
 
 @Component({
   selector: 'app-cart-page',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, DualCurrencyPipe, TranslateModule],
   templateUrl: './cart-page.component.html',
   styleUrl: './cart-page.component.css',
 })
 export class CartPageComponent implements OnInit {
+  private readonly _currencyDisplaySync = createCurrencyDisplaySyncEffect();
+
   private readonly shop = inject(ShopService);
   private readonly router = inject(Router);
+  private readonly translate = inject(TranslateService);
+  private readonly currency = inject(CurrencyService);
 
   readonly cart = signal<ShopCart | null>(null);
   readonly loading = signal(true);
@@ -58,7 +66,7 @@ export class CartPageComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
-        this.error.set('Could not load the cart.');
+        this.error.set(this.translate.instant('CART_PAGE.MSG_LOAD_FAIL'));
         this.loading.set(false);
       },
     });
@@ -69,7 +77,7 @@ export class CartPageComponent implements OnInit {
       next: (c) => {
         this.cart.set(c);
       },
-      error: () => this.error.set('Could not remove the item.'),
+      error: () => this.error.set(this.translate.instant('CART_PAGE.MSG_REMOVE_FAIL')),
     });
   }
 
@@ -85,7 +93,7 @@ export class CartPageComponent implements OnInit {
     const next = line.quantity + delta;
     const max = this.maxStock(line);
     if (delta > 0 && next > max) {
-      this.error.set('Maximum stock reached for this product.');
+      this.error.set(this.translate.instant('CART_PAGE.MSG_MAX_STOCK'));
       return;
     }
     if (next < 0) {
@@ -100,7 +108,7 @@ export class CartPageComponent implements OnInit {
       },
       error: () => {
         this.qtyUpdatingId.set(null);
-        this.error.set('Could not update quantity.');
+        this.error.set(this.translate.instant('CART_PAGE.MSG_UPDATE_QTY_FAIL'));
       },
     });
   }
@@ -113,7 +121,7 @@ export class CartPageComponent implements OnInit {
   checkout(): void {
     this.checkoutLoading.set(true);
     this.error.set(null);
-    this.shop.checkout(this.paymentMethod()).subscribe({
+    this.shop.checkout(this.paymentMethod(), this.currency.selectedCode()).subscribe({
       next: (o) => {
         this.cart.set({ cartId: null, items: [], total: 0 });
         this.shop.refreshCartCount();
@@ -127,8 +135,11 @@ export class CartPageComponent implements OnInit {
       },
       error: (e) => {
         this.checkoutLoading.set(false);
-        const msg = e?.error?.message ?? e?.message ?? 'Checkout failed (stock or empty cart).';
-        this.error.set(typeof msg === 'string' ? msg : 'Checkout failed.');
+        const msg =
+          e?.error?.message ?? e?.message ?? this.translate.instant('CART_PAGE.MSG_CHECKOUT_FAIL');
+        this.error.set(
+          typeof msg === 'string' ? msg : this.translate.instant('CART_PAGE.MSG_CHECKOUT_FAIL_GENERIC')
+        );
       },
     });
   }
@@ -139,39 +150,34 @@ export class CartPageComponent implements OnInit {
     return url.startsWith('/') ? url : `/${url}`;
   }
 
-  formatPrice(p: number | null | undefined): string {
-    if (p == null || Number.isNaN(Number(p))) return '—';
-    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'TND', minimumFractionDigits: 2 }).format(
-      Number(p)
-    );
-  }
-
   orderStatusLabel(status: string | null | undefined): string {
     const s = (status ?? '').toUpperCase();
-    if (s === 'PENDING') return 'Pending';
-    if (s === 'CONFIRMED' || s === 'CONFIRMÉE') return 'Confirmed';
-    if (s === 'SHIPPED') return 'Shipped';
-    if (s === 'DELIVERED') return 'Delivered';
-    if (s === 'CANCELLED') return 'Cancelled';
-    return status ?? '—';
+    if (s === 'PENDING') return this.translate.instant('CART_PAGE.STATUS_PENDING');
+    if (s === 'CONFIRMED' || s === 'CONFIRMÉE') return this.translate.instant('CART_PAGE.STATUS_CONFIRMED');
+    if (s === 'SHIPPED') return this.translate.instant('CART_PAGE.STATUS_SHIPPED');
+    if (s === 'DELIVERED') return this.translate.instant('CART_PAGE.STATUS_DELIVERED');
+    if (s === 'CANCELLED') return this.translate.instant('CART_PAGE.STATUS_CANCELLED');
+    return status ?? this.translate.instant('COMMON.DASH');
   }
 
   formatOrderedAt(iso: string | null | undefined): string {
-    if (!iso) return '—';
+    if (!iso) return this.translate.instant('COMMON.DASH');
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
-    return new Intl.DateTimeFormat('en-GB', {
+    const lang = this.translate.currentLang || this.translate.defaultLang || 'en';
+    const locale = lang === 'fr' ? 'fr-FR' : lang === 'ar' ? 'ar' : lang === 'en' ? 'en-GB' : lang;
+    return new Intl.DateTimeFormat(locale, {
       dateStyle: 'long',
       timeStyle: 'short',
     }).format(d);
   }
 
   buyerDisplayName(b: CheckoutBuyer | null | undefined): string {
-    if (!b) return '—';
+    if (!b) return this.translate.instant('COMMON.DASH');
     const fn = (b.firstName ?? '').trim();
     const ln = (b.lastName ?? '').trim();
     const full = `${fn} ${ln}`.trim();
     if (full) return full;
-    return b.username ?? '—';
+    return b.username ?? this.translate.instant('COMMON.DASH');
   }
 }

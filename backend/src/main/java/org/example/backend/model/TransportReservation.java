@@ -1,6 +1,5 @@
 package org.example.backend.model;
 
-import org.example.backend.model.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -58,6 +57,10 @@ public class TransportReservation {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    @Column(name = "reminder_one_hour_sent", nullable = false)
+    @Builder.Default
+    private boolean reminderOneHourSent = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "transport_id")
     private Transport transport;
@@ -67,6 +70,6 @@ public class TransportReservation {
     private User user;
 
     public enum ReservationStatus { PENDING, CONFIRMED, CANCELLED }
-    public enum PaymentMethod { CASH, KONNECT }
+    public enum PaymentMethod { CASH, KONNECT, STRIPE, PAYPAL }
     public enum PaymentStatus { PENDING, PAID, REFUNDED }
 }

@@ -21,6 +21,8 @@ public class ActivityReservation {
     private Date reservationDate;
     private Integer numberOfPeople;
     private Double totalPrice;
+    @Column(length = 1200)
+    private String receiptPdfUrl;
  
     @Enumerated(EnumType.STRING)
     private ReservationStatus status;
@@ -39,6 +41,8 @@ public class ActivityReservation {
     public void setNumberOfPeople(Integer n) { this.numberOfPeople = n; }
     public Double getTotalPrice() { return totalPrice; }
     public void setTotalPrice(Double p) { this.totalPrice = p; }
+    public String getReceiptPdfUrl() { return receiptPdfUrl; }
+    public void setReceiptPdfUrl(String receiptPdfUrl) { this.receiptPdfUrl = receiptPdfUrl; }
     public ReservationStatus getStatus() { return status; }
     public void setStatus(ReservationStatus s) { this.status = s; }
 }

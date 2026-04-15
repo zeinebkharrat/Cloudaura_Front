@@ -1,24 +1,81 @@
 @if (loading()) {
-  <section class="city-page"><p class="state">Loading city...</p></section>
+  <section class="city-page"><p class="state">{{ 'EXPLORE_CITY.LOADING' | translate }}</p></section>
 } @else if (error()) {
   <section class="city-page"><p class="state error">{{ error() }}</p></section>
 } @else {
   @if (details(); as vm) {
   <section class="city-page">
-    <button class="back-btn floating-back" type="button" (click)="goBack()" aria-label="Back">←</button>
+    <button class="back-btn floating-back" type="button" (click)="goBack()" [attr.aria-label]="'COMMON.BACK' | translate">←</button>
     <article class="hero-card animate-in">
       <div class="hero-visual" (click)="onHeroClick($event)">
         <img class="hero-image" [src]="heroImage()" [alt]="vm.city.name" />
         <div class="hero-gradient"></div>
         <div class="hero-caption hero-overlay-content">
-          <p class="chip">Tunisia Destination</p>
+          <p class="chip">{{ 'EXPLORE_CITY.CHIP' | translate }}</p>
           <h1>{{ vm.city.name }}</h1>
-          <p class="hero-description">{{ vm.city.description || 'Discover this Tunisian city and its unique experiences.' }}</p>
+          <p class="hero-description">{{ vm.city.description || ('EXPLORE_CITY.HERO_DESC_FALLBACK' | translate) }}</p>
           <p class="hero-subtext">{{ currentCaption() }}</p>
           <div class="hero-actions">
-            <button class="btn" type="button" (click)="scrollToSection('restaurants'); $event.stopPropagation()">Explore restaurants</button>
-            <button class="btn ghost" type="button" (click)="scrollToSection('activities'); $event.stopPropagation()">See activities</button>
-            <button class="btn ghost" type="button" (click)="goToMapZoomOut(); $event.stopPropagation()">Back to map</button>
+            <button class="btn" type="button" (click)="scrollToSection('restaurants'); $event.stopPropagation()">{{ 'EXPLORE_CITY.BTN_RESTAURANTS' | translate }}</button>
+            <button class="btn ghost" type="button" (click)="scrollToSection('activities'); $event.stopPropagation()">{{ 'EXPLORE_CITY.BTN_ACTIVITIES' | translate }}</button>
+            <button class="btn ghost" type="button" (click)="goToMapZoomOut(); $event.stopPropagation()">{{ 'EXPLORE_CITY.BTN_MAP' | translate }}</button>
+          </div>
+
+          <div class="weather-cluster" (click)="$event.stopPropagation()">
+            <button class="weather-box" type="button" (click)="openWeatherDrawer()">
+              @if (weatherLoading()) {
+                <p class="weather-line">Loading weather...</p>
+              } @else if (weatherError()) {
+                <p class="weather-line weather-error">{{ weatherError() }}</p>
+              } @else {
+                <p class="weather-line weather-title">Today weather</p>
+                <p class="weather-line weather-main">{{ weatherIcon() }} {{ weatherLabel() }}</p>
+                <p class="weather-line weather-meta">
+                  @if (weatherTemperature() !== null) {
+                    <span>{{ weatherTemperature() }}°C</span>
+                  }
+                  @if (weatherWind() !== null) {
+                    <span> • Wind {{ weatherWind() }} km/h</span>
+                  }
+                </p>
+                <p class="weather-line weather-hint">Tap for weekly forecast →</p>
+              }
+            </button>
+
+            @if (weatherDrawerOpen()) {
+              <section class="weather-inline-panel" aria-label="Weekly weather panel">
+                <header class="weather-inline-head">
+                  <div>
+                    <h3>Weekly Weather</h3>
+                    <p>{{ vm.city.name }}</p>
+                  </div>
+                  <button type="button" class="weather-close-btn" (click)="closeWeatherDrawer()">×</button>
+                </header>
+
+                @if (weeklyWeatherLoading()) {
+                  <p class="weather-drawer-state">Loading weekly forecast...</p>
+                } @else if (weeklyWeatherError()) {
+                  <p class="weather-drawer-state error">{{ weeklyWeatherError() }}</p>
+                } @else if (weeklyForecast().length === 0) {
+                  <p class="weather-drawer-state">No weekly data available.</p>
+                } @else {
+                  <div class="weather-week-list">
+                    @for (day of weeklyForecast(); track day.date) {
+                      <article class="weather-week-item">
+                        <div class="weather-day-main">
+                          <strong>{{ weeklyDayLabel(day.date) }}</strong>
+                          <span>{{ weeklyDaySummary(day.weatherCode).icon }} {{ weeklyDaySummary(day.weatherCode).label }}</span>
+                        </div>
+                        <div class="weather-day-meta">
+                          <span>{{ day.minTemp ?? '—' }}°C / {{ day.maxTemp ?? '—' }}°C</span>
+                          <span>Wind {{ day.windMax ?? '—' }} km/h</span>
+                        </div>
+                      </article>
+                    }
+                  </div>
+                }
+              </section>
+            }
           </div>
         </div>
         @if (hasMultipleImages()) {
@@ -31,14 +88,14 @@
 
     <section id="restaurants" class="block animate-in delay-2">
       <div class="block-head">
-        <h2>{{ vm.city.name }} restaurants</h2>
+        <h2>{{ 'EXPLORE_CITY.RESTAURANTS_HEADING' | translate: { name: vm.city.name } }}</h2>
       </div>
       @if (vm.restaurants.length === 0) {
-          <p class="muted">No restaurants available.</p>
+          <p class="muted">{{ 'EXPLORE_CITY.EMPTY_RESTAURANTS' | translate }}</p>
       } @else {
         <div class="related-carousel" [class.with-controls]="hasRestaurantCarouselControls()">
           @if (hasRestaurantCarouselControls()) {
-            <button class="related-nav prev" type="button" (click)="previousRestaurantPage()" aria-label="Previous restaurants">‹</button>
+            <button class="related-nav prev" type="button" (click)="previousRestaurantPage()" [attr.aria-label]="'EXPLORE_CITY.CAROUSEL_PREV_REST' | translate">‹</button>
           }
 
           <div class="related-viewport">
@@ -51,9 +108,13 @@
                         <img [src]="restaurant.imageUrl || heroImage()" [alt]="restaurant.name" loading="lazy" />
                         <div class="related-content">
                           <h4>{{ restaurant.name }}</h4>
-                          <p>{{ restaurant.description || ('Cuisine: ' + (restaurant.cuisineType || 'Local')) }}</p>
+                          @if (restaurant.description) {
+                            <p>{{ restaurant.description }}</p>
+                          } @else {
+                            <p>{{ 'EXPLORE_CITY.CUISINE_PREFIX' | translate: { type: (restaurant.cuisineType || ('EXPLORE_CITY.CUISINE_LOCAL' | translate)) } }}</p>
+                          }
                           <div class="related-meta">
-                            <span>{{ restaurant.cuisineType || 'Local cuisine' }}</span>
+                            <span>{{ restaurant.cuisineType || ('EXPLORE_CITY.CUISINE_DEFAULT' | translate) }}</span>
                             <span class="rating-badge">
                               <span class="stars">
                                 @for (state of starStates(restaurantRating(restaurant.restaurantId)); track $index) {
@@ -62,7 +123,7 @@
                               </span>
                             </span>
                           </div>
-                          <a class="btn" [routerLink]="['/restaurants', restaurant.restaurantId]">Details</a>
+                          <a class="btn" [routerLink]="['/restaurants', restaurant.restaurantId]">{{ 'EXPLORE_CITY.DETAILS' | translate }}</a>
                         </div>
                       </article>
                     }
@@ -73,14 +134,14 @@
           </div>
 
           @if (hasRestaurantCarouselControls()) {
-            <button class="related-nav next" type="button" (click)="nextRestaurantPage()" aria-label="Next restaurants">›</button>
+            <button class="related-nav next" type="button" (click)="nextRestaurantPage()" [attr.aria-label]="'EXPLORE_CITY.CAROUSEL_NEXT_REST' | translate">›</button>
           }
         </div>
 
         @if (hasRestaurantCarouselControls()) {
           <div class="related-dots">
             @for (_page of restaurantPages(); track $index) {
-              <button class="related-dot" type="button" [class.active]="restaurantPageIndex() === $index" (click)="goToRestaurantPage($index)" [attr.aria-label]="'Page ' + ($index + 1)"></button>
+              <button class="related-dot" type="button" [class.active]="restaurantPageIndex() === $index" (click)="goToRestaurantPage($index)" [attr.aria-label]="'EXPLORE_CITY.PAGE' | translate: { n: ($index + 1) }"></button>
             }
           </div>
         }
@@ -89,14 +150,14 @@
 
     <section id="activities" class="block animate-in delay-3">
       <div class="block-head">
-        <h2>{{ vm.city.name }} activities</h2>
+        <h2>{{ 'EXPLORE_CITY.ACTIVITIES_HEADING' | translate: { name: vm.city.name } }}</h2>
       </div>
       @if (vm.activities.length === 0) {
-        <p class="muted">No activities available.</p>
+        <p class="muted">{{ 'EXPLORE_CITY.EMPTY_ACTIVITIES' | translate }}</p>
       } @else {
         <div class="related-carousel" [class.with-controls]="hasActivityCarouselControls()">
           @if (hasActivityCarouselControls()) {
-            <button class="related-nav prev" type="button" (click)="previousActivityPage()" aria-label="Previous activities">‹</button>
+            <button class="related-nav prev" type="button" (click)="previousActivityPage()" [attr.aria-label]="'EXPLORE_CITY.CAROUSEL_PREV_ACT' | translate">‹</button>
           }
 
           <div class="related-viewport">
@@ -109,9 +170,13 @@
                         <img [src]="activityCardImage(activity)" [alt]="activity.name" loading="lazy" />
                         <div class="related-content">
                           <h4>{{ activity.name }}</h4>
-                          <p>{{ activity.description || ('Type: ' + (activity.type || 'Tourist activity')) }}</p>
+                          @if (activity.description) {
+                            <p>{{ activity.description }}</p>
+                          } @else {
+                            <p>{{ 'EXPLORE_CITY.TYPE_PREFIX' | translate: { type: (activity.type || ('EXPLORE_CITY.TOURIST_ACTIVITY' | translate)) } }}</p>
+                          }
                           <div class="related-meta">
-                            <span>{{ activity.type || 'Tourist activity' }}</span>
+                            <span>{{ activity.type || ('EXPLORE_CITY.TOURIST_ACTIVITY' | translate) }}</span>
                             <span class="rating-badge">
                               <span class="stars">
                                 @for (state of starStates(activityRating(activity.activityId)); track $index) {
@@ -120,7 +185,7 @@
                               </span>
                             </span>
                           </div>
-                          <a class="btn" [routerLink]="['/activities', activity.activityId]">Details</a>
+                          <a class="btn" [routerLink]="['/activities', activity.activityId]">{{ 'EXPLORE_CITY.DETAILS' | translate }}</a>
                         </div>
                       </article>
                     }
@@ -131,19 +196,20 @@
           </div>
 
           @if (hasActivityCarouselControls()) {
-            <button class="related-nav next" type="button" (click)="nextActivityPage()" aria-label="Next activities">›</button>
+            <button class="related-nav next" type="button" (click)="nextActivityPage()" [attr.aria-label]="'EXPLORE_CITY.CAROUSEL_NEXT_ACT' | translate">›</button>
           }
         </div>
 
         @if (hasActivityCarouselControls()) {
           <div class="related-dots">
             @for (_page of activityPages(); track $index) {
-              <button class="related-dot" type="button" [class.active]="activityPageIndex() === $index" (click)="goToActivityPage($index)" [attr.aria-label]="'Page ' + ($index + 1)"></button>
+              <button class="related-dot" type="button" [class.active]="activityPageIndex() === $index" (click)="goToActivityPage($index)" [attr.aria-label]="'EXPLORE_CITY.PAGE' | translate: { n: ($index + 1) }"></button>
             }
           </div>
         }
       }
     </section>
   </section>
+
   }
 }

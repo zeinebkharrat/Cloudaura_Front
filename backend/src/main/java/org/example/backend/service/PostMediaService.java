@@ -36,6 +36,12 @@ public class PostMediaService implements IPostMediaService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public PostMedia retrieveMediaWithPostAuthor(Integer mediaId) {
+        return postMediaRepo.findByIdWithPostAuthor(mediaId).orElse(null);
+    }
+
+    @Override
     public void removeMedia(Integer mediaId) {
         postMediaRepo.deleteById(mediaId);
     }

@@ -8,12 +8,13 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * Runs once at startup to ensure the `status` columns in `orders` and
- * `order_items` are VARCHAR(20) instead of MySQL ENUM.
- *
- * Hibernate's ddl-auto=update never changes an existing column type,
- * so this runner performs the ALTER TABLE idempotently (safe to run
- * on every restart – it is a no-op if the column is already VARCHAR).
+ * Runs once at startup to ensure selected columns are VARCHAR instead of MySQL ENUM.
+ * <ul>
+ *   <li>{@code orders.status}, {@code order_items.status}</li>
+ *   <li>{@code transport_reservations.payment_method}, {@code transport_reservations.payment_status}
+ *       — required so values like {@code STRIPE} are accepted (ENUMs created before Stripe often omit it)</li>
+ * </ul>
+ * Hibernate's ddl-auto=update never changes an existing column type, so this runner alters idempotently.
  */
 @Component
 @Order(1)
@@ -29,11 +30,84 @@ public class SchemaRepairRunner implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        ensureMediaScoreSchema();
         fixStatusColumn("orders");
         fixStatusColumn("order_items");
         ensureTicketTypeColumns();
         ensureEventReservationItemQrTokenColumn();
         ensureEventReservationItemScanColumns();
+        ensureMessageVoiceColumns();
+        ensureMessageE2eeColumns();
+        ensureUserE2eeColumns();
+        fixTransportReservationEnumColumn("payment_method", 20);
+        fixTransportReservationEnumColumn("payment_status", 20);
+    }
+
+    private void ensureMediaScoreSchema() {
+        ensureColumnExists("posts", "total_views", "INT NOT NULL DEFAULT 0");
+        ensureColumnExists("posts", "repost_count", "INT NOT NULL DEFAULT 0");
+        ensureColumnExists("posts", "post_score", "DOUBLE NOT NULL DEFAULT 0");
+
+        ensureColumnExists("users", "monthly_score", "DOUBLE NOT NULL DEFAULT 0");
+        ensureColumnExists("users", "lifetime_score", "DOUBLE NOT NULL DEFAULT 0");
+        ensureColumnExists("users", "last_reset_date", "DATETIME NULL");
+
+        ensurePostViewsTable();
+    }
+
+    private void ensurePostViewsTable() {
+        try {
+            jdbcTemplate.execute(
+                    "CREATE TABLE IF NOT EXISTS post_views ("
+                            + "view_id INT AUTO_INCREMENT PRIMARY KEY,"
+                            + "user_id INT NOT NULL,"
+                            + "post_id INT NOT NULL,"
+                            + "month_key VARCHAR(7) NOT NULL,"
+                            + "created_at DATETIME NOT NULL,"
+                            + "CONSTRAINT fk_post_views_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,"
+                            + "CONSTRAINT fk_post_views_post FOREIGN KEY (post_id) REFERENCES posts(post_id) ON DELETE CASCADE,"
+                            + "UNIQUE KEY uk_post_views_user_post_month (user_id, post_id, month_key),"
+                            + "INDEX idx_post_views_post_month (post_id, month_key)"
+                            + ")"
+            );
+        } catch (Exception e) {
+            log.error("SchemaRepairRunner: failed to ensure post_views table - {}", e.getMessage());
+        }
+    }
+
+    private void ensureMessageVoiceColumns() {
+        ensureColumnExists("messages", "message_type", "VARCHAR(20) NULL");
+        ensureColumnExists("messages", "voice_url", "VARCHAR(1024) NULL");
+        ensureColumnExists("messages", "voice_duration_sec", "INT NULL");
+    }
+
+    private void ensureMessageE2eeColumns() {
+        ensureColumnExists("messages", "encrypted_key", "VARCHAR(4096) NULL");
+        ensureColumnExists("messages", "encryption_iv", "VARCHAR(512) NULL");
+    }
+
+    private void ensureUserE2eeColumns() {
+        ensureColumnExists("users", "e2ee_public_key", "TEXT NULL");
+    }
+
+    private void ensureColumnExists(String tableName, String columnName, String columnDefinition) {
+        try {
+            String sql = "SELECT COUNT(*) FROM information_schema.COLUMNS "
+                    + "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?";
+
+            Integer count = jdbcTemplate.queryForObject(sql, Integer.class, tableName, columnName);
+            if (count != null && count > 0) {
+                return;
+            }
+
+            log.warn("Adding missing column `{}.{}`", tableName, columnName);
+            jdbcTemplate.execute(
+                    "ALTER TABLE `" + tableName + "` ADD COLUMN `" + columnName + "` " + columnDefinition
+            );
+            log.info("Added column `{}.{}`", tableName, columnName);
+        } catch (Exception e) {
+            log.error("SchemaRepairRunner: failed to ensure column `{}.{}` – {}", tableName, columnName, e.getMessage());
+        }
     }
 
     private void fixStatusColumn(String tableName) {
@@ -164,6 +238,63 @@ public class SchemaRepairRunner implements CommandLineRunner {
             }
         } catch (Exception e) {
             log.error("SchemaRepairRunner: failed to ensure scan columns - {}", e.getMessage());
+        }
+    }
+
+    /**
+     * MySQL ENUM on {@code transport_reservations} rejects new enum labels (e.g. STRIPE) → error 1265
+     * "Data truncated for column 'payment_method'".
+     */
+    private void fixTransportReservationEnumColumn(String columnName, int varcharLength) {
+        final String tableName = "transport_reservations";
+        try {
+            String sql =
+                    "SELECT DATA_TYPE, CHARACTER_MAXIMUM_LENGTH FROM information_schema.COLUMNS "
+                            + "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?";
+            jdbcTemplate.query(
+                    sql,
+                    rs -> {
+                        String dataType = rs.getString("DATA_TYPE");
+                        int maxLen = rs.getInt("CHARACTER_MAXIMUM_LENGTH");
+                        boolean needsFix =
+                                "enum".equalsIgnoreCase(dataType)
+                                        || ("varchar".equalsIgnoreCase(dataType) && maxLen < varcharLength);
+                        if (needsFix) {
+                            log.warn(
+                                    "Fixing column `{}`.`{}` (was {} – altering to VARCHAR({}))",
+                                    tableName,
+                                    columnName,
+                                    dataType,
+                                    varcharLength);
+                            jdbcTemplate.execute(
+                                    "ALTER TABLE `"
+                                            + tableName
+                                            + "` MODIFY COLUMN `"
+                                            + columnName
+                                            + "` VARCHAR("
+                                            + varcharLength
+                                            + ")");
+                            log.info(
+                                    "Column `{}`.`{}` successfully set to VARCHAR({})",
+                                    tableName,
+                                    columnName,
+                                    varcharLength);
+                        } else {
+                            log.debug(
+                                    "Column `{}`.`{}` is already {} – no fix needed",
+                                    tableName,
+                                    columnName,
+                                    dataType);
+                        }
+                    },
+                    tableName,
+                    columnName);
+        } catch (Exception e) {
+            log.error(
+                    "SchemaRepairRunner: failed to check/fix `{}`.`{}` – {}",
+                    tableName,
+                    columnName,
+                    e.getMessage());
         }
     }
 }

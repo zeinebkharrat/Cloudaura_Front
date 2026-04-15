@@ -1,4 +1,8 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, HostListener, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { LanguageService } from './core/services/language.service';
+import { CurrencyService } from './core/services/currency.service';
 import { forkJoin } from 'rxjs';
 import { ActivatedRoute, Data, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -21,8 +25,13 @@ import { TooltipModule } from 'primeng/tooltip';
 import Swal from 'sweetalert2';
 
 export interface FeatureBlock {
-  title: string;
-  items: string[];
+  /** Legacy: plain title when not using i18n */
+  title?: string;
+  /** i18n key for title (e.g. FEATURE.ARTISANAT_BLOCKS.B1.TITLE) */
+  titleKey?: string;
+  items?: string[];
+  /** i18n keys for bullet items */
+  itemKeys?: string[];
   icon?: string;
 }
 
@@ -50,6 +59,7 @@ export interface CatalogProduct {
     CommonModule,
     RouterLink,
     FormsModule,
+    TranslateModule,
     DialogModule,
     GalleriaModule,
     ButtonModule,
@@ -61,7 +71,11 @@ export interface CatalogProduct {
   styleUrl: './feature-page.component.css',
 })
 export class FeaturePageComponent implements OnInit {
+  private readonly aiGeneratedImageStorageKey = 'eventManagement.aiGeneratedImages';
   private route = inject(ActivatedRoute);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly translate = inject(TranslateService);
+  private readonly language = inject(LanguageService);
   private http = inject(HttpClient);
   readonly router = inject(Router);
   readonly auth = inject(AuthService);
@@ -69,14 +83,24 @@ export class FeaturePageComponent implements OnInit {
   private readonly eventService = inject(EventService);
   private readonly notifier = inject(NotificationService);
   private readonly loginPrompt = inject(LoginRequiredPromptService);
+  private readonly currency = inject(CurrencyService);
 
   kicker = '';
   title = '';
   description = '';
+  /** Route `data.i18n` id (e.g. DESTINATIONS) → keys under FEATURE.{id}.* */
+  private featureI18nId: string | null = null;
   accent: FeatureAccent = 'coral';
   highlights: string[] = [];
   blocks: FeatureBlock[] = [];
   events: TravelEvent[] = [];
+  eventFilterCity = 'ALL';
+  eventFilterType = 'ALL';
+  eventMaxPriceCap = 500;
+  eventMaxPrice = 500;
+  eventCityDropdownOpen = false;
+  eventCitySearch = '';
+  private deepLinkedEventId: number | null = null;
   isEventFeed = false;
   isLoadingEvents = false;
   eventsLoadError: string | null = null;
@@ -85,9 +109,9 @@ export class FeaturePageComponent implements OnInit {
   readonly eventJoinError = signal<string | null>(null);
 
   catalog: 'none' | 'products' = 'none';
-  catalogProducts: CatalogProduct[] = [];
-  catalogLoading = false;
-  catalogError: string | null = null;
+  catalogProducts = signal<CatalogProduct[]>([]);
+  catalogLoading = signal(false);
+  catalogError = signal<string | null>(null);
 
   searchQuery = signal('');
   selectedCategory = signal<string | null>(null);
@@ -99,7 +123,7 @@ export class FeaturePageComponent implements OnInit {
   readonly filteredCatalogProducts = computed(() => {
     const query = this.searchQuery().toLowerCase().trim();
     const cat = this.selectedCategory();
-    return this.catalogProducts.filter(p => {
+    return this.catalogProducts().filter(p => {
       const matchQuery = !query
         || p.name.toLowerCase().includes(query)
         || (p.description?.toLowerCase().includes(query) ?? false)
@@ -122,14 +146,15 @@ export class FeaturePageComponent implements OnInit {
   });
 
   readonly isArtisan = computed(() => {
-    const user = this.auth.currentUser();
-    return this.auth.hasRole('ROLE_ARTISAN') || (user?.artisanRequestPending === true);
+    return this.auth.hasRole('ROLE_ARTISAN');
   });
 
   readonly showProductForm = signal(false);
   readonly artisanProducts = signal<CatalogProduct[]>([]);
   readonly artisanProductsLoading = signal(false);
   readonly artisanProductsError = signal<string | null>(null);
+  readonly autoDescriptionLoading = signal(false);
+  readonly autoDescriptionError = signal<string | null>(null);
 
   readonly newProduct = signal<Partial<CatalogProduct>>({
     name: '',
@@ -254,10 +279,12 @@ export class FeaturePageComponent implements OnInit {
   // Product Details Modal
   readonly showProductDetails = signal(false);
   readonly selectedItem = signal<CatalogProduct | null>(null);
+  detailImageIndex = 0;
 
   openProductDetails(p: CatalogProduct): void {
     this.detailSelectedColor.set(null);
     this.detailSelectedSize.set(null);
+    this.detailImageIndex = 0;
     this.selectedItem.set(p);
     this.showProductDetails.set(true);
     this.maybePreselectVariant(p);
@@ -296,6 +323,7 @@ export class FeaturePageComponent implements OnInit {
 
   closeProductDetails(): void {
     this.showProductDetails.set(false);
+    this.detailImageIndex = 0;
     this.detailSelectedColor.set(null);
     this.detailSelectedSize.set(null);
     const item = this.selectedItem();
@@ -307,6 +335,18 @@ export class FeaturePageComponent implements OnInit {
       });
     }
     this.selectedItem.set(null);
+  }
+
+  detailImagePrev(p: CatalogProduct): void {
+    const n = this.getGalleryImages(p).length;
+    if (n <= 1) return;
+    this.detailImageIndex = (this.detailImageIndex - 1 + n) % n;
+  }
+
+  detailImageNext(p: CatalogProduct): void {
+    const n = this.getGalleryImages(p).length;
+    if (n <= 1) return;
+    this.detailImageIndex = (this.detailImageIndex + 1) % n;
   }
 
   onCityChange(id: any): void {
@@ -321,17 +361,46 @@ export class FeaturePageComponent implements OnInit {
   readonly isUploadingImage = signal(false);
 
   ngOnInit(): void {
+    this.translate.onLangChange.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      if (this.featureI18nId) {
+        this.applyI18nHeadings();
+      }
+    });
     this.applyData(this.route.snapshot.data);
     this.route.data.subscribe((d) => this.applyData(d));
+    this.route.queryParamMap.subscribe((params) => {
+      const raw = params.get('eventId');
+      const parsed = raw == null ? Number.NaN : Number(raw);
+      this.deepLinkedEventId = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+      this.tryOpenDeepLinkedEvent();
+    });
     if (this.isArtisan()) {
       this.loadArtisanProducts();
     }
   }
 
+  private applyI18nHeadings(): void {
+    const id = this.featureI18nId;
+    if (!id) {
+      return;
+    }
+    const base = `FEATURE.${id}`;
+    this.kicker = String(this.translate.instant(`${base}.KICKER`));
+    this.title = String(this.translate.instant(`${base}.TITLE`));
+    this.description = String(this.translate.instant(`${base}.DESC`));
+  }
+
   private applyData(d: Data): void {
-    this.kicker = String(d['kicker'] ?? 'Module');
-    this.title = String(d['title'] ?? '');
-    this.description = String(d['description'] ?? '');
+    const i18nId = d['i18n'];
+    if (typeof i18nId === 'string' && i18nId.length > 0) {
+      this.featureI18nId = i18nId;
+      this.applyI18nHeadings();
+    } else {
+      this.featureI18nId = null;
+      this.kicker = String(d['kicker'] ?? 'Module');
+      this.title = String(d['title'] ?? '');
+      this.description = String(d['description'] ?? '');
+    }
     const a = d['accent'];
     if (typeof a === 'string' && ['coral', 'blue', 'gold', 'violet', 'sand', 'emerald', 'rose'].includes(a)) {
       this.accent = a as FeatureAccent;
@@ -346,13 +415,14 @@ export class FeaturePageComponent implements OnInit {
       this.loadProducts();
       this.loadCities();
     } else {
-      this.catalogProducts = [];
-      this.catalogError = null;
+      this.catalogProducts.set([]);
+      this.catalogError.set(null);
     }
 
     const shouldLoadEvents = d['eventFeed'] === true || this.title === 'Events';
     this.isEventFeed = shouldLoadEvents;
     if (shouldLoadEvents) {
+      this.loadCities();
       this.loadEvents();
     } else {
       this.events = [];
@@ -375,37 +445,38 @@ export class FeaturePageComponent implements OnInit {
   }
 
   loadProducts(): void {
-    this.catalogLoading = true;
+    this.catalogLoading.set(true);
+    this.catalogError.set(null);
     const cityId = this.selectedCityId();
-    let primary = `${API_BASE_URL}/api/products`;
-    if (cityId) primary += `?cityId=${cityId}`;
-    const fallback = `${API_FALLBACK_ORIGIN}/api/products${cityId ? `?cityId=${cityId}` : ''}`;
+    const lang = this.language.currentLang();
+    const langParam = `lang=${encodeURIComponent(lang)}`;
+    let primary = `${API_BASE_URL}/api/products?${langParam}`;
+    if (cityId) primary += `&cityId=${cityId}`;
+    const fallback = `${API_FALLBACK_ORIGIN}/api/products?${langParam}${cityId ? `&cityId=${cityId}` : ''}`;
     const tryFallback = API_BASE_URL === '';
 
     this.http.get<CatalogProduct[]>(primary).subscribe({
       next: (list) => {
-        this.catalogProducts = list ?? [];
-        this.catalogLoading = false;
+        this.catalogProducts.set(list ?? []);
+        this.catalogLoading.set(false);
         this.catalogImageFailed.set(new Set());
       },
       error: () => {
         if (tryFallback) {
           this.http.get<CatalogProduct[]>(fallback).subscribe({
             next: (list) => {
-              this.catalogProducts = list ?? [];
-              this.catalogLoading = false;
+              this.catalogProducts.set(list ?? []);
+              this.catalogLoading.set(false);
               this.catalogImageFailed.set(new Set());
             },
             error: () => {
-              this.catalogError =
-                'Could not load the catalog. Start the backend (default port 9091) and run `ng serve` with the Angular proxy.';
-              this.catalogLoading = false;
+              this.catalogError.set('Could not load the catalog. Start the backend (default port 9091) and run `ng serve` with the Angular proxy.');
+              this.catalogLoading.set(false);
             },
           });
         } else {
-          this.catalogError =
-            'Could not load the catalog. Check that the backend is running (e.g. port 9091) and that the Angular proxy is configured.';
-          this.catalogLoading = false;
+          this.catalogError.set('Could not load the catalog. Check that the backend is running (e.g. port 9091) and that the Angular proxy is configured.');
+          this.catalogLoading.set(false);
         }
       },
     });
@@ -432,8 +503,12 @@ export class FeaturePageComponent implements OnInit {
   }
 
   formatPrice(p: number | null | undefined): string {
-    if (p == null || Number.isNaN(Number(p))) return '—';
-    return new Intl.NumberFormat('en-US', {
+    if (p == null || Number.isNaN(Number(p))) {
+      return this.translate.instant('FEATURE_CATALOG.PRICE_DASH');
+    }
+    const lang = this.language.currentLang();
+    const locale = lang === 'ar' ? 'ar-TN' : lang === 'fr' ? 'fr-FR' : 'en-US';
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
       currency: 'TND',
       minimumFractionDigits: 2,
@@ -468,13 +543,13 @@ export class FeaturePageComponent implements OnInit {
     }
     const varId = this.selectedVariantId()[p.productId];
     if (this.needsVariantChoice(p) && !varId) {
-      this.notifier.show('Please select a color and size.', 'info');
+      this.notifier.show(this.translate.instant('FEATURE_CATALOG.NOTIF_SELECT_VARIANTS'), 'info');
       return;
     }
     if (!this.needsVariantChoice(p)) {
       const stock = p.stock ?? 0;
       if (stock <= 0) {
-        this.notifier.show('This product is unavailable (out of stock).', 'error');
+        this.notifier.show(this.translate.instant('FEATURE_CATALOG.NOTIF_UNAVAILABLE'), 'error');
         return;
       }
     }
@@ -483,11 +558,14 @@ export class FeaturePageComponent implements OnInit {
       next: () => {
         this.addingProductId.set(null);
         this.shop.refreshCartCount();
-        this.notifier.show(`"${p.name}" added to cart.`, 'success');
+        this.notifier.show(
+          this.translate.instant('FEATURE_CATALOG.NOTIF_ADDED_CART', { name: p.name }),
+          'success'
+        );
       },
       error: () => {
         this.addingProductId.set(null);
-        this.notifier.show('Could not add to cart (stock or connection issue).', 'error');
+        this.notifier.show(this.translate.instant('FEATURE_CATALOG.NOTIF_CART_FAIL'), 'error');
       },
     });
   }
@@ -507,13 +585,14 @@ export class FeaturePageComponent implements OnInit {
   private loadArtisanProducts(): void {
     this.artisanProductsLoading.set(true);
     this.artisanProductsError.set(null);
-    this.http.get<CatalogProduct[]>(`${API_BASE_URL}/api/products/my-products`).subscribe({
+    const langQ = `lang=${encodeURIComponent(this.language.currentLang())}`;
+    this.http.get<CatalogProduct[]>(`${API_BASE_URL}/api/products/my-products?${langQ}`).subscribe({
       next: (list) => {
         this.artisanProducts.set(list ?? []);
         this.artisanProductsLoading.set(false);
       },
       error: () => {
-        const fallback = `${API_FALLBACK_ORIGIN}/api/products/my-products`;
+        const fallback = `${API_FALLBACK_ORIGIN}/api/products/my-products?${langQ}`;
         const tryFallback = API_BASE_URL === '';
         if (tryFallback) {
           this.http.get<CatalogProduct[]>(fallback).subscribe({
@@ -522,12 +601,12 @@ export class FeaturePageComponent implements OnInit {
               this.artisanProductsLoading.set(false);
             },
             error: () => {
-              this.artisanProductsError.set('Could not load your products.');
+              this.artisanProductsError.set('FEATURE_CATALOG.ERR_ARTISAN_PRODUCTS');
               this.artisanProductsLoading.set(false);
             },
           });
         } else {
-          this.artisanProductsError.set('Could not load your products.');
+          this.artisanProductsError.set('FEATURE_CATALOG.ERR_ARTISAN_PRODUCTS');
           this.artisanProductsLoading.set(false);
         }
       },
@@ -592,7 +671,40 @@ export class FeaturePageComponent implements OnInit {
         };
         reader.readAsDataURL(file);
       });
+
+      if (!this.newProduct().description?.trim()) {
+        this.autoFillDescriptionFromFile(files[0]);
+      }
     }
+  }
+
+  private autoFillDescriptionFromFile(file: File): void {
+    if (!file || this.autoDescriptionLoading()) {
+      return;
+    }
+
+    this.autoDescriptionError.set(null);
+    this.autoDescriptionLoading.set(true);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    this.http.post<{ description?: string; error?: string }>(`${API_BASE_URL}/api/products/describe-image`, formData).subscribe({
+      next: (response) => {
+        this.autoDescriptionLoading.set(false);
+        const description = response?.description?.trim();
+        if (description && !this.newProduct().description?.trim()) {
+          this.newProduct.set({ ...this.newProduct(), description });
+        }
+        if (response?.error) {
+          this.autoDescriptionError.set(response.error);
+        }
+      },
+      error: (err: any) => {
+        this.autoDescriptionLoading.set(false);
+        this.autoDescriptionError.set(err?.error?.error || 'Could not auto-fill description from the photo.');
+      },
+    });
   }
 
   clearFilesSelection(): void {
@@ -623,7 +735,7 @@ export class FeaturePageComponent implements OnInit {
           this.persistProduct(p);
         },
         error: () => {
-          this.notifier.show('Error uploading images.', 'error');
+          this.notifier.show(this.translate.instant('FEATURE_CATALOG.NOTIF_UPLOAD_ERR'), 'error');
           this.isUploadingImage.set(false);
           this.submittingProduct.set(false);
         }
@@ -650,7 +762,8 @@ export class FeaturePageComponent implements OnInit {
       error: (err) => {
         this.isUploadingImage.set(false);
         this.submittingProduct.set(false);
-        const msg = err?.error?.error ?? 'Could not save the product.';
+        const msg =
+          err?.error?.error ?? this.translate.instant('FEATURE_CATALOG.NOTIF_SAVE_FAIL');
         this.notifier.show(`✕ ${msg}`, 'error');
       }
     });
@@ -659,10 +772,10 @@ export class FeaturePageComponent implements OnInit {
   private afterProductSaved(prod: CatalogProduct, isEdit: boolean): void {
     if (isEdit) {
       this.artisanProducts.update(list => list.map(p => p.productId === prod.productId ? prod : p));
-      this.notifier.show('Product updated.', 'success');
+      this.notifier.show(this.translate.instant('FEATURE_CATALOG.NOTIF_PRODUCT_UPDATED'), 'success');
     } else {
       this.artisanProducts.update(list => [prod, ...list]);
-      this.notifier.show('Product added.', 'success');
+      this.notifier.show(this.translate.instant('FEATURE_CATALOG.NOTIF_PRODUCT_ADDED'), 'success');
     }
     this.submittingProduct.set(false);
     this.closeProductForm();
@@ -670,7 +783,7 @@ export class FeaturePageComponent implements OnInit {
 
   deleteProduct(productId: number, event?: Event): void {
     event?.stopPropagation();
-    if (!confirm('Delete this product?')) {
+    if (!confirm(this.translate.instant('FEATURE_CATALOG.CONFIRM_DELETE_PRODUCT'))) {
       return;
     }
 
@@ -680,7 +793,7 @@ export class FeaturePageComponent implements OnInit {
 
     const onDeleted = () => {
       this.artisanProducts.update((products) => products.filter((p) => p.productId !== productId));
-      this.notifier.show('Product deleted.', 'success');
+      this.notifier.show(this.translate.instant('FEATURE_CATALOG.NOTIF_PRODUCT_DELETED'), 'success');
     };
 
     this.http.delete(primary).subscribe({
@@ -689,10 +802,11 @@ export class FeaturePageComponent implements OnInit {
         if (tryFallback) {
           this.http.delete(fallback).subscribe({
             next: onDeleted,
-            error: () => this.notifier.show('Could not delete the product.', 'error'),
+            error: () =>
+              this.notifier.show(this.translate.instant('FEATURE_CATALOG.NOTIF_DELETE_FAIL'), 'error'),
           });
         } else {
-          this.notifier.show('Could not delete the product.', 'error');
+          this.notifier.show(this.translate.instant('FEATURE_CATALOG.NOTIF_DELETE_FAIL'), 'error');
         }
       },
     });
@@ -708,7 +822,9 @@ export class FeaturePageComponent implements OnInit {
           status: this.normalizeEventStatus(event.status),
           imageUrl: this.normalizeEventImageUrl(event.imageUrl),
         })).filter((event) => this.shouldDisplayInFrontOffice(event.status));
+        this.resetEventFilters();
         this.isLoadingEvents = false;
+        this.tryOpenDeepLinkedEvent();
       },
       error: (err) => {
         console.error('Error loading events:', err);
@@ -743,6 +859,306 @@ export class FeaturePageComponent implements OnInit {
     return normalized === 'UPCOMING' || normalized === 'ONGOING';
   }
 
+  toEventCityLabel(event: TravelEvent): string {
+    const fromCity = event.city?.name?.trim();
+    if (fromCity) {
+      return fromCity;
+    }
+    const venue = String(event.venue ?? '').trim();
+    if (!venue) {
+      return 'Unknown';
+    }
+    const firstChunk = venue.split(',')[0]?.trim();
+    return firstChunk || venue;
+  }
+
+  get eventCityOptions(): string[] {
+    const allCities = this.cities().map((c) => String(c?.name ?? '').trim()).filter((v) => !!v);
+    if (allCities.length > 0) {
+      return [...new Set(allCities)].sort((a, b) => a.localeCompare(b));
+    }
+    return [...new Set(this.events.map((event) => this.toEventCityLabel(event)).filter((v) => !!v))]
+      .sort((a, b) => a.localeCompare(b));
+  }
+
+  get eventTypeOptions(): string[] {
+    return [...new Set(this.events.map((event) => String(event.eventType ?? '').trim()).filter((v) => !!v))]
+      .sort((a, b) => a.localeCompare(b));
+  }
+
+  get filteredEventCityOptions(): string[] {
+    const query = this.eventCitySearch.trim().toLowerCase();
+    if (!query) {
+      return this.eventCityOptions;
+    }
+    return this.eventCityOptions.filter((city) => city.toLowerCase().includes(query));
+  }
+
+  get selectedEventCityLabel(): string {
+    return this.eventFilterCity === 'ALL' ? 'All cities' : this.eventFilterCity;
+  }
+
+  toggleEventCityDropdown(event: MouseEvent): void {
+    event.stopPropagation();
+    this.eventCityDropdownOpen = !this.eventCityDropdownOpen;
+  }
+
+  selectEventCity(city: string): void {
+    this.eventFilterCity = city;
+    this.eventCityDropdownOpen = false;
+    this.eventCitySearch = '';
+  }
+
+  onEventCityPanelClick(event: MouseEvent): void {
+    event.stopPropagation();
+  }
+
+  @HostListener('document:click')
+  closeEventCityDropdown(): void {
+    this.eventCityDropdownOpen = false;
+  }
+
+  get filteredEvents(): TravelEvent[] {
+    return this.events.filter((event) => {
+      const cityOk = this.eventFilterCity === 'ALL' || this.toEventCityLabel(event) === this.eventFilterCity;
+      const typeOk = this.eventFilterType === 'ALL' || String(event.eventType ?? '').trim() === this.eventFilterType;
+      const price = this.eventPriceAmount(event);
+      const budgetOk = price <= this.eventMaxPrice;
+      return cityOk && typeOk && budgetOk;
+    });
+  }
+
+  get activeEventFilterCount(): number {
+    let count = 0;
+    if (this.eventFilterCity !== 'ALL') {
+      count += 1;
+    }
+    if (this.eventFilterType !== 'ALL') {
+      count += 1;
+    }
+    if (this.eventMaxPrice < this.eventMaxPriceCap) {
+      count += 1;
+    }
+    return count;
+  }
+
+  get activeEventFilterTokens(): string[] {
+    const tokens: string[] = [];
+    if (this.eventFilterCity !== 'ALL') {
+      tokens.push(`City: ${this.eventFilterCity}`);
+    }
+    if (this.eventFilterType !== 'ALL') {
+      tokens.push(`Type: ${this.eventFilterType}`);
+    }
+    if (this.eventMaxPrice < this.eventMaxPriceCap) {
+      tokens.push(`Budget <= ${Math.round(this.eventMaxPrice)} TND`);
+    }
+    return tokens;
+  }
+
+  eventDisplayDatePart(event: TravelEvent): string {
+    const raw = String(event.startDate ?? '').trim();
+    if (!raw) {
+      return 'Date TBA';
+    }
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) {
+      return raw;
+    }
+    const dateLabel = date.toLocaleDateString('en-US', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'Africa/Tunis'
+    });
+
+    return dateLabel;
+  }
+
+  eventDisplayTimePart(event: TravelEvent): string {
+    const raw = String(event.startDate ?? '').trim();
+    if (!raw) {
+      return '';
+    }
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) {
+      return '';
+    }
+
+    if (!this.hasExplicitTime(raw)) {
+      return 'Time TBA';
+    }
+
+    const timeLabel = date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'Africa/Tunis'
+    });
+
+    return timeLabel;
+  }
+
+  eventDisplayDateTimeLine(event: TravelEvent): string {
+    const datePart = this.eventDisplayDatePart(event);
+    const timePart = this.eventDisplayTimePart(event);
+    if (!timePart) {
+      return datePart;
+    }
+    return `${datePart} • ${timePart}`;
+  }
+
+  eventDetailDateTimeLabel(event: TravelEvent | null): string {
+    const raw = String(event?.startDate ?? '').trim();
+    if (!raw) {
+      return 'Date TBA';
+    }
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) {
+      return raw;
+    }
+
+    const dateLabel = date.toLocaleDateString('en-US', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'Africa/Tunis'
+    });
+
+    if (!this.hasExplicitTime(raw)) {
+      return `${dateLabel} • Time TBA`;
+    }
+
+    const timeLabel = date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'Africa/Tunis'
+    });
+
+    return `${dateLabel} • ${timeLabel}`;
+  }
+
+  isAiGeneratedPoster(event: TravelEvent | null): boolean {
+    const normalized = this.normalizePosterImageUrl(event?.imageUrl);
+    if (!normalized) {
+      return false;
+    }
+
+    if (/-poster(?:\.|$)/i.test(normalized)) {
+      return true;
+    }
+
+    return this.getStoredAiGeneratedImages().has(normalized);
+  }
+
+  eventPosterDateRange(event: TravelEvent | null): string {
+    const start = this.formatPosterDisplayDate(event?.startDate);
+    const end = this.formatPosterDisplayDate(event?.endDate);
+    if (!start && !end) {
+      return 'Date TBA';
+    }
+    if (!end || start === end) {
+      return start || end;
+    }
+    return `${start} - ${end}`;
+  }
+
+  eventPosterTimeRange(event: TravelEvent | null): string {
+    const start = this.formatPosterDisplayTime(event?.startDate);
+    const end = this.formatPosterDisplayTime(event?.endDate);
+    if (!start && !end) {
+      return '';
+    }
+    if (!end || start === end) {
+      return start || end;
+    }
+    return `${start} - ${end}`;
+  }
+
+  private formatPosterDisplayDate(value: string | undefined): string {
+    const raw = String(value ?? '').trim();
+    if (!raw) {
+      return '';
+    }
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) {
+      return raw;
+    }
+    return date.toLocaleDateString('en-US', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  }
+
+  private formatPosterDisplayTime(value: string | undefined): string {
+    const raw = String(value ?? '').trim();
+    if (!raw) {
+      return '';
+    }
+    if (!this.hasExplicitTime(raw)) {
+      return '';
+    }
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) {
+      return '';
+    }
+    return date.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'Africa/Tunis'
+    });
+  }
+
+  private hasExplicitTime(raw: string): boolean {
+    return /T\d{2}:\d{2}/.test(raw);
+  }
+
+  private getStoredAiGeneratedImages(): Set<string> {
+    try {
+      const raw = localStorage.getItem(this.aiGeneratedImageStorageKey);
+      if (!raw) {
+        return new Set<string>();
+      }
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        return new Set<string>();
+      }
+
+      const normalized = parsed
+        .map((value) => this.normalizePosterImageUrl(value))
+        .filter((value): value is string => !!value);
+      return new Set<string>(normalized);
+    } catch {
+      return new Set<string>();
+    }
+  }
+
+  private normalizePosterImageUrl(url: unknown): string {
+    return String(url ?? '').trim();
+  }
+
+  eventStatusClass(status: unknown): string {
+    const normalized = this.normalizeEventStatus(status);
+    if (normalized === 'ONGOING') {
+      return 'event-status-badge--ongoing';
+    }
+    return 'event-status-badge--upcoming';
+  }
+
+  resetEventFilters(): void {
+    const maxDetected = this.events.reduce((max, event) => Math.max(max, this.eventPriceAmount(event)), 0);
+    const normalizedCap = Math.max(500, Math.ceil(maxDetected / 50) * 50);
+    this.eventMaxPriceCap = normalizedCap;
+    this.eventMaxPrice = normalizedCap;
+    this.eventFilterCity = 'ALL';
+    this.eventFilterType = 'ALL';
+    this.eventCitySearch = '';
+    this.eventCityDropdownOpen = false;
+  }
+
   private normalizeEventImageUrl(url: string | undefined): string | undefined {
     if (!url) {
       return undefined;
@@ -763,6 +1179,30 @@ export class FeaturePageComponent implements OnInit {
   selectEvent(event: TravelEvent): void {
     this.selectedEvent = event;
     document.body.classList.add('modal-open');
+  }
+
+  isDeepLinkedEvent(event: TravelEvent): boolean {
+    return this.deepLinkedEventId != null && event.eventId === this.deepLinkedEventId;
+  }
+
+  private tryOpenDeepLinkedEvent(): void {
+    if (!this.isEventFeed || this.deepLinkedEventId == null || this.events.length === 0) {
+      return;
+    }
+
+    const target = this.events.find((item) => item.eventId === this.deepLinkedEventId);
+    if (!target) {
+      return;
+    }
+
+    if (!this.selectedEvent || this.selectedEvent.eventId !== target.eventId) {
+      this.selectEvent(target);
+    }
+
+    setTimeout(() => {
+      const node = document.querySelector(`[data-event-id="${this.deepLinkedEventId}"]`) as HTMLElement | null;
+      node?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
   }
 
   closeEventDetails(): void {
@@ -841,6 +1281,7 @@ export class FeaturePageComponent implements OnInit {
           event_id: eventId,
           amount,
           eventName: event.title,
+          presentmentCurrency: this.currency.selectedCode(),
         })
         .subscribe({
           next: (res) => {
@@ -889,17 +1330,25 @@ export class FeaturePageComponent implements OnInit {
     });
   }
 
-  getStatusLabel(status: string | undefined): string {
-    switch (status) {
-      case 'PUBLISHED':
-        return 'Published';
-      case 'REJECTED':
-        return 'Rejected';
-      case 'DRAFT':
-        return 'Draft';
-      default:
-        return 'Pending';
+  /** ngx-translate key under FEATURE_CATALOG.STATUS_* */
+  statusLabelKey(status: string | undefined): string {
+    const u = (status ?? 'PENDING').toUpperCase();
+    if (u === 'PUBLISHED' || u === 'REJECTED' || u === 'DRAFT' || u === 'PENDING') {
+      return `FEATURE_CATALOG.STATUS_${u}`;
     }
+    return 'FEATURE_CATALOG.STATUS_PENDING';
+  }
+
+  getStatusLabel(status: string | undefined): string {
+    return this.translate.instant(this.statusLabelKey(status));
+  }
+
+  detailDialogHeader(): string {
+    const item = this.selectedItem();
+    if (item?.name) {
+      return item.name;
+    }
+    return this.translate.instant('FEATURE_CATALOG.PRODUCT_DETAILS');
   }
 
   getStatusSeverity(status: string | undefined): string {
@@ -909,7 +1358,7 @@ export class FeaturePageComponent implements OnInit {
       case 'REJECTED':
         return 'danger';
       case 'DRAFT':
-        return 'warning';
+        return 'warn';
       default:
         return 'info';
     }

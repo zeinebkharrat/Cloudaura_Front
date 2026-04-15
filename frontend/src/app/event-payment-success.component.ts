@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+﻿import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -11,64 +11,107 @@ import { extractApiErrorMessage } from './api-error.util';
   selector: 'app-event-payment-success',
   imports: [CommonModule, RouterLink],
   template: `
-    <main class="wrap">
-      <div class="card" *ngIf="status === 'loading'">
-        <p class="lead">Confirming your payment…</p>
-      </div>
-      <div class="card ok" *ngIf="status === 'ok'">
-        <h1>You're in!</h1>
-        <p>Your event booking is confirmed.</p>
-        <p *ngIf="reservationId != null" class="ref">Reservation #{{ reservationId }}</p>
-        <a routerLink="/evenements" class="btn">Back to events</a>
-      </div>
-      <div class="card err" *ngIf="status === 'error'">
-        <h1>Could not confirm</h1>
-        <p>{{ message }}</p>
-        <a routerLink="/evenements" class="btn">Back to events</a>
+    <main class="payment-page">
+      <div class="payment-inner animate-in">
+        <header class="payment-head">
+          <p class="kicker">Secure payment</p>
+          <h1 class="title">YallaTN<span class="accent">+</span> · <span class="sub">events</span></h1>
+        </header>
+
+        <div class="state-card" *ngIf="status === 'loading'">
+          <p class="lead">Confirming your payment...</p>
+        </div>
+
+        <div class="state-card ok" *ngIf="status === 'ok'">
+          <div class="success-icon-wrap"><i class="pi pi-check-circle success-icon"></i></div>
+          <h2>Payment confirmed</h2>
+          <p>Your event reservation is confirmed.</p>
+          <a routerLink="/evenements" class="btn-pay">Back to events</a>
+        </div>
+
+        <div class="state-card err" *ngIf="status === 'error'">
+          <h2>Confirmation failed</h2>
+          <p>{{ message }}</p>
+          <a routerLink="/evenements" class="btn-pay">Back to events</a>
+        </div>
+
+        <footer class="payment-foot">
+          <span class="security"><i class="pi pi-lock"></i> Secure confirmation</span>
+        </footer>
       </div>
     </main>
   `,
   styles: [
     `
-      .wrap {
-        max-width: 520px;
-        margin: 5rem auto;
-        padding: 1.25rem;
+      .payment-page {
+        max-width: 560px;
+        margin: 0 auto;
+        padding: 88px 20px 48px;
       }
-      .card {
-        padding: 2rem;
-        border-radius: 16px;
-        background: rgba(255, 255, 255, 0.06);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        color: #e8edf3;
+      .payment-inner {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+      .payment-head { text-align: center; }
+      .kicker {
+        margin: 0 0 8px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+      }
+      .title {
+        margin: 0;
+        font-size: clamp(1.25rem, 3vw, 1.7rem);
+        font-weight: 800;
+      }
+      .accent { color: var(--tunisia-red); }
+      .sub { font-size: 0.85em; color: var(--text-muted); font-weight: 600; }
+      .state-card {
+        padding: 28px 26px 30px;
+        border-radius: 24px;
+        background: var(--glass-bg, rgba(255,255,255,0.08));
+        border: 1px solid var(--glass-border, rgba(255,255,255,0.15));
+        text-align: center;
       }
       .lead {
         margin: 0;
-        color: rgba(255, 255, 255, 0.75);
+        color: var(--text-muted);
       }
-      .ok h1 {
-        margin: 0 0 0.75rem;
-        color: #34d399;
-        font-size: 1.5rem;
+      .ok h2 {
+        margin: 0 0 8px;
+        color: #22c55e;
       }
-      .err h1 {
-        margin: 0 0 0.75rem;
-        color: #f87171;
-        font-size: 1.35rem;
+      .err h2 { margin: 0 0 8px; color: #f87171; }
+      .success-icon-wrap {
+        width: 76px;
+        height: 76px;
+        background: rgba(34, 197, 94, 0.12);
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 12px;
       }
-      .ref {
-        font-weight: 600;
-        color: rgba(255, 255, 255, 0.85);
-      }
-      .btn {
+      .success-icon { font-size: 2.5rem; color: #22c55e; }
+      .btn-pay {
         display: inline-block;
         margin-top: 1.25rem;
-        padding: 0.65rem 1.25rem;
-        border-radius: 10px;
-        background: #f12545;
+        padding: 13px 16px;
+        border-radius: 14px;
+        background: linear-gradient(135deg, #ff4b4b, var(--tunisia-red));
         color: #fff;
         text-decoration: none;
-        font-weight: 600;
+        font-weight: 700;
+      }
+      .payment-foot { text-align: center; color: var(--text-muted); font-size: 0.78rem; }
+      .security { display: inline-flex; align-items: center; gap: 6px; }
+      .animate-in { animation: fadeIn .35s ease both; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: translateY(0);} }
+      @media (max-width: 640px) {
+        .state-card { padding: 22px 18px; }
       }
     `,
   ],
@@ -80,7 +123,6 @@ export class EventPaymentSuccessComponent implements OnInit {
 
   status: 'loading' | 'ok' | 'error' = 'loading';
   message = '';
-  reservationId: number | null = null;
 
   ngOnInit(): void {
     const sessionId = this.route.snapshot.queryParamMap.get('session_id');
@@ -98,7 +140,6 @@ export class EventPaymentSuccessComponent implements OnInit {
     this.eventService.finalizeCheckout(sessionId).subscribe({
       next: (res) => {
         this.status = 'ok';
-        this.reservationId = res.eventReservationId ?? null;
       },
       error: (err: HttpErrorResponse) => {
         this.status = 'error';

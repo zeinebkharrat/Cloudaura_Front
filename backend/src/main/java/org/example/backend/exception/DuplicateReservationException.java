@@ -1,4 +1,15 @@
 package org.example.backend.exception;
+
 public class DuplicateReservationException extends RuntimeException {
-    public DuplicateReservationException(String message) { super(message); }
+
+    private final String catalogKey;
+
+    public DuplicateReservationException(String catalogKey) {
+        super(catalogKey);
+        this.catalogKey = catalogKey;
+    }
+
+    public String getCatalogKey() {
+        return catalogKey;
+    }
 }

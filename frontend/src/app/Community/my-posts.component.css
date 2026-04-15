@@ -252,6 +252,14 @@
   flex-shrink: 0;
 }
 
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
 .author-info {
   display: flex;
   flex-direction: column;
@@ -488,6 +496,109 @@
 .form-textarea {
   resize: vertical;
   min-height: 100px;
+}
+
+.edit-media {
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 14px;
+  background: var(--glass-bg);
+}
+
+.edit-media__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.edit-media__header h5 {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  color: var(--text-color);
+}
+
+.edit-media__upload-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.edit-media__upload-btn.is-disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.edit-media__file-input {
+  display: none;
+}
+
+.edit-media__empty {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  padding: 8px 2px;
+}
+
+.edit-media__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.edit-media__item {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  background: var(--surface-2);
+  min-height: 96px;
+}
+
+.edit-media__image,
+.edit-media__video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: 170px;
+  object-fit: cover;
+}
+
+.edit-media__delete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: rgba(220, 38, 38, 0.86);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.edit-media__delete:hover:not(:disabled) {
+  transform: scale(1.07);
+}
+
+.edit-media__delete:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .edit-media__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
 /* ─── Buttons ─── */

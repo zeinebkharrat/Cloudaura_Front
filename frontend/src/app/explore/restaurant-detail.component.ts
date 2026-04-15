@@ -2,22 +2,27 @@ import { CommonModule, Location } from '@angular/common';
 import { AfterViewInit, Component, OnDestroy, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { HttpErrorResponse } from '@angular/common/http';
 import * as L from 'leaflet';
 import { ExploreService } from './explore.service';
 import { PublicReview, ReviewSummary, Restaurant } from './explore.models';
+import { AuthService } from '../core/auth.service';
 import Swal from 'sweetalert2';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-restaurant-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, TranslateModule],
   templateUrl: './restaurant-detail.component.html',
   styleUrl: './restaurant-detail.component.css',
 })
 export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly exploreService = inject(ExploreService);
+  private readonly authService = inject(AuthService);
   private readonly location = inject(Location);
+  private readonly translate = inject(TranslateService);
 
   restaurant?: Restaurant;
   loading = true;
@@ -32,6 +37,8 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
     stars: 5,
     commentText: '',
   };
+  editingReviewId: number | null = null;
+  readonly commentEmojis = ['??', '??', '??', '??', '??', '??', '??', '??', '??', '??'];
 
   private map?: L.Map;
   private cityMarker?: L.CircleMarker;
@@ -42,7 +49,7 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
     const id = Number(this.route.snapshot.paramMap.get('restaurantId'));
     if (!id) {
       this.loading = false;
-      this.error = 'Restaurant not found.';
+      this.error = this.translate.instant('EXPLORE_RESTAURANT.ERR_NOT_FOUND');
       return;
     }
 
@@ -58,9 +65,10 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
         this.loading = false;
         setTimeout(() => this.tryInitMap(), 80);
       },
-      error: (err) => {
+      error: (err: HttpErrorResponse) => {
         this.loading = false;
-        this.error = err?.error?.message || 'Unable to load this restaurant.';
+        this.error =
+          err?.error?.message || this.translate.instant('EXPLORE_RESTAURANT.ERR_LOAD');
       },
     });
   }
@@ -148,10 +156,7 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
   }
 
   ratingValue(): number {
-    if (this.reviewSummary.totalReviews > 0) {
-      return this.reviewSummary.averageStars;
-    }
-    return this.restaurant?.rating ?? 0;
+    return this.reviewSummary.averageStars || 0;
   }
 
   starStates(value: number): Array<'full' | 'empty'> {
@@ -160,6 +165,86 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
 
   setReviewStars(stars: number): void {
     this.reviewForm.stars = stars;
+  }
+
+  appendEmoji(emoji: string): void {
+    this.reviewForm.commentText = `${this.reviewForm.commentText}${emoji}`;
+  }
+
+  startEditReview(review: PublicReview): void {
+    this.editingReviewId = review.reviewId;
+    this.reviewForm = {
+      stars: review.stars,
+      commentText: review.commentText,
+    };
+  }
+
+  cancelEditReview(): void {
+    this.editingReviewId = null;
+    this.reviewForm = { stars: 5, commentText: '' };
+  }
+
+  isOwnReview(review: PublicReview): boolean {
+    const currentUserId = this.authService.currentUser()?.id;
+    return currentUserId != null && currentUserId === review.userId;
+  }
+
+  reviewAuthorEmail(review: PublicReview): string {
+    return review.userEmail?.trim() || review.username;
+  }
+
+  reviewAuthorInitial(review: PublicReview): string {
+    const source = this.reviewAuthorEmail(review).trim();
+    return source ? source.charAt(0).toUpperCase() : '?';
+  }
+
+  deleteOwnReview(): void {
+    if (!this.restaurant) {
+      return;
+    }
+
+    Swal.fire({
+      icon: 'warning',
+      title: 'Delete your comment?',
+      text: 'This action cannot be undone.',
+      showCancelButton: true,
+      confirmButtonText: 'Delete',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#e63946',
+    }).then((result) => {
+      if (!result.isConfirmed || !this.restaurant) {
+        return;
+      }
+
+      this.reviewSubmitting = true;
+      this.exploreService.deleteRestaurantReviewMine(this.restaurant.restaurantId).subscribe({
+        next: () => {
+          this.reviewSubmitting = false;
+          this.cancelEditReview();
+          this.loadReviewSummary();
+          this.loadReviews();
+        },
+        error: (err: HttpErrorResponse) => {
+          this.reviewSubmitting = false;
+          if (err?.status === 401) {
+            Swal.fire({
+              icon: 'warning',
+              title: 'Sign in required',
+              text: 'Please sign in to manage your comment.',
+              confirmButtonColor: '#e63946',
+            });
+            return;
+          }
+
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: err?.error?.message || 'Unable to delete comment.',
+            confirmButtonColor: '#e63946',
+          });
+        },
+      });
+    });
   }
 
   submitReview(): void {
@@ -174,17 +259,17 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
     }).subscribe({
       next: () => {
         this.reviewSubmitting = false;
-        this.reviewForm = { stars: 5, commentText: '' };
+        this.cancelEditReview();
         this.loadReviewSummary();
         this.loadReviews();
       },
-      error: (err) => {
+      error: (err: HttpErrorResponse) => {
         this.reviewSubmitting = false;
         if (err?.status === 401) {
           Swal.fire({
             icon: 'warning',
-            title: 'Sign in required',
-            text: 'Please sign in to post a comment.',
+            title: this.translate.instant('EXPLORE_RESTAURANT.SWAL_SIGNIN_POST_TITLE'),
+            text: this.translate.instant('EXPLORE_RESTAURANT.SWAL_SIGNIN_POST_TEXT'),
             confirmButtonColor: '#e63946',
           });
           return;
@@ -193,7 +278,7 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
         Swal.fire({
           icon: 'error',
           title: 'Error',
-          text: err?.error?.message || 'Could not send your comment.',
+          text: err?.error?.message || 'Unable to publish comment.',
           confirmButtonColor: '#e63946',
         });
       },
@@ -204,6 +289,7 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
     if (!this.restaurant) {
       return;
     }
+
     this.exploreService.getRestaurantReviewSummary(this.restaurant.restaurantId).subscribe({
       next: (summary) => {
         this.reviewSummary = summary;
@@ -218,6 +304,7 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
     if (!this.restaurant) {
       return;
     }
+
     this.exploreService.listRestaurantReviews(this.restaurant.restaurantId, this.reviewPage, this.reviewSize).subscribe({
       next: (payload) => {
         this.reviewSummary = payload.summary;
@@ -257,3 +344,5 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
     );
   }
 }
+
+

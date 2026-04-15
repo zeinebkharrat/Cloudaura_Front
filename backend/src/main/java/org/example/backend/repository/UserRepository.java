@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.domain.Pageable;
 import java.util.Optional;
 import java.util.List;
 
@@ -29,4 +30,10 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     boolean existsByEmailIgnoreCase(String email);
 
     Optional<User> findFirstByUsernameIgnoreCaseOrEmailIgnoreCaseOrderByUserIdAsc(String username, String email);
+
+    @Query("SELECT u FROM User u LEFT JOIN FETCH u.city WHERE u.userId = :userId")
+    Optional<User> findByIdWithCity(@Param("userId") Integer userId);
+
+    @Query("SELECT u FROM User u ORDER BY COALESCE(u.monthlyScore, 0) DESC, u.userId ASC")
+    List<User> findTopByMonthlyScore(Pageable pageable);
 }

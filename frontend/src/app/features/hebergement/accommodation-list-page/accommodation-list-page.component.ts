@@ -8,7 +8,9 @@ import {
   HostListener,
   viewChild,
   ElementRef,
+  DestroyRef,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { TripContextStore } from '../../../core/stores/trip-context.store';
@@ -17,27 +19,39 @@ import { AccommodationCardComponent } from '../../../shared/components/accommoda
 import { Accommodation, City } from '../../../core/models/travel.models';
 import { FormsModule, ReactiveFormsModule, FormControl, FormGroup } from '@angular/forms';
 import { debounceTime, distinctUntilChanged } from 'rxjs';
+import { DualCurrencyPipe } from '../../../core/pipes/dual-currency.pipe';
+import { createCurrencyDisplaySyncEffect } from '../../../core/utils/currency-display-sync';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { LanguageService } from '../../../core/services/language.service';
 
 @Component({
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, RouterModule, AccommodationCardComponent, FormsModule, ReactiveFormsModule],
+  imports: [
+    CommonModule,
+    RouterModule,
+    AccommodationCardComponent,
+    FormsModule,
+    ReactiveFormsModule,
+    DualCurrencyPipe,
+    TranslateModule,
+  ],
   template: `
     <div class="page-wrap">
 
       <!-- Hero Header -->
       <div class="hero-header">
         <div class="hero-content">
-          <span class="hero-label">STAYS</span>
+          <span class="hero-label">{{ 'HEBERG.LIST.HERO_KICKER' | translate }}</span>
           <h1>
-            @if (currentCity(); as city) {
-              Stay in <span class="city-highlight">{{ city.name }}</span>
+            @if (currentCityDisplay(); as city) {
+              {{ 'HEBERG.LIST.HERO_STAY' | translate }} <span class="city-highlight">{{ city.name }}</span>
             } @else {
-              Discover places to stay in <span class="city-highlight">Tunisia</span>
+              {{ 'HEBERG.LIST.HERO_DISCOVER' | translate }} <span class="city-highlight">{{ 'HEBERG.LIST.HERO_TUNISIA' | translate }}</span>
             }
           </h1>
           <p class="hero-sub">
-            {{ currentCity()?.description || 'Hand-picked hotels, guest houses and rural stays for your trip.' }}
+            {{ currentCityDisplay()?.description || ('HEBERG.LIST.HERO_DEFAULT_DESC' | translate) }}
           </p>
           
         </div>
@@ -49,15 +63,15 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
         <!-- Sidebar Filters -->
         <aside class="filter-panel">
           <div class="filter-header">
-            <h3>Filters</h3>
-            <button class="btn-clear" (click)="resetFilters()">Clear</button>
+            <h3>{{ 'HEBERG.LIST.FILTERS' | translate }}</h3>
+            <button class="btn-clear" (click)="resetFilters()">{{ 'HEBERG.LIST.CLEAR' | translate }}</button>
           </div>
 
           <form [formGroup]="filterForm">
             
             <!-- City Selector -->
             <div class="filter-block">
-              <label class="filter-label"><img src="/icones/city.png" alt="" class="filter-label-icon" /> City</label>
+              <label class="filter-label"><img src="/icones/city.png" alt="" class="filter-label-icon" /> {{ 'HEBERG.LIST.CITY' | translate }}</label>
               <div class="city-picker-root" #cityPickerRoot>
                 <button type="button" class="city-picker-trigger" [class.open]="cityOpen()"
                         (click)="toggleCityMenu($event)" [attr.aria-expanded]="cityOpen()">
@@ -65,10 +79,10 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
                   <span class="city-picker-chevron" [class.up]="cityOpen()" aria-hidden="true"></span>
                 </button>
                 @if (cityOpen()) {
-                  <div class="city-picker-panel" role="listbox" aria-label="Cities">
+                  <div class="city-picker-panel" role="listbox" [attr.aria-label]="'HEBERG.LIST.CITIES_ARIA' | translate">
                     <button type="button" role="option" class="city-picker-option"
                             [class.active]="cityFilterId() === 0"
-                            (click)="selectCity(0, $event)">All cities</button>
+                            (click)="selectCity(0, $event)">{{ 'HEBERG.LIST.ALL_CITIES' | translate }}</button>
                     @for (city of cities(); track city.id) {
                       <button type="button" role="option" class="city-picker-option"
                               [class.active]="cityFilterId() === city.id"
@@ -81,35 +95,35 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
 
             <!-- Type -->
             <div class="filter-block">
-              <label class="filter-label"><img src="/icones/hotel.png" alt="Type" class="filter-label-icon" /> Type</label>
+              <label class="filter-label"><img src="/icones/hotel.png" alt="" class="filter-label-icon" /> {{ 'HEBERG.LIST.TYPE' | translate }}</label>
               <div class="type-chips">
                 <button class="chip" [class.active]="filterForm.value.type === ''" 
-                        (click)="setType('')">All</button>
+                        (click)="setType('')">{{ 'HEBERG.LIST.TYPE_ALL' | translate }}</button>
                 <button class="chip" [class.active]="filterForm.value.type === 'HOTEL'"
-                        (click)="setType('HOTEL')"><img src="/icones/hotel.png" alt="Hotel" class="chip-icon" /> Hotel</button>
+                        (click)="setType('HOTEL')"><img src="/icones/hotel.png" alt="" class="chip-icon" /> {{ 'HEBERG.TYPE.HOTEL' | translate }}</button>
                 <button class="chip" [class.active]="filterForm.value.type === 'MAISON_HOTE'"
-                        (click)="setType('MAISON_HOTE')"><img src="/icones/home.png" alt="Guest house" class="chip-icon" /> Guest house</button>
+                        (click)="setType('MAISON_HOTE')"><img src="/icones/home.png" alt="" class="chip-icon" /> {{ 'HEBERG.TYPE.MAISON_HOTE' | translate }}</button>
                 <button class="chip" [class.active]="filterForm.value.type === 'GUESTHOUSE'"
-                        (click)="setType('GUESTHOUSE')"><img src="/icones/home.png" alt="Rural stay" class="chip-icon" /> Rural stay</button>
+                        (click)="setType('GUESTHOUSE')"><img src="/icones/home.png" alt="" class="chip-icon" /> {{ 'HEBERG.TYPE.GUESTHOUSE' | translate }}</button>
               </div>
             </div>
 
             <!-- Price Range -->
             <div class="filter-block">
               <label class="filter-label">
-                <img src="/icones/money-bag.png" alt="Budget" class="filter-label-icon" /> Max budget
-                <span class="price-display">{{ filterForm.value.maxPrice }} TND</span>
+                <img src="/icones/money-bag.png" alt="" class="filter-label-icon" /> {{ 'HEBERG.LIST.MAX_BUDGET' | translate }}
+                <span class="price-display">{{ filterForm.value.maxPrice | dualCurrency }}</span>
               </label>
               <input type="range" formControlName="maxPrice" min="50" max="800" step="10" class="range-input">
               <div class="range-labels">
-                <span>50 TND</span>
-                <span>800 TND</span>
+                <span>{{ 50 | dualCurrency }}</span>
+                <span>{{ 800 | dualCurrency }}</span>
               </div>
             </div>
 
             <!-- Star Rating -->
             <div class="filter-block">
-              <label class="filter-label"><i class="pi pi-star-fill filter-label-pi" aria-hidden="true"></i> Minimum rating</label>
+              <label class="filter-label"><i class="pi pi-star-fill filter-label-pi" aria-hidden="true"></i> {{ 'HEBERG.LIST.MIN_RATING' | translate }}</label>
               <div class="star-picker">
                 @for (star of [1,2,3,4,5]; track star) {
                   <button class="star-btn" 
@@ -119,7 +133,10 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
                   </button>
                 }
                 @if (filterForm.value.minRating && filterForm.value.minRating > 0) {
-                  <button class="star-clear" (click)="setRating(0)">✕</button>
+                  <button type="button" class="star-clear" (click)="setRating(0)"
+                          [attr.aria-label]="'HEBERG.LIST.CLEAR_RATING_ARIA' | translate">
+                    {{ 'HEBERG.LIST.CLEAR_RATING' | translate }}
+                  </button>
                 }
               </div>
             </div>
@@ -134,9 +151,9 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
           <div class="results-header">
             <div class="results-count">
               @if (loading()) {
-                <span class="pulse-dot"></span> Searching...
+                <span class="pulse-dot"></span> {{ 'HEBERG.LIST.SEARCHING' | translate }}
               } @else {
-                <strong>{{ accommodations().length }}</strong> listing(s) found
+                <strong>{{ accommodations().length }}</strong> {{ 'HEBERG.LIST.LISTINGS_FOUND' | translate }}
               }
             </div>
           </div>
@@ -167,14 +184,14 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
               <!-- Empty State -->
               <div class="empty-state">
                 <div class="empty-icon" aria-hidden="true"><i class="pi pi-search"></i></div>
-                <h3>No listings found</h3>
-                <p>Try widening your filters or picking another city.</p>
+                <h3>{{ 'HEBERG.LIST.EMPTY_TITLE' | translate }}</h3>
+                <p>{{ 'HEBERG.LIST.EMPTY_DESC' | translate }}</p>
                 <div class="empty-actions">
                   <button class="btn-reset" (click)="resetFilters()">
-                    <i class="pi pi-refresh"></i> Reset filters
+                    <i class="pi pi-refresh"></i> {{ 'HEBERG.LIST.RESET_FILTERS' | translate }}
                   </button>
                   <button class="btn-home" routerLink="/">
-                    <img src="/icones/home.png" alt="Home" style="width:1rem;height:1rem;object-fit:contain;vertical-align:middle;margin-right:0.25rem;" /> Pick a city
+                    <img src="/icones/home.png" [attr.alt]="'HEBERG.LIST.HOME_ALT' | translate" style="width:1rem;height:1rem;object-fit:contain;vertical-align:middle;margin-right:0.25rem;" /> {{ 'HEBERG.LIST.PICK_CITY' | translate }}
                   </button>
                 </div>
               </div>
@@ -185,12 +202,12 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
     </div>
   `,
   styles: [`
-    .page-wrap { background: #0d0f18; min-height: 100vh; }
+    .page-wrap { background: var(--bg-color); min-height: 100vh; color: var(--text-color); }
 
     /* Hero */
     .hero-header {
-      background: linear-gradient(135deg, #0d0f18 0%, #1a0a1e 40%, #0d1520 100%);
-      border-bottom: 1px solid rgba(255,255,255,0.04);
+      background: linear-gradient(135deg, var(--bg-color) 0%, color-mix(in srgb, var(--tunisia-red) 14%, var(--bg-color)) 42%, var(--surface-2) 100%);
+      border-bottom: 1px solid var(--border-soft);
       padding: 2rem 2rem 2rem;
     }
     .hero-content { max-width: 1300px; margin: 0 auto; }
@@ -199,27 +216,27 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
       font-size: 0.75rem;
       font-weight: 700;
       letter-spacing: 2px;
-      color: #f12545;
+      color: var(--tunisia-red);
       margin-bottom: 10px;
-      background: rgba(241,37,69,0.1);
+      background: color-mix(in srgb, var(--tunisia-red) 12%, transparent);
       padding: 5px 12px;
       border-radius: 4px;
     }
     h1 {
       font-size: 2.6rem;
       font-weight: 800;
-      color: #fff;
+      color: var(--text-color);
       margin: 0 0 10px 0;
       line-height: 1.2;
     }
     .city-highlight {
-      background: linear-gradient(135deg, #f12545, #ff6b6b);
+      background: linear-gradient(135deg, var(--tunisia-red), #ff6b6b);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
     .hero-sub {
       font-size: 1.05rem;
-      color: rgba(255,255,255,0.5);
+      color: var(--text-muted);
       margin-bottom: 1.5rem;
       max-width: 600px;
     }
@@ -235,14 +252,14 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
 
     /* Filters */
     .filter-panel {
-      background: #161922;
-      border: 1px solid rgba(255,255,255,0.06);
+      background: var(--surface-1);
+      border: 1px solid var(--border-soft);
       border-radius: 20px;
       padding: 1.5rem;
       height: fit-content;
       position: sticky;
       top: 90px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+      box-shadow: var(--shadow-card);
     }
     .filter-header {
       display: flex;
@@ -250,10 +267,10 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
       align-items: center;
       margin-bottom: 1.5rem;
     }
-    .filter-header h3 { margin: 0; color: #fff; font-size: 1.1rem; }
+    .filter-header h3 { margin: 0; color: var(--text-color); font-size: 1.1rem; }
     .btn-clear {
       background: none; border: none;
-      color: #f12545; font-size: 0.82rem;
+      color: var(--tunisia-red); font-size: 0.82rem;
       cursor: pointer; font-weight: 600;
     }
     .btn-clear:hover { text-decoration: underline; }
@@ -264,7 +281,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
       justify-content: space-between;
       align-items: center;
       font-size: 0.85rem;
-      color: rgba(255,255,255,0.55);
+      color: var(--text-muted);
       font-weight: 600;
       margin-bottom: 10px;
       gap: 0.4rem;
@@ -272,8 +289,8 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
     .filter-label-icon { width: 1rem; height: 1rem; object-fit: contain; flex-shrink: 0; }
     .filter-label-pi { font-size: 0.95rem; color: #f1c40f; flex-shrink: 0; }
     .price-display {
-      background: rgba(241,37,69,0.15);
-      color: #f12545;
+      background: color-mix(in srgb, var(--tunisia-red) 15%, transparent);
+      color: var(--tunisia-red);
       padding: 2px 8px;
       border-radius: 4px;
       font-weight: 700;
@@ -281,18 +298,18 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
     }
     .filter-select {
       width: 100%;
-      background: #0d0f18;
-      border: 1px solid rgba(255,255,255,0.1);
+      background: var(--input-bg);
+      border: 1px solid var(--border-soft);
       border-radius: 10px;
       padding: 10px 12px;
-      color: #fff;
+      color: var(--text-color);
       font-size: 0.9rem;
       outline: none;
       appearance: none;
       cursor: pointer;
     }
-    .filter-select:focus { border-color: #f12545; }
-    .filter-select option { background: #161922; }
+    .filter-select:focus { border-color: var(--tunisia-red); }
+    .filter-select option { background: var(--surface-1); color: var(--text-color); }
 
     /* City picker — custom list + styled scroll */
     .city-picker-root { position: relative; width: 100%; }
@@ -302,31 +319,31 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
       align-items: center;
       justify-content: space-between;
       gap: 10px;
-      background: #0d0f18;
-      border: 1px solid rgba(255,255,255,0.1);
+      background: var(--input-bg);
+      border: 1px solid var(--border-soft);
       border-radius: 10px;
       padding: 10px 12px;
-      color: #fff;
+      color: var(--text-color);
       font-size: 0.9rem;
       cursor: pointer;
       outline: none;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
-    .city-picker-trigger:hover { border-color: rgba(241,37,69,0.35); }
+    .city-picker-trigger:hover { border-color: color-mix(in srgb, var(--tunisia-red) 35%, var(--border-soft)); }
     .city-picker-trigger.open {
-      border-color: #f12545;
-      box-shadow: 0 0 0 3px rgba(241,37,69,0.15);
+      border-color: var(--tunisia-red);
+      box-shadow: 0 0 0 3px color-mix(in srgb, var(--tunisia-red) 18%, transparent);
     }
     .city-picker-label { text-align: left; flex: 1; }
     .city-picker-chevron {
       width: 0; height: 0;
       border-left: 5px solid transparent;
       border-right: 5px solid transparent;
-      border-top: 6px solid rgba(255,255,255,0.45);
+      border-top: 6px solid var(--text-muted);
       transition: transform 0.2s;
       flex-shrink: 0;
     }
-    .city-picker-chevron.up { transform: rotate(180deg); border-top-color: #f12545; }
+    .city-picker-chevron.up { transform: rotate(180deg); border-top-color: var(--tunisia-red); }
     .city-picker-panel {
       position: absolute;
       left: 0;
@@ -337,12 +354,12 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
       overflow-y: auto;
       overflow-x: hidden;
       scrollbar-width: thin;
-      scrollbar-color: #f12545 rgba(0,0,0,0.25);
-      background: linear-gradient(180deg, #1c1f2e 0%, #141824 100%);
-      border: 1px solid rgba(241,37,69,0.25);
+      scrollbar-color: var(--tunisia-red) var(--surface-2);
+      background: linear-gradient(180deg, var(--surface-1) 0%, var(--surface-2) 100%);
+      border: 1px solid color-mix(in srgb, var(--tunisia-red) 22%, var(--border-soft));
       border-radius: 12px;
       padding: 6px;
-      box-shadow: 0 12px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.04);
+      box-shadow: var(--shadow-card);
       animation: cityPanelIn 0.2s ease-out;
     }
     @keyframes cityPanelIn {
@@ -351,18 +368,18 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
     }
     .city-picker-panel::-webkit-scrollbar { width: 8px; }
     .city-picker-panel::-webkit-scrollbar-track {
-      background: rgba(0,0,0,0.25);
+      background: var(--surface-2);
       border-radius: 10px;
       margin: 4px 0;
     }
     .city-picker-panel::-webkit-scrollbar-thumb {
-      background: linear-gradient(180deg, #f12545, #a81830);
+      background: linear-gradient(180deg, var(--tunisia-red), color-mix(in srgb, var(--tunisia-red) 65%, #000));
       border-radius: 10px;
       border: 2px solid transparent;
       background-clip: padding-box;
     }
     .city-picker-panel::-webkit-scrollbar-thumb:hover {
-      background: linear-gradient(180deg, #ff3d5c, #f12545);
+      background: linear-gradient(180deg, color-mix(in srgb, var(--tunisia-red) 90%, #fff), var(--tunisia-red));
       background-clip: padding-box;
     }
     .city-picker-option {
@@ -374,28 +391,28 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
       border: none;
       border-radius: 8px;
       background: transparent;
-      color: rgba(255,255,255,0.88);
+      color: var(--text-color);
       font-size: 0.88rem;
       cursor: pointer;
       transition: background 0.15s, color 0.15s, transform 0.12s;
     }
     .city-picker-option:hover {
-      background: rgba(241,37,69,0.12);
-      color: #fff;
+      background: color-mix(in srgb, var(--tunisia-red) 12%, var(--surface-2));
+      color: var(--text-color);
       transform: translateX(2px);
     }
     .city-picker-option.active {
-      background: rgba(241,37,69,0.2);
-      color: #f12545;
+      background: color-mix(in srgb, var(--tunisia-red) 18%, var(--surface-1));
+      color: var(--tunisia-red);
       font-weight: 600;
     }
 
     /* Type Chips */
     .type-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
     .chip {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08);
-      color: rgba(255,255,255,0.6);
+      background: var(--surface-2);
+      border: 1px solid var(--border-soft);
+      color: var(--text-muted);
       padding: 8px 10px;
       border-radius: 10px;
       font-size: 0.78rem;
@@ -406,11 +423,11 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
       display: flex; align-items: center; gap: 0.3rem; justify-content: center;
     }
     .chip-icon { width: 0.95rem; height: 0.95rem; object-fit: contain; flex-shrink: 0; }
-    .chip:hover { border-color: rgba(255,255,255,0.2); color: #fff; background: rgba(255,255,255,0.06); }
+    .chip:hover { border-color: var(--border-soft); color: var(--text-color); background: var(--surface-3); }
     .chip.active {
-      background: rgba(241,37,69,0.12);
-      border-color: rgba(241,37,69,0.35);
-      color: #f12545;
+      background: color-mix(in srgb, var(--tunisia-red) 12%, var(--surface-2));
+      border-color: color-mix(in srgb, var(--tunisia-red) 35%, var(--border-soft));
+      color: var(--tunisia-red);
       font-weight: 600;
     }
 
@@ -419,7 +436,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
       width: 100%;
       height: 5px;
       border-radius: 5px;
-      background: linear-gradient(to right, rgba(241,37,69,0.3), rgba(255,255,255,0.08));
+      background: linear-gradient(to right, color-mix(in srgb, var(--tunisia-red) 30%, transparent), var(--surface-3));
       outline: none;
       appearance: none;
       cursor: pointer;
@@ -429,10 +446,10 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
       appearance: none;
       width: 20px; height: 20px;
       border-radius: 50%;
-      background: #f12545;
+      background: var(--tunisia-red);
       cursor: pointer;
-      box-shadow: 0 2px 10px rgba(241,37,69,0.45);
-      border: 3px solid #161922;
+      box-shadow: 0 2px 10px var(--tunisia-red-glow);
+      border: 3px solid var(--surface-1);
       transition: transform 0.15s;
     }
     .range-input::-webkit-slider-thumb:hover { transform: scale(1.15); }
@@ -440,7 +457,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
       display: flex;
       justify-content: space-between;
       font-size: 0.72rem;
-      color: rgba(255,255,255,0.3);
+      color: var(--text-muted);
       margin-top: 6px;
     }
 
@@ -449,7 +466,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
     .star-btn {
       background: none; border: none;
       font-size: 1.6rem;
-      color: rgba(255,255,255,0.15);
+      color: color-mix(in srgb, var(--text-muted) 35%, var(--surface-1));
       cursor: pointer;
       transition: all 0.15s;
       padding: 2px;
@@ -461,7 +478,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
     }
     .star-clear {
       background: none; border: none;
-      color: #f12545; font-size: 0.9rem;
+      color: var(--tunisia-red); font-size: 0.9rem;
       cursor: pointer; margin-left: 6px;
       opacity: 0.6;
     }
@@ -480,12 +497,12 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
       align-items: center;
       gap: 8px;
       font-size: 0.95rem;
-      color: rgba(255,255,255,0.6);
+      color: var(--text-muted);
     }
-    .results-count strong { color: #fff; }
+    .results-count strong { color: var(--text-color); }
     .pulse-dot {
       width: 8px; height: 8px;
-      background: #f12545;
+      background: var(--tunisia-red);
       border-radius: 50%;
       animation: pulse 1.2s infinite;
     }
@@ -508,8 +525,8 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
       gap: 1.5rem;
     }
     .skeleton-card {
-      background: #161922;
-      border: 1px solid rgba(255,255,255,0.04);
+      background: var(--surface-1);
+      border: 1px solid var(--border-soft);
       border-radius: 18px;
       overflow: hidden;
     }
@@ -520,7 +537,7 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
     .skeleton-line.medium { width: 60%; }
     .skeleton-line.short { width: 40%; }
     .shimmer {
-      background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.06) 50%, rgba(255,255,255,0.03) 75%);
+      background: linear-gradient(90deg, color-mix(in srgb, var(--text-color) 4%, transparent) 25%, color-mix(in srgb, var(--text-color) 9%, transparent) 50%, color-mix(in srgb, var(--text-color) 4%, transparent) 75%);
       background-size: 200% 100%;
       animation: shimmer 1.5s infinite;
     }
@@ -530,13 +547,13 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
     .empty-state {
       text-align: center;
       padding: 4rem 2rem;
-      background: #161922;
-      border: 1px solid rgba(255,255,255,0.06);
+      background: var(--surface-1);
+      border: 1px solid var(--border-soft);
       border-radius: 20px;
     }
-    .empty-icon { font-size: 3rem; margin-bottom: 1rem; color: rgba(255,255,255,0.25); display: flex; justify-content: center; }
-    .empty-state h3 { color: #fff; font-size: 1.4rem; margin-bottom: 0.75rem; }
-    .empty-state p { color: rgba(255,255,255,0.5); max-width: 400px; margin: 0 auto 2rem; }
+    .empty-icon { font-size: 3rem; margin-bottom: 1rem; color: color-mix(in srgb, var(--text-muted) 45%, var(--surface-1)); display: flex; justify-content: center; }
+    .empty-state h3 { color: var(--text-color); font-size: 1.4rem; margin-bottom: 0.75rem; }
+    .empty-state p { color: var(--text-muted); max-width: 400px; margin: 0 auto 2rem; }
     .empty-actions { display: flex; gap: 12px; justify-content: center; }
     .btn-reset, .btn-home {
       padding: 12px 24px;
@@ -548,16 +565,16 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
       border: none;
     }
     .btn-reset {
-      background: rgba(241,37,69,0.15);
-      color: #f12545;
-      border: 1px solid rgba(241,37,69,0.3);
+      background: color-mix(in srgb, var(--tunisia-red) 15%, transparent);
+      color: var(--tunisia-red);
+      border: 1px solid color-mix(in srgb, var(--tunisia-red) 30%, var(--border-soft));
     }
-    .btn-reset:hover { background: rgba(241,37,69,0.25); }
+    .btn-reset:hover { background: color-mix(in srgb, var(--tunisia-red) 22%, transparent); }
     .btn-home {
-      background: #f12545;
+      background: var(--tunisia-red);
       color: #fff;
     }
-    .btn-home:hover { background: #ff3355; }
+    .btn-home:hover { filter: brightness(1.06); }
 
     /* Responsive */
     @media (max-width: 900px) {
@@ -569,9 +586,14 @@ import { debounceTime, distinctUntilChanged } from 'rxjs';
   `]
 })
 export class AccommodationListPageComponent implements OnInit {
+  private readonly _currencyDisplaySync = createCurrencyDisplaySyncEffect();
+
   store = inject(TripContextStore);
   dataSource = inject(DATA_SOURCE_TOKEN);
   router = inject(Router);
+  private translate = inject(TranslateService);
+  private language = inject(LanguageService);
+  private destroyRef = inject(DestroyRef);
 
   cityPickerRoot = viewChild<ElementRef<HTMLElement>>('cityPickerRoot');
 
@@ -590,16 +612,28 @@ export class AccommodationListPageComponent implements OnInit {
     minRating: new FormControl(0)
   });
 
-  currentCity = computed(() => {
+  currentCityDisplay = computed(() => {
     const id = this.activeCityId() || this.store.selectedCityId();
-    return this.cities().find(c => c.id === Number(id));
+    return this.cities().find((c) => c.id === Number(id));
   });
 
   cityLabel = computed(() => {
+    void this.language.currentLang();
     const n = this.cityFilterId();
-    if (!n) return 'All cities';
-    return this.cities().find((c) => c.id === n)?.name ?? 'All cities';
+    if (!n) {
+      return this.translate.instant('HEBERG.LIST.ALL_CITIES');
+    }
+    return this.cities().find((c) => c.id === n)?.name ?? this.translate.instant('HEBERG.LIST.ALL_CITIES');
   });
+
+  constructor() {
+    this.language.langChangedDebounced$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        this.loadCities();
+        this.loadData();
+      });
+  }
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(ev: MouseEvent): void {
@@ -653,7 +687,7 @@ export class AccommodationListPageComponent implements OnInit {
   }
 
   loadCities() {
-    this.dataSource.getCities().subscribe(data => this.cities.set(data));
+    this.dataSource.getCities().subscribe((data) => this.cities.set(data));
   }
 
   loadData() {
@@ -675,7 +709,7 @@ export class AccommodationListPageComponent implements OnInit {
       error: () => {
         this.accommodations.set([]);
         this.loading.set(false);
-      }
+      },
     });
   }
 
@@ -693,7 +727,8 @@ export class AccommodationListPageComponent implements OnInit {
   }
 
   onSelect(acc: Accommodation) {
-    this.store.selectedAccommodation.set(acc);
+    const original = this.accommodations().find((a) => a.id === acc.id) ?? acc;
+    this.store.selectedAccommodation.set(original);
     this.router.navigate(['/hebergement', acc.id]);
   }
 }

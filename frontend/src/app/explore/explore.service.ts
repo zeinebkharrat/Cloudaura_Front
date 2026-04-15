@@ -53,10 +53,7 @@ export class ExploreService {
     size: number;
     sort: string;
   }): Observable<PageResponse<Restaurant>> {
-    let params = new HttpParams()
-      .set('page', filters.page)
-      .set('size', filters.size)
-      .set('sort', filters.sort);
+    let params = new HttpParams().set('page', filters.page).set('size', filters.size).set('sort', filters.sort);
 
     if (filters.q?.trim()) {
       params = params.set('q', filters.q.trim());
@@ -104,10 +101,7 @@ export class ExploreService {
     size: number;
     sort: string;
   }): Observable<PageResponse<Activity>> {
-    let params = new HttpParams()
-      .set('page', filters.page)
-      .set('size', filters.size)
-      .set('sort', filters.sort);
+    let params = new HttpParams().set('page', filters.page).set('size', filters.size).set('sort', filters.sort);
 
     if (filters.q?.trim()) {
       params = params.set('q', filters.q.trim());
@@ -162,10 +156,7 @@ export class ExploreService {
     days: number,
     participants: number
   ): Observable<ActivityAvailabilityDay[]> {
-    const params = new HttpParams()
-      .set('from', from)
-      .set('days', days)
-      .set('participants', participants);
+    const params = new HttpParams().set('from', from).set('days', days).set('participants', participants);
     return this.http.get<ActivityAvailabilityDay[]>(`${this.base}/activities/${activityId}/availability`, { params });
   }
 
@@ -176,5 +167,12 @@ export class ExploreService {
   myActivityReservations(page: number, size: number, sort: string): Observable<PageResponse<ActivityReservationListItem>> {
     const params = new HttpParams().set('page', page).set('size', size).set('sort', sort);
     return this.http.get<PageResponse<ActivityReservationListItem>>(`${this.base}/my/activity-reservations`, { params });
+  }
+  deleteRestaurantReviewMine(restaurantId: number): Observable<void> {
+    return this.http.delete<void>(this.base + '/restaurants/' + restaurantId + '/reviews/mine');
+  }
+
+  deleteActivityReviewMine(activityId: number): Observable<void> {
+    return this.http.delete<void>(this.base + '/activities/' + activityId + '/reviews/mine');
   }
 }

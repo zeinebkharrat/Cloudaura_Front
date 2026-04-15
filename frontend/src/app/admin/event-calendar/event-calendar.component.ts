@@ -59,7 +59,10 @@ export class EventCalendarComponent implements OnInit {
   private toIsoDate(value: Date): string {
     const d = new Date(value);
     d.setHours(0, 0, 0, 0);
-    return d.toISOString().slice(0, 10);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   private isFutureOrToday(isoDate: string): boolean {
@@ -75,6 +78,10 @@ export class EventCalendarComponent implements OnInit {
     const end = new Date(selectInfo.end);
     end.setDate(end.getDate() - 1);
     return this.toIsoDate(end);
+  }
+
+  private toDateTimeLocal(isoDate: string, hour: number, minute: number): string {
+    return `${isoDate}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
   }
 
   // --- 1. CLIC SUR UNE CASE VIDE (CRÉATION) ---
@@ -93,6 +100,8 @@ export class EventCalendarComponent implements OnInit {
     }
 
     const endIso = this.toInclusiveEndIso(selectInfo);
+    const startDateTime = this.toDateTimeLocal(startIso, 9, 0);
+    const endDateTime = this.toDateTimeLocal(endIso, 18, 0);
     const rangeText = startIso === endIso ? startIso : `${startIso} → ${endIso}`;
 
     Swal.fire({
@@ -108,7 +117,7 @@ export class EventCalendarComponent implements OnInit {
       if (result.isConfirmed) {
         // On redirige vers le dashboard en passant la date en paramètre
         this.router.navigate(['/admin/events/dashboard'], { 
-          queryParams: { action: 'new', startDate: startIso, endDate: endIso } 
+          queryParams: { action: 'new', startDate: startDateTime, endDate: endDateTime } 
         });
       }
     });

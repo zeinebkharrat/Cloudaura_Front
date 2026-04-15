@@ -1,11 +1,17 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
-import { DataSourceAdapter, TransportSearchParams } from './data-source.adapter';
+import {
+  DataSourceAdapter,
+  TransportCheckoutResult,
+  TransportPayPalCreatePayload,
+  TransportSearchParams,
+} from './data-source.adapter';
 import {
   City, Accommodation, Transport, Reservation,
   TransportRecommendation, TransportRecommendationRequest,
-  TransportReservationInput, TransportReservation,
+  TransportReservationInput, TransportReservation, TransportReservationUpdatePayload,
+  TransportCheckoutPayload,
   AccommodationReservation,
   EngineRecommendationRequest, EngineRecommendationResponse
 } from '../models/travel.models';
@@ -69,7 +75,11 @@ export class RestApiDataSource implements DataSourceAdapter {
     let httpParams = new HttpParams();
     if (params.from) httpParams = httpParams.set('departureCityId', params.from);
     if (params.to) httpParams = httpParams.set('arrivalCityId', params.to);
-    if (params.date) httpParams = httpParams.set('travelDate', params.date);
+    if (params.date) {
+      const d = String(params.date);
+      const travelDateOnly = d.includes('T') ? d.slice(0, 10) : d;
+      httpParams = httpParams.set('travelDate', travelDateOnly);
+    }
     if (params.transportType) httpParams = httpParams.set('type', params.transportType);
     if (params.passengers) httpParams = httpParams.set('numberOfPassengers', params.passengers.toString());
 
@@ -91,6 +101,106 @@ export class RestApiDataSource implements DataSourceAdapter {
     return this.http.post<any>(`${this.BASE}/transport-reservations`, input).pipe(
       map((res) => this.mapTransportReservation(res.data ?? res))
     );
+  }
+
+  createTransportCheckoutSession(payload: TransportCheckoutPayload): Observable<TransportCheckoutResult> {
+    return this.http.post<any>(`${this.BASE}/transport/payments/checkout-session`, payload).pipe(
+      map((res) => {
+        const data = res.data ?? res;
+        const url = data?.url as string | undefined;
+        if (!url) {
+          throw new Error('Missing checkout URL');
+        }
+        return { url };
+      })
+    );
+  }
+
+  createAccommodationCheckoutSession(payload: {
+    roomId: number;
+    userId: number;
+    checkIn: string;
+    checkOut: string;
+    offerId?: number | null;
+    presentmentCurrency?: string;
+  }): Observable<TransportCheckoutResult> {
+    return this.http.post<any>(`${this.BASE}/accommodation/payments/checkout-session`, payload).pipe(
+      map((res) => {
+        const data = res.data ?? res;
+        const url = data?.url as string | undefined;
+        if (!url) {
+          throw new Error('Missing checkout URL');
+        }
+        return { url };
+      })
+    );
+  }
+
+  confirmTransportStripeSession(sessionId: string): Observable<TransportReservation> {
+    const params = new HttpParams().set('session_id', sessionId);
+    return this.http
+      .get<any>(`${this.BASE}/transport/payments/confirm-session`, { params })
+      .pipe(map((res) => this.mapTransportReservation(res.data ?? res)));
+  }
+
+  createTransportPayPalSession(payload: TransportPayPalCreatePayload): Observable<TransportCheckoutResult> {
+    return this.http.post<any>(`${this.BASE}/transport/payments/paypal/create`, payload).pipe(
+      map((res) => {
+        const data = res.data ?? res;
+        const url = data?.url as string | undefined;
+        if (!url) {
+          throw new Error('Missing PayPal approval URL');
+        }
+        return { url };
+      })
+    );
+  }
+
+  confirmTransportPayPalCapture(token: string, reservationId: number): Observable<TransportReservation> {
+    const params = new HttpParams().set('token', token).set('reservationId', String(reservationId));
+    return this.http.get<any>(`${this.BASE}/transport/payments/paypal/capture`, { params }).pipe(
+      map((res) => {
+        const wrap = res.data ?? res;
+        const inner = wrap?.reservation ?? wrap;
+        return this.mapTransportReservation(inner);
+      })
+    );
+  }
+
+  confirmAccommodationStripeSession(sessionId: string): Observable<Reservation> {
+    const params = new HttpParams().set('session_id', sessionId);
+    return this.http.get<any>(`${this.BASE}/accommodation/payments/confirm-session`, { params }).pipe(
+      map((res) => {
+        const d = res.data ?? res;
+        return {
+          id: d.reservationId ?? d.id,
+          accommodationId: d.accommodationId != null ? Number(d.accommodationId) : undefined,
+          status: d.status,
+          totalPrice: d.totalPrice,
+          checkInDate: typeof d.checkIn === 'string' ? d.checkIn.slice(0, 10) : undefined,
+          checkOutDate: typeof d.checkOut === 'string' ? d.checkOut.slice(0, 10) : undefined,
+          roomId: d.roomId != null ? Number(d.roomId) : undefined,
+        } as Reservation;
+      })
+    );
+  }
+
+  getTransportReservation(reservationId: number, userId: number): Observable<TransportReservation> {
+    const params = new HttpParams().set('userId', String(userId));
+    return this.http.get<any>(`${this.BASE}/transport-reservations/${reservationId}`, { params }).pipe(
+      map((res) => this.mapTransportReservation(res.data ?? res))
+    );
+  }
+
+  updateTransportReservation(
+    reservationId: number,
+    userId: number,
+    payload: TransportReservationUpdatePayload
+  ): Observable<TransportReservation> {
+    const params = new HttpParams().set('userId', String(userId));
+    return this.http
+      .patch<any>(`${this.BASE}/transport-reservations/${reservationId}`, payload, { params })
+      .pipe(map((res) => this.mapTransportReservation(res.data ?? res)));
   }
 
   getMyTransportReservations(userId: number): Observable<TransportReservation[]> {
@@ -123,27 +233,36 @@ export class RestApiDataSource implements DataSourceAdapter {
     };
     const full = String(x.passengerFullName ?? '').trim();
     const parts = full.split(/\s+/).filter(Boolean);
-    const firstName = parts[0] ?? '';
-    const lastName = parts.slice(1).join(' ');
+    const firstName = (x.passengerFirstName && String(x.passengerFirstName).trim()) || parts[0] || '';
+    const lastName =
+      (x.passengerLastName && String(x.passengerLastName).trim()) || parts.slice(1).join(' ') || '';
     return {
       transportReservationId: x.transportReservationId ?? x.id,
       transportId: x.transportId != null ? Number(x.transportId) : undefined,
       reservationRef: x.reservationRef ?? '',
       status: x.status,
+      statusLabel: x.statusLabel,
       paymentStatus: x.paymentStatus,
+      paymentStatusLabel: x.paymentStatusLabel,
       paymentMethod: x.paymentMethod,
+      paymentMethodLabel: x.paymentMethodLabel,
       totalPrice: Number(x.totalPrice) || 0,
       numberOfSeats: Number(x.numberOfSeats) || 0,
       travelDate: toIso(x.travelDate),
-      passengerFirstName: firstName || x.passengerFirstName || '',
-      passengerLastName: lastName || x.passengerLastName || '',
+      passengerFirstName: firstName,
+      passengerLastName: lastName,
       passengerEmail: x.passengerEmail ?? '',
       passengerPhone: x.passengerPhone ?? '',
       qrCodeToken: x.qrCodeToken,
       createdAt: toIso(x.createdAt),
       transportType: x.transportType,
+      type: x.type,
+      transportTypeLabel: x.transportTypeLabel,
+      typeLabel: x.typeLabel,
       departureCityName: x.departureCityName,
       arrivalCityName: x.arrivalCityName,
+      departureCityLabel: x.departureCityLabel,
+      arrivalCityLabel: x.arrivalCityLabel,
       departureTime: toIso(x.travelDate) || toIso(x.departureTime),
     };
   }
@@ -161,6 +280,33 @@ export class RestApiDataSource implements DataSourceAdapter {
       .pipe(map(() => undefined));
   }
 
+  updateAccommodationReservation(
+    reservationId: number,
+    userId: number,
+    checkIn: string,
+    checkOut: string
+  ): Observable<Reservation> {
+    const params = new HttpParams().set('userId', String(userId));
+    return this.http
+      .patch<any>(
+        `${this.BASE}/reservations/${reservationId}`,
+        { checkIn: checkIn.slice(0, 10), checkOut: checkOut.slice(0, 10) },
+        { params }
+      )
+      .pipe(
+        map((res) => {
+          const d = res.data ?? res;
+          return {
+            id: d.reservationId ?? d.id,
+            status: d.status,
+            totalPrice: d.totalPrice,
+            checkInDate: d.checkIn,
+            checkOutDate: d.checkOut,
+          } as Reservation;
+        })
+      );
+  }
+
   private mapAccommodationReservation(x: any): AccommodationReservation {
     const toDateStr = (v: unknown): string | undefined => {
       if (v == null) return undefined;
@@ -175,14 +321,22 @@ export class RestApiDataSource implements DataSourceAdapter {
     };
     return {
       id: x.reservationId ?? x.id,
+      accommodationId: x.accommodationId != null ? Number(x.accommodationId) : undefined,
+      roomId: x.roomId != null ? Number(x.roomId) : undefined,
       status: x.status,
+      statusLabel: x.statusLabel,
       totalPrice: x.totalPrice,
       accommodationName: x.accommodationName,
+      nameLabel: x.nameLabel,
       accommodationCity: x.cityName,
+      cityLabel: x.cityLabel,
       checkInDate: toDateStr(x.checkIn),
       checkOutDate: toDateStr(x.checkOut),
       nights: x.nights,
       roomType: x.roomType,
+      roomTypeLabel: x.roomTypeLabel,
+      paymentMethod: x.paymentMethod,
+      paymentMethodLabel: x.paymentMethodLabel,
     };
   }
 
@@ -238,11 +392,6 @@ export class RestApiDataSource implements DataSourceAdapter {
       arrivalCityId: t.arrivalCityId ?? parseInt(params.to ?? '0'),
       departureCityName: t.departureCityName,
       arrivalCityName: t.arrivalCityName,
-      vehicleBrand: t.vehicleBrand,
-      vehicleModel: t.vehicleModel,
-      vehiclePhotoUrl: t.vehiclePhotoUrl,
-      driverName: t.driverName,
-      driverRating: t.driverRating,
       description: t.description,
     };
   }

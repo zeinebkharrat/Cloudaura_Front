@@ -12,7 +12,8 @@ export default defineConfig({
         target: BACKEND,
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/api/, ''),
+        timeout: 0,
+        proxyTimeout: 0,
       },
 
       // Media URLs are returned by Spring as `/uploads/...`.
@@ -42,7 +43,7 @@ export default defineConfig({
       '/follow': { target: BACKEND, changeOrigin: true, secure: false },
       '/saved-post': { target: BACKEND, changeOrigin: true, secure: false },
       '/chatroom': { target: BACKEND, changeOrigin: true, secure: false },
+      '/story': { target: BACKEND, changeOrigin: true, secure: false },
     },
   },
 });
-

@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { Router } from '@angular/router';
 import { forkJoin, firstValueFrom, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -22,7 +23,7 @@ import Swal from 'sweetalert2';
 @Component({
   selector: 'app-my-posts',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslateModule],
   templateUrl: './my-posts.component.html',
   styleUrl: './my-posts.component.css',
 })
@@ -33,6 +34,7 @@ export class MyPostsComponent {
   private readonly postMediaService = inject(PostMediaService);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly translate = inject(TranslateService);
 
   // Feed state
   readonly posts = signal<Post[]>([]);
@@ -51,6 +53,8 @@ export class MyPostsComponent {
   readonly editPostLocation = signal<string>('');
   readonly editPostVisibility = signal<string>('public');
   readonly isEditing = signal<boolean>(false);
+  readonly mediaBusyPostId = signal<number | null>(null);
+  readonly deletingMediaId = signal<number | null>(null);
 
   // Delete confirmation
   readonly deletingPostId = signal<number | null>(null);
@@ -73,7 +77,7 @@ export class MyPostsComponent {
     const safePosts$ = this.postService.getMyPosts().pipe(
       catchError((err) => {
         console.error('Failed to load my posts:', err);
-        this.loadError.set('Failed to load your posts');
+        this.loadError.set(this.translate.instant('COMMUNITY.MY_POSTS_ERR_LOAD'));
         return of([]);
       })
     );
@@ -112,7 +116,7 @@ export class MyPostsComponent {
       },
       error: (err) => {
         console.error('Error loading my posts:', err);
-        this.loadError.set('Error loading your posts');
+        this.loadError.set(this.translate.instant('COMMUNITY.MY_POSTS_ERR_LOAD_GENERIC'));
         this.feedLoaded.set(true);
       },
     });
@@ -189,7 +193,7 @@ export class MyPostsComponent {
       this.loadMyPosts();
       await Swal.fire({
         icon: 'success',
-        title: 'Post updated',
+        title: this.translate.instant('COMMUNITY.SWAL_POST_UPDATED_TITLE'),
         timer: 1200,
         showConfirmButton: false,
         ...this.swalTheme(),
@@ -198,8 +202,8 @@ export class MyPostsComponent {
       console.error('Error updating post:', error);
       await Swal.fire({
         icon: 'error',
-        title: 'Could not update',
-        text: 'The post could not be updated.',
+        title: this.translate.instant('COMMUNITY.SWAL_UPDATE_FAIL_TITLE'),
+        text: this.translate.instant('COMMUNITY.SWAL_UPDATE_FAIL_TEXT'),
         ...this.swalTheme(),
       });
     } finally {
@@ -210,12 +214,12 @@ export class MyPostsComponent {
   // Delete functionality
   async startDeletePost(postId: number): Promise<void> {
     const confirmation = await Swal.fire({
-      title: 'Delete this post?',
-      text: 'This cannot be undone.',
+      title: this.translate.instant('COMMUNITY.SWAL_DELETE_CONFIRM_TITLE'),
+      text: this.translate.instant('COMMUNITY.SWAL_DELETE_CONFIRM_TEXT'),
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Yes, delete',
-      cancelButtonText: 'Cancel',
+      confirmButtonText: this.translate.instant('COMMUNITY.SWAL_DELETE_YES'),
+      cancelButtonText: this.translate.instant('COMMUNITY.CANCEL'),
       confirmButtonColor: '#e63946',
       ...this.swalTheme(),
     });
@@ -242,7 +246,7 @@ export class MyPostsComponent {
       this.loadMyPosts();
       await Swal.fire({
         icon: 'success',
-        title: 'Post deleted',
+        title: this.translate.instant('COMMUNITY.SWAL_POST_DELETED_TITLE'),
         timer: 1200,
         showConfirmButton: false,
         ...this.swalTheme(),
@@ -251,8 +255,8 @@ export class MyPostsComponent {
       console.error('Error deleting post:', error);
       await Swal.fire({
         icon: 'error',
-        title: 'Could not delete',
-        text: 'The post could not be deleted.',
+        title: this.translate.instant('COMMUNITY.SWAL_DELETE_FAIL_TITLE'),
+        text: this.translate.instant('COMMUNITY.SWAL_DELETE_FAIL_TEXT'),
         ...this.swalTheme(),
       });
     }
@@ -295,6 +299,23 @@ export class MyPostsComponent {
       [user?.firstName, user?.lastName].filter(Boolean).join(' ') ??
       'Utilisateur'
     );
+  }
+
+  userAvatarUrl(user?: UserRef): string | null {
+    const raw = (user?.profileImageUrl ?? '').trim();
+    if (!raw) {
+      return null;
+    }
+    if (/^https?:\/\//i.test(raw)) {
+      return raw;
+    }
+    if (raw.startsWith('/')) {
+      return raw;
+    }
+    if (raw.startsWith('uploads/')) {
+      return `/${raw}`;
+    }
+    return `/${raw.replace(/^\/+/, '')}`;
   }
 
   private parseDate(date?: string | null): number {
@@ -380,11 +401,107 @@ export class MyPostsComponent {
       console.error('Error uploading media:', error);
       await Swal.fire({
         icon: 'error',
+        title: this.translate.instant('COMMUNITY.SWAL_UPLOAD_FAIL_TITLE'),
+        text: this.translate.instant('COMMUNITY.SWAL_MEDIA_FAIL_TEXT'),
+        ...this.swalTheme(),
+      });
+    }
+  }
+
+  async uploadMediaFromEdit(event: Event, postId: number): Promise<void> {
+    if (!this.authService.isAuthenticated()) {
+      this.router.navigate(['/auth/signin']);
+      return;
+    }
+
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    this.mediaBusyPostId.set(postId);
+
+    try {
+      const mediaType = file.type.startsWith('video/') ? 'VIDEO' : 'IMAGE';
+      await firstValueFrom(
+        this.postMediaService.uploadMedia(file, postId, mediaType as MediaType)
+      );
+
+      await Swal.fire({
+        icon: 'success',
+        title: 'Media added',
+        timer: 1200,
+        showConfirmButton: false,
+        ...this.swalTheme(),
+      });
+
+      this.loadMyPosts();
+    } catch (error) {
+      console.error('Error uploading media from edit form:', error);
+      await Swal.fire({
+        icon: 'error',
         title: 'Upload failed',
         text: 'The media could not be added.',
         ...this.swalTheme(),
       });
+    } finally {
+      input.value = '';
+      this.mediaBusyPostId.set(null);
     }
+  }
+
+  async deleteMedia(media: PostMedia, postId: number): Promise<void> {
+    if (!media.mediaId) {
+      return;
+    }
+
+    const confirm = await Swal.fire({
+      icon: 'warning',
+      title: 'Delete this media?',
+      text: 'This file will be removed from your post.',
+      showCancelButton: true,
+      confirmButtonText: 'Delete',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#e63946',
+      ...this.swalTheme(),
+    });
+
+    if (!confirm.isConfirmed) {
+      return;
+    }
+
+    this.mediaBusyPostId.set(postId);
+    this.deletingMediaId.set(media.mediaId);
+
+    try {
+      await firstValueFrom(this.postMediaService.deleteMedia(media.mediaId));
+
+      await Swal.fire({
+        icon: 'success',
+        title: 'Media deleted',
+        timer: 1200,
+        showConfirmButton: false,
+        ...this.swalTheme(),
+      });
+
+      this.loadMyPosts();
+    } catch (error) {
+      console.error('Error deleting media:', error);
+      await Swal.fire({
+        icon: 'error',
+        title: 'Delete failed',
+        text: 'The media could not be deleted.',
+        ...this.swalTheme(),
+      });
+    } finally {
+      this.mediaBusyPostId.set(null);
+      this.deletingMediaId.set(null);
+    }
+  }
+
+  isMediaBusy(postId: number): boolean {
+    return this.mediaBusyPostId() === postId;
   }
 
   private swalTheme(): { background: string; color: string } {

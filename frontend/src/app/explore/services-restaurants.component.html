@@ -1,48 +1,91 @@
 <section class="services-page">
   <header class="services-hero animate-in">
-    <p class="kicker">Our Services</p>
-    <h1>Restaurants in Tunisia</h1>
-    <p>Browse restaurants with city filter and classic pagination.</p>
+    <p class="kicker">{{ 'EXPLORE_SERVICES_RESTAURANTS.HERO_KICKER' | translate }}</p>
+    <h1>{{ 'EXPLORE_SERVICES_RESTAURANTS.TITLE' | translate }}</h1>
+    <p>{{ 'EXPLORE_SERVICES_RESTAURANTS.SUB' | translate }}</p>
   </header>
 
   <section class="services-panel animate-in delay-1">
     <div class="services-layout">
       <aside class="filters-sidebar">
         <h3>Filters</h3>
-        <label class="filter-field">
+        <label class="filter-field" [class.filter-detected]="voiceDetectedFilters().city">
           <span>City</span>
           <select [ngModel]="selectedCityId()" (ngModelChange)="onCityFilterChange($event)">
-            <option value="all">All cities</option>
+            <option value="all">{{ 'EXPLORE_SERVICES_RESTAURANTS.ALL_CITIES' | translate }}</option>
             @for (city of cities(); track city.cityId) {
               <option [ngValue]="city.cityId">{{ city.name }}</option>
             }
           </select>
         </label>
 
-        <label class="filter-field">
+        <label class="filter-field" [class.filter-detected]="voiceDetectedFilters().cuisine">
           <span>Cuisine type</span>
-          <input type="text" [ngModel]="cuisineType()" (ngModelChange)="onCuisineTypeChange($event)" placeholder="e.g. Tunisian, Italian" />
+          <select [ngModel]="cuisineType()" (ngModelChange)="onCuisineTypeChange($event)">
+            <option value="">All cuisines</option>
+            @for (cuisine of cuisineOptions(); track cuisine) {
+              <option [ngValue]="cuisine">{{ cuisine }}</option>
+            }
+          </select>
         </label>
+
+        <button class="ghost-filter-btn" type="button" (click)="clearAvailabilityFilter()">Clear availability</button>
       </aside>
 
       <div class="services-content">
         <div class="toolbar">
           <div class="search-wrap">
-            <input type="text" [ngModel]="q()" (ngModelChange)="onSearchChange($event)" placeholder="Search restaurant..." />
+            <div class="modern-search">
+              <input type="text" [ngModel]="q()" (ngModelChange)="onSearchChange($event)" placeholder="Search restaurant..." />
+              <button class="search-end-btn" type="button" tabindex="-1" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                  <path d="M10.5 3a7.5 7.5 0 1 1 0 15 7.5 7.5 0 0 1 0-15Zm0 2a5.5 5.5 0 1 0 3.43 9.8l3.63 3.63a1 1 0 0 0 1.42-1.42l-3.63-3.63A5.5 5.5 0 0 0 10.5 5Z"/>
+                </svg>
+              </button>
+            </div>
+            <button
+              class="voice-btn"
+              type="button"
+              (click)="onVoiceSearchClick()"
+              [disabled]="!voiceSupported() || voiceProcessing()"
+              [class.active]="voiceListening()"
+              [attr.aria-label]="voiceListening() ? 'Stop voice recording' : 'Start voice recording'"
+              title="Voice search"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M12 15a3 3 0 0 0 3-3V7a3 3 0 1 0-6 0v5a3 3 0 0 0 3 3Zm5-3a1 1 0 1 1 2 0 7 7 0 0 1-6 6.93V21h2a1 1 0 1 1 0 2H9a1 1 0 0 1 0-2h2v-2.07A7 7 0 0 1 5 12a1 1 0 1 1 2 0 5 5 0 1 0 10 0Z"/>
+              </svg>
+            </button>
           </div>
           <select [ngModel]="sort()" (ngModelChange)="onSortChange($event)">
-            <option value="restaurantId,desc">Newest</option>
-            <option value="name,asc">Name A → Z</option>
-            <option value="rating,desc">Best rating</option>
+            <option value="restaurantId,desc">{{ 'EXPLORE_SERVICES_RESTAURANTS.SORT_NEWEST' | translate }}</option>
+            <option value="name,asc">{{ 'EXPLORE_SERVICES_RESTAURANTS.SORT_NAME' | translate }}</option>
+            <option value="rating,desc">{{ 'EXPLORE_SERVICES_RESTAURANTS.SORT_RATING' | translate }}</option>
           </select>
         </div>
 
+        @if (voiceListening()) {
+          <p class="voice-state">Listening... tap microphone again to apply filters.</p>
+        }
+        @if (voiceProcessing()) {
+          <p class="voice-state">Analyzing your voice request...</p>
+        }
+        @if (lastTranscript()) {
+          <p class="voice-state transcript">“{{ lastTranscript() }}”</p>
+        }
+        @if (voiceSuggestion()) {
+          <p class="voice-state">{{ voiceSuggestion() }}</p>
+        }
+        @if (voiceError()) {
+          <p class="voice-state error">{{ voiceError() }}</p>
+        }
+
         @if (loading()) {
-          <p class="state">Loading restaurants...</p>
+          <p class="state">{{ 'EXPLORE_SERVICES_RESTAURANTS.LOADING' | translate }}</p>
         } @else if (error()) {
           <p class="state error">{{ error() }}</p>
         } @else if (restaurants().length === 0) {
-          <p class="state">No restaurants found.</p>
+          <p class="state">{{ 'EXPLORE_SERVICES_RESTAURANTS.EMPTY' | translate }}</p>
         } @else {
           <div class="cards-grid">
             @for (restaurant of restaurants(); track restaurant.restaurantId) {
@@ -50,12 +93,16 @@
                 <img [src]="restaurant.imageUrl || 'assets/sidi_bou.png'" [alt]="restaurant.name" loading="lazy" />
                 <div class="content">
                   <h3>{{ restaurant.name }}</h3>
-                  <p>{{ restaurant.description || ('Cuisine: ' + (restaurant.cuisineType || 'Local')) }}</p>
+                  @if (restaurant.description) {
+                    <p>{{ restaurant.description }}</p>
+                  } @else {
+                    <p>{{ 'EXPLORE_CITY.CUISINE_PREFIX' | translate: { type: (restaurant.cuisineType || ('EXPLORE_CITY.CUISINE_LOCAL' | translate)) } }}</p>
+                  }
                   <div class="city-row">
-                    <span class="city-chip">{{ restaurant.cityName || 'Unknown city' }}</span>
+                    <span class="city-chip">{{ restaurant.cityName || ('EXPLORE_SERVICES_RESTAURANTS.UNKNOWN_CITY' | translate) }}</span>
                   </div>
                   <div class="meta-row">
-                    <span>{{ restaurant.cuisineType || 'Local cuisine' }}</span>
+                    <span>{{ restaurant.cuisineType || ('EXPLORE_CITY.CUISINE_DEFAULT' | translate) }}</span>
                     <span class="rating-badge">
                       <span class="stars">
                         @for (state of restaurantStarStates(restaurant.restaurantId); track $index) {
@@ -63,11 +110,11 @@
                         }
                       </span>
                       @if (!hasRestaurantReviews(restaurant.restaurantId)) {
-                        <small>No reviews</small>
+                        <small>{{ 'EXPLORE_SERVICES_RESTAURANTS.NO_REVIEWS' | translate }}</small>
                       }
                     </span>
                   </div>
-                  <a class="btn" [routerLink]="['/restaurants', restaurant.restaurantId]">View details</a>
+                  <a class="btn" [routerLink]="['/restaurants', restaurant.restaurantId]">{{ 'EXPLORE_SERVICES_RESTAURANTS.VIEW_DETAILS' | translate }}</a>
                 </div>
               </article>
             }
@@ -75,16 +122,16 @@
 
           @if (totalPages() > 1) {
             <div class="pagination">
-              <button class="pager-btn" type="button" (click)="previousPage()" [disabled]="page() === 0">Previous</button>
+              <button class="pager-btn" type="button" (click)="previousPage()" [disabled]="page() === 0">{{ 'EXPLORE_SERVICES_RESTAURANTS.PREV' | translate }}</button>
               <div class="pager-numbers">
                 @for (p of pageNumbers(); track p) {
                   <button class="pager-num" type="button" [class.active]="p === page()" (click)="goToPage(p)">{{ p + 1 }}</button>
                 }
               </div>
-              <button class="pager-btn" type="button" (click)="nextPage()" [disabled]="page() + 1 >= totalPages()">Next</button>
+              <button class="pager-btn" type="button" (click)="nextPage()" [disabled]="page() + 1 >= totalPages()">{{ 'EXPLORE_SERVICES_RESTAURANTS.NEXT' | translate }}</button>
             </div>
           }
-      }
+        }
       </div>
     </div>
   </section>

@@ -1,26 +1,27 @@
 <div class="roadmap-page">
-  <div class="hub-hero animate-in">
-    <h1>Explore, play, learn.</h1>
-    <p>Discover Tunisia through our interactive games. Move forward on the map!</p>
+  <div class="hub-hero ug-animate-in">
+    <h1>{{ 'GAMES_HUB.TITLE' | translate }}</h1>
+    <p>{{ 'GAMES_HUB.LEAD' | translate }}</p>
+
     @if (roadmapNotice()) {
       <div class="roadmap-notice">{{ roadmapNotice() }}</div>
     }
   </div>
 
-  <div class="roadmap-container animate-up">
+  <div class="roadmap-container ug-animate-up">
     <!-- Introduction Divider -->
     <div class="roadmap-section">
       <span class="line"></span>
-      <h2>Introduction</h2>
+      <h2>{{ 'GAMES_HUB.SECTION_INTRO' | translate }}</h2>
       <span class="line"></span>
     </div>
 
     <div class="roadmap-nodes-wrapper">
       @for (node of roadmapNodes(); track node.nodeId; let i = $index) {
-        <div class="node-row" 
-             [class.shift-left]="i % 2 === 0" 
-             [class.shift-right]="i % 2 === 1" 
-             [class.current]="i === currentHighlightIndex()" 
+        <div class="node-row"
+             [class.shift-left]="i % 2 === 0"
+             [class.shift-right]="i % 2 === 1"
+             [class.current]="i === currentHighlightIndex()"
              [class.completed]="isNodeCompleted(i)"
              [class.locked]="!isUnlocked(i)"
              (click)="playNode(node, i)">
@@ -37,7 +38,7 @@
 
           <div class="hex-3d-wrapper">
             @if (isUnlocked(i) && !isNodeCompleted(i) && i === currentHighlightIndex()) {
-              <div class="continue-bubble">CONTINUE</div>
+              <div class="continue-bubble">{{ 'GAMES_HUB.CONTINUE' | translate }}</div>
             }
 
             <div class="hex-3d">
@@ -75,20 +76,20 @@
           @if (i % 2 === 0) {
             <!-- Left to Right -->
             <svg class="node-connector" viewBox="0 0 100 60" preserveAspectRatio="none">
-              <path d="M 12 0 C 12 30, 88 30, 88 60" 
-                    fill="none" 
-                    [attr.stroke]="isNodeCompleted(i) ? '#0ea5e9' : '#374151'" 
-                    stroke-width="8" 
+              <path d="M 12 0 C 12 30, 88 30, 88 60"
+                    fill="none"
+                    [attr.stroke]="isNodeCompleted(i) ? '#0ea5e9' : '#374151'"
+                    stroke-width="8"
                     stroke-linecap="round"
                     [attr.stroke-dasharray]="!isNodeCompleted(i) ? '8 8' : 'none'" />
             </svg>
           } @else {
             <!-- Right to Left -->
             <svg class="node-connector" viewBox="0 0 100 60" preserveAspectRatio="none">
-              <path d="M 88 0 C 88 30, 12 30, 12 60" 
-                    fill="none" 
-                    [attr.stroke]="isNodeCompleted(i) ? '#0ea5e9' : '#374151'" 
-                    stroke-width="8" 
+              <path d="M 88 0 C 88 30, 12 30, 12 60"
+                    fill="none"
+                    [attr.stroke]="isNodeCompleted(i) ? '#0ea5e9' : '#374151'"
+                    stroke-width="8"
                     stroke-linecap="round"
                     [attr.stroke-dasharray]="!isNodeCompleted(i) ? '8 8' : 'none'" />
             </svg>
@@ -96,52 +97,94 @@
         }
       }
     </div>
-    
+
   </div>
 
-  <div class="puzzle-section animate-up">
+  <div class="puzzle-section ug-animate-up">
     <div class="roadmap-section">
       <span class="line"></span>
-      <h2>Image puzzles</h2>
+      <h2>{{ 'GAMES_HUB.SECTION_PUZZLES' | translate }}</h2>
+
       <span class="line"></span>
     </div>
 
     <div class="puzzle-grid">
+      <!-- 1. Puzzles -->
       @for (p of puzzles(); track p.puzzleId) {
         <button class="puzzle-card" (click)="playPuzzle(p.puzzleId)">
+          <div class="game-category-badge">PUZZLE</div>
           <img [src]="p.imageDataUrl" [alt]="p.title" />
           <div class="puzzle-card__meta">
             <h3>{{ p.title }}</h3>
-            @if (isLoggedIn()) {
-              <span>Play →</span>
-            } @else {
-              <span class="ludo-signin-hint">Connexion requise →</span>
-            }
+            @if (isLoggedIn()) { <span>Jouer →</span> } @else { <span class="ludo-signin-hint">Connexion requise →</span> }
           </div>
         </button>
       }
-      @if (puzzles().length === 0) {
-        <p class="puzzle-empty">No puzzles published yet.</p>
-      }
-    </div>
-  </div>
 
-  <div class="puzzle-section animate-up">
-    <div class="roadmap-section">
-      <span class="line"></span>
-      <h2>Ludo Tunisia</h2>
-      <span class="line"></span>
-    </div>
-    <div class="puzzle-grid">
-      <button type="button" class="puzzle-card" (click)="playLudo()" [attr.aria-label]="isLoggedIn() ? 'Play Ludo Tunisia' : 'Sign in to play Ludo Tunisia'">
+      <!-- 2. Governorate Guess -->
+      <button type="button" class="puzzle-card" (click)="playGovernorateGuess()">
+        <div class="game-category-badge">EXPLORATION</div>
+        <div class="ludo-cover">🗺️</div>
+
+        <div class="puzzle-card__meta">
+          <h3>{{ 'GAMES_HUB.GOVERNORATE_GUESS' | translate }}</h3>
+          <p class="puzzle-card__blurb">{{ 'GAMES_HUB.GOVERNORATE_GUESS_DESC' | translate }}</p>
+          @if (isLoggedIn()) { <span>Jouer →</span> } @else { <span class="ludo-signin-hint">Connexion requise →</span> }
+        </div>
+      </button>
+
+      <!-- 3. El Jem Quest -->
+      <button type="button" class="puzzle-card" (click)="playElJemQuest()">
+        <div class="game-category-badge">AVENTURE 3D</div>
+        <img class="puzzle-card__hero" src="/assets/games/el-jem-start.png" alt="El Jem" width="640" height="360" />
+        <div class="puzzle-card__meta">
+          <h3>{{ 'GAMES_HUB.EL_JEM_QUEST' | translate }}</h3>
+          <p class="puzzle-card__blurb">{{ 'GAMES_HUB.EL_JEM_QUEST_DESC' | translate }}</p>
+          @if (isLoggedIn()) { <span>Jouer →</span> } @else { <span class="ludo-signin-hint">Connexion requise →</span> }
+        </div>
+      </button>
+
+      <!-- 4. Ludo Tunisia -->
+      <button type="button" class="puzzle-card" (click)="playLudo()">
+        <div class="game-category-badge">PLATEAU</div>
         <div class="ludo-cover">🎲</div>
         <div class="puzzle-card__meta">
-          <h3>Ludo Tunisia board</h3>
-          @if (isLoggedIn()) {
-            <span>Play →</span>
-          } @else {
-            <span class="ludo-signin-hint">Connexion requise →</span>
-          }
+          <h3>{{ 'GAMES_HUB.LUDO_BOARD_TITLE' | translate }}</h3>
+          <p class="puzzle-card__blurb">{{ 'GAMES_HUB.LUDO_DESC' | translate }}</p>
+          @if (isLoggedIn()) { <span>Jouer →</span> } @else { <span class="ludo-signin-hint">Connexion requise →</span> }
+        </div>
+      </button>
+
+      <!-- 5. Cloud Chef -->
+      <button type="button" class="puzzle-card" (click)="playChefQuest()">
+        <div class="game-category-badge">CUISINE</div>
+        <div class="ludo-cover">🍳</div>
+        <div class="puzzle-card__meta">
+          <h3>{{ 'GAMES_HUB.CHEF_QUEST' | translate }}</h3>
+          <p class="puzzle-card__blurb">{{ 'GAMES_HUB.CHEF_QUEST_DESC' | translate }}</p>
+          @if (isLoggedIn()) { <span>Jouer →</span> } @else { <span class="ludo-signin-hint">Connexion requise →</span> }
+        </div>
+      </button>
+
+      <!-- 6. Chkobba -->
+      <button type="button" class="puzzle-card" [routerLink]="['/games/chkobba']">
+        <div class="game-category-badge">TRADITION</div>
+        <div class="ludo-cover" style="background: linear-gradient(135deg, #16a34a, #15803d);">🪕</div>
+        <div class="puzzle-card__meta">
+          <h3>{{ 'GAMES_HUB.CHKOBBA' | translate }}</h3>
+          <p class="puzzle-card__blurb">{{ 'GAMES_HUB.CHKOBBA_DESC' | translate }}</p>
+          @if (isLoggedIn()) { <span>Jouer →</span> } @else { <span class="ludo-signin-hint">Connexion requise →</span> }
+        </div>
+      </button>
+
+      <!-- 7. Rythmes de Tunisie -->
+      <button type="button" class="puzzle-card" [routerLink]="['/games/music']">
+        <div class="game-category-badge">MUSIQUE</div>
+        <div class="ludo-cover" style="background: linear-gradient(135deg, #f59e0b, #d97706);">🎻</div>
+        <div class="puzzle-card__meta">
+          <h3>{{ 'GAMES_HUB.MUSIC' | translate }}</h3>
+          <p class="puzzle-card__blurb">{{ 'GAMES_HUB.MUSIC_DESC' | translate }}</p>
+          @if (isLoggedIn()) { <span>Jouer →</span> } @else { <span class="ludo-signin-hint">Connexion requise →</span> }
         </div>
       </button>
       @if (ludoCards().length > 0) {
@@ -150,11 +193,12 @@
             <div class="puzzle-card__meta">
               <h3>{{ card.title }}</h3>
               <p>{{ card.description }}</p>
-              <span>Effect: {{ card.effectSteps! > 0 ? '+' : '' }}{{ card.effectSteps }}</span>
+              <span>{{ 'GAMES_HUB.LUDO_EFFECT' | translate: { sign: card.effectSteps! > 0 ? '+' : '', steps: card.effectSteps } }}</span>
             </div>
           </div>
         }
       }
+
     </div>
   </div>
 </div>

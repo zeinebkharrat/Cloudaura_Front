@@ -2,8 +2,10 @@ package org.example.backend.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+import java.time.LocalDate;
 import java.util.Locale;
 
 public record SignupRequest(
@@ -27,6 +29,9 @@ public record SignupRequest(
         Boolean becomeArtisan,
         @Size(max = 100, message = "Nationality is too long")
         String nationality,
+        @Pattern(regexp = "^(?i)(male|female)$", message = "Gender must be male or female")
+        String gender,
+        LocalDate dateOfBirth,
         Integer cityId,
         @Size(max = 16_000_000, message = "Profile image URL is too long")
         String profileImageUrl,
@@ -57,6 +62,10 @@ public record SignupRequest(
         if (nationality != null) {
             String n = nationality.trim();
             nationality = n.isEmpty() ? null : n;
+        }
+        if (gender != null) {
+            String g = gender.trim();
+            gender = g.isEmpty() ? null : g.toUpperCase(Locale.ROOT);
         }
         if (profileImageUrl != null) {
             String u = profileImageUrl.trim();

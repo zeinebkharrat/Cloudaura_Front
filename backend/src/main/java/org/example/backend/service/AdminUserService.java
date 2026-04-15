@@ -13,8 +13,13 @@ import org.example.backend.repository.BanRepository;
 import org.example.backend.repository.CityRepository;
 import org.example.backend.repository.RoleRepository;
 import org.example.backend.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.mail.MailException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -28,22 +33,30 @@ import java.util.stream.Collectors;
 @Service
 public class AdminUserService {
 
+    private static final Logger log = LoggerFactory.getLogger(AdminUserService.class);
+
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final BanRepository banRepository;
     private final CityRepository cityRepository;
     private final AuditService auditService;
+    private final EmailService emailService;
+    private final JdbcTemplate jdbcTemplate;
 
     public AdminUserService(UserRepository userRepository,
                             RoleRepository roleRepository,
                             BanRepository banRepository,
                             CityRepository cityRepository,
-                            AuditService auditService) {
+                            AuditService auditService,
+                            EmailService emailService,
+                            JdbcTemplate jdbcTemplate) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.banRepository = banRepository;
         this.cityRepository = cityRepository;
         this.auditService = auditService;
+        this.emailService = emailService;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Transactional(readOnly = true)
@@ -71,7 +84,7 @@ public class AdminUserService {
         String currentNormalizedEmail = previousEmail == null ? "" : previousEmail.trim().toLowerCase(Locale.ROOT);
         if (!normalizedEmail.equals(currentNormalizedEmail)
             && userRepository.existsByEmailIgnoreCaseAndUserIdNot(normalizedEmail, userId)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already in use");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "api.error.duplicate_email");
         }
 
         user.setFirstName(request.firstName().trim());
@@ -104,7 +117,7 @@ public class AdminUserService {
         User user = getExistingUser(userId);
         Set<Role> updatedRoles = request.roles().stream()
                 .map(roleName -> roleRepository.findByName(roleName)
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown role: " + roleName)))
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.admin.unknown_role")))
                 .collect(Collectors.toSet());
 
         user.setRoles(updatedRoles);
@@ -118,37 +131,97 @@ public class AdminUserService {
 
         if (approved) {
             Role artisanRole = roleRepository.findByName("ROLE_ARTISAN")
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "ROLE_ARTISAN does not exist"));
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.admin.role_artisan_missing"));
             Set<Role> roles = user.getRoles();
             roles.add(artisanRole);
             user.setRoles(roles);
         }
 
         user.setArtisanRequestPending(false);
-        return toAdminUserResponse(userRepository.save(user));
+        User saved = userRepository.save(user);
+        if (saved.getEmail() != null && !saved.getEmail().isBlank()) {
+            try {
+                emailService.sendArtisanRequestDecision(saved.getEmail(), saved.getFirstName(), approved);
+            } catch (MailException ex) {
+                System.err.println("Failed to send artisan review email: " + ex.getMessage());
+            }
+        }
+        return toAdminUserResponse(saved);
     }
 
     @Transactional
     public void deleteUser(Integer userId) {
         if (!userRepository.existsById(userId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.user_not_found");
         }
-        userRepository.deleteById(userId);
+
+        try {
+            deleteUserWithFkCleanup(userId, false);
+        } catch (DataIntegrityViolationException firstFailure) {
+            log.warn("Standard delete for user {} failed due to FK constraints, retrying with FK checks temporarily disabled", userId);
+            deleteUserWithFkCleanup(userId, true);
+        }
+    }
+
+    private void deleteUserWithFkCleanup(Integer userId, boolean disableFkChecks) {
+        if (disableFkChecks) {
+            jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 0");
+        }
+
+        try {
+            deleteRowsReferencingUser(userId);
+            userRepository.deleteById(userId);
+            userRepository.flush();
+        } finally {
+            if (disableFkChecks) {
+                jdbcTemplate.execute("SET FOREIGN_KEY_CHECKS = 1");
+            }
+        }
+    }
+
+    private void deleteRowsReferencingUser(Integer userId) {
+        String sql = """
+                SELECT TABLE_NAME, COLUMN_NAME
+                FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND REFERENCED_TABLE_NAME = 'users'
+                  AND REFERENCED_COLUMN_NAME = 'user_id'
+                """;
+
+        List<Map<String, Object>> refs = jdbcTemplate.queryForList(sql);
+        for (Map<String, Object> ref : refs) {
+            String tableName = String.valueOf(ref.get("TABLE_NAME"));
+            String columnName = String.valueOf(ref.get("COLUMN_NAME"));
+
+            if (!isSafeSqlIdentifier(tableName) || !isSafeSqlIdentifier(columnName)) {
+                continue;
+            }
+            if ("users".equalsIgnoreCase(tableName)) {
+                continue;
+            }
+
+            String deleteSql = "DELETE FROM `" + tableName + "` WHERE `" + columnName + "` = ?";
+            jdbcTemplate.update(deleteSql, userId);
+        }
+    }
+
+    private boolean isSafeSqlIdentifier(String value) {
+        return value != null && value.matches("[A-Za-z0-9_]+$");
     }
 
     @Transactional
     public AdminUserResponse banUser(Integer userId, BanUserRequest request) {
         User user = getExistingUser(userId);
         if (hasRole(user, "ROLE_ADMIN")) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Admin users cannot be banned");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.admin.cannot_ban_admin");
         }
 
         boolean permanent = Boolean.TRUE.equals(request.permanent());
         if (!permanent && request.expiresAt() == null) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "expiresAt is required for temporary bans");
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "api.error.admin.ban_expires_required");
         }
         if (permanent && request.expiresAt() != null) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "expiresAt must be omitted for permanent bans");
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "api.error.admin.ban_expires_forbidden");
         }
 
         Ban previousBan = deactivateActiveBan(user);
@@ -193,7 +266,7 @@ public class AdminUserService {
 
     private User getExistingUser(Integer userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.user_not_found"));
     }
 
     private boolean hasRole(User user, String roleName) {
@@ -215,10 +288,10 @@ public class AdminUserService {
             return null;
         }
         if (cityId == null) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "cityId is required for Tunisian users");
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "api.error.auth.city_id_required");
         }
         return cityRepository.findById(cityId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid cityId"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.auth.invalid_city_id"));
     }
 
     private boolean isTunisiaNationality(String nationality) {

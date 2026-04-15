@@ -1,16 +1,15 @@
-import { Component, inject, signal, OnInit, ChangeDetectionStrategy } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Component, inject, signal, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { FormBuilder, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { TripContextStore } from '../../../core/stores/trip-context.store';
 import { DATA_SOURCE_TOKEN } from '../../../core/adapters/data-source.adapter';
 import { City } from '../../../core/models/travel.models';
+import { TunisiaCityMatchService } from '../tunisia-city-match.service';
 
 @Component({
-  standalone: true,
   selector: 'app-transport-form-page',
+  standalone: false,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, ReactiveFormsModule],
   template: `
     <div class="page-container">
       
@@ -80,6 +79,15 @@ import { City } from '../../../core/models/travel.models';
 
           </form>
         </div>
+
+        @if (searchForm.get('from')?.value && searchForm.get('to')?.value) {
+          <div class="map-wrap">
+            <app-transport-route-map
+              [fromCity]="cityByFormValue('from')"
+              [toCity]="cityByFormValue('to')"
+              (routeSummary)="onRouteSummary($event)" />
+          </div>
+        }
       </div>
     </div>
   `,
@@ -282,6 +290,8 @@ import { City } from '../../../core/models/travel.models';
       box-shadow: none;
     }
 
+    .map-wrap { padding: 0 2rem 2rem; }
+
     /* Responsive Design */
     @media (max-width: 900px) {
       .inline-form-row {
@@ -314,6 +324,8 @@ export class TransportFormPageComponent implements OnInit {
   route = inject(ActivatedRoute);
   store = inject(TripContextStore);
   dataSource = inject(DATA_SOURCE_TOKEN);
+  private cdr = inject(ChangeDetectorRef);
+  private cityMatch = inject(TunisiaCityMatchService);
 
   cities = signal<City[]>([]);
   transportType = 'BUS';
@@ -332,10 +344,32 @@ export class TransportFormPageComponent implements OnInit {
       if (currentCity) {
         this.searchForm.patchValue({ from: currentCity.id.toString() });
       }
+
+      if (typeof navigator !== 'undefined' && navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            void this.cityMatch
+              .reverseGeocodeThenNearestCity(pos.coords.latitude, pos.coords.longitude, data)
+              .then((match) => {
+                if (!match) {
+                  return;
+                }
+                this.searchForm.patchValue({ from: String(match.id) });
+                this.cdr.markForCheck();
+              });
+          },
+          () => {
+            /* denied */
+          },
+          { maximumAge: 120_000, timeout: 15_000, enableHighAccuracy: false }
+        );
+      }
     });
 
     if (this.store.dates().travelDate) {
-      this.searchForm.patchValue({ date: this.store.dates().travelDate });
+      const raw = this.store.dates().travelDate!;
+      const dateOnly = raw.includes('T') ? raw.slice(0, 10) : raw;
+      this.searchForm.patchValue({ date: dateOnly });
     }
 
     this.route.queryParams.subscribe(params => {
@@ -360,13 +394,28 @@ export class TransportFormPageComponent implements OnInit {
     });
   }
 
+  cityByFormValue(control: 'from' | 'to'): City | null {
+    const raw = this.searchForm.get(control)?.value;
+    const id = raw === '' || raw == null ? NaN : Number(raw);
+    if (!Number.isFinite(id)) {
+      return null;
+    }
+    return this.cities().find((c) => c.id === id) ?? null;
+  }
+
+  onRouteSummary(ev: { distanceKm: number; durationSeconds: number }): void {
+    this.store.setTransportRouteMetrics(ev.distanceKm, ev.durationSeconds);
+  }
+
   onSearch() {
     if (this.searchForm.valid) {
       const criteria = this.searchForm.value;
-      this.store.setDates({ travelDate: criteria.date as string });
+      const rawDate = criteria.date as string;
+      const travelDate = rawDate.includes('T') ? rawDate : `${rawDate}T09:00:00`;
+      this.store.setDates({ travelDate });
       this.store.setPax({ adults: Number(criteria.passengers), children: this.store.pax().children });
-      
-      const queryParams = { ...criteria, transportType: this.transportType };
+
+      const queryParams = { ...criteria, date: travelDate, transportType: this.transportType };
       this.router.navigate(['/transport/results'], { queryParams });
     }
   }

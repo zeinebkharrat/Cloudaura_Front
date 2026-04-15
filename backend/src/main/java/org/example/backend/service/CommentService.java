@@ -1,23 +1,38 @@
 package org.example.backend.service;
 
+import org.example.backend.model.Ban;
 import org.example.backend.model.Comment;
 import org.example.backend.model.Post;
+import org.example.backend.model.User;
+import org.example.backend.repository.BanRepository;
 import org.example.backend.repository.CommentRepository;
 import org.example.backend.repository.PostRepository;
+import org.example.backend.repository.UserRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
+import java.util.ArrayDeque;
+import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class CommentService implements ICommentService {
+
+    private static final int SECOND_OFFENSE_MUTE_MINUTES = 15;
 
     @Autowired
     CommentRepository commentRepo;
@@ -28,6 +43,24 @@ public class CommentService implements ICommentService {
     @Autowired
     JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    PostScoreService postScoreService;
+
+    @Autowired
+    MediaScoreService mediaScoreService;
+
+    @Autowired
+    SightengineCommentModerationService moderationService;
+
+    @Autowired
+    BanRepository banRepository;
+
+    @Autowired
+    UserRepository userRepository;
+
+    @Autowired
+    EmailService emailService;
+
     @Override
     @Transactional(readOnly = true)
     public List<Comment> retrieveAllComments() {
@@ -35,8 +68,14 @@ public class CommentService implements ICommentService {
     }
 
     @Override
-    @Transactional
+    @Transactional(noRollbackFor = ResponseStatusException.class)
     public Comment addComment(Comment comment) {
+        User author = requireAuthor(comment);
+        ensureUserCanComment(author);
+        ensurePostAllowsComments(comment);
+        CommentModerationResult moderation = applyModeration(comment);
+        applyEscalationPolicy(author, moderation.abuseCategories());
+
         // Insert via JDBC to avoid JPA/Lob datatype issues for `content`.
         SimpleJdbcInsert insert = new SimpleJdbcInsert(jdbcTemplate)
                 .withTableName("comments");
@@ -50,6 +89,10 @@ public class CommentService implements ICommentService {
         params.put("author_id", authorId);
         params.put("parent_id", parentId);
         params.put("content", comment.getContent());
+        params.put("original_content", comment.getOriginalContent());
+        params.put("sanitized_content", comment.getSanitizedContent());
+        params.put("abuse_categories", comment.getAbuseCategories());
+        params.put("gifs", comment.getGifs());
         params.put("created_at", comment.getCreatedAt());
         params.put("updated_at", comment.getUpdatedAt());
 
@@ -58,6 +101,10 @@ public class CommentService implements ICommentService {
                 "author_id",
                 "parent_id",
                 "content",
+                "original_content",
+                "sanitized_content",
+                "abuse_categories",
+                "gifs",
                 "created_at",
                 "updated_at"
         );
@@ -84,7 +131,13 @@ public class CommentService implements ICommentService {
     }
 
     @Override
+    @Transactional(noRollbackFor = ResponseStatusException.class)
     public Comment updateComment(Comment comment) {
+        User author = requireAuthor(comment);
+        ensureUserCanComment(author);
+        ensurePostAllowsComments(comment);
+        CommentModerationResult moderation = applyModeration(comment);
+        applyEscalationPolicy(author, moderation.abuseCategories());
         return commentRepo.save(comment);
     }
 
@@ -94,9 +147,20 @@ public class CommentService implements ICommentService {
     }
 
     @Override
+    @Transactional
     public void removeComment(Integer commentId) {
         Comment existing = commentRepo.findById(commentId).orElse(null);
-        commentRepo.deleteById(commentId);
+
+        List<Integer> targetCommentIds = collectDescendantCommentIds(commentId);
+        if (!targetCommentIds.isEmpty()) {
+            String placeholders = String.join(",", Collections.nCopies(targetCommentIds.size(), "?"));
+            Object[] args = targetCommentIds.toArray();
+
+            // Break intra-branch references, then delete every node in the branch.
+            jdbcTemplate.update("UPDATE comments SET parent_id = NULL WHERE comment_id IN (" + placeholders + ")", args);
+            jdbcTemplate.update("DELETE FROM comments WHERE comment_id IN (" + placeholders + ")", args);
+        }
+
         if (existing != null && existing.getPost() != null && existing.getPost().getPostId() != null) {
             refreshPostCommentsCount(existing.getPost().getPostId());
         }
@@ -121,5 +185,196 @@ public class CommentService implements ICommentService {
                 count != null ? count : 0,
                 postId
         );
+
+            postScoreService.recomputePostScore(postId);
+            mediaScoreService.recomputeAuthorMonthlyScoreFromPost(postId);
+    }
+
+    private List<Integer> collectDescendantCommentIds(Integer rootCommentId) {
+        Set<Integer> visited = new LinkedHashSet<>();
+        ArrayDeque<Integer> queue = new ArrayDeque<>();
+        queue.add(rootCommentId);
+
+        while (!queue.isEmpty()) {
+            Integer current = queue.poll();
+            if (current == null || !visited.add(current)) {
+                continue;
+            }
+
+            List<Integer> children = jdbcTemplate.queryForList(
+                    "SELECT comment_id FROM comments WHERE parent_id = ?",
+                    Integer.class,
+                    current
+            );
+            queue.addAll(children);
+        }
+
+        return List.copyOf(visited);
+    }
+
+    private CommentModerationResult applyModeration(Comment comment) {
+        String incoming = comment.getContent();
+        CommentModerationResult moderation = moderationService.moderateComment(incoming);
+
+        comment.setOriginalContent(moderation.originalContent());
+        comment.setSanitizedContent(moderation.sanitizedContent());
+        comment.setContent(moderation.sanitizedContent());
+
+        List<String> categories = moderation.abuseCategories();
+        comment.setAbuseCategories(categories.isEmpty() ? null : String.join(",", categories));
+        return moderation;
+    }
+
+    private User requireAuthor(Comment comment) {
+        if (comment == null || comment.getAuthor() == null || comment.getAuthor().getUserId() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
+        }
+
+        Integer userId = comment.getAuthor().getUserId();
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+    }
+
+    private void ensurePostAllowsComments(Comment comment) {
+        Integer postId = comment != null && comment.getPost() != null ? comment.getPost().getPostId() : null;
+        if (postId == null) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "Post is required");
+        }
+
+        Post post = postRepo.findById(postId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
+
+        if (Boolean.FALSE.equals(post.getCommentsEnabled())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Comments are disabled for this post");
+        }
+    }
+
+    private void ensureUserCanComment(User user) {
+        Date now = new Date();
+
+        banRepository.findTopByUserAndIsActiveTrueOrderByCreatedAtDesc(user)
+                .ifPresent(ban -> {
+                    if (!Boolean.TRUE.equals(ban.getIsActive())) {
+                        return;
+                    }
+                    if (ban.getExpiresAt() != null && !ban.getExpiresAt().after(now)) {
+                        ban.setIsActive(false);
+                        banRepository.save(ban);
+                        return;
+                    }
+
+                    String banMessage = ban.getExpiresAt() == null
+                            ? "Your account is currently banned from posting comments."
+                            : "Your account is banned until " + formatDateTime(ban.getExpiresAt()) + ".";
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, banMessage);
+                });
+
+        Date mutedUntil = user.getCommentMutedUntil();
+        if (mutedUntil != null) {
+            if (mutedUntil.after(now)) {
+                throw new ResponseStatusException(
+                        HttpStatus.TOO_MANY_REQUESTS,
+                        "You are temporarily blocked from commenting until " + formatDateTime(mutedUntil) + "."
+                );
+            }
+            user.setCommentMutedUntil(null);
+            userRepository.save(user);
+        }
+    }
+
+    private void applyEscalationPolicy(User user, List<String> categories) {
+        if (categories == null || categories.isEmpty()) {
+            return;
+        }
+
+        Date now = new Date();
+        int nextViolation = (user.getCommentViolationCount() == null ? 0 : user.getCommentViolationCount()) + 1;
+        user.setCommentViolationCount(nextViolation);
+
+        if (nextViolation == 1) {
+            userRepository.save(user);
+            throw new ResponseStatusException(
+                    HttpStatus.UNPROCESSABLE_ENTITY,
+                    "Abusive comment detected. Next violation will block commenting for 15 minutes."
+            );
+        }
+
+        if (nextViolation == 2) {
+            Date mutedUntil = new Date(now.getTime() + TimeUnit.MINUTES.toMillis(SECOND_OFFENSE_MUTE_MINUTES));
+            user.setCommentMutedUntil(mutedUntil);
+            userRepository.save(user);
+            sendSecondOffenseWarning(user, mutedUntil, categories);
+            throw new ResponseStatusException(
+                    HttpStatus.TOO_MANY_REQUESTS,
+                    "Second violation detected. You cannot comment for 15 minutes (until "
+                            + formatDateTime(mutedUntil)
+                        + "). A warning email was sent. Next violation will trigger a multi-day account ban."
+            );
+        }
+
+            int previousBanEvents = user.getCommentBanCount() == null ? 0 : user.getCommentBanCount();
+            int nextBanCount = previousBanEvents + 1;
+            int banDays = resolveBanDays(previousBanEvents);
+        Date expiresAt = new Date(now.getTime() + TimeUnit.DAYS.toMillis(banDays));
+
+        banRepository.findTopByUserAndIsActiveTrueOrderByCreatedAtDesc(user)
+                .ifPresent(existing -> {
+                    existing.setIsActive(false);
+                    banRepository.save(existing);
+                });
+
+        Ban ban = new Ban();
+        ban.setUser(user);
+        ban.setReason("Community moderation escalation (offense #" + nextViolation + "): " + String.join(",", categories));
+        ban.setCreatedAt(now);
+        ban.setExpiresAt(expiresAt);
+        ban.setIsActive(true);
+        banRepository.save(ban);
+
+        user.setCommentBanCount(nextBanCount);
+        user.setCommentMutedUntil(null);
+        userRepository.save(user);
+
+        sendEscalatedBanEmail(user, expiresAt, banDays, categories);
+
+        throw new ResponseStatusException(
+                HttpStatus.FORBIDDEN,
+                "Account banned for " + banDays + " days due to repeated abusive comments (until "
+                        + formatDateTime(expiresAt)
+                        + ")."
+        );
+    }
+
+    private int resolveBanDays(int previousBanEvents) {
+        return 3 << previousBanEvents;
+    }
+
+    private void sendSecondOffenseWarning(User user, Date mutedUntil, List<String> categories) {
+        if (user.getEmail() == null || user.getEmail().isBlank()) {
+            return;
+        }
+        emailService.sendCommentModerationWarningEmail(
+                user.getEmail(),
+                user.getFirstName(),
+                mutedUntil,
+                String.join(", ", categories)
+        );
+    }
+
+    private void sendEscalatedBanEmail(User user, Date expiresAt, int banDays, List<String> categories) {
+        if (user.getEmail() == null || user.getEmail().isBlank()) {
+            return;
+        }
+        emailService.sendCommentBanEmail(
+                user.getEmail(),
+                user.getFirstName(),
+                expiresAt,
+                banDays,
+                String.join(", ", categories)
+        );
+    }
+
+    private String formatDateTime(Date date) {
+        return new SimpleDateFormat("yyyy-MM-dd HH:mm").format(date);
     }
 }

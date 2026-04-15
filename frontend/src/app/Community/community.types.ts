@@ -6,6 +6,10 @@ export interface UserRef {
   firstName?: string;
   lastName?: string;
   profileImageUrl?: string | null;
+  country?: string | null;
+  nationality?: string | null;
+  cityName?: string | null;
+  age?: number | null;
   // Other fields exist on the backend User, but we only need the above for display + create payloads.
 }
 
@@ -16,9 +20,15 @@ export interface Post {
   hashtags?: string | null;
   location?: string | null;
   visibility?: string | null;
+  postType?: string | null;
+  linkedEventId?: number | null;
+  commentsEnabled?: boolean | null;
   repostOf?: Post | null;
   likesCount?: number | null;
   commentsCount?: number | null;
+  totalViews?: number | null;
+  repostCount?: number | null;
+  postScore?: number | null;
   createdAt?: string | null;
   updatedAt?: string | null;
 }
@@ -29,6 +39,10 @@ export interface Comment {
   author?: UserRef;
   parent?: { commentId?: number } | null;
   content?: string;
+  originalContent?: string | null;
+  sanitizedContent?: string | null;
+  abuseCategories?: string | null;
+  gifs?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
 }

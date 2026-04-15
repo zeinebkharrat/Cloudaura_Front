@@ -9,6 +9,11 @@ public record MessageResponse(
         String senderUsername,
         String senderImage,
         String content,
+        String encryptedKey,
+        String iv,
+        String messageType,
+        String voiceUrl,
+        Integer voiceDurationSec,
         Date sentAt
 ) {
 }

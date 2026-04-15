@@ -36,7 +36,7 @@
 
 <section id="map-section" class="destinations map-section map-section--hero-adjacent">
   <div class="map-wrapper animate-in delay-2 glass-panel" [class.map-wrapper--zooming]="isMapNavigating()">
-    <div class="map-view-tabs" role="tablist" aria-label="Map display mode">
+    <div class="map-view-tabs" role="tablist" [attr.aria-label]="'HOME.MAP_TABS_ARIA' | translate">
       <button
         type="button"
         class="map-view-tab"
@@ -45,7 +45,7 @@
         role="tab"
         [attr.aria-selected]="mapViewMode() === 'local'"
       >
-        Local View
+        {{ 'HOME.MAP_TAB_LOCAL' | translate }}
       </button>
       <button
         type="button"
@@ -55,7 +55,7 @@
         role="tab"
         [attr.aria-selected]="mapViewMode() === 'highlights'"
       >
-        Highlights View
+        {{ 'HOME.MAP_TAB_HIGHLIGHTS' | translate }}
       </button>
     </div>
     <div #mapContainer class="echarts-map"></div>
@@ -63,8 +63,8 @@
     <div *ngIf="selectedRegion()" class="region-info-panel slide-up">
       <button class="close-btn" (click)="selectedRegion.set(null)">&times;</button>
       <div class="region-badges">
-        <span class="region-chip">Tunisia</span>
-        <span class="region-chip">Interactive</span>
+        <span class="region-chip">{{ 'HOME.CHIP_TUNISIA' | translate }}</span>
+        <span class="region-chip">{{ 'HOME.CHIP_INTERACTIVE' | translate }}</span>
       </div>
       <h3>{{ selectedRegion()?.name }}</h3>
       <p>{{ selectedRegion()?.description }}</p>
@@ -74,14 +74,40 @@
         (click)="goToSelectedCity()"
         [disabled]="selectedRegion()?.resolving || !selectedRegion()?.cityId"
       >
-        {{ selectedRegion()?.resolving ? 'Loading...' : ('Explore ' + selectedRegion()?.name) }}
+        {{
+          selectedRegion()?.resolving
+            ? ('HOME.MAP_LOADING' | translate)
+            : ('HOME.MAP_EXPLORE_NAME' | translate: { name: selectedRegion()?.name ?? '' })
+        }}
       </button>
+    </div>
+
+    <div class="ai-map-matches ai-map-matches--inside" *ngIf="personalizedCityCards().length">
+      <div class="ai-map-matches__head">
+        <p class="ai-map-matches__kicker">AI Prediction</p>
+        <h3>Cities Predits Par AI</h3>
+        <p>Click a city to focus it instantly on the map and reveal your match.</p>
+      </div>
+      <div class="ai-map-matches__list">
+        <button
+          type="button"
+          *ngFor="let city of personalizedCityCards(); let i = index"
+          class="ai-map-chip"
+          [class.ai-map-chip--active]="city.route === activeAiCityRoute()"
+          (click)="focusAiCityOnMap(city)"
+          [style.animationDelay.ms]="120 * i"
+        >
+          <span class="ai-map-chip__pulse" aria-hidden="true"></span>
+          <span class="ai-map-chip__name">{{ city.title }}</span>
+          <strong class="ai-map-chip__score">{{ matchPercent(city) }}%</strong>
+        </button>
+      </div>
     </div>
   </div>
 
   <div class="map-section-heading section-header">
-    <h2 class="animate-in">Interactive 3D Map</h2>
-    <p class="animate-in delay-1">Explore all 24 Tunisian states. Click on a region to discover more.</p>
+    <h2 class="animate-in">{{ 'HOME.MAP_SECTION_TITLE' | translate }}</h2>
+    <p class="animate-in delay-1">{{ 'HOME.MAP_SECTION_SUB' | translate }}</p>
   </div>
 </section>
 
@@ -95,6 +121,7 @@
     <div id="activities-slider" class="slider-track slider-track--activities" (scroll)="onActivitiesSliderScroll()">
       <a *ngFor="let item of activityCards(); let i = index" [routerLink]="item.route" class="slider-card slider-card--activity-clean card-pop-in" [style.animationDelay.ms]="70 * i">
         <div class="activity-card__media-wrap">
+          <span class="activity-ai-pill" *ngIf="activityAiMatch(item) as ai">AI {{ ai }}%</span>
           <img [src]="item.image" [alt]="item.title" />
         </div>
         <div class="activity-card__body">
@@ -163,6 +190,93 @@
   </ng-template>
 </section>
 
+<section class="slider-section restaurants-showcase">
+  <div class="slider-aurora" aria-hidden="true"></div>
+  <div class="slider-head">
+    <h2>Restaurants Spotlight</h2>
+    <a routerLink="/services/restaurants" class="transport-modes__link">Browse all restaurants -></a>
+  </div>
+  <div class="slider-shell">
+    <button type="button" class="slider-arrow slider-arrow--left" (click)="scrollRestaurants(-1)" aria-label="Previous restaurants">←</button>
+    <div id="restaurants-slider" class="slider-track slider-track--activities" (scroll)="onRestaurantsSliderScroll()">
+      <a *ngFor="let item of restaurantCards(); let i = index" [routerLink]="item.route" class="slider-card slider-card--activity-clean card-pop-in" [style.animationDelay.ms]="80 * i">
+        <div class="activity-card__media-wrap">
+          <img [src]="item.image" [alt]="item.title" />
+        </div>
+        <div class="activity-card__body">
+          <div class="slider-card__topline">
+            <span class="slider-card__badge slider-card__badge--solid" *ngIf="item.badge">{{ item.badge }}</span>
+            <span class="slider-card__hint slider-card__hint--dark">Chef choice</span>
+          </div>
+          <h3 class="slider-card__title-lg slider-card__title-lg--dark">{{ item.title }}</h3>
+          <p class="activity-card__subtitle">{{ item.subtitle }}</p>
+          <div class="slider-card__chips slider-card__chips--light" *ngIf="item.tags?.length">
+            <span *ngFor="let tag of item.tags">{{ tag }}</span>
+          </div>
+          <div class="slider-card__footerline">
+            <div class="slider-card__price">Local Taste</div>
+            <span class="slider-card__action slider-card__action--dark">View details -></span>
+          </div>
+        </div>
+      </a>
+      <div *ngIf="loadingRestaurants()" class="slider-card slider-card--skeleton" aria-hidden="true"></div>
+      <div *ngIf="loadingRestaurants()" class="slider-card slider-card--skeleton" aria-hidden="true"></div>
+      <div *ngIf="loadingRestaurants()" class="slider-card slider-card--skeleton" aria-hidden="true"></div>
+    </div>
+    <button type="button" class="slider-arrow slider-arrow--right" (click)="scrollRestaurants(1)" aria-label="Next restaurants">→</button>
+  </div>
+  <div class="slider-pagination" *ngIf="restaurantPageCount() > 1" aria-label="Restaurants pagination">
+    <button
+      type="button"
+      class="slider-dot"
+      *ngFor="let page of restaurantPages()"
+      [class.slider-dot--active]="page === currentRestaurantPage()"
+      (click)="goToRestaurantPage(page)"
+      [attr.aria-label]="'Go to restaurants page ' + (page + 1)"
+    ></button>
+  </div>
+</section>
+
+<section class="cta-duo">
+  <a routerLink="/communaute" class="cta-duo__card cta-duo__card--forum">
+    <div class="cta-duo__pill">Community</div>
+    <h3>Join the Traveler Forum</h3>
+    <p>Ask questions, share itineraries, and get real tips from locals and travelers.</p>
+  </a>
+  <a routerLink="/evenements" class="cta-duo__card cta-duo__card--event">
+    <div class="cta-duo__pill">Events</div>
+    <h3>Discover Upcoming Events</h3>
+    <p>Festivals, concerts, culture, and local experiences happening all over Tunisia.</p>
+  </a>
+</section>
+
+<section class="slider-section">
+  <div class="slider-aurora slider-aurora--right" aria-hidden="true"></div>
+  <div class="slider-head">
+    <h2>Our Artisan Products</h2>
+  </div>
+  <div class="slider-shell">
+    <button type="button" class="slider-arrow slider-arrow--left" (click)="scrollSlider('artisan-slider', -1)" aria-label="Previous artisan cards">←</button>
+    <div id="artisan-slider" class="slider-track">
+      <a *ngFor="let item of artisanCards(); let i = index" [routerLink]="item.route" class="slider-card slider-card--image slider-card--rich card-pop-in" [style.animationDelay.ms]="70 * i">
+        <img [src]="item.image" [alt]="item.title" />
+        <div class="slider-card__overlay slider-card__overlay--rich">
+          <span class="slider-card__badge" *ngIf="item.badge">{{ item.badge }}</span>
+          <h3>{{ item.title }}</h3>
+          <p>{{ item.subtitle }}</p>
+          <div class="slider-card__chips">
+            <span *ngFor="let tag of item.tags">{{ tag }}</span>
+          </div>
+          <div class="slider-card__price" *ngIf="item.priceTag">{{ item.priceTag }}</div>
+        </div>
+      </a>
+      <div *ngIf="loadingArtisans()" class="slider-card slider-card--skeleton" aria-hidden="true"></div>
+      <div *ngIf="loadingArtisans()" class="slider-card slider-card--skeleton" aria-hidden="true"></div>
+    </div>
+    <button type="button" class="slider-arrow slider-arrow--right" (click)="scrollSlider('artisan-slider', 1)" aria-label="Next artisan cards">→</button>
+  </div>
+</section>
+
 <section class="about-us-home">
   <div class="about-us-home__glow" aria-hidden="true"></div>
   <div class="about-us-home__content">
@@ -204,75 +318,6 @@
   <div class="about-us-home__visual">
     <div class="about-us-home__quote">"Travel Tunisia deeper, not faster."</div>
     <img src="assets/el_jem.png" alt="About YallaTN" />
-  </div>
-</section>
-
-<section class="restaurants-showcase">
-  <div class="slider-aurora" aria-hidden="true"></div>
-  <div class="slider-head">
-    <h2>Restaurants Spotlight</h2>
-    <a routerLink="/services/restaurants" class="transport-modes__link">Browse all restaurants -></a>
-  </div>
-  <div class="restaurants-grid" *ngIf="!loadingRestaurants(); else restaurantLoading">
-    <a *ngFor="let item of restaurantCards(); let i = index" [routerLink]="item.route" class="restaurant-grid-card card-pop-in" [style.animationDelay.ms]="80 * i">
-      <img [src]="item.image" [alt]="item.title" />
-      <div class="restaurant-grid-card__content">
-        <span class="slider-card__badge" *ngIf="item.badge">{{ item.badge }}</span>
-        <h3>{{ item.title }}</h3>
-        <p>{{ item.subtitle }}</p>
-        <div class="slider-card__chips">
-          <span *ngFor="let tag of item.tags">{{ tag }}</span>
-        </div>
-      </div>
-    </a>
-  </div>
-  <ng-template #restaurantLoading>
-    <div class="restaurants-grid">
-      <div class="restaurant-grid-card restaurant-grid-card--skeleton"></div>
-      <div class="restaurant-grid-card restaurant-grid-card--skeleton"></div>
-      <div class="restaurant-grid-card restaurant-grid-card--skeleton"></div>
-      <div class="restaurant-grid-card restaurant-grid-card--skeleton"></div>
-    </div>
-  </ng-template>
-</section>
-
-<section class="cta-duo">
-  <a routerLink="/communaute" class="cta-duo__card cta-duo__card--forum">
-    <div class="cta-duo__pill">Community</div>
-    <h3>Join the Traveler Forum</h3>
-    <p>Ask questions, share itineraries, and get real tips from locals and travelers.</p>
-  </a>
-  <a routerLink="/evenements" class="cta-duo__card cta-duo__card--event">
-    <div class="cta-duo__pill">Events</div>
-    <h3>Discover Upcoming Events</h3>
-    <p>Festivals, concerts, culture, and local experiences happening all over Tunisia.</p>
-  </a>
-</section>
-
-<section class="slider-section">
-  <div class="slider-aurora slider-aurora--right" aria-hidden="true"></div>
-  <div class="slider-head">
-    <h2>Our Artisan Products</h2>
-  </div>
-  <div class="slider-shell">
-    <button type="button" class="slider-arrow slider-arrow--left" (click)="scrollSlider('artisan-slider', -1)" aria-label="Previous artisan cards">←</button>
-    <div id="artisan-slider" class="slider-track">
-      <a *ngFor="let item of artisanCards(); let i = index" [routerLink]="item.route" class="slider-card slider-card--image slider-card--rich card-pop-in" [style.animationDelay.ms]="70 * i">
-        <img [src]="item.image" [alt]="item.title" />
-        <div class="slider-card__overlay slider-card__overlay--rich">
-          <span class="slider-card__badge" *ngIf="item.badge">{{ item.badge }}</span>
-          <h3>{{ item.title }}</h3>
-          <p>{{ item.subtitle }}</p>
-          <div class="slider-card__chips">
-            <span *ngFor="let tag of item.tags">{{ tag }}</span>
-          </div>
-          <div class="slider-card__price" *ngIf="item.priceTag">{{ item.priceTag }}</div>
-        </div>
-      </a>
-      <div *ngIf="loadingArtisans()" class="slider-card slider-card--skeleton" aria-hidden="true"></div>
-      <div *ngIf="loadingArtisans()" class="slider-card slider-card--skeleton" aria-hidden="true"></div>
-    </div>
-    <button type="button" class="slider-arrow slider-arrow--right" (click)="scrollSlider('artisan-slider', 1)" aria-label="Next artisan cards">→</button>
   </div>
 </section>
 

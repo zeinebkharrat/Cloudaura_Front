@@ -3,7 +3,7 @@ export type TransportType = 'BUS' | 'CAR' | 'PLANE' | 'TAXI' | 'VAN' | 'TRAIN' |
 export type AccommodationStatus = 'AVAILABLE' | 'UNAVAILABLE';
 export type ReservationStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED';
 export type PaymentStatus = 'PENDING' | 'PAID' | 'REFUNDED';
-export type PaymentMethod = 'CASH' | 'KONNECT';
+export type PaymentMethod = 'CASH' | 'KONNECT' | 'STRIPE' | 'PAYPAL';
 
 export interface City {
   id: number;
@@ -63,13 +63,10 @@ export interface Transport {
   capacity: number;
   availableSeats?: number;
   durationMinutes?: number;
-  vehicleBrand?: string;
-  vehicleModel?: string;
-  vehiclePhotoUrl?: string;
-  driverName?: string;
-  driverRating?: number;
   description?: string;
   isActive: boolean;
+  /** Client-only: translated type label for result lists (optional). */
+  typeLabel?: string;
 }
 
 export interface TransportTypeAvailability {
@@ -90,6 +87,34 @@ export interface TransportReservationInput {
   numberOfSeats: number;
   paymentMethod: PaymentMethod;
   idempotencyKey: string;
+  travelDate?: string;
+  routeKm?: number;
+  rentalDays?: number;
+}
+
+export interface TransportCheckoutPayload {
+  transportId: number;
+  numberOfSeats: number;
+  travelDate: string;
+  routeKm?: number;
+  rentalDays?: number;
+  passengerFirstName: string;
+  passengerLastName: string;
+  passengerEmail: string;
+  passengerPhone: string;
+  idempotencyKey: string;
+  /** Stripe Checkout presentment: TND | EUR | USD */
+  presentmentCurrency?: string;
+}
+
+/** PATCH body for updating an existing transport booking. */
+export interface TransportReservationUpdatePayload {
+  numberOfSeats: number;
+  passengerFirstName: string;
+  passengerLastName: string;
+  passengerEmail: string;
+  passengerPhone: string;
+  paymentMethod: PaymentMethod;
 }
 
 export interface TransportReservation {
@@ -98,8 +123,12 @@ export interface TransportReservation {
   transportId?: number;
   reservationRef: string;
   status: ReservationStatus;
+  /** Localized label from API when present. */
+  statusLabel?: string;
   paymentStatus: PaymentStatus;
+  paymentStatusLabel?: string;
   paymentMethod: PaymentMethod;
+  paymentMethodLabel?: string;
   totalPrice: number;
   numberOfSeats: number;
   travelDate: string;
@@ -110,24 +139,40 @@ export interface TransportReservation {
   qrCodeToken?: string;
   createdAt: string;
   transportType?: string;
+  /** Same as transportType (machine code). */
+  type?: string;
+  transportTypeLabel?: string;
+  typeLabel?: string;
   departureCityName?: string;
   arrivalCityName?: string;
+  departureCityLabel?: string;
+  arrivalCityLabel?: string;
   departureTime?: string;
 }
 
 /** Stay reservation list item (maps API accommodation reservation DTO). */
 export interface AccommodationReservation {
   id: number;
+  /** Present when API returns it — used to reopen edit flow. */
+  accommodationId?: number;
+  roomId?: number;
   status: ReservationStatus;
+  statusLabel?: string;
   totalPrice: number;
   accommodationName?: string;
+  /** Localized property name (preferred for display). */
+  nameLabel?: string;
   accommodationCity?: string;
+  cityLabel?: string;
   reservationRef?: string;
   checkInDate?: string;
   checkOutDate?: string;
   nights?: number;
+  /** Room type code when API sends it (e.g. SINGLE). */
   roomType?: string;
+  roomTypeLabel?: string;
   paymentMethod?: string;
+  paymentMethodLabel?: string;
   guestFirstName?: string;
   guestLastName?: string;
   guestEmail?: string;
@@ -147,6 +192,8 @@ export interface Reservation {
   id: number;
   status: ReservationStatus;
   totalPrice: number;
+  /** Set after accommodation Stripe confirm / list mapping. */
+  accommodationId?: number;
   checkInDate?: string;
   checkOutDate?: string;
   /** API body for accommodation booking (LocalDate strings). */

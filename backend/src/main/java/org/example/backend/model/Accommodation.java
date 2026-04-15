@@ -8,6 +8,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.util.List;
 
+/**
+ * Hébergement : clé i18n catalogue {@code accommodation.{accommodationId}.name} — pas de champ {@code description}
+ * sur cette entité JPA.
+ */
 @Entity
 @Table(name = "accommodations")
 @Data @Builder @NoArgsConstructor @AllArgsConstructor
@@ -38,6 +42,8 @@ public class Accommodation {
     @OneToMany(mappedBy = "accommodation", fetch = FetchType.LAZY)
     private List<Room> rooms;
 
-    public enum AccommodationType { HOTEL, GUESTHOUSE, MAISON_HOTE, AUTRE }
-    public enum AccommodationStatus { AVAILABLE, UNAVAILABLE }
+    public enum AccommodationType { HOTEL, GUESTHOUSE, MAISON_HOTE, AUTRE, ygu, YGU }
+
+    public enum AccommodationStatus { AVAILABLE, UNAVAILABLE, ACTIVE }
 }
+

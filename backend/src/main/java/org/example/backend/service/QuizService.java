@@ -3,6 +3,8 @@ package org.example.backend.service;
 import org.example.backend.dto.ludification.QuizQuestionInput;
 import org.example.backend.dto.ludification.QuizUpsertRequest;
 import org.example.backend.dto.ludification.QuizView;
+import org.example.backend.i18n.ApiRequestLang;
+import org.example.backend.i18n.CatalogKeyUtil;
 import org.example.backend.model.Quiz;
 import org.example.backend.model.QuizQuestion;
 import org.example.backend.repository.QuizQuestionRepository;
@@ -28,16 +30,39 @@ public class QuizService {
 
     private final QuizRepository quizRepo;
     private final QuizQuestionRepository quizQuestionRepo;
+    private final TranslationService translationService;
 
-    public QuizService(QuizRepository quizRepo, QuizQuestionRepository quizQuestionRepo) {
+    public QuizService(
+            QuizRepository quizRepo,
+            QuizQuestionRepository quizQuestionRepo,
+            TranslationService translationService) {
         this.quizRepo = quizRepo;
         this.quizQuestionRepo = quizQuestionRepo;
+        this.translationService = translationService;
     }
 
+    @Transactional(readOnly = true)
     public List<Quiz> findAll() {
-        return quizRepo.findAll();
+        String lang = ApiRequestLang.get();
+        List<Quiz> list = quizRepo.findAll();
+        for (Quiz q : list) {
+            String title = q.getTitle();
+            if (CatalogKeyUtil.looksLikeCatalogKey(title)) {
+                q.setTitle(null);
+            } else if (title != null) {
+                q.setTitle(translationService.safeTranslate(title, lang));
+            }
+            String desc = q.getDescription();
+            if (CatalogKeyUtil.looksLikeCatalogKey(desc)) {
+                q.setDescription(null);
+            } else if (desc != null) {
+                q.setDescription(translationService.safeTranslate(desc, lang));
+            }
+        }
+        return list;
     }
 
+    @Transactional(readOnly = true)
     public Optional<QuizView> findViewById(Integer id) {
         return quizRepo.findById(id).map(this::toQuizView);
     }

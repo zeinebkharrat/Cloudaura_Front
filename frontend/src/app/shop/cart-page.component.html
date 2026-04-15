@@ -1,81 +1,81 @@
 <main class="cart-page">
-  <a routerLink="/artisanat" class="back">← Crafts</a>
+  <a routerLink="/artisanat" class="back">{{ 'CART_PAGE.BACK_CRAFTS' | translate }}</a>
 
   <header class="cart-head">
-    <h1>My cart</h1>
-    <p class="lead">Complete your order — the summary shows your details and line items.</p>
+    <h1>{{ 'CART_PAGE.TITLE' | translate }}</h1>
+    <p class="lead">{{ 'CART_PAGE.LEAD' | translate }}</p>
   </header>
 
   @if (orderDone()) {
     <section class="order-receipt glass-panel" aria-labelledby="receipt-title">
       <div class="receipt-header">
-        <h2 id="receipt-title">Order confirmed</h2>
-        <p class="receipt-intro">Thank you for your purchase. Keep these details for your records.</p>
+        <h2 id="receipt-title">{{ 'CART_PAGE.ORDER_CONFIRMED' | translate }}</h2>
+        <p class="receipt-intro">{{ 'CART_PAGE.ORDER_THANKS' | translate }}</p>
       </div>
 
       <div class="receipt-grid">
         <div class="receipt-card">
-          <h3 class="receipt-card__title">Reference</h3>
+          <h3 class="receipt-card__title">{{ 'CART_PAGE.REFERENCE' | translate }}</h3>
           <p class="receipt-card__row">
-            <span class="label">Order no.</span>
+            <span class="label">{{ 'CART_PAGE.ORDER_NO' | translate }}</span>
             <strong>#{{ orderDone()!.orderId }}</strong>
           </p>
           <p class="receipt-card__row">
-            <span class="label">Date</span>
+            <span class="label">{{ 'CART_PAGE.DATE' | translate }}</span>
             <span>{{ formatOrderedAt(orderDone()!.orderedAt) }}</span>
           </p>
           <p class="receipt-card__row">
-            <span class="label">Status</span>
+            <span class="label">{{ 'CART_PAGE.STATUS' | translate }}</span>
             <span class="status-pill">{{ orderStatusLabel(orderDone()!.status) }}</span>
           </p>
           <p class="receipt-card__row">
-            <span class="label">Sous-total</span>
-            <span>{{ formatPrice((orderDone()?.totalAmount ?? 0) - 7) }}</span>
+            <span class="label">{{ 'CART_PAGE.RECEIPT_SUBTOTAL' | translate }}</span>
+            <span>{{ ((orderDone()?.totalAmount ?? 0) - 7) | dualCurrency }}</span>
           </p>
           <p class="receipt-card__row">
-            <span class="label">Livraison</span>
-            <span>7,00 TND</span>
+            <span class="label">{{ 'CART_PAGE.DELIVERY' | translate }}</span>
+            <span>{{ 7 | dualCurrency }}</span>
           </p>
           <p class="receipt-card__row receipt-card__row--total">
-            <span class="label">Total (incl. tax)</span>
-            <strong>{{ formatPrice(orderDone()!.totalAmount) }}</strong>
+            <span class="label">{{ 'CART_PAGE.TOTAL_INCL_TAX' | translate }}</span>
+            <strong>{{ orderDone()!.totalAmount | dualCurrency }}</strong>
           </p>
         </div>
 
         <div class="receipt-card">
-          <h3 class="receipt-card__title">Contact (account)</h3>
+          <h3 class="receipt-card__title">{{ 'CART_PAGE.CONTACT_ACCOUNT' | translate }}</h3>
           @if (orderDone()!.buyer) {
             <p class="receipt-card__row">
-              <span class="label">Name</span>
+              <span class="label">{{ 'CART_PAGE.NAME' | translate }}</span>
               <span>{{ buyerDisplayName(orderDone()!.buyer) }}</span>
             </p>
             <p class="receipt-card__row">
-              <span class="label">Email</span>
+              <span class="label">{{ 'CART_PAGE.EMAIL' | translate }}</span>
               <span>{{ orderDone()!.buyer!.email }}</span>
             </p>
             <p class="receipt-card__row">
-              <span class="label">Phone</span>
-              <span>{{ orderDone()!.buyer!.phone || '—' }}</span>
+              <span class="label">{{ 'CART_PAGE.PHONE' | translate }}</span>
+              <span>{{ orderDone()!.buyer!.phone || ('COMMON.DASH' | translate) }}</span>
             </p>
             <p class="receipt-card__row">
-              <span class="label">Username</span>
+              <span class="label">{{ 'CART_PAGE.USERNAME' | translate }}</span>
               <span>{{ '@' + orderDone()!.buyer!.username }}</span>
             </p>
           } @else {
-            <p class="receipt-muted">Contact details not available.</p>
+            <p class="receipt-muted">{{ 'CART_PAGE.CONTACT_UNAVAILABLE' | translate }}</p>
           }
         </div>
       </div>
 
       <div class="receipt-lines-wrap">
-        <h3 class="receipt-lines-title">Order details</h3>
+        <h3 class="receipt-lines-title">{{ 'CART_PAGE.ORDER_DETAILS' | translate }}</h3>
         <table class="receipt-table">
           <thead>
             <tr>
-              <th>Item</th>
-              <th class="num">Qty</th>
-              <th class="num">Unit price</th>
-              <th class="num">Subtotal</th>
+              <th>{{ 'CART_PAGE.TH_ITEM' | translate }}</th>
+              <th class="num">{{ 'CART_PAGE.TH_QTY' | translate }}</th>
+              <th class="num">{{ 'CART_PAGE.TH_UNIT_PRICE' | translate }}</th>
+              <th class="num">{{ 'CART_PAGE.TH_SUBTOTAL' | translate }}</th>
             </tr>
           </thead>
           <tbody>
@@ -88,45 +88,45 @@
                   </div>
                 </td>
                 <td class="num">{{ line.quantity }}</td>
-                <td class="num">{{ formatPrice(line.unitPrice) }}</td>
-                <td class="num"><strong>{{ formatPrice(line.lineTotal) }}</strong></td>
+                <td class="num">{{ line.unitPrice | dualCurrency }}</td>
+                <td class="num"><strong>{{ line.lineTotal | dualCurrency }}</strong></td>
               </tr>
             }
           </tbody>
           <tfoot>
             <tr>
-              <td colspan="3" class="num foot-label">Total</td>
-              <td class="num"><strong>{{ formatPrice(orderDone()!.totalAmount) }}</strong></td>
+              <td colspan="3" class="num foot-label">{{ 'CART_PAGE.FOOT_TOTAL' | translate }}</td>
+              <td class="num"><strong>{{ orderDone()!.totalAmount | dualCurrency }}</strong></td>
             </tr>
           </tfoot>
         </table>
       </div>
 
       <div class="receipt-actions">
-        <a routerLink="/artisanat" class="btn primary">Continue shopping</a>
-        <button type="button" class="btn ghost" (click)="clearReceipt()">Close receipt</button>
+        <a routerLink="/artisanat" class="btn primary">{{ 'CART_PAGE.CONTINUE_SHOPPING' | translate }}</a>
+        <button type="button" class="btn ghost" (click)="clearReceipt()">{{ 'CART_PAGE.CLOSE_RECEIPT' | translate }}</button>
       </div>
     </section>
   } @else {
     @if (loading()) {
       <div class="loading glass-panel">
         <div class="loading-spinner"></div>
-        <p>Loading your cart…</p>
+        <p>{{ 'CART_PAGE.LOADING' | translate }}</p>
       </div>
     } @else if (error()) {
       <div class="error glass-panel">
         <div class="error-icon">⚠️</div>
         <p class="error-message">{{ error() }}</p>
-        <button type="button" class="btn ghost" (click)="load()">Try again</button>
+        <button type="button" class="btn ghost" (click)="load()">{{ 'CART_PAGE.TRY_AGAIN' | translate }}</button>
       </div>
     } @else if (cart() && cart()!.items.length === 0) {
       <div class="empty glass-panel">
         <div class="empty-icon">🛒</div>
-        <h2 class="empty-title">Your cart is empty</h2>
-        <p class="empty-description">Browse Tunisian crafts and add items to your cart</p>
+        <h2 class="empty-title">{{ 'CART_PAGE.EMPTY_TITLE' | translate }}</h2>
+        <p class="empty-description">{{ 'CART_PAGE.EMPTY_DESC' | translate }}</p>
         <div class="empty-actions">
-          <a routerLink="/artisanat" class="btn primary large">View products</a>
-          <a routerLink="/destinations" class="btn ghost large">Explore destinations</a>
+          <a routerLink="/artisanat" class="btn primary large">{{ 'CART_PAGE.VIEW_PRODUCTS' | translate }}</a>
+          <a routerLink="/destinations" class="btn ghost large">{{ 'CART_PAGE.EXPLORE_DESTINATIONS' | translate }}</a>
         </div>
       </div>
     } @else if (cart()) {
@@ -137,7 +137,7 @@
               @if (line.imageUrl) {
                 <img [src]="imageSrc(line.imageUrl)" [alt]="line.name" />
               } @else {
-                <div class="ph">Product</div>
+                <div class="ph">{{ 'CART_PAGE.PRODUCT_PLACEHOLDER' | translate }}</div>
               }
             </div>
             <div class="line-body">
@@ -147,14 +147,14 @@
                 <span class="badge" *ngIf="line.color">{{ line.color }}</span>
               </div>
               <div class="qty-row">
-                <span class="unit-price">{{ formatPrice(line.unitPrice) }}</span>
+                <span class="unit-price">{{ line.unitPrice | dualCurrency }}</span>
                 <div class="qty-stepper">
                   <button
                     type="button"
                     class="qty-btn"
                     [disabled]="qtyUpdatingId() === line.cartItemId"
                     (click)="changeQty(line, -1)"
-                    aria-label="Decrease"
+                    [attr.aria-label]="'CART_PAGE.DECREASE_QTY' | translate"
                   >
                     −
                   </button>
@@ -164,20 +164,21 @@
                     class="qty-btn"
                     [disabled]="qtyUpdatingId() === line.cartItemId || line.quantity >= maxStock(line)"
                     (click)="changeQty(line, 1)"
-                    aria-label="Increase"
+                    [attr.aria-label]="'CART_PAGE.INCREASE_QTY' | translate"
                   >
                     +
                   </button>
                 </div>
                 <span class="line-sum">
-                  = <strong>{{ formatPrice(line.lineTotal) }}</strong>
+                  {{ 'CART_PAGE.LINE_TOTAL_PREFIX' | translate }}
+                  <strong>{{ line.lineTotal | dualCurrency }}</strong>
                 </span>
               </div>
               @if (line.stock != null) {
-                <p class="stock-hint">In stock: {{ line.stock }}</p>
+                <p class="stock-hint">{{ 'CART_PAGE.IN_STOCK' | translate: { count: line.stock } }}</p>
               }
             </div>
-            <button type="button" class="btn danger ghost" (click)="remove(line)">Remove</button>
+            <button type="button" class="btn danger ghost" (click)="remove(line)">{{ 'CART_PAGE.REMOVE' | translate }}</button>
           </li>
         }
       </ul>
@@ -186,20 +187,29 @@
         <div class="cart-extra">
           <div class="payment-section">
             <h3>Mode de paiement</h3>
+            <div class="payment-preview-card" aria-hidden="true">
+              <div class="card-chip"></div>
+              <div class="card-number-display">•••• •••• •••• ••••</div>
+              <div class="card-bottom">
+                <div class="card-holder">Paiement YallaTN+</div>
+                <div class="card-expiry">SECURE</div>
+              </div>
+              <div class="card-type">VISA</div>
+            </div>
             <div class="payment-options">
               <div class="payment-option" [class.active]="paymentMethod() === 'CARD'" (click)="paymentMethod.set('CARD')">
                 <div class="icon">💳</div>
                 <div class="info">
-                  <strong>Carte Bancaire</strong>
-                  <span>Paiement sécurisé</span>
+                  <strong>{{ 'CART_PAGE.PAY_CARD_TITLE' | translate }}</strong>
+                  <span>{{ 'CART_PAGE.PAY_CARD_SUB' | translate }}</span>
                 </div>
                 <div class="radio"></div>
               </div>
               <div class="payment-option" [class.active]="paymentMethod() === 'COD'" (click)="paymentMethod.set('COD')">
                 <div class="icon">🚚</div>
                 <div class="info">
-                  <strong>À la livraison</strong>
-                  <span>Payez en espèces</span>
+                  <strong>{{ 'CART_PAGE.PAY_COD_TITLE' | translate }}</strong>
+                  <span>{{ 'CART_PAGE.PAY_COD_SUB' | translate }}</span>
                 </div>
                 <div class="radio"></div>
               </div>
@@ -209,21 +219,21 @@
 
         <div class="cart-summary">
           <div class="summary-line">
-            <span>Sous-total :</span>
-            <span>{{ formatPrice(cart()!.total) }}</span>
+            <span>{{ 'CART_PAGE.SUBTOTAL' | translate }}</span>
+            <span>{{ cart()!.total | dualCurrency }}</span>
           </div>
           @if (hasDiscount()) {
             <div class="summary-line discount-line">
-              <span>Remise 5% (panier &gt; 200 TND) :</span>
-              <span class="discount-amount">-{{ formatPrice(discountAmount()) }}</span>
+              <span>{{ 'CART_PAGE.DISCOUNT_LINE' | translate }}</span>
+              <span class="discount-amount">-{{ discountAmount() | dualCurrency }}</span>
             </div>
           }
           <div class="summary-line">
-            <span>Livraison (fixe) :</span>
-            <span>7,00 TND</span>
+            <span>{{ 'CART_PAGE.DELIVERY_FIXED' | translate }}</span>
+            <span>{{ 7 | dualCurrency }}</span>
           </div>
           <div class="total">
-            Total : <strong>{{ formatPrice(finalTotal()) }}</strong>
+            {{ 'CART_PAGE.TOTAL' | translate }} <strong>{{ finalTotal() | dualCurrency }}</strong>
           </div>
         </div>
         <button
@@ -233,9 +243,9 @@
           (click)="checkout()"
         >
           @if (checkoutLoading()) {
-            Placing order…
+            {{ 'CART_PAGE.PLACING_ORDER' | translate }}
           } @else {
-            {{ paymentMethod() === 'CARD' ? 'Procéder au paiement' : 'Confirmer la commande' }}
+            {{ paymentMethod() === 'CARD' ? ('CART_PAGE.BTN_PAY_CARD' | translate) : ('CART_PAGE.BTN_CONFIRM_ORDER' | translate) }}
           }
         </button>
       </footer>

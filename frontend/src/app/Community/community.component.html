@@ -1,14 +1,21 @@
 <section class="community-page">
+  <div class="community-main-grid">
+    <div class="community-main-column">
+      <app-community-stories></app-community-stories>
+
   <div class="community-header social-shell">
     <div class="create-post-inline" *ngIf="authService.isAuthenticated()">
       <div class="composer-row-top">
-        <div class="avatar composer-avatar">{{ authService.currentUser()?.username?.charAt(0)?.toUpperCase() || 'U' }}</div>
+        <div class="avatar composer-avatar">
+          <img *ngIf="currentUserAvatarUrl(); else composerFallback" [src]="currentUserAvatarUrl()!" alt="Your profile photo" class="avatar-img" />
+          <ng-template #composerFallback>{{ authService.currentUser()?.username?.charAt(0)?.toUpperCase() || 'U' }}</ng-template>
+        </div>
         <input
           type="text"
           class="composer-main-input"
           [value]="newPostContent()"
           (input)="newPostContent.set($any($event.target).value)"
-          placeholder="Share your Tunisia experience..."
+          [attr.placeholder]="'COMMUNITY.COMPOSER_PLACEHOLDER' | translate"
         />
       </div>
 
@@ -20,7 +27,7 @@
             multiple
             (change)="onNewPostMediaSelect($event)"
           />
-          <i class="pi pi-image" aria-hidden="true"></i> Photo
+          <i class="pi pi-image" aria-hidden="true"></i> {{ 'COMMUNITY.PHOTO' | translate }}
         </label>
 
         <label class="composer-chip location-chip">
@@ -30,7 +37,7 @@
             [value]="newPostLocation()"
             (change)="newPostLocation.set($any($event.target).value)"
           >
-            <option value="">Place</option>
+            <option value="">{{ 'COMMUNITY.PLACE' | translate }}</option>
             <option *ngFor="let city of cities(); trackBy: trackByCity" [value]="city.name">
               {{ city.name }}
             </option>
@@ -43,8 +50,8 @@
           (click)="createPost()"
           [disabled]="!newPostContent().trim() || isPosting()"
         >
-          <span *ngIf="!isPosting()">Publish</span>
-          <span *ngIf="isPosting()">...</span>
+          <span *ngIf="!isPosting()">{{ 'COMMUNITY.PUBLISH' | translate }}</span>
+          <span *ngIf="isPosting()">{{ 'COMMUNITY.POSTING' | translate }}</span>
         </button>
       </div>
 
@@ -57,14 +64,6 @@
       </div>
     </div>
 
-    <div class="community-header__right">
-      <button type="button" class="btn-outline my-posts-btn" (click)="toggleSavedMode()" *ngIf="authService.isAuthenticated()">
-        {{ showSavedOnly() ? 'All posts' : 'Saved' }}
-      </button>
-      <button type="button" class="btn-primary my-posts-btn" (click)="goToMyPosts()" *ngIf="authService.isAuthenticated()">
-        My profile
-      </button>
-    </div>
   </div>
 
   <div class="community-layout">
@@ -72,13 +71,24 @@
     <div class="likers-modal-backdrop" *ngIf="activeLikersPostId()" (click)="toggleLikersModal(null)">
       <div class="likers-modal-content glass-panel" (click)="$event.stopPropagation()">
         <div class="likers-modal-header">
-          <h3>Likes</h3>
+          <h3>{{ 'COMMUNITY.LIKES_MODAL_TITLE' | translate }}</h3>
           <button type="button" class="btn-close" (click)="toggleLikersModal(null)">✕</button>
         </div>
         <div class="likers-list">
-          <div class="liker-item" *ngFor="let nickname of getLikeNicknames(activeLikersPostId()!); trackBy: trackByNickname">
-            <div class="avatar comment-avatar">{{ nickname.charAt(0).toUpperCase() || 'U' }}</div>
-            <span class="liker-name">{{ nickname }}</span>
+          <div class="liker-item" *ngFor="let user of getLikeUsers(activeLikersPostId()!); trackBy: trackByUserRef">
+            <button
+              type="button"
+              class="liker-user-btn"
+              (mouseenter)="openUserHoverFromEvent($event, user)"
+              (mouseleave)="scheduleUserHoverClose()"
+              (click)="goToUserProfile(user.userId)"
+            >
+              <div class="avatar comment-avatar">
+                <img *ngIf="userAvatarUrl(user); else likerFallback" [src]="userAvatarUrl(user)!" [alt]="displayName(user)" class="avatar-img" />
+                <ng-template #likerFallback>{{ displayName(user).charAt(0).toUpperCase() || 'U' }}</ng-template>
+              </div>
+              <span class="liker-name">{{ displayName(user) }}</span>
+            </button>
           </div>
         </div>
       </div>
@@ -94,7 +104,7 @@
           class="media-lightbox-nav media-lightbox-nav--prev"
           *ngIf="activeMediaList().length > 1"
           (click)="prevMedia()"
-          aria-label="Previous image"
+          [attr.aria-label]="'COMMUNITY.LIGHTBOX_PREV' | translate"
         >
           ‹
         </button>
@@ -103,7 +113,7 @@
           class="media-lightbox-image"
           *ngIf="currentLightboxMedia()?.fileUrl"
           [src]="currentLightboxMedia()!.fileUrl!"
-          alt="Post media"
+          [attr.alt]="'COMMUNITY.LIGHTBOX_ALT' | translate"
         />
 
         <button
@@ -111,7 +121,7 @@
           class="media-lightbox-nav media-lightbox-nav--next"
           *ngIf="activeMediaList().length > 1"
           (click)="nextMedia()"
-          aria-label="Next image"
+          [attr.aria-label]="'COMMUNITY.LIGHTBOX_NEXT' | translate"
         >
           ›
         </button>
@@ -126,6 +136,115 @@
 
   <!-- Feed Section -->
   <section class="feed">
+    <!-- Declared before any *ngTemplateOutlet so commentTpl is a real TemplateRef (avoids createEmbeddedViewImpl errors) -->
+    <ng-template #commentTpl let-comment let-depth="depth" let-postId="postId">
+      <div class="comment-item" [style.marginLeft.px]="depth * 18">
+        <div class="comment-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="avatar comment-avatar">
+              <img *ngIf="userAvatarUrl(comment.author); else commentAuthorFallback" [src]="userAvatarUrl(comment.author)!" [alt]="displayName(comment.author)" class="avatar-img" />
+              <ng-template #commentAuthorFallback>{{ displayName(comment.author).charAt(0).toUpperCase() || 'U' }}</ng-template>
+            </div>
+            <button
+              type="button"
+              class="comment-author comment-author-link"
+              (mouseenter)="openUserHoverFromEvent($event, comment.author)"
+              (mouseleave)="scheduleUserHoverClose()"
+              (click)="goToUserProfile(comment.author?.userId)"
+            >{{ displayName(comment.author) }}</button>
+          </div>
+          <span class="comment-date">{{ formatDate(comment.createdAt) }}</span>
+        </div>
+
+        <ng-container *ngIf="getCommentGiphy(comment) as commentGiphy">
+          <img class="comment-giphy" [src]="commentGiphy.fullUrl" [alt]="commentGiphy.title || 'GIF'" />
+        </ng-container>
+
+        <p class="comment-content" *ngIf="getCommentDisplayText(comment)">{{ getCommentDisplayText(comment) }}</p>
+
+        <div class="comment-actions">
+          <button
+            type="button"
+            class="reply-btn"
+            (click)="openReply(comment.commentId!)"
+            [disabled]="activeReplyCommentId() === comment.commentId"
+          >
+            {{ 'COMMUNITY.REPLY' | translate }}
+          </button>
+          <button
+            type="button"
+            class="reply-btn reply-btn--danger"
+            *ngIf="canDeleteComment(comment)"
+            (click)="deleteComment(comment.commentId!)"
+          >
+            {{ 'COMMUNITY.DELETE' | translate }}
+          </button>
+        </div>
+
+        <div
+          class="reply-form glass-panel"
+          *ngIf="activeReplyCommentId() === comment.commentId!"
+        >
+          <textarea
+            rows="2"
+            [value]="getReplyDraft(comment.commentId!)"
+            (input)="setReplyDraft(comment.commentId!, $any($event.target).value)"
+            [attr.placeholder]="'COMMUNITY.REPLY_PLACEHOLDER' | translate"
+          ></textarea>
+
+          <div class="selected-giphy" *ngIf="getSelectedGiphyForReply(comment.commentId!) as selected">
+            <img [src]="selected.previewUrl || selected.fullUrl" alt="Selected GIF" />
+            <button type="button" class="reply-btn reply-btn--danger" (click)="clearSelectedGiphyForReply(comment.commentId!)">Remove</button>
+          </div>
+
+          <div class="reply-actions">
+            <button
+              type="button"
+              class="btn-outline btn-outline--small"
+              (click)="openGiphyPickerForReply(comment.commentId!)"
+            >
+              GIF
+            </button>
+            <button
+              type="button"
+              class="btn-primary btn-primary--small"
+              (click)="addComment(postId, comment.commentId!)"
+              [disabled]="getReplyDraft(comment.commentId!).trim().length === 0 && !getSelectedGiphyForReply(comment.commentId!)"
+            >
+              {{ 'COMMUNITY.REPLY' | translate }}
+            </button>
+            <button
+              type="button"
+              class="btn-outline btn-outline--small"
+              (click)="closeReply()"
+            >
+              {{ 'COMMUNITY.CANCEL' | translate }}
+            </button>
+          </div>
+        </div>
+
+        <ng-container *ngIf="comment.children?.length">
+          <ng-container
+            *ngFor="
+              let child of comment.children;
+              trackBy: trackByComment
+            "
+          >
+            <ng-container
+              *ngTemplateOutlet="
+                commentTplRef;
+                context: {
+                  $implicit: child,
+                  depth: depth + 1,
+                  postId: postId
+                }
+              "
+            ></ng-container>
+          </ng-container>
+        </ng-container>
+      </div>
+    </ng-template>
+
     <div class="feed-error glass-panel" *ngIf="loadError()">
       <i class="pi pi-exclamation-triangle feed-err-ico" aria-hidden="true"></i>
       <span>{{ loadError() }}</span>
@@ -133,14 +252,13 @@
 
     <div class="feed-loading glass-panel" *ngIf="!loadError() && !feedLoaded()">
       <i class="pi pi-spinner pi-spin feed-load-ico" aria-hidden="true"></i>
-      <span>Loading community…</span>
+      <span>{{ 'COMMUNITY.LOADING_FEED' | translate }}</span>
     </div>
 
     <div class="posts-container" *ngIf="feedLoaded()">
       <ng-container *ngIf="visiblePosts().length === 0">
         <div class="empty-state glass-panel">
           <div class="empty-state__content">
-            <div class="empty-icon">📭</div>
             <h3>{{ showSavedOnly() ? 'No saved posts' : 'No posts yet' }}</h3>
             <p>{{ showSavedOnly() ? 'Save posts to find them here.' : 'Be the first to share something!' }}</p>
             <button 
@@ -157,14 +275,71 @@
 
       <ng-container *ngFor="let post of visiblePosts(); trackBy: trackByPost">
         <ng-container *ngIf="post.postId != null">
-          <article class="post-card glass-panel">
+          <article
+            class="post-card glass-panel"
+            [attr.data-post-id]="post.postId"
+            [class.post-card--location-hover]="isLocationHoverVisible(post.postId!)"
+            [class.post-card--event-announcement]="isEventAnnouncementPost(post)"
+            [class.post-card--clickable]="isEventAnnouncementPost(post)"
+            [attr.role]="isEventAnnouncementPost(post) ? 'button' : null"
+            [attr.tabindex]="isEventAnnouncementPost(post) ? 0 : null"
+            (click)="isEventAnnouncementPost(post) && openEventFromPost(post, $event)"
+            (keydown.enter)="isEventAnnouncementPost(post) && openEventFromPost(post, $event)"
+          >
             <header class="post-header">
               <div class="post-author">
-                <div class="avatar">{{ displayName(post.author).charAt(0).toUpperCase() || 'U' }}</div>
+                <div class="avatar">
+                  <img *ngIf="userAvatarUrl(post.author); else postAuthorFallback" [src]="userAvatarUrl(post.author)!" [alt]="displayName(post.author)" class="avatar-img" />
+                  <ng-template #postAuthorFallback>{{ displayName(post.author).charAt(0).toUpperCase() || 'U' }}</ng-template>
+                </div>
                 <div class="author-info">
-                  <button type="button" class="author-name author-link" (click)="goToUserProfile(post.author?.userId)">{{ displayName(post.author) }}</button>
+                  <button
+                    type="button"
+                    class="author-name author-link"
+                    (mouseenter)="openUserHoverFromEvent($event, post.author)"
+                    (mouseleave)="scheduleUserHoverClose()"
+                    (click)="goToUserProfile(post.author?.userId)"
+                  >{{ displayName(post.author) }}</button>
                   <span class="post-time">{{ formatDate(post.createdAt) }}</span>
-                  <span class="post-location-inline" *ngIf="post.location"><img src="icones/location-pin.svg" alt="" class="post-loc-ico" width="14" height="14" /> {{ post.location }}</span>
+                  <span
+                    class="post-location-inline post-location-inline--hover"
+                    *ngIf="post.location"
+                    tabindex="0"
+                    role="link"
+                    (mouseenter)="showLocationHover(post.postId!, post.location, $event)"
+                    (mouseleave)="hideLocationHover(post.postId!)"
+                    (click)="openCityFromLocation(post.location, $event)"
+                    (keydown.enter)="openCityFromLocation(post.location, $event)"
+                  >
+                    <img src="icones/location-pin.svg" alt="" class="post-loc-ico" width="14" height="14" />
+                    {{ post.location }}
+
+                    <ng-container *ngIf="isLocationHoverVisible(post.postId!) && hoveredLocationCard() as hover">
+                      <span
+                        class="location-hover-card"
+                        role="link"
+                        tabindex="0"
+                        aria-live="polite"
+                        (click)="openCityFromLocation(post.location, $event)"
+                        (keydown.enter)="openCityFromLocation(post.location, $event)"
+                      >
+                        <span class="location-hover-head">
+                          <strong>{{ hover.title }}</strong>
+                          <small>{{ hover.subtitle }}</small>
+                        </span>
+
+                        <ng-container *ngIf="hover.mapRegionId; else noLocationMap">
+                          <span class="location-hover-map">
+                            <span #locationMiniMap class="location-hover-map-canvas" aria-hidden="true"></span>
+                          </span>
+                        </ng-container>
+
+                        <ng-template #noLocationMap>
+                          <span class="location-hover-fallback">Map unavailable for this city.</span>
+                        </ng-template>
+                      </span>
+                    </ng-container>
+                  </span>
                 </div>
                 <button
                   type="button"
@@ -172,14 +347,14 @@
                   *ngIf="authService.isAuthenticated() && post.author?.userId && authService.currentUser()?.id !== post.author?.userId"
                   (click)="toggleFollow(post.author?.userId)"
                 >
-                  {{ isFollowing(post.author?.userId) ? 'Following' : '+ Follow' }}
+                  {{ isFollowing(post.author?.userId) ? ('COMMUNITY.FOLLOWING' | translate) : ('COMMUNITY.FOLLOW' | translate) }}
                 </button>
                 <div class="post-actions" *ngIf="canEditPost(post) || canDeletePost(post)" (click)="$event.stopPropagation()">
                   <button 
                     type="button"
                     class="btn-icon post-menu-trigger"
                     (click)="$event.stopPropagation(); togglePostMenu(post.postId!)"
-                    title="Options"
+                    [attr.title]="'COMMUNITY.OPTIONS' | translate"
                   >
                     <span aria-hidden="true">⋯</span>
                   </button>
@@ -191,7 +366,7 @@
                       (click)="startEditPost(post)"
                       *ngIf="canEditPost(post)"
                     >
-                      Edit
+                      {{ 'COMMUNITY.EDIT' | translate }}
                     </button>
                     <button
                       type="button"
@@ -199,7 +374,7 @@
                       (click)="deletePost(post.postId!)"
                       *ngIf="canDeletePost(post)"
                     >
-                      Delete
+                      {{ 'COMMUNITY.DELETE' | translate }}
                     </button>
                   </div>
                 </div>
@@ -209,12 +384,21 @@
             <div class="post-content">
               <ng-container *ngIf="!isEditingPost(post.postId!); else editPostForm">
                 <section class="repost-shell" *ngIf="isRepost(post) && post.repostOf">
-                  <p class="repost-credit"><i class="pi pi-replay repost-ico" aria-hidden="true"></i> Repost from {{ displayName(post.repostOf.author) }}</p>
+                  <p class="repost-credit"><i class="pi pi-replay repost-ico" aria-hidden="true"></i> {{ 'COMMUNITY.REPOST_FROM' | translate: { name: displayName(post.repostOf.author) } }}</p>
                   <article class="repost-card">
                     <header class="repost-head">
-                      <div class="avatar small">{{ displayName(post.repostOf.author).charAt(0).toUpperCase() || 'U' }}</div>
+                      <div class="avatar small">
+                        <img *ngIf="userAvatarUrl(post.repostOf.author); else repostAuthorFallback" [src]="userAvatarUrl(post.repostOf.author)!" [alt]="displayName(post.repostOf.author)" class="avatar-img" />
+                        <ng-template #repostAuthorFallback>{{ displayName(post.repostOf.author).charAt(0).toUpperCase() || 'U' }}</ng-template>
+                      </div>
                       <div>
-                        <button type="button" class="author-link repost-author" (click)="goToUserProfile(post.repostOf.author?.userId)">{{ displayName(post.repostOf.author) }}</button>
+                        <button
+                          type="button"
+                          class="author-link repost-author"
+                          (mouseenter)="openUserHoverFromEvent($event, post.repostOf.author)"
+                          (mouseleave)="scheduleUserHoverClose()"
+                          (click)="goToUserProfile(post.repostOf.author?.userId)"
+                        >{{ displayName(post.repostOf.author) }}</button>
                         <small>{{ formatDate(post.repostOf.createdAt) }}</small>
                       </div>
                     </header>
@@ -279,6 +463,17 @@
                   <span class="hashtag-chip" *ngFor="let tag of getHashtags(post)">{{ tag }}</span>
                 </div>
 
+                <section class="event-announcement-panel" *ngIf="isEventAnnouncementPost(post)">
+                  <div class="event-announcement-panel__badge">Live Event Drop</div>
+                  <button
+                    type="button"
+                    class="event-announcement-panel__cta"
+                    (click)="openEventFromPost(post, $event)"
+                  >
+                    Open Event Card
+                  </button>
+                </section>
+
                 <p class="post-caption">{{ post.content }}</p>
 
               </ng-container>
@@ -286,25 +481,25 @@
               <ng-template #editPostForm>
                 <div class="edit-post-form glass-panel">
                   <label class="field-label">
-                    <span>Edit content</span>
+                    <span>{{ 'COMMUNITY.EDIT_CONTENT' | translate }}</span>
                     <textarea
                       rows="3"
                       class="form-textarea"
                       [value]="editPostContent()"
                       (input)="editPostContent.set($any($event.target).value)"
-                      placeholder="Update your post…"
+                      [attr.placeholder]="'COMMUNITY.UPDATE_POST_PH' | translate"
                     ></textarea>
                   </label>
 
                   <div class="form-row">
                     <label class="field-label">
-                      <span>Place</span>
+                      <span>{{ 'COMMUNITY.PLACE' | translate }}</span>
                       <select
                         class="form-select"
                         [value]="editPostLocation()"
                         (change)="editPostLocation.set($any($event.target).value)"
                       >
-                        <option value="">Choose a city</option>
+                        <option value="">{{ 'COMMUNITY.CHOOSE_CITY' | translate }}</option>
                         <option *ngFor="let city of cities(); trackBy: trackByCity" [value]="city.name">
                           {{ cityDisplay(city) }}
                         </option>
@@ -312,21 +507,21 @@
                     </label>
 
                     <label class="field-label">
-                      <span>Visibility</span>
+                      <span>{{ 'COMMUNITY.VISIBILITY' | translate }}</span>
                       <select
                         class="form-select"
                         [value]="editPostVisibility()"
                         (change)="editPostVisibility.set($any($event.target).value)"
                       >
-                        <option value="public">Public</option>
-                        <option value="private">Private</option>
+                        <option value="public">{{ 'COMMUNITY.VIS_PUBLIC' | translate }}</option>
+                        <option value="private">{{ 'COMMUNITY.VIS_PRIVATE' | translate }}</option>
                       </select>
                     </label>
                   </div>
 
                   <div class="edit-post-actions">
                     <button type="button" class="btn-outline" (click)="cancelEditPost()">
-                      Cancel
+                      {{ 'COMMUNITY.CANCEL' | translate }}
                     </button>
                     <button
                       type="button"
@@ -334,8 +529,8 @@
                       [disabled]="!editPostContent().trim() || !editPostLocation().trim() || isSavingEdit()"
                       (click)="saveEditedPost(post)"
                     >
-                      <span *ngIf="!isSavingEdit()">Save</span>
-                      <span *ngIf="isSavingEdit()">Saving…</span>
+                      <span *ngIf="!isSavingEdit()">{{ 'COMMUNITY.SAVE' | translate }}</span>
+                      <span *ngIf="isSavingEdit()">{{ 'COMMUNITY.SAVING' | translate }}</span>
                     </button>
                   </div>
                 </div>
@@ -351,18 +546,30 @@
                   >
                     <span
                       class="like-heart-emoji"
-                      [attr.aria-label]="isPostLiked(post.postId!) ? 'Unlike' : 'Like'"
+                      [attr.aria-label]="isPostLiked(post.postId!) ? ('COMMUNITY.UNLIKE' | translate) : ('COMMUNITY.LIKE' | translate)"
                       role="img"
                     >{{ isPostLiked(post.postId!) ? '❤️' : '🤍' }}</span>
                     <span
                       class="stat-count"
                       (click)="$event.stopPropagation(); toggleLikersModal(post.postId!)"
-                    >{{ getLikeCount(post.postId!) }} likes</span>
+                    >{{ 'COMMUNITY.LIKES_N' | translate: { n: getLikeCount(post.postId!) } }}</span>
                   </div>
-                  <button type="button" class="stat-item stat-item--clickable stat-comment-trigger" (click)="toggleComments(post.postId!)">
+                  <button
+                    type="button"
+                    class="stat-item stat-item--clickable stat-comment-trigger"
+                    (click)="toggleComments(post.postId!)"
+                    [disabled]="!isCommentsAllowed(post)"
+                    [class.stat-item--disabled]="!isCommentsAllowed(post)"
+                  >
                     <img src="icones/commenter.png" alt="" class="stat-ico stat-ico--comment" width="18" height="18" />
-                    <span>{{ getCommentCount(post.postId!) }} comments</span>
+                    <span>{{ isCommentsAllowed(post) ? (getCommentCount(post.postId!) + ' comments') : 'Comments disabled' }}</span>
                   </button>
+                  <span class="stat-item">
+                    <span>{{ post.totalViews ?? 0 }} views</span>
+                  </span>
+                  <span class="stat-item">
+                    <span>Score: {{ post.postScore ?? 0 }}</span>
+                  </span>
                 </div>
 
                 <div class="post-stats-right" *ngIf="authService.isAuthenticated()">
@@ -370,7 +577,7 @@
                     type="button"
                     class="stat-action-btn stat-action-btn--repost"
                     (click)="repost(post.postId!)"
-                    title="Repost"
+                    [attr.title]="'COMMUNITY.REPOST' | translate"
                   >
                     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                       <path d="M8 7h8.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -378,13 +585,13 @@
                       <path d="M16 17H7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                       <path d="M9.5 14l-3.5 3 3.5 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
-                    <span>Repost</span>
+                    <span>{{ 'COMMUNITY.REPOST' | translate }}</span>
                   </button>
                   <button
                     type="button"
                     class="stat-action-btn stat-action-btn--bookmark"
                     (click)="toggleSavePost(post.postId!)"
-                    [title]="isPostSaved(post.postId!) ? 'Remove from saved' : 'Save'"
+                    [attr.title]="isPostSaved(post.postId!) ? ('COMMUNITY.REMOVE_SAVED' | translate) : ('COMMUNITY.SAVE_POST' | translate)"
                     [class.active]="isPostSaved(post.postId!)"
                   >
                     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -396,27 +603,36 @@
 
               <div class="inline-comments-block" *ngIf="isCommentsExpanded(post.postId!)">
                 <p class="empty-thread" *ngIf="commentTreeForPost(post.postId!).length === 0">
-                  No comments on this post yet.
+                  {{ 'COMMUNITY.NO_COMMENTS_YET' | translate }}
                 </p>
 
                 <ng-container *ngFor="let root of commentTreeForPost(post.postId!); trackBy: trackByComment">
                   <ng-container
-                    *ngTemplateOutlet="commentTpl; context: { $implicit: root, depth: 0, postId: post.postId! }"
+                    *ngTemplateOutlet="commentTplRef; context: { $implicit: root, depth: 0, postId: post.postId! }"
                   ></ng-container>
                 </ng-container>
               </div>
 
               <!-- Inline quick comment input (Facebook-style) -->
               <div class="inline-comment-input" *ngIf="isCommentsExpanded(post.postId!)">
-                <div class="avatar comment-avatar">{{ authService.currentUser()?.username?.charAt(0)?.toUpperCase() || 'U' }}</div>
+                <div class="avatar comment-avatar">
+                  <img *ngIf="currentUserAvatarUrl(); else commentComposerFallback" [src]="currentUserAvatarUrl()!" alt="Your profile photo" class="avatar-img" />
+                  <ng-template #commentComposerFallback>{{ authService.currentUser()?.username?.charAt(0)?.toUpperCase() || 'U' }}</ng-template>
+                </div>
                 <input
                   type="text"
                   class="quick-comment-input"
                   [value]="getPostDraft(post.postId!)"
                   (input)="setPostDraft(post.postId!, $any($event.target).value)"
                   (keydown.enter)="addComment(post.postId!)"
-                  placeholder="Write a comment…"
+                  [attr.placeholder]="'COMMUNITY.COMMENT_PLACEHOLDER' | translate"
                 />
+                <button type="button" class="reply-btn giphy-btn" (click)="openGiphyPickerForPost(post.postId!)">GIF</button>
+              </div>
+
+              <div class="selected-giphy" *ngIf="getSelectedGiphyForPost(post.postId!) as selected">
+                <img [src]="selected.previewUrl || selected.fullUrl" alt="Selected GIF" />
+                <button type="button" class="reply-btn reply-btn--danger" (click)="clearSelectedGiphyForPost(post.postId!)">Remove</button>
               </div>
             </div>
           </article>
@@ -424,87 +640,164 @@
         </ng-container>
       </div>
 
-      <!-- Comment Template -->
-      <ng-template #commentTpl let-comment let-depth="depth" let-postId="postId">
-      <div class="comment-item" [style.marginLeft.px]="depth * 18">
-        <div class="comment-header">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <div class="avatar comment-avatar">{{ displayName(comment.author).charAt(0).toUpperCase() || 'U' }}</div>
-            <span class="comment-author">{{ displayName(comment.author) }}</span>
-          </div>
-          <span class="comment-date">{{ formatDate(comment.createdAt) }}</span>
-        </div>
-        
-        <p class="comment-content">{{ comment.content }}</p>
+    <div class="giphy-modal-backdrop" *ngIf="showGiphyPicker()" (click)="closeGiphyPicker()">
+      <section class="giphy-modal-card" (click)="$event.stopPropagation()">
+        <header class="giphy-modal-head">
+          <h3>Add GIF / Sticker</h3>
+          <button type="button" class="btn-close" (click)="closeGiphyPicker()">✕</button>
+        </header>
 
-        <div class="comment-actions">
+        <div class="giphy-toolbar">
+          <input
+            type="text"
+            class="quick-comment-input"
+            [value]="giphyQuery()"
+            (input)="onGiphyQueryInput($any($event.target).value)"
+            placeholder="Search GIPHY..."
+          />
           <button
             type="button"
-            class="reply-btn"
-            (click)="openReply(comment.commentId!)"
-            [disabled]="activeReplyCommentId() === comment.commentId"
+            class="reply-btn giphy-type-btn"
+            [class.active]="giphyType() === 'gif'"
+            (click)="setGiphyType('gif')"
           >
-            Reply
+            GIF
           </button>
           <button
             type="button"
-            class="reply-btn reply-btn--danger"
-            *ngIf="canDeleteComment(comment)"
-            (click)="deleteComment(comment.commentId!)"
+            class="reply-btn giphy-type-btn"
+            [class.active]="giphyType() === 'sticker'"
+            (click)="setGiphyType('sticker')"
           >
-            Delete
+            Sticker
           </button>
         </div>
 
-        <div
-          class="reply-form glass-panel"
-          *ngIf="activeReplyCommentId() === comment.commentId!"
-        >
-          <textarea
-            rows="2"
-            [value]="getReplyDraft(comment.commentId!)"
-            (input)="setReplyDraft(comment.commentId!, $any($event.target).value)"
-            placeholder="Your reply…"
-          ></textarea>
-          <div class="reply-actions">
-            <button
-              type="button"
-              class="btn-primary btn-primary--small"
-              (click)="addComment(postId, comment.commentId!)"
-              [disabled]="getReplyDraft(comment.commentId!).trim().length === 0"
-            >
-              Reply
-            </button>
-            <button
-              type="button"
-              class="btn-outline btn-outline--small"
-              (click)="closeReply()"
-            >
-              Cancel
-            </button>
+        <p class="empty-thread" *ngIf="giphyLoading()">Searching...</p>
+        <p class="empty-thread" *ngIf="!giphyLoading() && giphyError()">{{ giphyError() }}</p>
+
+        <div class="giphy-grid" *ngIf="!giphyLoading() && giphyResults().length > 0">
+          <button
+            type="button"
+            class="giphy-tile"
+            *ngFor="let item of giphyResults(); trackBy: trackByGiphy"
+            (click)="selectGiphy(item)"
+          >
+            <img [src]="item.previewUrl || item.fullUrl" [alt]="item.title || 'GIF result'" loading="lazy" />
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <article
+      class="user-hover-card"
+      *ngIf="hoveredUserCard() as hover"
+      [style.top.px]="hover.top"
+      [style.left.px]="hover.left"
+      (mouseenter)="keepUserHoverOpen()"
+      (mouseleave)="scheduleUserHoverClose()"
+      (click)="goToHoveredUserProfile($event)"
+    >
+      <div class="user-hover-card__cover" [style.background-image]="hoverCardCover(hover.user)"></div>
+
+      <div class="user-hover-card__content">
+        <header class="user-hover-card__header">
+          <div class="avatar user-hover-card__avatar">
+            <img *ngIf="userAvatarUrl(hover.user); else hoverAvatarFallback" [src]="userAvatarUrl(hover.user)!" [alt]="displayName(hover.user)" class="avatar-img" />
+            <ng-template #hoverAvatarFallback>{{ displayName(hover.user).charAt(0).toUpperCase() || 'U' }}</ng-template>
+          </div>
+          <div class="user-hover-card__identity">
+            <h4>{{ displayName(hover.user) }}</h4>
+            <p>{{ hover.user.username || 'traveler' }}</p>
+          </div>
+        </header>
+
+        <div class="user-hover-card__meta">
+          <p><strong>Country:</strong> {{ hoverCardCountry(hover.user) }}</p>
+          <p *ngIf="hover.user.cityName"><strong>City:</strong> {{ hover.user.cityName }}</p>
+          <div class="user-hover-card__stats">
+            <span><strong>{{ hover.user.followersCount ?? 0 }}</strong> followers</span>
+            <span><strong>{{ hover.user.followingCount ?? 0 }}</strong> following</span>
           </div>
         </div>
 
-        <ng-container *ngIf="comment.children?.length">
-          <ng-container
-            *ngFor="
-              let child of comment.children;
-              trackBy: trackByComment
-            "
-          >
-            <ng-container
-              *ngTemplateOutlet="
-                commentTpl;
-                context: {
-                  $implicit: child,
-                  depth: depth + 1,
-                  postId: postId
-                }
-              "
-            ></ng-container>
-          </ng-container>
-        </ng-container>
+        <div class="user-hover-card__actions" *ngIf="hover.user.userId">
+          <button
+            type="button"
+            class="user-hover-card__btn user-hover-card__btn--primary"
+            *ngIf="authService.isAuthenticated() && authService.currentUser()?.id !== hover.user.userId"
+            (click)="toggleFollowFromHover(hover.user.userId, $event)"
+          >{{ isFollowing(hover.user.userId) ? 'Following' : 'Follow' }}</button>
+          <button
+            type="button"
+            class="user-hover-card__btn"
+            *ngIf="authService.isAuthenticated() && authService.currentUser()?.id !== hover.user.userId"
+            (click)="openChatWithHoveredUser($event)"
+          >Chat</button>
+        </div>
       </div>
-    </ng-template>
-  </section>
+    </article>
+    </section>
+    </div>
+
+    <aside class="community-right-rail" *ngIf="leaderboardUsers().length > 0 || suggestedUsers().length > 0">
+      <section class="community-leaderboard glass-panel" *ngIf="leaderboardUsers().length > 0">
+        <header class="community-leaderboard__head">
+          <h3>Leaderboard: Creator of the Month</h3>
+        </header>
+
+        <div class="community-leaderboard__list">
+          <article class="community-leaderboard-item" *ngFor="let user of leaderboardUsers(); index as i; trackBy: trackByUserRef">
+            <span class="community-leaderboard-medal" [class]="'community-leaderboard-medal community-leaderboard-medal--' + (i + 1)">
+              <span class="community-leaderboard-medal__number">{{ i + 1 }}</span>
+            </span>
+
+            <div class="community-leaderboard-avatar-wrap">
+              <span class="community-leaderboard-crown" *ngIf="i === 0" aria-hidden="true">👑</span>
+              <div class="avatar community-leaderboard-avatar">
+                <img *ngIf="userAvatarUrl(user); else leaderboardFallback" [src]="userAvatarUrl(user)!" [alt]="displayName(user)" class="avatar-img" />
+                <ng-template #leaderboardFallback>{{ displayName(user).charAt(0).toUpperCase() || 'U' }}</ng-template>
+              </div>
+            </div>
+
+            <span class="community-leaderboard-meta">
+              <strong>{{ displayName(user) }}</strong>
+              <small>{{ leaderboardMonthlyScore(user) }} monthly score</small>
+            </span>
+          </article>
+        </div>
+      </section>
+
+      <section class="community-suggestions glass-panel" *ngIf="suggestedUsers().length > 0">
+        <header class="community-suggestions__head">
+          <h3>Suggestions for You</h3>
+        </header>
+
+        <div class="community-suggestions__list">
+          <article class="community-suggestion-item" *ngFor="let user of suggestedUsers(); trackBy: trackByUserRef">
+            <button type="button" class="community-suggestion-user" (click)="goToUserProfile(user.userId)">
+              <div class="avatar community-suggestion-avatar">
+                <img *ngIf="userAvatarUrl(user); else suggestionFallback" [src]="userAvatarUrl(user)!" [alt]="displayName(user)" class="avatar-img" />
+                <ng-template #suggestionFallback>{{ displayName(user).charAt(0).toUpperCase() || 'U' }}</ng-template>
+              </div>
+
+              <span class="community-suggestion-meta">
+                <strong>{{ displayName(user) }}</strong>
+                <small *ngIf="suggestionLocation(user)">{{ suggestionLocation(user) }}</small>
+              </span>
+            </button>
+
+            <button
+              type="button"
+              class="community-suggestion-follow"
+              (click)="toggleFollow(user.userId)"
+              *ngIf="authService.isAuthenticated()"
+            >
+              {{ isFollowing(user.userId) ? 'Following' : '+ Add Friend' }}
+            </button>
+          </article>
+        </div>
+      </section>
+    </aside>
+  </div>
 </section>

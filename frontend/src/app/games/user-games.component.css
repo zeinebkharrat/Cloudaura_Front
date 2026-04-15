@@ -236,11 +236,45 @@
 .node-row.locked .node-label-right { opacity: 0; /* Never show label if locked unless hover? let's allow it on hover */ }
 
 /* Animations */
-@keyframes animate-in { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
-.animate-in { animation: animate-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+/* Scoped names: avoid global styles.css `.animate-in { opacity: 0 }` leaving content invisible */
+@keyframes ug-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.ug-animate-in {
+  animation: ug-fade-in 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
 
-@keyframes animate-up { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-.animate-up { animation: animate-up 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; animation-delay: 0.1s;}
+@keyframes ug-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.ug-animate-up {
+  animation: ug-slide-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: 0.08s;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ug-animate-in,
+  .ug-animate-up {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
 
 @keyframes bounce {
   0%, 100% { transform: translateX(-50%) translateY(0); }
@@ -252,12 +286,33 @@
 }
 
 .puzzle-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  display: flex;
+  overflow-x: auto;
   gap: 16px;
+  padding: 10px 0 25px 0;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+.puzzle-grid::-webkit-scrollbar {
+  height: 6px;
+}
+.puzzle-grid::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+}
+.puzzle-grid::-webkit-scrollbar-thumb {
+  background: rgba(14, 165, 233, 0.3);
+  border-radius: 10px;
+}
+.puzzle-grid::-webkit-scrollbar-thumb:hover {
+  background: rgba(14, 165, 233, 0.6);
 }
 
 .puzzle-card {
+  flex: 0 0 280px;
+  scroll-snap-align: start;
   text-align: left;
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 16px;
@@ -265,6 +320,8 @@
   background: #181d24;
   cursor: pointer;
   padding: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .puzzle-card img {
@@ -274,8 +331,21 @@
   display: block;
 }
 
+.puzzle-card__hero {
+  height: 180px !important;
+  object-position: center 35%;
+}
+
 .puzzle-card__meta {
   padding: 12px;
+}
+
+.puzzle-card__blurb {
+  margin: 0.35rem 0 0.5rem;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: rgba(226, 232, 240, 0.75);
+  font-weight: 400;
 }
 
 .puzzle-card__meta h3 {
@@ -319,4 +389,21 @@
   margin: 6px 0;
   color: #cbd5e1;
   font-size: 0.9rem;
+}
+
+.game-category-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  color: #0ea5e9;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  z-index: 10;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }

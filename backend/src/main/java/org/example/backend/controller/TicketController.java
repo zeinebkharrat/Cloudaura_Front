@@ -6,16 +6,17 @@ import org.example.backend.exception.ResourceNotFoundException;
 import org.example.backend.model.TransportReservation;
 import org.example.backend.repository.TransportReservationRepository;
 import org.example.backend.service.QrCodeService;
+import org.example.backend.service.ReservationTranslationHelper;
 import org.example.backend.service.TicketPdfService;
+import org.example.backend.service.TransportReservationMapper;
+import org.example.backend.service.TransportTicketQrPayload;
+import org.example.backend.service.UserIdentityResolver;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
-import org.example.backend.service.UserIdentityResolver;
 import org.springframework.web.bind.annotation.*;
-
-import java.time.format.DateTimeFormatter;
 
 @RestController
 @RequestMapping("/api/tickets")
@@ -26,25 +27,18 @@ public class TicketController {
     private final QrCodeService qrCodeService;
     private final TicketPdfService ticketPdfService;
     private final UserIdentityResolver userIdentityResolver;
-
-    private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    private final TransportReservationMapper transportReservationMapper;
+    private final ReservationTranslationHelper reservationLabels;
 
     @GetMapping("/{reservationId}/qr")
     public ResponseEntity<byte[]> getQrCode(
             @PathVariable int reservationId,
             Authentication authentication) {
         TransportReservation res = reservationRepo.findByIdWithAssociations(reservationId)
-                .orElseThrow(() -> new ResourceNotFoundException("Réservation non trouvée."));
+                .orElseThrow(() -> new ResourceNotFoundException("reservation.error.reservation_not_found"));
         assertReservationOwner(res, authentication);
 
-        String content = String.format(
-                "{\"ref\":\"%s\",\"passenger\":\"%s %s\",\"route\":\"%s → %s\",\"date\":\"%s\"}",
-                res.getReservationRef(),
-                res.getPassengerFirstName(), res.getPassengerLastName(),
-                res.getTransport().getDepartureCity().getName(),
-                res.getTransport().getArrivalCity().getName(),
-                res.getTravelDate() != null ? res.getTravelDate().format(FMT) : "N/A"
-        );
+        String content = TransportTicketQrPayload.jsonForReservation(res);
 
         byte[] png = qrCodeService.generateQrPng(content, 300);
 
@@ -59,10 +53,10 @@ public class TicketController {
             @PathVariable int reservationId,
             Authentication authentication) {
         TransportReservation res = reservationRepo.findByIdWithAssociations(reservationId)
-                .orElseThrow(() -> new ResourceNotFoundException("Réservation non trouvée."));
+                .orElseThrow(() -> new ResourceNotFoundException("reservation.error.reservation_not_found"));
         assertReservationOwner(res, authentication);
 
-        TransportReservationResponse dto = mapToResponse(res);
+        TransportReservationResponse dto = transportReservationMapper.toResponse(res);
         byte[] pdf = ticketPdfService.generateTicketPdf(dto);
 
         String filename = "billet-" + res.getReservationRef() + ".pdf";
@@ -76,28 +70,11 @@ public class TicketController {
     private void assertReservationOwner(TransportReservation res, Authentication authentication) {
         Integer uid = userIdentityResolver.resolveUserId(authentication);
         if (uid == null) {
-            throw new AccessDeniedException("Authentication required");
+            throw new AccessDeniedException("reservation.error.auth_required");
         }
         if (res.getUser() == null || !uid.equals(res.getUser().getUserId())) {
-            throw new AccessDeniedException("Not your reservation");
+            throw new AccessDeniedException("api.error.ticket.reservation_wrong_user");
         }
     }
 
-    private TransportReservationResponse mapToResponse(TransportReservation r) {
-        return TransportReservationResponse.builder()
-                .transportReservationId(r.getTransportReservationId())
-                .transportId(r.getTransport().getTransportId())
-                .reservationRef(r.getReservationRef())
-                .status(r.getStatus().name())
-                .paymentStatus(r.getPaymentStatus().name())
-                .paymentMethod(r.getPaymentMethod().name())
-                .totalPrice(r.getTotalPrice())
-                .numberOfSeats(r.getNumberOfSeats())
-                .passengerFullName(r.getPassengerFirstName() + " " + r.getPassengerLastName())
-                .travelDate(r.getTravelDate())
-                .departureCityName(r.getTransport().getDepartureCity().getName())
-                .arrivalCityName(r.getTransport().getArrivalCity().getName())
-                .createdAt(r.getCreatedAt())
-                .build();
-    }
 }

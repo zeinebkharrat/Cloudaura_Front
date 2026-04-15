@@ -40,9 +40,16 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .forEach(patterns::add);
+        String[] origins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .toArray(String[]::new);
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns(patterns.toArray(new String[0]))
                 .withSockJS();
+        // Plain WebSocket for STOMP clients (e.g. tracking map); SockJS cannot share this path.
+        registry.addEndpoint("/ws-native")
+                .setAllowedOrigins(origins);
     }
 
     @Override
