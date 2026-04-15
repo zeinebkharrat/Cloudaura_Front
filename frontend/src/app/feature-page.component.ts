@@ -1,4 +1,8 @@
-import { Component, OnInit, inject, signal, computed, HostListener } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, HostListener, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { LanguageService } from './core/services/language.service';
+import { CurrencyService } from './core/services/currency.service';
 import { forkJoin } from 'rxjs';
 import { ActivatedRoute, Data, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -79,6 +83,7 @@ export class FeaturePageComponent implements OnInit {
   private readonly eventService = inject(EventService);
   private readonly notifier = inject(NotificationService);
   private readonly loginPrompt = inject(LoginRequiredPromptService);
+  private readonly currency = inject(CurrencyService);
 
   kicker = '';
   title = '';
@@ -1141,6 +1146,7 @@ export class FeaturePageComponent implements OnInit {
           event_id: eventId,
           amount,
           eventName: event.title,
+          presentmentCurrency: this.currency.selectedCode(),
         })
         .subscribe({
           next: (res) => {
@@ -1198,6 +1204,10 @@ export class FeaturePageComponent implements OnInit {
     return 'FEATURE_CATALOG.STATUS_PENDING';
   }
 
+  getStatusLabel(status: string | undefined): string {
+    return this.translate.instant(this.statusLabelKey(status));
+  }
+
   detailDialogHeader(): string {
     const item = this.selectedItem();
     if (item?.name) {
@@ -1213,7 +1223,7 @@ export class FeaturePageComponent implements OnInit {
       case 'REJECTED':
         return 'danger';
       case 'DRAFT':
-        return 'warning';
+        return 'warn';
       default:
         return 'info';
     }

@@ -51,7 +51,8 @@
 .navbar--overlay .nav-icon-btn,
 .navbar--overlay .nav-cart-btn,
 .navbar--overlay .theme-toggle-btn,
-.navbar--overlay .user-chip {
+.navbar--overlay .user-chip,
+.navbar--overlay .nav-currency {
   opacity: 0.3;
 }
 
@@ -60,7 +61,8 @@
 .navbar--overlay .nav-icon-btn,
 .navbar--overlay .nav-cart-btn,
 .navbar--overlay .theme-toggle-btn,
-.navbar--overlay .signup-btn {
+.navbar--overlay .signup-btn,
+.navbar--overlay .nav-currency .cur-select {
   background: transparent;
   border-color: transparent;
   box-shadow: none;

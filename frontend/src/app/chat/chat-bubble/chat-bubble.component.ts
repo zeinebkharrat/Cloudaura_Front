@@ -21,6 +21,7 @@ import { ConversationResponse, MessageResponse, TypingEvent } from '../chat.type
 import { Router } from '@angular/router';
 import { AppAlertsService } from '../../core/services/app-alerts.service';
 import { isBackendLoginRedirectError } from '../../api-error.util';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 interface StoryReplyPayload {
   kind: string;
@@ -47,6 +48,7 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
   private readonly router = inject(Router);
   private readonly alerts = inject(AppAlertsService);
   private readonly injector = inject(Injector);
+  private readonly translate = inject(TranslateService);
 
   @ViewChild('messagesContainer') messagesContainer!: ElementRef;
   @ViewChild('messageInput') messageInput!: ElementRef;
@@ -404,25 +406,6 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
     if (lang.startsWith('ar')) return 'ar';
     if (lang.startsWith('fr')) return 'fr-FR';
     return 'en-GB';
-  }
-
-  formatVoiceDuration(sec?: number | null): string {
-    if (!sec || sec <= 0) {
-      return '0:00';
-    }
-    const minutes = Math.floor(sec / 60);
-    const seconds = sec % 60;
-    return `${minutes}:${String(seconds).padStart(2, '0')}`;
-  }
-
-  conversationPreview(conv: ConversationResponse): string {
-    if (conv.unreadCount === 1) {
-      return 'Sent you one message';
-    }
-    if (conv.unreadCount > 1) {
-      return `Sent you ${conv.unreadCount} messages`;
-    }
-    return 'No new messages';
   }
 
   formatVoiceDuration(sec?: number | null): string {

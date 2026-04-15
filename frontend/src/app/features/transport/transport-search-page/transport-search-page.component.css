@@ -70,7 +70,7 @@
   padding: 0 1.5rem;
   margin-top: 0.5rem;
   position: relative;
-  z-index: 5;
+  z-index: 2;
 }
 
 .map-section {
@@ -140,6 +140,22 @@
   min-width: 11.5rem;
   max-width: 13rem;
   padding-right: 1.35rem;
+}
+
+.sb-pax .sb-inner {
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.sb-pax-shell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  /* Ne pas s'étirer sur toute la largeur de la colonne (sinon l'input flex grandit et écarte le "+") */
+  align-self: flex-start;
 }
 
 .sb-icon {
@@ -223,9 +239,15 @@
 /* PrimeNG in search bar */
 :host ::ng-deep {
   .sb-dropdown,
-  .sb-calendar,
-  .sb-pax-input {
+  .sb-calendar {
     width: 100%;
+  }
+
+  .sb-pax-input {
+    display: inline-flex !important;
+    width: max-content !important;
+    max-width: 100% !important;
+    flex: 0 0 auto !important;
   }
 
   .sb-dropdown .p-dropdown {
@@ -280,15 +302,26 @@
 
   /* Datepicker overlay is appendTo="body" — timepicker styles live in styles.css */
 
-  .sb-pax-input .p-inputnumber {
-    background: transparent !important;
+  .sb-pax-shell .p-inputnumber {
     display: inline-flex !important;
+    flex-direction: row !important;
     flex-wrap: nowrap !important;
     align-items: center !important;
-    max-width: 100%;
+    justify-content: center !important;
+    gap: 0.35rem !important;
+    padding: 0.25rem 0.4rem !important;
+    border-radius: 12px !important;
+    border: 1px solid var(--border-soft) !important;
+    background: var(--input-bg) !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+    width: max-content !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    flex: 0 0 auto !important;
   }
 
-  .sb-pax-input .p-inputnumber-input {
+  .sb-pax-shell .p-inputnumber-horizontal .p-inputnumber-input,
+  .sb-pax-shell .p-inputnumber .p-inputnumber-input {
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
@@ -297,25 +330,42 @@
     font-size: 1rem;
     color: var(--text-color) !important;
     text-align: center;
-    width: 2.5rem;
-    min-width: 2.25rem;
-    flex: 0 0 auto;
+    width: 2rem !important;
+    min-width: 2rem !important;
+    max-width: 2.5rem !important;
+    flex: 0 0 auto !important;
+    flex-grow: 0 !important;
+    flex-shrink: 0 !important;
+    margin: 0 !important;
   }
 
-  .sb-pax-input .p-inputnumber-button {
+  /* Annule p-inputtext-fluid (width:100%) si un ancêtre p-fluid existe */
+  .sb-pax-shell .p-inputnumber-input.p-inputtext-fluid {
+    width: 2rem !important;
+    max-width: 2.5rem !important;
+  }
+
+  .sb-pax-input .p-inputnumber-button,
+  .sb-pax-shell .p-inputnumber-button {
+    position: relative !important;
+    inset: auto !important;
     background: color-mix(in srgb, var(--tunisia-red) 12%, transparent) !important;
     border: none !important;
     color: var(--tunisia-red) !important;
     width: 32px;
     height: 32px;
+    min-width: 32px !important;
+    flex: 0 0 auto !important;
     flex-shrink: 0 !important;
+    margin: 0 !important;
     border-radius: 10px !important;
     transition:
       background 0.2s ease,
       transform 0.15s ease !important;
   }
 
-  .sb-pax-input .p-inputnumber-button:hover {
+  .sb-pax-input .p-inputnumber-button:hover,
+  .sb-pax-shell .p-inputnumber-button:hover {
     background: var(--tunisia-red) !important;
     color: #fff !important;
     transform: scale(1.06);
@@ -384,11 +434,14 @@
   line-height: 1.45;
 }
 
-/* Type cards */
+/* Type cards — sous les overlays PrimeNG (datepicker appendTo body) */
 .types-section {
   max-width: 900px;
   margin: 2.5rem auto 0;
   padding: 0 1.5rem;
+  position: relative;
+  z-index: 0;
+  isolation: isolate;
 }
 
 .types-title {
@@ -604,6 +657,14 @@
   .sb-swap {
     align-self: center;
     margin: -0.5rem 0;
+  }
+
+  .sb-pax .sb-inner {
+    align-items: center;
+  }
+
+  .sb-pax-shell {
+    margin-inline: auto;
   }
 
   .types-grid {

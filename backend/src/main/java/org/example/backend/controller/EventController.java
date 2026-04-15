@@ -14,6 +14,7 @@ import org.example.backend.service.EventPosterAiService;
 import org.example.backend.service.HuggingFacePosterService;
 import org.example.backend.service.ImgBbService;
 import org.example.backend.service.EmailService;
+import org.example.backend.service.PaymentService;
 import org.example.backend.service.QrCodeService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -48,15 +49,10 @@ public class EventController {
     private final EventPosterAiService eventPosterAiService;
     private final HuggingFacePosterService huggingFacePosterService;
     private final ImgBbService imgBbService;
+    private final PaymentService paymentService;
 
     @Value("${app.frontend.base-url:http://localhost:4200}")
     private String frontendBaseUrl;
-
-    @Value("${stripe.checkout.currency:usd}")
-    private String stripeCheckoutCurrency;
-
-    @Value("${stripe.transport.tnd-to-presentment:0.32}")
-    private double stripeTndToPresentment;
 
     @Value("${stripe.api.key:${STRIPE_SECRET_KEY:}}")
     private String stripeApiKey;
@@ -71,7 +67,8 @@ public class EventController {
             EmailService emailService,
             EventPosterAiService eventPosterAiService,
             HuggingFacePosterService huggingFacePosterService,
-            ImgBbService imgBbService
+            ImgBbService imgBbService,
+            PaymentService paymentService
     ) {
         this.eventService = eventService;
         this.reservationRepository = reservationRepository;
@@ -83,6 +80,7 @@ public class EventController {
         this.eventPosterAiService = eventPosterAiService;
         this.huggingFacePosterService = huggingFacePosterService;
         this.imgBbService = imgBbService;
+        this.paymentService = paymentService;
     }
 
     private String normalizeFrontendBase() {
@@ -384,16 +382,15 @@ public class EventController {
             reservationRepository.save(res);
 
             String base = normalizeFrontendBase();
-            String currency = stripeCheckoutCurrency == null || stripeCheckoutCurrency.isBlank()
-                    ? "usd"
-                    : stripeCheckoutCurrency.trim().toLowerCase();
-            long unitAmountMinor =
-                    "tnd".equals(currency)
-                        ? Math.round(ticketPrice * 100.0)
-                        : Math.round(ticketPrice * stripeTndToPresentment * 100.0);
+            Object prefObj = data.get("presentmentCurrency");
+            String presentmentPref = prefObj != null ? prefObj.toString().trim() : null;
+            String currency = paymentService.resolvePresentmentCurrency(presentmentPref);
+            long unitAmountMinor = paymentService.stripeMinorUnits(ticketPrice, presentmentPref);
             if (unitAmountMinor < 1) {
                 return ResponseEntity.badRequest().body("amount too small for Stripe");
             }
+            long totalMinor = unitAmountMinor * (long) quantity;
+            paymentService.assertTransportStripeChargeable(totalMinor, currency);
 
             Object eventNameObj = data.get("eventName");
             String productName = eventNameObj != null && !eventNameObj.toString().isBlank()
@@ -422,7 +419,45 @@ public class EventController {
                             .build())
                     .build();
 
-            Session session = Session.create(params);
+            Session session;
+            try {
+                session = Session.create(params);
+            } catch (StripeException exCreate) {
+                if ("tnd".equals(currency) && PaymentService.isStripePresentmentCurrencyRejected(exCreate)) {
+                    long eurUnitMinor = paymentService.stripeMinorUnits(ticketPrice, "eur");
+                    long eurTotalMinor = eurUnitMinor * (long) quantity;
+                    paymentService.assertTransportStripeChargeable(eurTotalMinor, "eur");
+                    SessionCreateParams paramsEur =
+                            SessionCreateParams.builder()
+                                    .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
+                                    .setMode(SessionCreateParams.Mode.PAYMENT)
+                                    .setClientReferenceId(String.valueOf(res.getEventReservationId()))
+                                    .putMetadata("reservationId", String.valueOf(res.getEventReservationId()))
+                                    .putMetadata("eventId", String.valueOf(eventId))
+                                    .putMetadata("ticketTypeId", String.valueOf(ticketType.getTicketTypeId()))
+                                    .putMetadata("quantity", String.valueOf(quantity))
+                                    .setSuccessUrl(base + "/success?session_id={CHECKOUT_SESSION_ID}")
+                                    .setCancelUrl(base + "/evenements")
+                                    .addLineItem(
+                                            SessionCreateParams.LineItem.builder()
+                                                    .setQuantity((long) quantity)
+                                                    .setPriceData(
+                                                            SessionCreateParams.LineItem.PriceData.builder()
+                                                                    .setCurrency("eur")
+                                                                    .setUnitAmount(eurUnitMinor)
+                                                                    .setProductData(
+                                                                            SessionCreateParams.LineItem.PriceData
+                                                                                    .ProductData.builder()
+                                                                                    .setName("Event: " + productName)
+                                                                                    .build())
+                                                                    .build())
+                                                    .build())
+                                    .build();
+                    session = Session.create(paramsEur);
+                } else {
+                    throw exCreate;
+                }
+            }
             String url = session.getUrl();
             if (url == null || url.isBlank()) {
                 return ResponseEntity.status(500).body("Stripe did not return a checkout URL");

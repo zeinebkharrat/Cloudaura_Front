@@ -103,6 +103,8 @@ export interface TransportCheckoutPayload {
   passengerEmail: string;
   passengerPhone: string;
   idempotencyKey: string;
+  /** Stripe Checkout presentment: TND | EUR | USD */
+  presentmentCurrency?: string;
 }
 
 /** PATCH body for updating an existing transport booking. */

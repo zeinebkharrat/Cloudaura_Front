@@ -60,6 +60,7 @@ export interface DataSourceAdapter {
     checkIn: string;
     checkOut: string;
     offerId?: number | null;
+    presentmentCurrency?: string;
   }): Observable<TransportCheckoutResult>;
 
   confirmTransportStripeSession(sessionId: string): Observable<TransportReservation>;

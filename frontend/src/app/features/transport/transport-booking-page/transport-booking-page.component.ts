@@ -73,45 +73,18 @@ import { createCurrencyDisplaySyncEffect } from '../../../core/utils/currency-di
     }
 
     :host ::ng-deep {
-      .bp .p-stepper .p-stepper-header .p-stepper-number {
-        width: 2.2rem; height: 2.2rem; font-weight: 700; font-size: 0.85rem;
+      .manual-steps {
+        display: flex; gap: 0.45rem; flex-wrap: wrap; margin-bottom: 1.35rem;
+        font-size: 0.76rem; font-weight: 600; color: var(--text-muted);
       }
-      .bp .p-stepper .p-stepper-panels { padding: 0; }
-      .bp .p-stepper .p-stepper-header:not(.p-highlight) .p-stepper-number {
-        background: var(--surface-2) !important;
-        border: 2px solid var(--glass-border) !important;
-        color: var(--text-muted) !important;
+      .manual-steps span {
+        padding: 0.32rem 0.7rem; border-radius: 999px;
+        border: 1px solid var(--glass-border); background: var(--surface-2);
       }
-      .bp .p-stepper .p-stepper-header.p-highlight .p-stepper-number,
-      .bp .p-stepper .p-stepper-header .p-stepper-number.p-highlight {
-        background: var(--tunisia-red) !important;
-        border-color: var(--tunisia-red) !important;
-        color: #fff !important;
-      }
-      .bp .p-stepper .p-stepper-title {
-        color: var(--text-muted) !important;
-        font-weight: 600 !important;
-      }
-      .bp .p-stepper .p-stepper-header.p-highlight .p-stepper-title {
-        color: var(--text-color) !important;
-      }
-      .bp .p-stepper .p-stepper-separator {
-        background: var(--glass-border) !important;
-      }
-      .bp .p-stepper .p-stepper-header.p-highlight ~ .p-stepper-separator,
-      .bp .p-stepper .p-stepper-separator.p-stepper-separator-active {
-        background: var(--tunisia-red) !important;
-      }
-      .bp .p-stepper .p-stepper-action.p-button {
-        background: transparent !important;
-        border: none !important;
-        box-shadow: none !important;
-        color: inherit !important;
-        padding: 0.35rem 0.5rem !important;
-        gap: 0.5rem !important;
-      }
-      .bp .p-stepper .p-stepper-action.p-button:not(:disabled):hover {
-        background: color-mix(in srgb, var(--tunisia-red) 6%, transparent) !important;
+      .manual-steps span.active {
+        border-color: var(--tunisia-red);
+        color: var(--tunisia-red);
+        background: color-mix(in srgb, var(--tunisia-red) 8%, var(--surface-1));
       }
       .bp .p-inputtext {
         width: 100%;
@@ -577,9 +550,9 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  goToStep2(nextCallback: { emit: () => void }) {
+  goToStep2(): void {
     if (this.passengerForm.valid) {
-      nextCallback.emit();
+      this.activeStep.set(1);
     } else {
       this.passengerForm.markAllAsTouched();
       void this.alerts.warning(
@@ -604,7 +577,7 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
     window.location.href = new URL(trimmed, window.location.origin).href;
   }
 
-  confirmBooking(nextCallback: { emit: () => void }) {
+  confirmBooking(): void {
     const user = this.authService.currentUser();
     if (!user) {
       this.loginPrompt.show({
@@ -650,7 +623,7 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
             if (res.status === 'CONFIRMED') {
               this.loadBoardingQrPng(res.transportReservationId);
             }
-            nextCallback.emit();
+            this.activeStep.set(2);
           },
           error: (err) => {
             this.loading.set(false);
@@ -697,6 +670,7 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
           passengerEmail: this.passengerForm.get('email')?.value ?? '',
           passengerPhone: '+216 ' + (this.passengerForm.get('phone')?.value ?? ''),
           idempotencyKey,
+          presentmentCurrency: this.currency.selectedCode(),
         })
         .subscribe({
           next: (checkout) => {
@@ -796,7 +770,7 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
             this.trackingSse.startJourneyTracking(res.transportReservationId);
             this.loadBoardingQrPng(res.transportReservationId);
           }
-          nextCallback.emit();
+          this.activeStep.set(2);
         },
         error: (err) => {
           this.loading.set(false);

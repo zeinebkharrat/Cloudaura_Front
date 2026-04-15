@@ -5,6 +5,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ShopService, ShopCart, ShopCartLine, CheckoutOrder, CheckoutBuyer } from '../core/shop.service';
 import { DualCurrencyPipe } from '../core/pipes/dual-currency.pipe';
 import { createCurrencyDisplaySyncEffect } from '../core/utils/currency-display-sync';
+import { CurrencyService } from '../core/services/currency.service';
 
 @Component({
   selector: 'app-cart-page',
@@ -19,6 +20,7 @@ export class CartPageComponent implements OnInit {
   private readonly shop = inject(ShopService);
   private readonly router = inject(Router);
   private readonly translate = inject(TranslateService);
+  private readonly currency = inject(CurrencyService);
 
   readonly cart = signal<ShopCart | null>(null);
   readonly loading = signal(true);
@@ -119,7 +121,7 @@ export class CartPageComponent implements OnInit {
   checkout(): void {
     this.checkoutLoading.set(true);
     this.error.set(null);
-    this.shop.checkout(this.paymentMethod()).subscribe({
+    this.shop.checkout(this.paymentMethod(), this.currency.selectedCode()).subscribe({
       next: (o) => {
         this.cart.set({ cartId: null, items: [], total: 0 });
         this.shop.refreshCartCount();

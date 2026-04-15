@@ -285,6 +285,10 @@ export class DestinationMapComponent implements OnInit, AfterViewInit, OnDestroy
     return m.get(p?.name ?? '') ?? p?.data?.gouv_fr ?? p?.name ?? '';
   }
 
+  private mapRegionLabel(p: { name?: string; data?: any }): string {
+    return this.displayName(p);
+  }
+
   private applyMapTheme(): void {
     if (!this.tunisiaMapChart || !this.mapGeoData) return;
 

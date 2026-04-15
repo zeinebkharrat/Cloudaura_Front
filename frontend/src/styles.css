@@ -675,6 +675,49 @@ h1, h2, h3, h4, h5, h6 {
   padding: 0.75rem !important;
 }
 
+/* Dropdown list scroll: dark panel — piste + curseur contrastés (villes/régions lisibles) */
+.p-dropdown-panel .p-dropdown-items-wrapper {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 #1a2332;
+}
+.p-dropdown-panel .p-dropdown-items-wrapper::-webkit-scrollbar {
+  width: 10px;
+}
+.p-dropdown-panel .p-dropdown-items-wrapper::-webkit-scrollbar-track {
+  background: #1a2332;
+  border-radius: 8px;
+}
+.p-dropdown-panel .p-dropdown-items-wrapper::-webkit-scrollbar-thumb {
+  background: #64748b;
+  border-radius: 8px;
+  border: 2px solid #1a2332;
+}
+.p-dropdown-panel .p-dropdown-items-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
+
+/* Virtual scroll (certaines listes PrimeNG) */
+.p-dropdown-panel .p-scroller {
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 #1a2332;
+}
+.p-dropdown-panel .p-scroller::-webkit-scrollbar {
+  width: 10px;
+}
+.p-dropdown-panel .p-scroller::-webkit-scrollbar-track {
+  background: #1a2332;
+  border-radius: 8px;
+}
+.p-dropdown-panel .p-scroller::-webkit-scrollbar-thumb {
+  background: #64748b;
+  border-radius: 8px;
+  border: 2px solid #1a2332;
+}
+.p-dropdown-panel .p-scroller::-webkit-scrollbar-thumb:hover {
+  background: #cbd5e1;
+}
+
 /* ---------- Calendar / Datepicker Panel ---------- */
 .p-datepicker {
   background: #111827 !important;
@@ -1105,9 +1148,39 @@ html[data-theme="light"] .p-datepicker .p-datepicker-time-picker span {
   color: #111827 !important;
 }
 
-/* Transport search: calendrier centré (touchUI) + panneau plus large, titre mois / année espacé */
-.p-datepicker.transport-search-calendar-panel.p-datepicker-touch-ui,
-.p-calendar .p-datepicker.transport-search-calendar-panel.p-datepicker-touch-ui {
+/* Transport search: overlay calendrier (appendTo body) — fond opaque, au-dessus du contenu.
+   PrimeNG 18 applique la classe custom sur le panneau popup (.p-datepicker-panel), pas sur .p-datepicker : ancrer sur .transport-search-calendar-panel. */
+.transport-search-calendar-panel {
+  z-index: 20000 !important;
+  isolation: isolate !important;
+  border-radius: 12px !important;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.22) !important;
+}
+
+:root[data-theme="light"] .transport-search-calendar-panel,
+html[data-theme="light"] .transport-search-calendar-panel {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+:root[data-theme="dark"] .transport-search-calendar-panel,
+html[data-theme="dark"] .transport-search-calendar-panel {
+  background: #1f2937 !important;
+  border: 1px solid #334155 !important;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* Sous-blocs : même fond que le panneau (évite transparence / superposition avec la page) */
+.transport-search-calendar-panel .p-datepicker-header,
+.transport-search-calendar-panel .p-datepicker-calendar-container,
+.transport-search-calendar-panel .p-timepicker,
+.transport-search-calendar-panel .p-datepicker-time-picker,
+.transport-search-calendar-panel .p-datepicker-buttonbar {
+  background: inherit !important;
+}
+
+/* Variante touchUI éventuelle */
+.transport-search-calendar-panel.p-datepicker-touch-ui {
   min-width: min(96vw, 38rem) !important;
   width: min(96vw, 38rem) !important;
   max-width: 96vw !important;
@@ -1117,7 +1190,7 @@ html[data-theme="light"] .p-datepicker .p-datepicker-time-picker span {
   box-sizing: border-box !important;
 }
 
-.p-datepicker.transport-search-calendar-panel .p-datepicker-title {
+.transport-search-calendar-panel .p-datepicker-title {
   display: flex !important;
   flex-wrap: wrap !important;
   align-items: center !important;
@@ -1125,24 +1198,24 @@ html[data-theme="light"] .p-datepicker .p-datepicker-time-picker span {
   gap: 0.5rem !important;
 }
 
-.p-datepicker.transport-search-calendar-panel .p-datepicker-month,
-.p-datepicker.transport-search-calendar-panel .p-datepicker-year {
+.transport-search-calendar-panel .p-datepicker-month,
+.transport-search-calendar-panel .p-datepicker-year {
   margin: 0 0.2rem !important;
 }
 
-.p-datepicker.transport-search-calendar-panel table td > span {
+.transport-search-calendar-panel table td > span {
   width: 2.9rem !important;
   height: 2.9rem !important;
   font-size: 1rem !important;
 }
 
-.p-datepicker.transport-search-calendar-panel table th {
+.transport-search-calendar-panel table th {
   font-size: 0.86rem !important;
   padding: 0.55rem 0.42rem !important;
 }
 
-.p-datepicker.transport-search-calendar-panel .p-timepicker span,
-.p-datepicker.transport-search-calendar-panel .p-datepicker-time-picker span {
+.transport-search-calendar-panel .p-timepicker span,
+.transport-search-calendar-panel .p-datepicker-time-picker span {
   font-size: 1.05rem !important;
 }
 
@@ -1202,6 +1275,23 @@ html[data-theme="light"] .p-dropdown-panel .p-dropdown-items-wrapper::-webkit-sc
   border-radius: 6px;
 }
 html[data-theme="light"] .p-dropdown-panel .p-dropdown-items-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+html[data-theme="light"] .p-dropdown-panel .p-scroller {
+  scrollbar-color: #9ca3af #e5e7eb;
+}
+html[data-theme="light"] .p-dropdown-panel .p-scroller::-webkit-scrollbar {
+  width: 10px;
+}
+html[data-theme="light"] .p-dropdown-panel .p-scroller::-webkit-scrollbar-track {
+  background: #f3f4f6;
+}
+html[data-theme="light"] .p-dropdown-panel .p-scroller::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 6px;
+}
+html[data-theme="light"] .p-dropdown-panel .p-scroller::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
 }
 

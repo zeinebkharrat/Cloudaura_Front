@@ -13,7 +13,9 @@ import {
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { catchError, forkJoin, map, of } from 'rxjs';
+import { catchError, forkJoin, map, of, Subscription } from 'rxjs';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { LanguageService } from './core/services/language.service';
 import * as echarts from 'echarts';
 import { tunisiaGeoJson } from './tunisia-map';
 import { GOVERNORATE_LABEL_EN, GOVERNORATE_LABEL_FR } from './tunisia-governorate-labels';
@@ -141,6 +143,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private mapGeoData?: any;
   private regionIdToLabelMap?: Map<string, string>;
   private themeObserver?: MutationObserver;
+  private langChange?: Subscription;
   private autoSlideIntervals: number[] = [];
   private readonly handleWindowResize = () => {
     this.tunisiaMapChart?.resize();
@@ -166,6 +169,11 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnInit(): void {
     this.loadHomeSections();
     this.loadPersonalizedSection();
+    this.langChange = this.translate.onLangChange.subscribe(() => {
+      if (this.tunisiaMapChart) {
+        this.applyMapTheme();
+      }
+    });
   }
 
   scrollSlider(containerId: string, direction: 1 | -1): void {

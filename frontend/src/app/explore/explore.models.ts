@@ -107,6 +107,7 @@ export interface PublicCityDetailsResponse {
 export interface CreateActivityReservationRequest {
   reservationDate: string;
   numberOfPeople: number;
+  presentmentCurrency?: string;
 }
 
 export interface ActivityReservationResponse {

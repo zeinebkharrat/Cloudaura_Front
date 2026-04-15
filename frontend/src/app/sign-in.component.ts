@@ -8,6 +8,7 @@ import { AuthService } from './core/auth.service';
 import { extractApiErrorMessage } from './api-error.util';
 import { PersonalizationService, PreferenceSurveyPayload } from './core/personalization.service';
 import Swal from 'sweetalert2';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-sign-in',

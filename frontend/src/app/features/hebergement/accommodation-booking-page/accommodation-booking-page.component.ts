@@ -681,6 +681,7 @@ export class AccommodationBookingPageComponent implements OnInit {
         checkIn: ci.slice(0, 10),
         checkOut: co.slice(0, 10),
         offerId: null,
+        presentmentCurrency: this.currency.selectedCode(),
       })
       .subscribe({
         next: (checkout) => {

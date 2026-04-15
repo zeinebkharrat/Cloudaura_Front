@@ -3,8 +3,8 @@ import { FlightDto } from './flight.models';
 export type StatusFilterKey = 'all' | 'on_time' | 'delayed' | 'scheduled';
 export type SortKey = 'departure' | 'airline' | 'status';
 
-/** Badge: delayed = danger (red), on time = success (green), scheduled = warning (orange). */
-export function flightBadge(f: FlightDto): { label: string; severity: 'success' | 'warning' | 'danger' | 'secondary' } {
+/** Badge: delayed = danger (red), on time = success (green), scheduled = warn (orange) — PrimeNG 18 Tag severity. */
+export function flightBadge(f: FlightDto): { label: string; severity: 'success' | 'warn' | 'danger' | 'secondary' } {
   const cat = (f.statusCategory || '').toUpperCase();
   const st = (f.status || '').toLowerCase();
 
@@ -15,7 +15,7 @@ export function flightBadge(f: FlightDto): { label: string; severity: 'success' 
     return { label: 'Delayed', severity: 'danger' };
   }
   if (st === 'scheduled') {
-    return { label: 'Scheduled', severity: 'warning' };
+    return { label: 'Scheduled', severity: 'warn' };
   }
   if (cat === 'ON_TIME' || st === 'active' || st === 'landed') {
     if (st === 'landed') return { label: 'Landed', severity: 'success' };

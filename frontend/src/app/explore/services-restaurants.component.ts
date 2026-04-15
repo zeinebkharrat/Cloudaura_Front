@@ -7,6 +7,9 @@ import { ExploreService } from './explore.service';
 import { City, Restaurant, VoiceTranscriptionResponse } from './explore.models';
 import { VoiceSearchService } from './voice-search.service';
 import { parseRestaurantVoiceQuery } from './voice-query.parser';
+import { Subscription } from 'rxjs';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { LanguageService } from '../core/services/language.service';
 
 @Component({
   selector: 'app-services-restaurants',
@@ -47,7 +50,9 @@ export class ServicesRestaurantsComponent implements OnInit, OnDestroy {
   constructor(
     private readonly exploreService: ExploreService,
     private readonly voiceSearchService: VoiceSearchService,
-    private readonly http: HttpClient
+    private readonly http: HttpClient,
+    private readonly translate: TranslateService,
+    private readonly language: LanguageService
   ) {}
 
   ngOnInit(): void {

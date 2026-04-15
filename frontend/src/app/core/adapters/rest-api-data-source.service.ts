@@ -122,6 +122,7 @@ export class RestApiDataSource implements DataSourceAdapter {
     checkIn: string;
     checkOut: string;
     offerId?: number | null;
+    presentmentCurrency?: string;
   }): Observable<TransportCheckoutResult> {
     return this.http.post<any>(`${this.BASE}/accommodation/payments/checkout-session`, payload).pipe(
       map((res) => {

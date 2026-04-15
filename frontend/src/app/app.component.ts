@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, Renderer2, effect, HostListener, computed } from '@angular/core';
+import { ApplicationRef, Component, inject, signal, OnInit, Renderer2, effect, HostListener, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NavigationEnd, Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { filter } from 'rxjs';
@@ -11,11 +11,24 @@ import { LoginRequiredPromptService } from './core/login-required-prompt.service
 import { SignInComponent } from './sign-in.component';
 import { SignUpComponent } from './sign-up.component';
 import { DailyChallengeRow, GamificationBadgeEntry, GamificationService } from './core/gamification.service';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { LanguageService } from './core/services/language.service';
+import { CurrencySelectorComponent } from './core/components/currency-selector/currency-selector.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, ChatBubbleComponent, SignInComponent, SignUpComponent],
+  imports: [
+    CommonModule,
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    TranslateModule,
+    ChatBubbleComponent,
+    SignInComponent,
+    SignUpComponent,
+    CurrencySelectorComponent,
+  ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
 })

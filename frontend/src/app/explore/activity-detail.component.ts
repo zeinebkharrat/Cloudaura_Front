@@ -17,6 +17,11 @@ import {
 import { ExploreService } from './explore.service';
 import { LoginRequiredPromptService } from '../core/login-required-prompt.service';
 import { AuthService } from '../core/auth.service';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { DualCurrencyPipe } from '../core/pipes/dual-currency.pipe';
+import { createCurrencyDisplaySyncEffect } from '../core/utils/currency-display-sync';
+import { LanguageService } from '../core/services/language.service';
+import { CurrencyService } from '../core/services/currency.service';
 
 interface CalendarDayCell {
   dateIso: string;
@@ -44,6 +49,9 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly location = inject(Location);
   private readonly loginPrompt = inject(LoginRequiredPromptService);
+  private readonly translate = inject(TranslateService);
+  private readonly language = inject(LanguageService);
+  private readonly currency = inject(CurrencyService);
 
   activity?: Activity;
   activityMedia: ActivityMedia[] = [];
@@ -313,7 +321,7 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     this.http
       .post<{ sessionId: string; sessionUrl: string }>(
         `/api/public/activities/${this.activity.activityId}/reservations/checkout`,
-        this.form
+        { ...this.form, presentmentCurrency: this.currency.selectedCode() }
       )
       .subscribe({
         next: (res: { sessionId: string; sessionUrl: string }) => {

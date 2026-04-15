@@ -55,10 +55,10 @@
       <a routerLink="/communaute" routerLinkActive="active">Community</a>
     </li>
     <li>
-      <a routerLink="/games" routerLinkActive="active">Games &amp; quizzes</a>
+      <a routerLink="/games" routerLinkActive="active">{{ 'NAV.GAMES' | translate }}</a>
     </li>
     <li>
-      <a routerLink="/games" routerLinkActive="active">{{ 'NAV.GAMES' | translate }}</a>
+      <a routerLink="/virtual-tour" routerLinkActive="active">{{ 'NAV.TOUR360' | translate }}</a>
     </li>
   </ul>
   <div class="nav-actions">
@@ -204,6 +204,10 @@
         }
       </div>
     }
+
+    <div class="nav-currency" (click)="$event.stopPropagation()">
+      <app-currency-selector />
+    </div>
 
     <button type="button" class="theme-toggle-btn" (click)="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">
       @if (isDarkMode()) {

@@ -9,7 +9,6 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { ButtonModule } from 'primeng/button';
 import { RippleModule } from 'primeng/ripple';
 import { TooltipModule } from 'primeng/tooltip';
-import { StepperModule } from 'primeng/stepper';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputMaskModule } from 'primeng/inputmask';
 import { RadioButtonModule } from 'primeng/radiobutton';
@@ -45,7 +44,6 @@ import { TranslateModule } from '@ngx-translate/core';
     ButtonModule,
     RippleModule,
     TooltipModule,
-    StepperModule,
     InputTextModule,
     InputMaskModule,
     RadioButtonModule,

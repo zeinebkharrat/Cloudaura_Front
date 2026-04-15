@@ -136,6 +136,115 @@
 
   <!-- Feed Section -->
   <section class="feed">
+    <!-- Declared before any *ngTemplateOutlet so commentTpl is a real TemplateRef (avoids createEmbeddedViewImpl errors) -->
+    <ng-template #commentTpl let-comment let-depth="depth" let-postId="postId">
+      <div class="comment-item" [style.marginLeft.px]="depth * 18">
+        <div class="comment-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="avatar comment-avatar">
+              <img *ngIf="userAvatarUrl(comment.author); else commentAuthorFallback" [src]="userAvatarUrl(comment.author)!" [alt]="displayName(comment.author)" class="avatar-img" />
+              <ng-template #commentAuthorFallback>{{ displayName(comment.author).charAt(0).toUpperCase() || 'U' }}</ng-template>
+            </div>
+            <button
+              type="button"
+              class="comment-author comment-author-link"
+              (mouseenter)="openUserHoverFromEvent($event, comment.author)"
+              (mouseleave)="scheduleUserHoverClose()"
+              (click)="goToUserProfile(comment.author?.userId)"
+            >{{ displayName(comment.author) }}</button>
+          </div>
+          <span class="comment-date">{{ formatDate(comment.createdAt) }}</span>
+        </div>
+
+        <ng-container *ngIf="getCommentGiphy(comment) as commentGiphy">
+          <img class="comment-giphy" [src]="commentGiphy.fullUrl" [alt]="commentGiphy.title || 'GIF'" />
+        </ng-container>
+
+        <p class="comment-content" *ngIf="getCommentDisplayText(comment)">{{ getCommentDisplayText(comment) }}</p>
+
+        <div class="comment-actions">
+          <button
+            type="button"
+            class="reply-btn"
+            (click)="openReply(comment.commentId!)"
+            [disabled]="activeReplyCommentId() === comment.commentId"
+          >
+            {{ 'COMMUNITY.REPLY' | translate }}
+          </button>
+          <button
+            type="button"
+            class="reply-btn reply-btn--danger"
+            *ngIf="canDeleteComment(comment)"
+            (click)="deleteComment(comment.commentId!)"
+          >
+            {{ 'COMMUNITY.DELETE' | translate }}
+          </button>
+        </div>
+
+        <div
+          class="reply-form glass-panel"
+          *ngIf="activeReplyCommentId() === comment.commentId!"
+        >
+          <textarea
+            rows="2"
+            [value]="getReplyDraft(comment.commentId!)"
+            (input)="setReplyDraft(comment.commentId!, $any($event.target).value)"
+            [attr.placeholder]="'COMMUNITY.REPLY_PLACEHOLDER' | translate"
+          ></textarea>
+
+          <div class="selected-giphy" *ngIf="getSelectedGiphyForReply(comment.commentId!) as selected">
+            <img [src]="selected.previewUrl || selected.fullUrl" alt="Selected GIF" />
+            <button type="button" class="reply-btn reply-btn--danger" (click)="clearSelectedGiphyForReply(comment.commentId!)">Remove</button>
+          </div>
+
+          <div class="reply-actions">
+            <button
+              type="button"
+              class="btn-outline btn-outline--small"
+              (click)="openGiphyPickerForReply(comment.commentId!)"
+            >
+              GIF
+            </button>
+            <button
+              type="button"
+              class="btn-primary btn-primary--small"
+              (click)="addComment(postId, comment.commentId!)"
+              [disabled]="getReplyDraft(comment.commentId!).trim().length === 0 && !getSelectedGiphyForReply(comment.commentId!)"
+            >
+              {{ 'COMMUNITY.REPLY' | translate }}
+            </button>
+            <button
+              type="button"
+              class="btn-outline btn-outline--small"
+              (click)="closeReply()"
+            >
+              {{ 'COMMUNITY.CANCEL' | translate }}
+            </button>
+          </div>
+        </div>
+
+        <ng-container *ngIf="comment.children?.length">
+          <ng-container
+            *ngFor="
+              let child of comment.children;
+              trackBy: trackByComment
+            "
+          >
+            <ng-container
+              *ngTemplateOutlet="
+                commentTplRef;
+                context: {
+                  $implicit: child,
+                  depth: depth + 1,
+                  postId: postId
+                }
+              "
+            ></ng-container>
+          </ng-container>
+        </ng-container>
+      </div>
+    </ng-template>
+
     <div class="feed-error glass-panel" *ngIf="loadError()">
       <i class="pi pi-exclamation-triangle feed-err-ico" aria-hidden="true"></i>
       <span>{{ loadError() }}</span>
@@ -471,7 +580,7 @@
 
                 <ng-container *ngFor="let root of commentTreeForPost(post.postId!); trackBy: trackByComment">
                   <ng-container
-                    *ngTemplateOutlet="commentTpl; context: { $implicit: root, depth: 0, postId: post.postId! }"
+                    *ngTemplateOutlet="commentTplRef; context: { $implicit: root, depth: 0, postId: post.postId! }"
                   ></ng-container>
                 </ng-container>
               </div>
@@ -502,115 +611,6 @@
         </ng-container>
         </ng-container>
       </div>
-
-      <!-- Comment Template -->
-      <ng-template #commentTpl let-comment let-depth="depth" let-postId="postId">
-      <div class="comment-item" [style.marginLeft.px]="depth * 18">
-        <div class="comment-header">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <div class="avatar comment-avatar">
-              <img *ngIf="userAvatarUrl(comment.author); else commentAuthorFallback" [src]="userAvatarUrl(comment.author)!" [alt]="displayName(comment.author)" class="avatar-img" />
-              <ng-template #commentAuthorFallback>{{ displayName(comment.author).charAt(0).toUpperCase() || 'U' }}</ng-template>
-            </div>
-            <button
-              type="button"
-              class="comment-author comment-author-link"
-              (mouseenter)="openUserHoverFromEvent($event, comment.author)"
-              (mouseleave)="scheduleUserHoverClose()"
-              (click)="goToUserProfile(comment.author?.userId)"
-            >{{ displayName(comment.author) }}</button>
-          </div>
-          <span class="comment-date">{{ formatDate(comment.createdAt) }}</span>
-        </div>
-        
-        <ng-container *ngIf="getCommentGiphy(comment) as commentGiphy">
-          <img class="comment-giphy" [src]="commentGiphy.fullUrl" [alt]="commentGiphy.title || 'GIF'" />
-        </ng-container>
-
-        <p class="comment-content" *ngIf="getCommentDisplayText(comment)">{{ getCommentDisplayText(comment) }}</p>
-
-        <div class="comment-actions">
-          <button
-            type="button"
-            class="reply-btn"
-            (click)="openReply(comment.commentId!)"
-            [disabled]="activeReplyCommentId() === comment.commentId"
-          >
-            {{ 'COMMUNITY.REPLY' | translate }}
-          </button>
-          <button
-            type="button"
-            class="reply-btn reply-btn--danger"
-            *ngIf="canDeleteComment(comment)"
-            (click)="deleteComment(comment.commentId!)"
-          >
-            {{ 'COMMUNITY.DELETE' | translate }}
-          </button>
-        </div>
-
-        <div
-          class="reply-form glass-panel"
-          *ngIf="activeReplyCommentId() === comment.commentId!"
-        >
-          <textarea
-            rows="2"
-            [value]="getReplyDraft(comment.commentId!)"
-            (input)="setReplyDraft(comment.commentId!, $any($event.target).value)"
-            [attr.placeholder]="'COMMUNITY.REPLY_PLACEHOLDER' | translate"
-          ></textarea>
-
-          <div class="selected-giphy" *ngIf="getSelectedGiphyForReply(comment.commentId!) as selected">
-            <img [src]="selected.previewUrl || selected.fullUrl" alt="Selected GIF" />
-            <button type="button" class="reply-btn reply-btn--danger" (click)="clearSelectedGiphyForReply(comment.commentId!)">Remove</button>
-          </div>
-
-          <div class="reply-actions">
-            <button
-              type="button"
-              class="btn-outline btn-outline--small"
-              (click)="openGiphyPickerForReply(comment.commentId!)"
-            >
-              GIF
-            </button>
-            <button
-              type="button"
-              class="btn-primary btn-primary--small"
-              (click)="addComment(postId, comment.commentId!)"
-              [disabled]="getReplyDraft(comment.commentId!).trim().length === 0 && !getSelectedGiphyForReply(comment.commentId!)"
-            >
-              {{ 'COMMUNITY.REPLY' | translate }}
-            </button>
-            <button
-              type="button"
-              class="btn-outline btn-outline--small"
-              (click)="closeReply()"
-            >
-              {{ 'COMMUNITY.CANCEL' | translate }}
-            </button>
-          </div>
-        </div>
-
-        <ng-container *ngIf="comment.children?.length">
-          <ng-container
-            *ngFor="
-              let child of comment.children;
-              trackBy: trackByComment
-            "
-          >
-            <ng-container
-              *ngTemplateOutlet="
-                commentTpl;
-                context: {
-                  $implicit: child,
-                  depth: depth + 1,
-                  postId: postId
-                }
-              "
-            ></ng-container>
-          </ng-container>
-        </ng-container>
-      </div>
-    </ng-template>
 
     <div class="giphy-modal-backdrop" *ngIf="showGiphyPicker()" (click)="closeGiphyPicker()">
       <section class="giphy-modal-card" (click)="$event.stopPropagation()">

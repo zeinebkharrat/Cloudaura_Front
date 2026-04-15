@@ -1,6 +1,5 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal, computed } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { CheckoutOrder, MyOrderSummary, ShopService } from '../core/shop.service';
 import { AuthService } from '../core/auth.service';
@@ -13,7 +12,7 @@ import { LanguageService } from '../core/services/language.service';
 @Component({
   selector: 'app-artisan-orders',
   standalone: true,
-  imports: [CommonModule,  FormsModule],
+  imports: [CommonModule, FormsModule, TranslateModule, DualCurrencyPipe],
   templateUrl: './artisan-orders.component.html',
   styleUrl: './artisan-orders.component.css',
 })

@@ -26,7 +26,7 @@ export class FlightListComponent {
 
   readonly skeletonPlaceholders = [1, 2, 3, 4, 5, 6];
 
-  badge(f: FlightDto): { label: string; severity: 'success' | 'warning' | 'danger' | 'secondary' } {
+  badge(f: FlightDto): { label: string; severity: 'success' | 'warn' | 'danger' | 'secondary' } {
     return flightBadge(f);
   }
 

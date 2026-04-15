@@ -224,7 +224,7 @@ public class ShopService {
     }
 
     @Transactional
-    public CheckoutOrderDto checkout(String username, String paymentMethod) {
+    public CheckoutOrderDto checkout(String username, String paymentMethod, String presentmentCurrency) {
         User user = findUser(username);
         String pm = (paymentMethod != null && paymentMethod.equalsIgnoreCase("COD")) ? "COD" : "CARD";
         Cart cart = cartRepository.findByUser_UserId(user.getUserId())
@@ -369,7 +369,7 @@ public class ShopService {
         }
 
         if ("CARD".equals(pm)) {
-            dto.setPaymentUrl(paymentService.generatePaymentUrl(order));
+            dto.setPaymentUrl(paymentService.generatePaymentUrl(order, presentmentCurrency));
         } else {
             dto.setPaymentUrl(null);
         }

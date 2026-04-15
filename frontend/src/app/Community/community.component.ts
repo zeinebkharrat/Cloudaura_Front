@@ -1,4 +1,4 @@
-import { Component, ElementRef, HostListener, OnDestroy, ViewChild, inject, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, OnDestroy, TemplateRef, ViewChild, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -30,6 +30,7 @@ import { GiphyItem, GiphyMediaType, GiphyService } from './giphy.service';
 import { tunisiaGeoJson } from '../tunisia-map';
 import { GOVERNORATE_LABEL_EN, GOVERNORATE_LABEL_FR } from '../tunisia-governorate-labels';
 import { CommunityStoriesComponent } from './community-stories.component';
+import { TranslateModule } from '@ngx-translate/core';
 
 const MINI_TUNISIA_MAP_NAME = 'TunisiaMiniPreview';
 const MINI_TUNISIA_MAP_NAME_PROP = '_echartsRegionId';
@@ -85,7 +86,7 @@ function tunisiaGeoWithUniqueRegionIds(geo: any) {
 @Component({
   selector: 'app-community',
   standalone: true,
-  imports: [CommonModule, CommunityStoriesComponent],
+  imports: [CommonModule, CommunityStoriesComponent, TranslateModule],
   templateUrl: './community.component.html',
   styleUrl: './community.component.css',
 })
@@ -94,6 +95,10 @@ export class CommunityComponent {
 
   @ViewChild('locationMiniMap')
   private locationMiniMapRef?: ElementRef<HTMLDivElement>;
+
+  /** Stable TemplateRef for recursive comments (avoids NgTemplateOutlet receiving a non-TemplateRef). */
+  @ViewChild('commentTpl', { static: true })
+  commentTplRef!: TemplateRef<unknown>;
 
   private readonly postService = inject(PostService);
   private readonly commentService = inject(CommentService);
@@ -1490,210 +1495,6 @@ export class CommunityComponent {
         text: message,
         ...this.swalTheme(),
       });
-    }
-  }
-
-  openGiphyPickerForPost(postId: number): void {
-    this.giphyContext.set({ kind: 'post', id: postId });
-    this.openGiphyPicker();
-  }
-
-  openGiphyPickerForReply(commentId: number): void {
-    this.giphyContext.set({ kind: 'reply', id: commentId });
-    this.openGiphyPicker();
-  }
-
-  onGiphyQueryInput(value: string): void {
-    this.giphyQuery.set(value);
-    this.scheduleGiphySearch();
-  }
-
-  setGiphyType(type: GiphyMediaType): void {
-    this.giphyType.set(type);
-    this.scheduleGiphySearch();
-  }
-
-  selectGiphy(item: GiphyItem): void {
-    const context = this.giphyContext();
-    if (!context) {
-      return;
-    }
-
-    if (context.kind === 'post') {
-      this.setPostCommentGiphy(context.id, item);
-    } else {
-      this.setReplyGiphy(context.id, item);
-    }
-
-    this.closeGiphyPicker();
-  }
-
-  closeGiphyPicker(): void {
-    this.showGiphyPicker.set(false);
-    this.giphyContext.set(null);
-    this.giphyQuery.set('');
-    this.giphyResults.set([]);
-    this.giphyError.set(null);
-    this.giphyLoading.set(false);
-    if (this.giphySearchDebounceTimer) {
-      clearTimeout(this.giphySearchDebounceTimer);
-      this.giphySearchDebounceTimer = null;
-    }
-  }
-
-  clearSelectedGiphyForPost(postId: number): void {
-    this.setPostCommentGiphy(postId, null);
-  }
-
-  clearSelectedGiphyForReply(commentId: number): void {
-    this.setReplyGiphy(commentId, null);
-  }
-
-  getSelectedGiphyForPost(postId: number): GiphyItem | null {
-    return this.postCommentGiphy()[postId] || null;
-  }
-
-  getSelectedGiphyForReply(commentId: number): GiphyItem | null {
-    return this.replyCommentGiphy()[commentId] || null;
-  }
-
-  getCommentDisplayText(comment: Comment): string {
-    return this.parseCommentPayload(comment.content, comment.gifs).text;
-  }
-
-  getCommentGiphy(comment: Comment): GiphyItem | null {
-    return this.parseCommentPayload(comment.content, comment.gifs).giphy;
-  }
-
-  private openGiphyPicker(): void {
-    this.showGiphyPicker.set(true);
-    this.giphyError.set(null);
-    this.giphyResults.set([]);
-  }
-
-  private scheduleGiphySearch(): void {
-    if (!this.showGiphyPicker()) {
-      return;
-    }
-
-    if (this.giphySearchDebounceTimer) {
-      clearTimeout(this.giphySearchDebounceTimer);
-    }
-
-    const q = this.giphyQuery().trim();
-    if (!q) {
-      this.giphyResults.set([]);
-      this.giphyError.set(null);
-      return;
-    }
-
-    this.giphySearchDebounceTimer = setTimeout(() => {
-      this.searchGiphy();
-    }, 280);
-  }
-
-  private async searchGiphy(): Promise<void> {
-    const q = this.giphyQuery().trim();
-    if (!q) {
-      this.giphyResults.set([]);
-      this.giphyError.set(null);
-      return;
-    }
-
-    this.giphyLoading.set(true);
-    this.giphyError.set(null);
-
-    try {
-      const results = await firstValueFrom(this.giphyService.search(q, this.giphyType(), 24));
-      this.giphyResults.set(results);
-      if (!results.length) {
-        this.giphyError.set('No result found. Try another keyword.');
-      }
-    } catch (error) {
-      console.error('Error searching GIPHY:', error);
-      this.giphyError.set('GIPHY search failed. Check API key configuration.');
-      this.giphyResults.set([]);
-    } finally {
-      this.giphyLoading.set(false);
-    }
-  }
-
-  private setPostCommentGiphy(postId: number, item: GiphyItem | null): void {
-    const next = { ...this.postCommentGiphy() };
-    if (item) {
-      next[postId] = item;
-    } else {
-      delete next[postId];
-    }
-    this.postCommentGiphy.set(next);
-  }
-
-  private setReplyGiphy(commentId: number, item: GiphyItem | null): void {
-    const next = { ...this.replyCommentGiphy() };
-    if (item) {
-      next[commentId] = item;
-    } else {
-      delete next[commentId];
-    }
-    this.replyCommentGiphy.set(next);
-  }
-
-  private parseCommentPayload(content?: string, gifs?: string | null): { text: string; giphy: GiphyItem | null } {
-    const rawText = (content ?? '').trim();
-    const directGifs = (gifs ?? '').trim();
-
-    if (directGifs && this.isAllowedGiphyUrl(directGifs)) {
-      return {
-        text: rawText,
-        giphy: {
-          id: directGifs,
-          title: 'giphy',
-          mediaType: 'gif',
-          previewUrl: directGifs,
-          fullUrl: directGifs,
-        },
-      };
-    }
-
-    // Backward compatibility for old comments that stored GIPHY marker inside content.
-    if (!rawText) {
-      return { text: '', giphy: null };
-    }
-
-    const match = rawText.match(/^\[\[GIPHY\|(gif|sticker)\|([^\]]+)\]\]\s*/i);
-    if (!match) {
-      return { text: rawText, giphy: null };
-    }
-
-    const mediaType = (match[1].toLowerCase() === 'sticker' ? 'sticker' : 'gif') as GiphyMediaType;
-    const fullUrl = match[2].trim();
-
-    if (!this.isAllowedGiphyUrl(fullUrl)) {
-      return { text: rawText, giphy: null };
-    }
-
-    const text = rawText.slice(match[0].length).trim();
-    return {
-      text,
-      giphy: {
-        id: fullUrl,
-        title: mediaType,
-        mediaType,
-        previewUrl: fullUrl,
-        fullUrl,
-      },
-    };
-  }
-
-  private isAllowedGiphyUrl(url: string): boolean {
-    try {
-      const parsed = new URL(url);
-      if (parsed.protocol !== 'https:') {
-        return false;
-      }
-      return parsed.hostname.endsWith('giphy.com') || parsed.hostname.endsWith('giphyusercontent.com');
-    } catch {
-      return false;
     }
   }
 

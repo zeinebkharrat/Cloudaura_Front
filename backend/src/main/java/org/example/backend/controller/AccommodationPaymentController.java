@@ -54,7 +54,8 @@ public class AccommodationPaymentController {
             log.info("Accommodation checkout branch: local_simulation");
         } else {
             url = paymentService
-                    .createAccommodationCheckoutSession(handoff.reservation(), handoff.totalTnd())
+                    .createAccommodationCheckoutSession(
+                            handoff.reservation(), handoff.totalTnd(), body.getPresentmentCurrency())
                     .getUrl();
             log.info("Accommodation checkout branch: stripe_checkout_session");
         }

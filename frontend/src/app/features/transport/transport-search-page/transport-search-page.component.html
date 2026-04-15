@@ -70,7 +70,7 @@
           <p-calendar
             formControlName="date"
             dateFormat="dd/mm/yy"
-            [minDate]="minCalendarDate"
+            [minDate]="today"
             [showTime]="true"
             hourFormat="24"
             [showSeconds]="false"
@@ -78,9 +78,12 @@
             [stepMinute]="1"
             [showButtonBar]="true"
             [showIcon]="false"
+            [touchUI]="false"
+            [readonlyInput]="true"
+            [keepInvalid]="false"
             placeholder="Departure date & time"
-            appendTo="body"
             styleClass="sb-calendar"
+            panelStyleClass="transport-search-calendar-panel"
           >
           </p-calendar>
         </div>
@@ -92,17 +95,20 @@
         <span class="sb-icon"><i class="pi pi-users"></i></span>
         <div class="sb-inner">
           <span class="sb-label">Passengers</span>
-          <p-inputNumber
-            formControlName="passengers"
-            [min]="1"
-            [max]="20"
-            [showButtons]="true"
-            buttonLayout="horizontal"
-            incrementButtonIcon="pi pi-plus"
-            decrementButtonIcon="pi pi-minus"
-            styleClass="sb-pax-input"
-          >
-          </p-inputNumber>
+          <div class="sb-pax-shell">
+            <p-inputNumber
+              formControlName="passengers"
+              [min]="1"
+              [max]="20"
+              [showButtons]="true"
+              buttonLayout="horizontal"
+              incrementButtonIcon="pi pi-plus"
+              decrementButtonIcon="pi pi-minus"
+              [fluid]="false"
+              styleClass="sb-pax-input"
+            >
+            </p-inputNumber>
+          </div>
         </div>
       </div>
     </form>

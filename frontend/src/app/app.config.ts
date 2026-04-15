@@ -1,10 +1,10 @@
 import { ApplicationConfig, APP_INITIALIZER, provideZoneChangeDetection } from '@angular/core';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter, withInMemoryScrolling } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { MessageService, ConfirmationService } from 'primeng/api';
-import { TranslateService, provideTranslateService, provideTranslateLoader } from '@ngx-translate/core';
-import { TranslateHttpLoader, TRANSLATE_HTTP_LOADER_CONFIG } from '@ngx-translate/http-loader';
+import { TranslateLoader, TranslateService, provideTranslateService } from '@ngx-translate/core';
+import { TranslateHttpLoader } from '@ngx-translate/http-loader';
 
 import { routes } from './app.routes';
 import { authInterceptor } from './auth.interceptor';
@@ -14,6 +14,10 @@ import { RestApiDataSource } from './core/adapters/rest-api-data-source.service'
 import { LanguageService } from './core/services/language.service';
 import { appI18nInitializer } from './core/i18n/app-i18n.initializer';
 
+export function translateHttpLoaderFactory(http: HttpClient): TranslateHttpLoader {
+  return new TranslateHttpLoader(http, '/assets/i18n/', '.json');
+}
+
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
@@ -22,12 +26,15 @@ export const appConfig: ApplicationConfig = {
     { provide: DATA_SOURCE_TOKEN, useClass: RestApiDataSource },
     MessageService,
     ConfirmationService,
-    { provide: TRANSLATE_HTTP_LOADER_CONFIG, useValue: { prefix: '/assets/i18n/', suffix: '.json' } },
-    ...provideTranslateService({
-      fallbackLang: 'fr',
-      lang: 'fr',
+    provideTranslateService({
+      loader: {
+        provide: TranslateLoader,
+        useFactory: translateHttpLoaderFactory,
+        deps: [HttpClient],
+      },
+      defaultLanguage: 'fr',
       extend: true,
-      loader: provideTranslateLoader(TranslateHttpLoader),
+      useDefaultLang: true,
     }),
     {
       provide: APP_INITIALIZER,

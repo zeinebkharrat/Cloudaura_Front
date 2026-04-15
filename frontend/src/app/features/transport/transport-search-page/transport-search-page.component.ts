@@ -109,9 +109,10 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
                 [stepMinute]="15"
                 [showButtonBar]="true"
                 [showIcon]="false"
-                [touchUI]="true"
+                [touchUI]="false"
+                [readonlyInput]="true"
+                [keepInvalid]="false"
                 [placeholder]="'TRANSPORT_SEARCH.PLACEHOLDER_DATE' | translate"
-                appendTo="body"
                 styleClass="sb-calendar"
                 panelStyleClass="transport-search-calendar-panel">
               </p-calendar>
@@ -133,6 +134,7 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
                   buttonLayout="horizontal"
                   incrementButtonIcon="pi pi-plus"
                   decrementButtonIcon="pi pi-minus"
+                  [fluid]="false"
                   styleClass="sb-pax-input">
                 </p-inputNumber>
               </div>
@@ -226,7 +228,8 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
     .hero-sub { font-size: 1.05rem; color: var(--text-muted); margin: 0; line-height: 1.6; }
 
     /* ---- Search bar (white card light / elevated slate dark) ---- */
-    .search-section { padding: 0 1.5rem; margin-top: 0.5rem; position: relative; z-index: 5; }
+    /* Keep below body-appended overlays; calendar uses appendTo="body" */
+    .search-section { padding: 0 1.5rem; margin-top: 0.5rem; position: relative; z-index: 2; }
     .map-section { max-width: 1320px; margin: 1rem auto 0; padding: 0 1.5rem; }
     .search-bar {
       max-width: 1320px; margin: 0 auto;
@@ -277,6 +280,8 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
     .sb-pax .sb-inner {
       min-height: 0;
       justify-content: center;
+      align-items: flex-start;
+      min-width: 0;
     }
 
     .sb-icon {
@@ -323,15 +328,27 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
       display: flex;
       align-items: center;
       justify-content: flex-start;
-      width: 100%;
+      width: fit-content;
       max-width: 100%;
       margin-top: 0;
       box-sizing: border-box;
+      align-self: flex-start;
     }
 
     /* ---- PrimeNG inside search bar ---- */
     :host ::ng-deep {
-      .sb-dropdown, .sb-calendar, .sb-pax-input { width: 100%; }
+      /* Ne pas forcer 100% sur le stepper passagers — sinon le « + » part au bord de la colonne */
+      .sb-dropdown,
+      .sb-calendar {
+        width: 100%;
+      }
+
+      .sb-pax-input {
+        display: inline-flex !important;
+        width: max-content !important;
+        max-width: 100% !important;
+        flex: 0 0 auto !important;
+      }
 
       .sb-dropdown .p-dropdown {
         background: transparent !important; border: none !important;
@@ -370,32 +387,46 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
 
       .sb-pax-shell .p-inputnumber {
         display: inline-flex !important;
+        flex-direction: row !important;
         align-items: center !important;
+        justify-content: center !important;
         gap: 0.35rem !important;
-        padding: 0.2rem 0.3rem !important;
+        padding: 0.25rem 0.4rem !important;
         border-radius: 12px !important;
         border: 1px solid var(--border-soft) !important;
         background: var(--input-bg) !important;
         box-shadow: 0 1px 2px rgba(15,23,42,0.04) !important;
-        width: 100% !important;
+        width: max-content !important;
         max-width: 100% !important;
         box-sizing: border-box !important;
         flex-wrap: nowrap !important;
+        flex: 0 0 auto !important;
       }
       :host-context([data-theme="dark"]) .sb-pax-shell .p-inputnumber {
         box-shadow: none !important;
       }
-      .sb-pax-input .p-inputnumber-input {
+      .sb-pax-shell .p-inputnumber-horizontal .p-inputnumber-input,
+      .sb-pax-shell .p-inputnumber .p-inputnumber-input {
         background: transparent !important; border: none !important;
         box-shadow: none !important; padding: 0.3rem 0.15rem !important;
         font-weight: 700; font-size: 0.95rem; color: var(--text-color) !important;
         text-align: center;
-        width: 1.85rem !important;
-        min-width: 1.5rem !important;
-        flex: 1 1 auto !important;
+        width: 2rem !important;
+        min-width: 2rem !important;
+        max-width: 2.5rem !important;
+        flex: 0 0 auto !important;
+        flex-grow: 0 !important;
+        flex-shrink: 0 !important;
+        margin: 0 !important;
+      }
+      .sb-pax-shell .p-inputnumber-input.p-inputtext-fluid {
+        width: 2rem !important;
         max-width: 2.5rem !important;
       }
-      .sb-pax-input .p-inputnumber-button {
+      .sb-pax-input .p-inputnumber-button,
+      .sb-pax-shell .p-inputnumber-button {
+        position: relative !important;
+        inset: auto !important;
         background: color-mix(in srgb, var(--tunisia-red) 12%, transparent) !important;
         border: none !important;
         color: var(--tunisia-red) !important;
@@ -403,18 +434,26 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
         height: 30px !important;
         min-width: 30px !important;
         border-radius: 10px !important;
+        flex: 0 0 auto !important;
         flex-shrink: 0 !important;
+        margin: 0 !important;
         transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease !important;
       }
-      .sb-pax-input .p-inputnumber-button:hover {
+      .sb-pax-input .p-inputnumber-button:hover,
+      .sb-pax-shell .p-inputnumber-button:hover {
         background: var(--tunisia-red) !important;
         color: #fff !important;
         transform: scale(1.05);
       }
     }
 
-    /* ---- Transport Type Cards ---- */
-    .types-section { max-width: 900px; margin: 2.5rem auto 0; padding: 0 1.5rem; }
+    /* ---- Transport Type Cards (stay under PrimeNG overlays) ---- */
+    .types-section {
+      max-width: 900px; margin: 2.5rem auto 0; padding: 0 1.5rem;
+      position: relative;
+      z-index: 0;
+      isolation: isolate;
+    }
     .types-title {
       text-align: center; font-size: 1.15rem; font-weight: 600;
       color: var(--text-muted); margin-bottom: 1.75rem;
@@ -508,6 +547,12 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
         max-width: none;
         width: 100%;
         padding-right: 1.125rem;
+      }
+      .sb-pax .sb-inner {
+        align-items: center;
+      }
+      .sb-pax-shell {
+        margin-inline: auto;
       }
       .types-grid { grid-template-columns: repeat(2, 1fr); }
     }

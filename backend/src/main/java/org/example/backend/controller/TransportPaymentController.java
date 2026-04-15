@@ -74,7 +74,8 @@ public class TransportPaymentController {
                         HttpStatus.INTERNAL_SERVER_ERROR, "Réservation manquante pour Stripe Checkout.");
             }
             TransportPaymentStartDto start =
-                    paymentService.createTransportCheckoutSession(handoff.reservation(), handoff.totalTnd());
+                    paymentService.createTransportCheckoutSession(
+                            handoff.reservation(), handoff.totalTnd(), body.getPresentmentCurrency());
             url = start.getUrl();
             log.info("Stripe session URL: {}", url);
         } else {

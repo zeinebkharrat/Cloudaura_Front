@@ -8,6 +8,7 @@ import { ExploreService } from './explore.service';
 import { PublicReview, ReviewSummary, Restaurant } from './explore.models';
 import { AuthService } from '../core/auth.service';
 import Swal from 'sweetalert2';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-restaurant-detail',

@@ -21,6 +21,7 @@ import {
   MessageResponse,
   TypingEvent,
 } from './chat.types';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 interface StoryReplyPayload {
   kind: string;
@@ -47,6 +48,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   private readonly alerts = inject(AppAlertsService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly translate = inject(TranslateService);
 
   @ViewChild('messagesContainer') messagesContainer!: ElementRef;
   @ViewChild('messageInput') messageInput!: ElementRef;
@@ -482,12 +484,12 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   conversationPreview(conv: ConversationResponse): string {
     if (conv.unreadCount === 1) {
-      return 'Sent you one message';
+      return this.translate.instant('COMMUNITY.CHAT_PREVIEW_ONE');
     }
     if (conv.unreadCount > 1) {
-      return `Sent you ${conv.unreadCount} messages`;
+      return this.translate.instant('COMMUNITY.CHAT_PREVIEW_MANY', { count: conv.unreadCount });
     }
-    return 'No new messages';
+    return this.translate.instant('COMMUNITY.CHAT_PREVIEW_NONE');
   }
 
   getTypingText(): string {
@@ -554,10 +556,6 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     return `${minutes}:${String(seconds).padStart(2, '0')}`;
   }
 
-  isVoiceMessage(msg: MessageResponse): boolean {
-    return !!msg.voiceUrl || msg.messageType === 'VOICE';
-  }
-
   isStoryReplyMessage(msg: MessageResponse): boolean {
     return this.parseStoryReply(msg.content) != null;
   }
@@ -579,50 +577,6 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
       return `/${raw}`;
     }
     return `/${raw.replace(/^\/+/, '')}`;
-  }
-
-  registerVoiceAudio(messageId: number, event: Event): void {
-    const audio = event.target as HTMLAudioElement;
-    this.audioElements.set(messageId, audio);
-    audio.onended = () => {
-      if (this.playingVoiceMessageId() === messageId) {
-        this.playingVoiceMessageId.set(null);
-      }
-    };
-  }
-
-  toggleVoicePlayback(messageId: number): void {
-    const currentPlaying = this.playingVoiceMessageId();
-    if (currentPlaying != null && currentPlaying !== messageId) {
-      const prev = this.audioElements.get(currentPlaying);
-      prev?.pause();
-    }
-
-    const audio = this.audioElements.get(messageId);
-    if (!audio) {
-      return;
-    }
-
-    if (!audio.paused) {
-      audio.pause();
-      this.playingVoiceMessageId.set(null);
-      return;
-    }
-
-    audio.play().then(() => {
-      this.playingVoiceMessageId.set(messageId);
-    }).catch(() => {
-      this.playingVoiceMessageId.set(null);
-    });
-  }
-
-  formatVoiceDuration(sec?: number | null): string {
-    if (!sec || sec <= 0) {
-      return '';
-    }
-    const minutes = Math.floor(sec / 60);
-    const seconds = sec % 60;
-    return `${minutes}:${String(seconds).padStart(2, '0')}`;
   }
 
   backToList(): void {
