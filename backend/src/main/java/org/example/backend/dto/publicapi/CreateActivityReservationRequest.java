@@ -13,4 +13,7 @@ public class CreateActivityReservationRequest {
     @NotNull(message = "numberOfPeople est obligatoire")
     @Min(value = 1, message = "numberOfPeople doit être >= 1")
     private Integer numberOfPeople;
+
+    /** Optional Stripe Checkout presentment: {@code tnd}, {@code eur}, or {@code usd}. */
+    private String presentmentCurrency;
 }

@@ -160,11 +160,8 @@ export const routes: Routes = [
     path: 'destinations',
     component: FeaturePageComponent,
     data: {
-      kicker: 'Cities & journeys',
+      i18n: 'DESTINATIONS',
       accent: 'blue',
-      title: 'Destinations & cities',
-      description:
-        'Your hub for exploring Tunisia by city: rich content, trip ideas, and local offers to plan every journey.',
       blocks: [
         {
           icon: '🏙️',
@@ -288,11 +285,8 @@ export const routes: Routes = [
     path: 'activites',
     component: FeaturePageComponent,
     data: {
-      kicker: 'Experiences',
+      i18n: 'ACTIVITES',
       accent: 'emerald',
-      title: 'Activities',
-      description:
-        'Discover and book experiences: culture, nature, sport, and meet-ups — tied to destinations and recommendations.',
       blocks: [
         {
           icon: '🎭',
@@ -318,7 +312,7 @@ export const routes: Routes = [
     path: 'evenements',
     component: FeaturePageComponent,
     data: {
-      kicker: 'Agenda',
+      i18n: 'EVENEMENTS',
       accent: 'rose',
       title: 'Events',
       eventFeed: true,
@@ -329,9 +323,8 @@ export const routes: Routes = [
     path: 'artisanat',
     component: FeaturePageComponent,
     data: {
-      kicker: 'Living heritage',
+      i18n: 'ARTISANAT',
       accent: 'sand',
-      title: 'Crafts & souvenirs',
       catalog: 'products',
       description:
         'Spotlight artisans and their work: digital storefront, checkout with secure payment (Stripe or mock), and positive impact on the local economy.',
@@ -341,11 +334,8 @@ export const routes: Routes = [
     path: 'recommandations',
     component: FeaturePageComponent,
     data: {
-      kicker: 'Intelligence',
+      i18n: 'RECOMMANDATIONS',
       accent: 'blue',
-      title: 'Recommendations',
-      description:
-        'A consistent suggestion engine for transport, stays, activities, and shopping — transparent, privacy-aware, and customizable.',
       blocks: [
         {
           icon: '🤖',

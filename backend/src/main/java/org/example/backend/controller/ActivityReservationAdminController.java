@@ -40,7 +40,7 @@ public class ActivityReservationAdminController {
         try {
             parsedDate = (reservationDate == null || reservationDate.isBlank()) ? null : LocalDate.parse(reservationDate);
         } catch (DateTimeException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservationDate invalide (yyyy-MM-dd)");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.reservation_date_invalid");
         }
         Pageable pageable = buildPageable(page, size, sort);
         return PageResponse.from(activityReservationService.listAdmin(q, activityId, userId, status, parsedDate, pageable));

@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
+import { TranslateModule } from '@ngx-translate/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { Post, PostMedia } from './community.types';
@@ -12,7 +13,7 @@ import { AuthService } from '../core/auth.service';
 @Component({
   selector: 'app-user-profile',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslateModule],
   templateUrl: './user-profile.component.html',
   styleUrl: './user-profile.component.css',
 })

@@ -1,13 +1,13 @@
 {
   "/api": {
-    "target": "http://localhost:9091",
+    "target": "http://127.0.0.1:9091",
     "secure": false,
     "changeOrigin": true,
     "timeout": 0,
     "proxyTimeout": 0
   },
   "/uploads": {
-    "target": "http://localhost:9091",
+    "target": "http://127.0.0.1:9091",
     "secure": false,
     "changeOrigin": true
   },

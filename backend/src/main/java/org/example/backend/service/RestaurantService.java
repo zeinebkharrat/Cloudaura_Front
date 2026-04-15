@@ -2,6 +2,7 @@ package org.example.backend.service;
 
 import lombok.RequiredArgsConstructor;
 import org.example.backend.dto.RestaurantRequest;
+import org.example.backend.i18n.CatalogKeyUtil;
 import org.example.backend.dto.RestaurantResponse;
 import org.example.backend.exception.ResourceNotFoundException;
 import org.example.backend.model.Restaurant;
@@ -20,6 +21,7 @@ public class RestaurantService {
     private final RestaurantRepository restaurantRepository;
     private final CityService cityService;
     private final ImgBbService imgBbService;
+    private final CatalogTranslationService catalogTranslationService;
 
     public Page<RestaurantResponse> list(String q, Pageable pageable) {
         return list(q, null, null, pageable);
@@ -95,7 +97,7 @@ public class RestaurantService {
 
     public Restaurant findRestaurant(Integer id) {
         return restaurantRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Restaurant introuvable: " + id));
+            .orElseThrow(() -> new ResourceNotFoundException("api.error.restaurant_not_found"));
     }
 
     private void apply(Restaurant restaurant, RestaurantRequest request) {
@@ -111,15 +113,38 @@ public class RestaurantService {
     }
 
     private RestaurantResponse toResponse(Restaurant restaurant) {
+        int rid = restaurant.getRestaurantId();
+        int cid = restaurant.getCity().getCityId();
+
+        String rawName = restaurant.getName();
+        String resName = catalogTranslationService.resolveEntityField(rid, "restaurant", "name", rawName);
+        String nameOut = CatalogKeyUtil.isBadI18nPlaceholder(rawName, resName) ? "" : resName;
+
+        String rawDesc = restaurant.getDescription();
+        String resDesc = catalogTranslationService.resolveEntityField(rid, "restaurant", "description", rawDesc);
+        String descOut = CatalogKeyUtil.isBadI18nPlaceholder(rawDesc, resDesc) ? null : resDesc;
+
+        String rawCuisine = restaurant.getCuisineType();
+        String cuisineOut =
+                rawCuisine == null || rawCuisine.isBlank() || CatalogKeyUtil.looksLikeCatalogKey(rawCuisine)
+                        ? null
+                        : rawCuisine;
+
+        String rawAddr = restaurant.getAddress();
+        String addrOut =
+                rawAddr == null || rawAddr.isBlank() || CatalogKeyUtil.looksLikeCatalogKey(rawAddr)
+                        ? null
+                        : rawAddr;
+
         return new RestaurantResponse(
             restaurant.getRestaurantId(),
             restaurant.getCity().getCityId(),
-            restaurant.getCity().getName(),
-            restaurant.getName(),
-            restaurant.getCuisineType(),
+            catalogTranslationService.resolveEntityField(cid, "city", "name", restaurant.getCity().getName()),
+            nameOut,
+            cuisineOut,
             restaurant.getRating(),
-            restaurant.getDescription(),
-            restaurant.getAddress(),
+            descOut,
+            addrOut,
             restaurant.getLatitude(),
             restaurant.getLongitude(),
             restaurant.getImageUrl()

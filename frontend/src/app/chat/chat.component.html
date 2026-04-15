@@ -5,8 +5,8 @@
     <aside class="chat-sidebar" [class.mobile-hidden]="!showConversationList()">
 
       <div class="sidebar-header">
-        <h2>Messages</h2>
-        <button class="icon-btn" (click)="toggleSearch()" title="New conversation">
+        <h2>{{ 'COMMUNITY.CHAT_TITLE' | translate }}</h2>
+        <button class="icon-btn" (click)="toggleSearch()" [attr.title]="'COMMUNITY.CHAT_NEW_CONV' | translate">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -26,7 +26,7 @@
               <line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
             <input type="text"
-              placeholder="Search for a user…"
+              [placeholder]="'COMMUNITY.CHAT_SEARCH_PH' | translate"
               [ngModel]="searchQuery()"
               (ngModelChange)="onSearchInput($event)"
               class="search-input"
@@ -65,7 +65,7 @@
           }
 
           @if (!searchLoading() && searchQuery().length >= 2 && searchResults().length === 0) {
-            <div class="search-empty">No users found</div>
+            <div class="search-empty">{{ 'COMMUNITY.CHAT_NO_USERS' | translate }}</div>
           }
         </div>
       }
@@ -89,9 +89,9 @@
         @if (!loading() && conversations().length === 0 && !showSearchPanel()) {
           <div class="empty-conversations">
             <div class="empty-icon">💬</div>
-            <p>Aucune conversation</p>
+            <p>{{ 'COMMUNITY.CHAT_NO_CONVS_TITLE' | translate }}</p>
             <button class="start-chat-btn" (click)="toggleSearch()">
-              Démarrer une conversation
+              {{ 'COMMUNITY.CHAT_START_CONV' | translate }}
             </button>
           </div>
         }
@@ -144,8 +144,8 @@
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
             </svg>
           </div>
-          <h3>Sélectionnez une conversation</h3>
-          <p>Choisissez un contact ou démarrez une nouvelle conversation</p>
+          <h3>{{ 'COMMUNITY.CHAT_SELECT_TITLE' | translate }}</h3>
+          <p>{{ 'COMMUNITY.CHAT_SELECT_SUB' | translate }}</p>
         </div>
       } @else {
         <!-- Chat Header -->
@@ -172,9 +172,9 @@
             <div class="chat-header-info">
               <span class="chat-header-name">{{ activeConversation()?.otherUsername }}</span>
               @if (isUserOnline(activeConversation()?.otherUserId || 0)) {
-                <span class="chat-header-status online">En ligne</span>
+                <span class="chat-header-status online">{{ 'COMMUNITY.CHAT_ONLINE' | translate }}</span>
               } @else {
-                <span class="chat-header-status">Hors ligne</span>
+                <span class="chat-header-status">{{ 'COMMUNITY.CHAT_OFFLINE' | translate }}</span>
               }
             </div>
           </div>

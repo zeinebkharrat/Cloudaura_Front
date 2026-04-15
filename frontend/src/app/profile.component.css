@@ -23,6 +23,19 @@
   animation: fadeUp 0.7s ease both;
 }
 
+.profile-lang-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0 4px;
+}
+
+.profile-lang-label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
 .auth-bg-orb {
   position: absolute;
   width: 420px;

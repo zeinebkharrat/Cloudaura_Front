@@ -40,9 +40,9 @@ public class RouteController {
             @RequestParam(defaultValue = "DRIVING") String mode) {
 
         City from = cityRepository.findById(fromCityId)
-                .orElseThrow(() -> new ResourceNotFoundException("Ville de départ non trouvée."));
+                .orElseThrow(() -> new ResourceNotFoundException("api.error.city_not_found"));
         City to = cityRepository.findById(toCityId)
-                .orElseThrow(() -> new ResourceNotFoundException("Ville d'arrivée non trouvée."));
+                .orElseThrow(() -> new ResourceNotFoundException("api.error.city_not_found"));
 
         return switch (mode.toUpperCase()) {
             case "FLIGHT" -> ApiResponse.success(buildFlightRoute(from, to));

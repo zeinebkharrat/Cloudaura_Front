@@ -46,8 +46,8 @@
         <tbody>
           @for (reservation of reservations; track reservation.reservationId) {
             <tr>
-              <td>{{ reservation.activityName }}</td>
-              <td>{{ reservation.cityName }}</td>
+              <td>{{ reservation.nameLabel || reservation.activityName }}</td>
+              <td>{{ reservation.cityLabel || reservation.cityName }}</td>
               <td>
                 <div>{{ reservation.username || '—' }}</div>
                 <small>{{ reservation.userEmail || '—' }}</small>
@@ -55,7 +55,7 @@
               <td>{{ reservation.reservationDate }}</td>
               <td>{{ reservation.numberOfPeople }}</td>
               <td>{{ reservation.totalPrice | number: '1.2-2' }} TND</td>
-              <td><span class="status" [class]="'status ' + reservation.status.toLowerCase()">{{ reservation.status }}</span></td>
+              <td><span class="status" [class]="'status ' + reservation.status.toLowerCase()">{{ reservation.statusLabel || reservation.status }}</span></td>
             </tr>
           } @empty {
             <tr>

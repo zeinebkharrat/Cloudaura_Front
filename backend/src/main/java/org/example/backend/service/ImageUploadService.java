@@ -48,14 +48,14 @@ public class ImageUploadService {
 
     public String uploadProfileImage(MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image file is required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.image.required");
         }
         if (file.getSize() > maxImageBytes) {
-            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Image exceeds allowed size");
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "api.error.image.too_large");
         }
         String contentType = file.getContentType();
         if (contentType == null || !contentType.toLowerCase().startsWith("image/")) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "Only image files are accepted");
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "api.error.image.type_invalid");
         }
 
         if (apiKey == null || apiKey.isBlank()) {
@@ -84,7 +84,7 @@ public class ImageUploadService {
 
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Image upload provider rejected the request");
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "api.error.image.provider_rejected");
             }
 
             JsonNode root = objectMapper.readTree(response.body());
@@ -98,14 +98,14 @@ public class ImageUploadService {
 
             JsonNode urlNode = root.path("data").path("url");
             if (urlNode.isMissingNode() || urlNode.asText().isBlank()) {
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Image upload provider did not return a URL");
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "api.error.image.provider_no_url");
             }
             return urlNode.asText();
         } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Could not read uploaded file");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.image.read_failed");
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Image upload interrupted");
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "api.error.image.upload_interrupted");
         }
     }
 
@@ -115,11 +115,11 @@ public class ImageUploadService {
      */
     private String saveImageLocally(MultipartFile file) {
         if (file.getSize() > maxImageBytes) {
-            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "Image exceeds allowed size");
+            throw new ResponseStatusException(HttpStatus.PAYLOAD_TOO_LARGE, "api.error.image.too_large");
         }
         String contentType = file.getContentType();
         if (contentType == null || !contentType.toLowerCase().startsWith("image/")) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "Only image files are accepted");
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "api.error.image.type_invalid");
         }
         try {
             String original = file.getOriginalFilename() == null ? "" : file.getOriginalFilename();
@@ -138,7 +138,7 @@ public class ImageUploadService {
             Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
             return "/uploads/profile-images/" + fileName;
         } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Could not save image on server");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "api.error.image.save_failed");
         }
     }
 }

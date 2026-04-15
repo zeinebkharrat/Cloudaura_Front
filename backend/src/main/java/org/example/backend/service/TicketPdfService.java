@@ -98,10 +98,18 @@ public class TicketPdfService {
         String ref = r.getReservationRef() != null ? r.getReservationRef() : "";
         String styledRef = ref.startsWith("#") ? ref : "#" + ref;
 
-        String[] status = mapStatusBadge(r.getStatus());
+        String[] status = mapStatusBadge(r.getStatus(), r.getStatusLabel());
         String statusBadgeHtml = "<span class=\"bp-status " + status[0] + "\">" + esc(status[1]) + esc(status[2]) + "</span>";
 
-        String payLine = esc(nvl(r.getPaymentStatus())) + " · " + esc(nvl(r.getPaymentMethod()));
+        String payStatusDisp = nvl(r.getPaymentStatusLabel());
+        String payMethodDisp = nvl(r.getPaymentMethodLabel());
+        if (payStatusDisp.isBlank()) {
+            payStatusDisp = nvl(r.getPaymentStatus());
+        }
+        if (payMethodDisp.isBlank()) {
+            payMethodDisp = nvl(r.getPaymentMethod());
+        }
+        String payLine = esc(payStatusDisp) + " · " + esc(payMethodDisp);
 
         String passenger = nvl(r.getPassengerFullName()).toUpperCase(Locale.ROOT);
         String[] stubNames = passengerStubNames(r);
@@ -125,7 +133,12 @@ public class TicketPdfService {
                 .replace("__TRAVEL_DATE__", esc(travelDateStr))
                 .replace("__TRAVEL_TIME__", esc(travelTimeStr))
                 .replace("__SEATS__", esc(String.valueOf(r.getNumberOfSeats())))
-                .replace("__TRANSPORT_TYPE__", esc(transportTypeLabel(r.getTransportType())))
+                .replace(
+                        "__TRANSPORT_TYPE__",
+                        esc(
+                                nvl(r.getTransportTypeLabel()).isBlank()
+                                        ? transportTypeLabel(r.getTransportType())
+                                        : r.getTransportTypeLabel()))
                 .replace("__TOTAL_PRICE__", esc(total))
                 .replace("__QR_DATA_URI__", qrDataUri)
                 .replace("__BARCODE_DATA_URI__", barcodeDataUri)
@@ -209,8 +222,21 @@ public class TicketPdfService {
         }
     }
 
-    /** [cssClass, iconPrefix, labelUppercase] */
-    private static String[] mapStatusBadge(String status) {
+    /** [cssClass, iconPrefix, labelUppercase] — {@code statusLabel} from API when present. */
+    private static String[] mapStatusBadge(String status, String statusLabel) {
+        if (statusLabel != null && !statusLabel.isBlank()) {
+            String u = status != null ? status.toUpperCase(Locale.ROOT) : "";
+            if (u.contains("CONFIRM")) {
+                return new String[]{"badge--ok", "\u2713 ", statusLabel.toUpperCase(Locale.ROOT)};
+            }
+            if (u.contains("CANCEL")) {
+                return new String[]{"badge--cancel", "", statusLabel.toUpperCase(Locale.ROOT)};
+            }
+            if (u.contains("PEND")) {
+                return new String[]{"badge--pending", "", statusLabel.toUpperCase(Locale.ROOT)};
+            }
+            return new String[]{"badge--neutral", "", statusLabel.toUpperCase(Locale.ROOT)};
+        }
         if (status == null) {
             return new String[]{"badge--neutral", "", "INCONNU"};
         }

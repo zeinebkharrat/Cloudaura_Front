@@ -12,8 +12,13 @@ public record ActivityReservationListItemResponse(
     Integer numberOfPeople,
     Double totalPrice,
     ReservationStatus status,
+    String statusLabel,
     Integer userId,
     String username,
-    String userEmail
+    String userEmail,
+    /** Localized activity title (same source as {@code activityName}). */
+    String nameLabel,
+    /** Localized city (same source as {@code cityName}). */
+    String cityLabel
 ) {
 }

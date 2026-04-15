@@ -50,7 +50,10 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Service
+@Slf4j
 public class AuthService {
 
     private static final String DEFAULT_ROLE = "ROLE_USER";
@@ -109,21 +112,19 @@ public class AuthService {
         if (recaptchaService.isEnabled()) {
             String captchaToken = request.captchaToken();
             if (captchaToken == null || captchaToken.isBlank()) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Captcha required: wait for the page to finish loading, then try again. In v2 check the box; in v3 the token is sent on submit. Check app.recaptcha.version (v2 or v3), both keys in application.properties, and localhost in the Google console.");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.recaptcha.required");
             }
             if (!recaptchaService.verifyResponse(captchaToken)) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Captcha rejected by Google. Check key type (v2 checkbox vs v3 score), app.recaptcha.version, localhost / 127.0.0.1 domains, and that site key and secret key are not swapped.");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.recaptcha.rejected");
             }
         }
 
         if (userRepository.existsByEmailIgnoreCase(request.email())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already in use");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "api.error.duplicate_email");
         }
 
         if (userRepository.existsByUsernameIgnoreCase(request.username())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username is already in use");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "api.error.duplicate_username");
         }
 
         Role userRole = roleRepository.findByName(DEFAULT_ROLE)
@@ -206,7 +207,7 @@ public class AuthService {
             if (candidate.isPresent()) {
                 handleFailedSignin(candidate.get());
             }
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.auth.invalid_credentials");
         }
 
         UserDetails principal = (UserDetails) authentication.getPrincipal();
@@ -268,7 +269,7 @@ public class AuthService {
         String currentNormalizedEmail = previousEmail == null ? "" : previousEmail.trim().toLowerCase(Locale.ROOT);
         if (!normalizedEmail.equals(currentNormalizedEmail)
             && userRepository.existsByEmailIgnoreCaseAndUserIdNot(normalizedEmail, user.getUserId())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already in use");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "api.error.duplicate_email");
         }
 
         user.setFirstName(request.firstName().trim());
@@ -295,10 +296,10 @@ public class AuthService {
     public void changePassword(ChangePasswordRequest request) {
         User user = currentUser();
         if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Current password is invalid");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.auth.invalid_current_password");
         }
         if (request.currentPassword().equals(request.newPassword())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password must be different from current password");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.auth.password_unchanged");
         }
 
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
@@ -340,9 +341,9 @@ public class AuthService {
     public AuthMessageResponse verifyEmail(String token) {
         VerificationToken verificationToken = verificationTokenRepository
                 .findByTokenAndTokenType(token, TOKEN_TYPE_EMAIL_VERIFICATION)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Verification token is invalid"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.auth.invalid_verification_token"));
 
-        validateUsableToken(verificationToken, "Verification token is expired");
+        validateUsableToken(verificationToken);
 
         User user = verificationToken.getUser();
         user.setEmailVerified(true);
@@ -375,7 +376,7 @@ public class AuthService {
                             user.getGender(),
                                 verificationLink);
                     } catch (MailException ex) {
-                        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Email service unavailable. Check SMTP credentials.");
+                        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "api.error.auth.email_send_failed");
                     }
                 });
 
@@ -387,12 +388,10 @@ public class AuthService {
         if (recaptchaService.isEnabled()) {
             String captchaToken = request.captchaToken();
             if (captchaToken == null || captchaToken.isBlank()) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Captcha required: wait for loading, then try again (v2: checkbox; v3: automatic on click).");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.recaptcha.required");
             }
             if (!recaptchaService.verifyResponse(captchaToken)) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Captcha rejected by Google. Check app.recaptcha.version, keys, and domains in the Google console.");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.recaptcha.rejected");
             }
         }
 
@@ -407,8 +406,8 @@ public class AuthService {
                     try {
                         emailService.sendPasswordResetEmail(user.getEmail(), user.getFirstName(), resetLink);
                     } catch (MailException ex) {
-                        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
-                                "Could not send email. Check the server SMTP configuration.", ex);
+                        log.warn("Password reset email failed", ex);
+                        throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "api.error.auth.email_send_failed");
                     }
                 });
 
@@ -419,9 +418,9 @@ public class AuthService {
     public AuthMessageResponse resetPassword(ResetPasswordRequest request) {
         VerificationToken verificationToken = verificationTokenRepository
                 .findByTokenAndTokenType(request.token(), TOKEN_TYPE_RESET_PASSWORD)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Reset token is invalid"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.auth.invalid_reset_token"));
 
-        validateUsableToken(verificationToken, "Reset token is expired");
+        validateUsableToken(verificationToken);
 
         User user = verificationToken.getUser();
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
@@ -489,7 +488,7 @@ public class AuthService {
 
         String providerUserId = extractProviderUserId(oauth2User);
         if (providerUserId.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unable to resolve social account identity");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.auth.social_account_unresolved");
         }
 
         String providerKey = sanitizeIdentifierPart(provider);
@@ -591,7 +590,7 @@ public class AuthService {
 
     private void handleFailedSignin(User user) {
         if (!"LOCAL".equalsIgnoreCase(user.getAuthProvider())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.auth.invalid_credentials");
         }
 
         int attempts = user.getFailedLoginAttempts() == null ? 0 : user.getFailedLoginAttempts();
@@ -601,13 +600,13 @@ public class AuthService {
             user.setFailedLoginAttempts(0);
             user.setLockedUntil(new Date(System.currentTimeMillis() + LOGIN_LOCK_DURATION_MS));
             userRepository.save(user);
-            throw new ResponseStatusException(HttpStatus.LOCKED, "3 tentatives invalides. Compte verrouille 15 minutes.");
+            throw new ResponseStatusException(HttpStatus.LOCKED, "api.error.auth.account_locked_brute_force");
         }
 
         user.setFailedLoginAttempts(attempts);
         userRepository.save(user);
-        int remaining = MAX_FAILED_ATTEMPTS - attempts;
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Mot de passe invalide. Tentatives restantes: " + remaining);
+        log.warn("Failed sign-in for user id={}, attempts={}", user.getUserId(), attempts);
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.auth.invalid_password");
     }
 
     private void ensureAccountNotLocked(User user) {
@@ -618,7 +617,7 @@ public class AuthService {
 
         Date now = new Date();
         if (lockedUntil.after(now)) {
-            throw new ResponseStatusException(HttpStatus.LOCKED, "Compte temporairement verrouille. Reessayez plus tard.");
+            throw new ResponseStatusException(HttpStatus.LOCKED, "api.error.auth.account_locked_temp");
         }
 
         user.setLockedUntil(null);
@@ -639,7 +638,7 @@ public class AuthService {
             return;
         }
         if (!Boolean.TRUE.equals(user.getEmailVerified())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Email non verifie. Verifiez votre boite mail.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "api.error.auth.email_unverified");
         }
     }
 
@@ -661,12 +660,12 @@ public class AuthService {
         return verificationTokenRepository.save(token).getToken();
     }
 
-    private void validateUsableToken(VerificationToken token, String expiredMessage) {
+    private void validateUsableToken(VerificationToken token) {
         if (token.getUsedAt() != null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Token already used");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.auth.token_reused");
         }
         if (token.getExpiresAt() == null || !token.getExpiresAt().after(new Date())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, expiredMessage);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.auth.token_expired");
         }
     }
 
@@ -688,11 +687,11 @@ public class AuthService {
         
         // For Tunisian users, cityId is required
         if (cityId == null) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "cityId is required for Tunisian users");
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "api.error.auth.city_id_required");
         }
         // Plus besoin de Long.valueOf() si cityRepository accepte les Integer
         return cityRepository.findById(cityId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid cityId"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.auth.invalid_city_id"));
     }
 
     private boolean isTunisiaNationality(String nationality) {
@@ -710,7 +709,7 @@ public class AuthService {
     private User currentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated() || authentication instanceof AnonymousAuthenticationToken) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentication required");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.unauthorized");
         }
 
         String username = authentication.getName();
@@ -731,7 +730,7 @@ public class AuthService {
                         banRepository.save(ban);
                         return;
                     }
-                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Your account is banned");
+                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "api.error.auth.account_banned");
                 });
     }
 

@@ -14,11 +14,13 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
+import lombok.extern.slf4j.Slf4j;
 import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/like")
+@Slf4j
 public class LikeController {
 
     @Autowired
@@ -48,7 +50,8 @@ public class LikeController {
             
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Failed to toggle like: " + e.getMessage());
+            log.warn("toggleLike failed", e);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.like_toggle_failed");
         }
     }
 
@@ -81,14 +84,15 @@ public class LikeController {
             
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Failed to unlike post: " + e.getMessage());
+            log.warn("unlikePost failed", e);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.like_unlike_failed");
         }
     }
     
     private User getCurrentUser() {
         User u = resolveCurrentUserOrNull();
         if (u == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.unauthorized");
         }
         return u;
     }

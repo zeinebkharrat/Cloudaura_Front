@@ -84,7 +84,7 @@ public class AdminUserService {
         String currentNormalizedEmail = previousEmail == null ? "" : previousEmail.trim().toLowerCase(Locale.ROOT);
         if (!normalizedEmail.equals(currentNormalizedEmail)
             && userRepository.existsByEmailIgnoreCaseAndUserIdNot(normalizedEmail, userId)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already in use");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "api.error.duplicate_email");
         }
 
         user.setFirstName(request.firstName().trim());
@@ -117,7 +117,7 @@ public class AdminUserService {
         User user = getExistingUser(userId);
         Set<Role> updatedRoles = request.roles().stream()
                 .map(roleName -> roleRepository.findByName(roleName)
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown role: " + roleName)))
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.admin.unknown_role")))
                 .collect(Collectors.toSet());
 
         user.setRoles(updatedRoles);
@@ -131,7 +131,7 @@ public class AdminUserService {
 
         if (approved) {
             Role artisanRole = roleRepository.findByName("ROLE_ARTISAN")
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "ROLE_ARTISAN does not exist"));
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.admin.role_artisan_missing"));
             Set<Role> roles = user.getRoles();
             roles.add(artisanRole);
             user.setRoles(roles);
@@ -152,7 +152,7 @@ public class AdminUserService {
     @Transactional
     public void deleteUser(Integer userId) {
         if (!userRepository.existsById(userId)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.user_not_found");
         }
 
         try {
@@ -213,15 +213,15 @@ public class AdminUserService {
     public AdminUserResponse banUser(Integer userId, BanUserRequest request) {
         User user = getExistingUser(userId);
         if (hasRole(user, "ROLE_ADMIN")) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Admin users cannot be banned");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.admin.cannot_ban_admin");
         }
 
         boolean permanent = Boolean.TRUE.equals(request.permanent());
         if (!permanent && request.expiresAt() == null) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "expiresAt is required for temporary bans");
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "api.error.admin.ban_expires_required");
         }
         if (permanent && request.expiresAt() != null) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "expiresAt must be omitted for permanent bans");
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "api.error.admin.ban_expires_forbidden");
         }
 
         Ban previousBan = deactivateActiveBan(user);
@@ -266,7 +266,7 @@ public class AdminUserService {
 
     private User getExistingUser(Integer userId) {
         return userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.user_not_found"));
     }
 
     private boolean hasRole(User user, String roleName) {
@@ -288,10 +288,10 @@ public class AdminUserService {
             return null;
         }
         if (cityId == null) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "cityId is required for Tunisian users");
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "api.error.auth.city_id_required");
         }
         return cityRepository.findById(cityId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid cityId"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.auth.invalid_city_id"));
     }
 
     private boolean isTunisiaNationality(String nationality) {

@@ -97,9 +97,10 @@ export class ShopService {
       .pipe(tap((c) => this.setCountFromCart(c)));
   }
 
-  checkout(paymentMethod?: string): Observable<CheckoutOrder> {
+  checkout(paymentMethod?: string, presentmentCurrency?: string): Observable<CheckoutOrder> {
     const params: Record<string, string> = {};
     if (paymentMethod) params['paymentMethod'] = paymentMethod;
+    if (presentmentCurrency) params['presentmentCurrency'] = presentmentCurrency;
     return this.http.post<CheckoutOrder>(`${this.shopBase()}/checkout`, {}, { params }).pipe(tap(() => this.cartCount.set(0)));
   }
 

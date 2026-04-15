@@ -47,7 +47,7 @@ public class UserRoadmapCompletionController {
     private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.unauthorized");
         }
 
         Object principal = authentication.getPrincipal();
@@ -55,6 +55,6 @@ public class UserRoadmapCompletionController {
             return ((CustomUserDetailsService.CustomUserDetails) principal).getUser();
         }
 
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid authentication principal");
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.invalid_principal");
     }
 }

@@ -9,7 +9,6 @@ import { InputNumberModule } from 'primeng/inputnumber';
 import { ButtonModule } from 'primeng/button';
 import { RippleModule } from 'primeng/ripple';
 import { TooltipModule } from 'primeng/tooltip';
-import { StepperModule } from 'primeng/stepper';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputMaskModule } from 'primeng/inputmask';
 import { RadioButtonModule } from 'primeng/radiobutton';
@@ -28,10 +27,14 @@ import { TransportPaymentCancelComponent } from './transport-payment-cancel/tran
 import { TransportRouteMapComponent } from './transport-route-map/transport-route-map.component';
 import { TunisiaCityMatchService } from './tunisia-city-match.service';
 import { TransportTrackingSseService } from './transport-tracking-sse.service';
+import { DualCurrencyPipe } from '../../core/pipes/dual-currency.pipe';
+import { TranslateModule } from '@ngx-translate/core';
 
 @NgModule({
   imports: [
     CommonModule,
+    TranslateModule,
+    DualCurrencyPipe,
     FormsModule,
     ReactiveFormsModule,
     RouterModule.forChild(TRANSPORT_ROUTES),
@@ -41,7 +44,6 @@ import { TransportTrackingSseService } from './transport-tracking-sse.service';
     ButtonModule,
     RippleModule,
     TooltipModule,
-    StepperModule,
     InputTextModule,
     InputMaskModule,
     RadioButtonModule,

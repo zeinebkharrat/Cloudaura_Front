@@ -122,6 +122,9 @@ export interface ActivityReservationListItem {
   numberOfPeople: number;
   totalPrice: number;
   status: ReservationStatus;
+  statusLabel?: string;
+  nameLabel?: string;
+  cityLabel?: string;
   userId: number | null;
   username: string | null;
   userEmail: string | null;

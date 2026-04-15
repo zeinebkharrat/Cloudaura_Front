@@ -52,4 +52,7 @@ public class TransportCheckoutRequest {
     @NotBlank
     @Size(min = 8, max = 36)
     private String idempotencyKey;
+
+    /** Optional Stripe Checkout presentment: {@code tnd}, {@code eur}, or {@code usd}. */
+    private String presentmentCurrency;
 }

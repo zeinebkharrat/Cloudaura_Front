@@ -17,9 +17,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class OrderItemService {
     private final OrderItemRepository orderItemRepository;
+    private final CatalogTranslationService catalogTranslationService;
 
-    public OrderItemService(OrderItemRepository orderItemRepository) {
+    public OrderItemService(
+            OrderItemRepository orderItemRepository, CatalogTranslationService catalogTranslationService) {
         this.orderItemRepository = orderItemRepository;
+        this.catalogTranslationService = catalogTranslationService;
     }
 
     /**
@@ -46,7 +49,12 @@ public class OrderItemService {
         AdminOrderItemDto.ProductRef pr = new AdminOrderItemDto.ProductRef();
         if (p != null) {
             pr.setProductId(p.getProductId());
-            pr.setName(p.getName());
+            String displayName =
+                    p.getProductId() != null
+                            ? catalogTranslationService.resolveEntityField(
+                                    p.getProductId(), "product", "name", p.getName())
+                            : (p.getName() != null ? p.getName() : "");
+            pr.setName(displayName);
             pr.setPrice(unit);
         }
         dto.setProduct(pr);

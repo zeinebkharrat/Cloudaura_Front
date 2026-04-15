@@ -1,9 +1,17 @@
 package org.example.backend.model;
 import jakarta.persistence.*;
 import lombok.Data;
+
+/**
+ * Table {@code restaurants}. PK colonne {@code restaurant_id} → propriété {@link #restaurantId}, getter
+ * {@code getRestaurantId()}. Catalogue i18n (clés {@code restaurant.{id}.name|description}) : {@link #name},
+ * {@link #description}. Valeurs locales non seedées en traductions : {@link #cuisineType}, {@link #address}.
+ * Hors i18n catalogue : {@link #rating}, coordonnées, {@link #imageUrl}.
+ */
 @Data @Entity @Table(name="restaurants")
 public class Restaurant {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "restaurant_id")
     private Integer restaurantId;
     @ManyToOne @JoinColumn(name="city_id")
     private City city;

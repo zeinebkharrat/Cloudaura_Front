@@ -1,21 +1,23 @@
 <section id="virtual-tour" class="virtual-tour-section">
   <div class="section-header">
-    <p class="virtual-tour-kicker">Virtual tour</p>
-    <h2 class="virtual-tour-title">Experience Before You Travel</h2>
+    <p class="virtual-tour-kicker">{{ 'VIRTUAL_TOUR.KICKER' | translate }}</p>
+    <h2 class="virtual-tour-title">{{ 'VIRTUAL_TOUR.TITLE' | translate }}</h2>
     <p
       class="virtual-tour-rotating"
       [class.virtual-tour-rotating--fade]="taglineFading()"
       aria-live="polite"
     >
-      {{ taglines[taglineIndex()] }}
+      {{ taglineKey() | translate }}
     </p>
     <p class="virtual-tour-sub">
-      Real views in Tunisia (wide panoramas). Replace with your own equirectangular files in <code>public/</code> for local loading.
+      {{ 'VIRTUAL_TOUR.DESC_PRE' | translate }}
+      <code>public/</code>
+      {{ 'VIRTUAL_TOUR.DESC_POST' | translate }}
     </p>
   </div>
 
   <div class="virtual-tour-panel glass-panel animate-in delay-1">
-    <div class="scene-row" role="tablist" aria-label="360° scene">
+    <div class="scene-row" role="tablist" [attr.aria-label]="'VIRTUAL_TOUR.ARIA_SCENES' | translate">
       @for (scene of scenes; track scene.id) {
         <button
           type="button"
@@ -25,7 +27,7 @@
           role="tab"
           [attr.aria-selected]="selectedSceneId() === scene.id"
         >
-          {{ scene.label }}
+          {{ ('VIRTUAL_TOUR.SCENE_' + scene.id.toUpperCase()) | translate }}
         </button>
       }
     </div>
@@ -33,23 +35,21 @@
       #viewerHost
       class="pannellum-host"
       role="region"
-      aria-label="360 degree panorama viewer"
+      [attr.aria-label]="'VIRTUAL_TOUR.ARIA_VIEWER' | translate"
     ></div>
     <p class="virtual-tour-credit">
-      <strong>Crédits photos :</strong>
+      <strong>{{ 'VIRTUAL_TOUR.CREDITS_TITLE' | translate }}</strong>
       <a
         href="https://commons.wikimedia.org/wiki/File:Vue_de_Tabarka,_25_d%C3%A9cembre_2014.jpg"
         target="_blank"
         rel="noopener noreferrer"
-      >Tabarka</a>
-      — Habib Mhenni (CC BY-SA 4.0) ;
+      >{{ 'VIRTUAL_TOUR.CREDIT_TABARKA' | translate }}</a>{{ 'VIRTUAL_TOUR.CREDITS_AFTER_TABARKA' | translate }}
       <a
         href="https://commons.wikimedia.org/wiki/File:Tunisia_10-12_-_165_-_Tozeur_-_Panorama_(6609494779).jpg"
         target="_blank"
         rel="noopener noreferrer"
-      >Tozeur</a>
-      — McKay Savage (CC BY 2.0), via
-      <a href="https://commons.wikimedia.org/" target="_blank" rel="noopener noreferrer">Wikimedia Commons</a>.
+      >{{ 'VIRTUAL_TOUR.CREDIT_TOZEUR' | translate }}</a>{{ 'VIRTUAL_TOUR.CREDITS_AFTER_TOZEUR' | translate }}
+      <a href="https://commons.wikimedia.org/" target="_blank" rel="noopener noreferrer">{{ 'VIRTUAL_TOUR.CREDIT_COMMONS' | translate }}</a>.
     </p>
   </div>
 </section>

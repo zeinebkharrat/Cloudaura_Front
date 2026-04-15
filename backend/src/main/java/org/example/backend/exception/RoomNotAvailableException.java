@@ -1,4 +1,15 @@
 package org.example.backend.exception;
+
 public class RoomNotAvailableException extends RuntimeException {
-    public RoomNotAvailableException(String message) { super(message); }
+
+    private final String catalogKey;
+
+    public RoomNotAvailableException(String catalogKey) {
+        super(catalogKey);
+        this.catalogKey = catalogKey;
+    }
+
+    public String getCatalogKey() {
+        return catalogKey;
+    }
 }

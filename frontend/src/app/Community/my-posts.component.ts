@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { Router } from '@angular/router';
 import { forkJoin, firstValueFrom, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -22,7 +23,7 @@ import Swal from 'sweetalert2';
 @Component({
   selector: 'app-my-posts',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslateModule],
   templateUrl: './my-posts.component.html',
   styleUrl: './my-posts.component.css',
 })
@@ -33,6 +34,7 @@ export class MyPostsComponent {
   private readonly postMediaService = inject(PostMediaService);
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly translate = inject(TranslateService);
 
   // Feed state
   readonly posts = signal<Post[]>([]);
@@ -75,7 +77,7 @@ export class MyPostsComponent {
     const safePosts$ = this.postService.getMyPosts().pipe(
       catchError((err) => {
         console.error('Failed to load my posts:', err);
-        this.loadError.set('Failed to load your posts');
+        this.loadError.set(this.translate.instant('COMMUNITY.MY_POSTS_ERR_LOAD'));
         return of([]);
       })
     );
@@ -114,7 +116,7 @@ export class MyPostsComponent {
       },
       error: (err) => {
         console.error('Error loading my posts:', err);
-        this.loadError.set('Error loading your posts');
+        this.loadError.set(this.translate.instant('COMMUNITY.MY_POSTS_ERR_LOAD_GENERIC'));
         this.feedLoaded.set(true);
       },
     });
@@ -191,7 +193,7 @@ export class MyPostsComponent {
       this.loadMyPosts();
       await Swal.fire({
         icon: 'success',
-        title: 'Post updated',
+        title: this.translate.instant('COMMUNITY.SWAL_POST_UPDATED_TITLE'),
         timer: 1200,
         showConfirmButton: false,
         ...this.swalTheme(),
@@ -200,8 +202,8 @@ export class MyPostsComponent {
       console.error('Error updating post:', error);
       await Swal.fire({
         icon: 'error',
-        title: 'Could not update',
-        text: 'The post could not be updated.',
+        title: this.translate.instant('COMMUNITY.SWAL_UPDATE_FAIL_TITLE'),
+        text: this.translate.instant('COMMUNITY.SWAL_UPDATE_FAIL_TEXT'),
         ...this.swalTheme(),
       });
     } finally {
@@ -212,12 +214,12 @@ export class MyPostsComponent {
   // Delete functionality
   async startDeletePost(postId: number): Promise<void> {
     const confirmation = await Swal.fire({
-      title: 'Delete this post?',
-      text: 'This cannot be undone.',
+      title: this.translate.instant('COMMUNITY.SWAL_DELETE_CONFIRM_TITLE'),
+      text: this.translate.instant('COMMUNITY.SWAL_DELETE_CONFIRM_TEXT'),
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonText: 'Yes, delete',
-      cancelButtonText: 'Cancel',
+      confirmButtonText: this.translate.instant('COMMUNITY.SWAL_DELETE_YES'),
+      cancelButtonText: this.translate.instant('COMMUNITY.CANCEL'),
       confirmButtonColor: '#e63946',
       ...this.swalTheme(),
     });
@@ -244,7 +246,7 @@ export class MyPostsComponent {
       this.loadMyPosts();
       await Swal.fire({
         icon: 'success',
-        title: 'Post deleted',
+        title: this.translate.instant('COMMUNITY.SWAL_POST_DELETED_TITLE'),
         timer: 1200,
         showConfirmButton: false,
         ...this.swalTheme(),
@@ -253,8 +255,8 @@ export class MyPostsComponent {
       console.error('Error deleting post:', error);
       await Swal.fire({
         icon: 'error',
-        title: 'Could not delete',
-        text: 'The post could not be deleted.',
+        title: this.translate.instant('COMMUNITY.SWAL_DELETE_FAIL_TITLE'),
+        text: this.translate.instant('COMMUNITY.SWAL_DELETE_FAIL_TEXT'),
         ...this.swalTheme(),
       });
     }
@@ -399,8 +401,8 @@ export class MyPostsComponent {
       console.error('Error uploading media:', error);
       await Swal.fire({
         icon: 'error',
-        title: 'Upload failed',
-        text: 'The media could not be added.',
+        title: this.translate.instant('COMMUNITY.SWAL_UPLOAD_FAIL_TITLE'),
+        text: this.translate.instant('COMMUNITY.SWAL_MEDIA_FAIL_TEXT'),
         ...this.swalTheme(),
       });
     }
