@@ -40,11 +40,11 @@
       </button>
       @if (isServicesMenuOpen()) {
         <div class="services-dropdown">
-          <a class="services-dd-item" routerLink="/transport" routerLinkActive="active" (click)="closeServicesMenu()">Transport</a>
-          <a class="services-dd-item" routerLink="/planifier-voyage" routerLinkActive="active" (click)="closeServicesMenu()">Stays</a>
+          <a class="services-dd-item" routerLink="/services/activities" routerLinkActive="active" (click)="closeServicesMenu()">Activities</a>
           <a class="services-dd-item" routerLink="/evenements" routerLinkActive="active" (click)="closeServicesMenu()">Events</a>
           <a class="services-dd-item" routerLink="/services/restaurants" routerLinkActive="active" (click)="closeServicesMenu()">Restaurants</a>
-          <a class="services-dd-item" routerLink="/services/activities" routerLinkActive="active" (click)="closeServicesMenu()">Activities</a>
+          <a class="services-dd-item" routerLink="/planifier-voyage" routerLinkActive="active" (click)="closeServicesMenu()">Stays</a>
+          <a class="services-dd-item" routerLink="/transport" routerLinkActive="active" (click)="closeServicesMenu()">Transport</a>
         </div>
       }
     </li>

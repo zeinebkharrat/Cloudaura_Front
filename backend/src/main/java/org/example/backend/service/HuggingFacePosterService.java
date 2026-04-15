@@ -17,9 +17,15 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Locale;
 
 @Service
 public class HuggingFacePosterService {
+
+    private static final List<String> DEFAULT_FALLBACK_MODELS = List.of(
+        "stabilityai/stable-diffusion-2-1",
+        "runwayml/stable-diffusion-v1-5"
+    );
 
     private final RestTemplate restTemplate;
 
@@ -90,6 +96,7 @@ public class HuggingFacePosterService {
                 }
             }
         }
+        candidateModels.addAll(DEFAULT_FALLBACK_MODELS);
 
         List<String> attempted = new ArrayList<>();
         String lastError = "";
@@ -101,6 +108,10 @@ public class HuggingFacePosterService {
                 String body = ex.getResponseBodyAsString();
                 int status = ex.getRawStatusCode();
                 boolean retryableModelError = status == 404 || status == 410;
+                if (isRetryableGenerationError(status, body, ex.getMessage())) {
+                    lastError = formatErrorDetails(model, status, body, ex.getMessage());
+                    continue;
+                }
                 if (retryableModelError) {
                     String reason = status == 404 ? "not found" : "deprecated or unsupported";
                     lastError = "Model '" + model + "' is " + reason + " on hf-inference";
@@ -120,6 +131,28 @@ public class HuggingFacePosterService {
                 "No supported Hugging Face model available. Attempted: " + String.join(", ", attempted) +
                         (lastError.isBlank() ? "" : ". Last error: " + lastError)
         );
+    }
+
+    private boolean isRetryableGenerationError(int status, String responseBody, String message) {
+        if (status == 429 || status == 500 || status == 502 || status == 503 || status == 504) {
+            return true;
+        }
+        String details = ((responseBody == null ? "" : responseBody) + " " + (message == null ? "" : message))
+            .toLowerCase(Locale.ROOT);
+        return details.contains("cuda out of memory")
+            || details.contains("out of memory")
+            || details.contains("model is currently loading")
+            || details.contains("service unavailable")
+            || details.contains("bad gateway")
+            || details.contains("gateway timeout");
+    }
+
+    private String formatErrorDetails(String model, int status, String responseBody, String message) {
+        String details = responseBody == null || responseBody.isBlank() ? message : responseBody;
+        if (details == null || details.isBlank()) {
+            details = "Unknown error";
+        }
+        return "Model '" + model + "' failed with HTTP " + status + ": " + details;
     }
 
     private byte[] callModel(String model, HttpEntity<Map<String, Object>> request) {
