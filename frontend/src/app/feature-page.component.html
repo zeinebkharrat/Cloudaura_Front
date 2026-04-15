@@ -388,14 +388,20 @@
       <button type="button" class="event-detail-close" (click)="closeEventDetails()">×</button>
 
       <div class="event-detail-scroll">
-        <div class="event-poster" [class.event-poster--placeholder]="!selectedEvent.imageUrl">
+        <div
+          class="event-poster"
+          [class.event-poster--placeholder]="!selectedEvent.imageUrl"
+          [class.event-poster--generated]="isAiGeneratedPoster(selectedEvent)"
+        >
           <img
             [src]="selectedEvent.imageUrl || 'assets/placeholder.png'"
             [alt]="selectedEvent.title"
             referrerpolicy="no-referrer"
             class="event-poster__image"
+            [class.event-poster__image--generated]="isAiGeneratedPoster(selectedEvent)"
           />
           <ng-container *ngIf="isAiGeneratedPoster(selectedEvent)">
+            <div class="event-poster__top-mask"></div>
             <div class="event-poster__scrim"></div>
             <div class="event-poster__gradient"></div>
 

@@ -267,15 +267,25 @@
       </div>
 
       <div class="details-modal__body">
-        <div class="details-poster" [class.details-poster--placeholder]="!selectedEventDetails.imageUrl">
+        <div
+          class="details-poster"
+          [class.details-poster--placeholder]="!selectedEventDetails.imageUrl"
+          [class.details-poster--generated]="isAiGeneratedEventImage(selectedEventDetails)"
+        >
           <img
             [src]="selectedEventDetails.imageUrl || 'assets/placeholder.png'"
             alt="Event image"
             class="details-modal__image"
+            [class.details-modal__image--generated]="isAiGeneratedEventImage(selectedEventDetails)"
           >
           <ng-container *ngIf="isAiGeneratedEventImage(selectedEventDetails)">
+            <div class="details-poster__top-mask"></div>
             <div class="details-poster__scrim"></div>
             <div class="details-poster__gradient"></div>
+
+            <div class="details-poster__brand">
+              <img src="assets/logo/yallatn-logo.png" alt="YallaTN logo" />
+            </div>
 
             <div class="details-poster__meta">
               <h3 class="details-poster__title">{{ selectedEventDetails.title }}</h3>

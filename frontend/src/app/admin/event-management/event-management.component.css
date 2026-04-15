@@ -556,11 +556,30 @@ label { display: block; margin-bottom: 6px; color: var(--text-secondary); font-s
   display: block;
 }
 
+.details-poster--generated {
+  background: #050b17;
+}
+
+.details-modal__image--generated {
+  width: 100%;
+  height: min(74vh, 860px);
+  max-height: none;
+  object-fit: cover;
+  object-position: center;
+  background: transparent;
+}
+
 .details-poster__scrim,
-.details-poster__gradient {
+.details-poster__gradient,
+.details-poster__top-mask {
   position: absolute;
   inset: 0;
   pointer-events: none;
+}
+
+.details-poster__top-mask {
+  z-index: 2;
+  background: linear-gradient(180deg, rgba(4, 9, 21, 0.9) 0%, rgba(4, 9, 21, 0.45) 22%, rgba(4, 9, 21, 0.05) 38%, rgba(4, 9, 21, 0) 56%);
 }
 
 .details-poster__scrim {
@@ -569,6 +588,21 @@ label { display: block; margin-bottom: 6px; color: var(--text-secondary); font-s
 
 .details-poster__gradient {
   background: linear-gradient(180deg, rgba(0, 0, 0, 0) 34%, rgba(0, 0, 0, 0.88) 100%);
+}
+
+.details-poster__brand {
+  position: absolute;
+  top: clamp(12px, 2.4vw, 18px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+}
+
+.details-poster__brand img {
+  display: block;
+  width: min(180px, 40vw);
+  height: auto;
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.5));
 }
 
 .details-poster__meta {
@@ -669,6 +703,14 @@ label { display: block; margin-bottom: 6px; color: var(--text-secondary); font-s
 }
 
 @media (max-width: 640px) {
+  .details-modal__image--generated {
+    height: min(62vh, 560px);
+  }
+
+  .details-poster__brand img {
+    width: min(150px, 46vw);
+  }
+
   .details-grid {
     grid-template-columns: 1fr;
   }

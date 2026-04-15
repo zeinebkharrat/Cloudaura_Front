@@ -217,7 +217,10 @@ public class HuggingFacePosterService {
             return null;
         }
 
-        String encodedPrompt = URLEncoder.encode(cleanedPrompt, StandardCharsets.UTF_8);
+        String antiLogoSuffix = " cinematic background only, no logo, no brand mark, no watermark, no text, no letters, no words";
+        String pollinationsPrompt = cleanedPrompt + antiLogoSuffix;
+
+        String encodedPrompt = URLEncoder.encode(pollinationsPrompt, StandardCharsets.UTF_8);
         String url = (base.endsWith("/") ? base.substring(0, base.length() - 1) : base)
                 + "/" + encodedPrompt
                 + "?width=" + width
