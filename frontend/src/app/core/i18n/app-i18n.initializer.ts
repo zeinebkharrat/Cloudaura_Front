@@ -10,7 +10,7 @@ export function appI18nInitializer(translate: TranslateService, language: Langua
     if (typeof document !== 'undefined') {
       document.documentElement.setAttribute('translate', 'no');
     }
-    translate.setDefaultLang('fr');
+    translate.setDefaultLang('en');
     return firstValueFrom(translate.use(code)).then(() => {
       language.notifyLanguageReady(code);
     });

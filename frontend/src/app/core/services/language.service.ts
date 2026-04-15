@@ -11,10 +11,10 @@ const STORAGE_KEY = 'yallatn_lang';
 export class LanguageService {
   private readonly translate = inject(TranslateService);
 
-  readonly currentLang = signal<AppLang>('fr');
+  readonly currentLang = signal<AppLang>('en');
 
   /** Emits after each successful `translate.use()` so the app can run change detection site-wide. */
-  readonly langChanged$ = new BehaviorSubject<AppLang>('fr');
+  readonly langChanged$ = new BehaviorSubject<AppLang>('en');
 
   private readonly langChangeRaw$ = new Subject<AppLang>();
 
@@ -28,21 +28,15 @@ export class LanguageService {
   resolveInitialLanguageCode(): AppLang {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored === 'fr' || stored === 'en' || stored === 'ar') {
+      if (stored === 'en' || stored === 'ar') {
         return stored;
+      }
+      if (stored === 'fr') {
+        // Migrate previous default (French) to English unless user later picks another language.
+        return 'en';
       }
     } catch {
       /* private mode */
-    }
-    const nav = (typeof navigator !== 'undefined'
-      ? navigator.languages?.[0] ?? navigator.language ?? 'fr'
-      : 'fr'
-    ).toLowerCase();
-    if (nav.startsWith('ar')) {
-      return 'ar';
-    }
-    if (nav.startsWith('fr')) {
-      return 'fr';
     }
     return 'en';
   }

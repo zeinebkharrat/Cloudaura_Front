@@ -32,7 +32,7 @@ export const appConfig: ApplicationConfig = {
         useFactory: translateHttpLoaderFactory,
         deps: [HttpClient],
       },
-      defaultLanguage: 'fr',
+      defaultLanguage: 'en',
       extend: true,
       useDefaultLang: true,
     }),

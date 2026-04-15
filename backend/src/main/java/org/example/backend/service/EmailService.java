@@ -8,6 +8,7 @@ import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.List;
+import java.util.Locale;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.InputStreamSource;
@@ -340,14 +341,14 @@ public class EmailService {
         public void sendEventJoinConfirmation(String toEmail, String firstName, String eventTitle, java.util.Date startDate, String venue) {
         String displayName = (firstName == null || firstName.isBlank()) ? "traveler" : firstName;
         String subject = "YallaTN+ - Event registration confirmed";
-        String dateLabel = startDate == null ? "TBA" : new SimpleDateFormat("dd/MM/yyyy").format(startDate);
+        String dateTimeLabel = formatEventDateTime(startDate);
         String safeEventTitle = eventTitle == null || eventTitle.isBlank() ? "Event" : eventTitle;
         String safeVenue = venue == null || venue.isBlank() ? "TBA" : venue;
 
         String plain = "Hi " + displayName + ",\n\n"
             + "Your event registration is confirmed.\n"
             + "Event: " + safeEventTitle + "\n"
-            + "Date: " + dateLabel + "\n"
+            + "Date & Time: " + dateTimeLabel + "\n"
             + "Venue: " + safeVenue + "\n\n"
             + "Thank you for joining YallaTN+.";
 
@@ -355,7 +356,7 @@ public class EmailService {
             "Event registration confirmed",
             "You are successfully registered.",
             "Your registration is confirmed for <strong>" + escapeHtml(safeEventTitle) + "</strong>.<br/>"
-                + "Date: <strong>" + escapeHtml(dateLabel) + "</strong><br/>"
+                + "Date &amp; Time: <strong>" + escapeHtml(dateTimeLabel) + "</strong><br/>"
                 + "Venue: <strong>" + escapeHtml(safeVenue) + "</strong>",
             true,
             "View events",
@@ -747,7 +748,7 @@ public class EmailService {
         String safeEventTitle = escapeHtml(eventTitle == null ? "Event" : eventTitle);
         String safeVenue = escapeHtml(venue == null ? "TBA" : venue);
         String safeReservation = escapeHtml(String.valueOf(reservationId));
-        String eventDate = startDate == null ? "TBA" : new SimpleDateFormat("dd/MM/yyyy").format(startDate);
+        String eventDateTime = formatEventDateTime(startDate);
 
         String qrListHtml = "";
         if (qrTokens != null && !qrTokens.isEmpty()) {
@@ -770,14 +771,14 @@ public class EmailService {
                             <table role="presentation" width="620" cellpadding="0" cellspacing="0" style="max-width:620px;width:100%%;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 16px 34px rgba(15,42,74,.12);">
                                 <tr><td style="padding:24px 28px;background:linear-gradient(135deg,#e8002d 0%%,#0077b6 100%%);color:#fff;">
                                     <div style="font-size:26px;font-weight:800;">YallaTN+</div>
-                                    <div style="margin-top:8px;font-size:20px;font-weight:700;">Votre ticket est confirme</div>
+                                    <div style="margin-top:8px;font-size:20px;font-weight:700;">Your ticket is confirmed</div>
                                 </td></tr>
                                 <tr><td style="padding:24px 28px;">
                                     <p style="margin:0 0 10px;">Hi %s,</p>
-                                    <p style="margin:0 0 12px;color:#3a4d67;">Merci pour votre paiement. Votre reservation est confirmee.</p>
+                                    <p style="margin:0 0 12px;color:#3a4d67;">Thanks for your payment. Your reservation is confirmed.</p>
                                     <p style="margin:0;color:#3a4d67;"><strong>Event:</strong> %s</p>
                                     <p style="margin:6px 0;color:#3a4d67;"><strong>Venue:</strong> %s</p>
-                                    <p style="margin:6px 0;color:#3a4d67;"><strong>Date:</strong> %s</p>
+                                    <p style="margin:6px 0;color:#3a4d67;"><strong>Date &amp; Time:</strong> %s</p>
                                     <p style="margin:6px 0 16px;color:#3a4d67;"><strong>Reservation ID:</strong> %s</p>
                                     <div style="margin:16px 0;text-align:center;">
                                         <img src="cid:event-ticket-qr" alt="QR Code" style="width:210px;height:210px;border:1px solid #e6eef7;border-radius:10px;padding:8px;background:#fff;"/>
@@ -794,7 +795,7 @@ public class EmailService {
                 escapeHtml(displayName),
                 safeEventTitle,
                 safeVenue,
-                escapeHtml(eventDate),
+                escapeHtml(eventDateTime),
                 safeReservation,
                 qrListHtml
         );
@@ -804,7 +805,7 @@ public class EmailService {
                 + "Event: " + (eventTitle == null ? "Event" : eventTitle) + "\n"
                 + "Reservation ID: " + reservationId + "\n"
                 + "Venue: " + (venue == null ? "TBA" : venue) + "\n"
-                + "Date: " + eventDate + "\n";
+                + "Date & Time: " + eventDateTime + "\n";
 
         MimeMessage message = userMailSender.createMimeMessage();
         try {
@@ -828,5 +829,12 @@ public class EmailService {
         } catch (MailException ex) {
             throw ex;
         }
+    }
+
+    private String formatEventDateTime(java.util.Date value) {
+        if (value == null) {
+            return "TBA";
+        }
+        return new SimpleDateFormat("EEE, MMM dd, yyyy 'at' HH:mm", Locale.ENGLISH).format(value);
     }
 }

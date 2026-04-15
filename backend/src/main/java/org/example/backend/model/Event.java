@@ -23,10 +23,12 @@ public class Event {
     private String title;
     private String eventType;
 
-    @JsonFormat(pattern="yyyy-MM-dd")
+    @Temporal(TemporalType.TIMESTAMP)
+    @JsonFormat(pattern="yyyy-MM-dd'T'HH:mm:ss", timezone="Africa/Tunis")
     private Date startDate;
 
-    @JsonFormat(pattern="yyyy-MM-dd")
+    @Temporal(TemporalType.TIMESTAMP)
+    @JsonFormat(pattern="yyyy-MM-dd'T'HH:mm:ss", timezone="Africa/Tunis")
     private Date endDate;
 
     private String venue;
