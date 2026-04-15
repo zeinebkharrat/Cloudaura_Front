@@ -141,9 +141,7 @@ export class EventManagementComponent implements OnInit {
   this.eventService.getEvents().subscribe({
     next: (data) => {
       this.events = data;
-      this.filteredEvents = data; // <--- TRÈS IMPORTANT
-      this.currentPage = 1;
-      this.applyFilters(); // Force un premier tri si des filtres sont déjà remplis
+      this.applyFilters(false); // Re-apply active filters while preserving current page.
       if (this.pendingEditId != null) {
         const eventToEdit = this.events.find(e => e.eventId === this.pendingEditId);
         if (eventToEdit) {
@@ -156,7 +154,7 @@ export class EventManagementComponent implements OnInit {
   });
 }
 
-applyFilters() {
+applyFilters(resetPage: boolean = true) {
   console.log('Filtrage en cours...', this.searchQuery); // Regarde dans la console (F12) si ça s'affiche !
 
   const query = this.searchQuery.toLowerCase().trim();
@@ -176,7 +174,10 @@ applyFilters() {
 
     return matchesSearch && matchesType && matchesStatus && matchesCity;
   });
-  this.currentPage = 1;
+
+  if (resetPage) {
+    this.currentPage = 1;
+  }
   this.clampCurrentPage();
 }
 
