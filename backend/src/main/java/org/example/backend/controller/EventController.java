@@ -15,6 +15,7 @@ import org.example.backend.service.HuggingFacePosterService;
 import org.example.backend.service.ImgBbService;
 import org.example.backend.service.EmailService;
 import org.example.backend.service.QrCodeService;
+import org.example.backend.service.UserNotificationService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.HttpStatus;
@@ -48,6 +49,7 @@ public class EventController {
     private final EventPosterAiService eventPosterAiService;
     private final HuggingFacePosterService huggingFacePosterService;
     private final ImgBbService imgBbService;
+    private final UserNotificationService userNotificationService;
 
     @Value("${app.frontend.base-url:http://localhost:4200}")
     private String frontendBaseUrl;
@@ -71,7 +73,8 @@ public class EventController {
             EmailService emailService,
             EventPosterAiService eventPosterAiService,
             HuggingFacePosterService huggingFacePosterService,
-            ImgBbService imgBbService
+                ImgBbService imgBbService,
+                UserNotificationService userNotificationService
     ) {
         this.eventService = eventService;
         this.reservationRepository = reservationRepository;
@@ -83,6 +86,7 @@ public class EventController {
         this.eventPosterAiService = eventPosterAiService;
         this.huggingFacePosterService = huggingFacePosterService;
         this.imgBbService = imgBbService;
+        this.userNotificationService = userNotificationService;
     }
 
     private String normalizeFrontendBase() {
@@ -222,6 +226,35 @@ public class EventController {
     }
 
     // --- RESERVATION ---
+    @GetMapping("/reservations/me")
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> getMyReservations(Authentication authentication) {
+        User currentUser = resolveAuthenticatedUser(authentication);
+        Integer userId = currentUser.getUserId();
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid user");
+        }
+
+        List<Map<String, Object>> rows = reservationRepository
+                .findByUserUserIdOrderByEventReservationIdDesc(userId)
+                .stream()
+                .map(reservation -> {
+                    Event event = reservation.getEvent();
+                    Map<String, Object> row = new LinkedHashMap<>();
+                    row.put("eventReservationId", reservation.getEventReservationId());
+                    row.put("reservationId", reservation.getEventReservationId());
+                    row.put("eventId", event != null ? event.getEventId() : null);
+                    row.put("eventName", event != null ? event.getTitle() : "Event");
+                    row.put("eventDate", event != null ? event.getStartDate() : null);
+                    row.put("status", reservation.getStatus() != null ? reservation.getStatus().name() : "PENDING");
+                    row.put("totalAmount", reservation.getTotalAmount());
+                    return row;
+                })
+                .toList();
+
+        return ResponseEntity.ok(rows);
+    }
+
     @PostMapping("/reservations")
     @Transactional
     public ResponseEntity<?> createReservation(@RequestBody Map<String, Object> data, Authentication authentication) {
@@ -257,6 +290,17 @@ public class EventController {
             res.setStatus(ReservationStatus.CONFIRMED);
 
             reservationRepository.save(res);
+
+            if (currentUserId != null) {
+                userNotificationService.notifyReservation(
+                        currentUserId,
+                        "EVENT",
+                        res.getEventReservationId(),
+                        "Event reservation created",
+                        "Your reservation for \"" + event.getTitle() + "\" was created.",
+                        "/evenements"
+                );
+            }
 
             TicketType ticketType = resolveTicketTypeForCheckout(event, requestedTicketTypeId);
             List<String> qrTokens = new ArrayList<>();
@@ -518,6 +562,21 @@ public class EventController {
 
             res.setStatus(ReservationStatus.CONFIRMED);
             reservationRepository.save(res);
+
+                Integer ownerId = res.getUser() != null ? res.getUser().getUserId() : null;
+                if (ownerId != null) {
+                String eventTitle = res.getEvent() != null && res.getEvent().getTitle() != null
+                    ? res.getEvent().getTitle()
+                    : "event";
+                userNotificationService.notifyReservation(
+                    ownerId,
+                    "EVENT",
+                    res.getEventReservationId(),
+                    "Event reservation confirmed",
+                    "Payment confirmed for \"" + eventTitle + "\".",
+                    "/evenements"
+                );
+                }
 
             boolean emailSent = false;
             String emailError = "";

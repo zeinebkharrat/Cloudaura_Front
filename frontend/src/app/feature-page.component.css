@@ -412,6 +412,18 @@
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
+.crafts-filter-field select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  color-scheme: dark;
+}
+
+.crafts-filter-field select option {
+  background-color: var(--surface-1);
+  color: var(--text-color);
+}
+
 .crafts-filter-field input:focus,
 .crafts-filter-field select:focus {
   outline: none;
@@ -424,6 +436,15 @@
 :host-context(html:not([data-theme="dark"])) .crafts-filter-field select {
   background: #ffffff;
   border-color: rgba(15,23,42,0.12);
+  color: #0f172a;
+}
+
+:host-context(html:not([data-theme="dark"])) .crafts-filter-field select {
+  color-scheme: light;
+}
+
+:host-context(html:not([data-theme="dark"])) .crafts-filter-field select option {
+  background-color: #ffffff;
   color: #0f172a;
 }
 

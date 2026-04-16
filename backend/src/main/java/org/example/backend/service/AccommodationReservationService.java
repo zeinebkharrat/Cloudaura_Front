@@ -42,6 +42,7 @@ public class AccommodationReservationService {
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
     private final SpecialOfferRepository specialOfferRepository;
+    private final UserNotificationService userNotificationService;
 
     @Value("${stripe.api.key:disabled}")
     private String stripeApiKey;
@@ -55,6 +56,14 @@ public class AccommodationReservationService {
     @Transactional
     public AccommodationReservationResponse createReservation(AccommodationReservationRequest req) {
         SavedStay s = persistNewReservation(req);
+        userNotificationService.notifyReservation(
+                req.getUserId(),
+                "ACCOMMODATION",
+                s.reservation().getReservationId(),
+                "Accommodation reservation created",
+                "Your accommodation reservation was created successfully.",
+                "/mes-reservations"
+        );
         return mapToResponse(s.reservation(), s.nights(), s.discount());
     }
 
@@ -75,6 +84,15 @@ public class AccommodationReservationService {
         if (!isStripeAccommodationPaymentsEnabled()) {
             saved.setStatus(ReservationStatus.CONFIRMED);
             reservationRepository.save(saved);
+            Integer ownerId = saved.getUser() != null ? saved.getUser().getUserId() : null;
+            userNotificationService.notifyReservation(
+                    ownerId,
+                    "ACCOMMODATION",
+                    saved.getReservationId(),
+                    "Accommodation reservation confirmed",
+                    "Your accommodation reservation is confirmed.",
+                    "/mes-reservations"
+            );
             return new AccommodationStripeCheckoutHandoff(buildLocalHebergementReturnUrl(saved), null, 0.0);
         }
         return new AccommodationStripeCheckoutHandoff(null, saved, total);
@@ -108,6 +126,15 @@ public class AccommodationReservationService {
             }
             res.setStatus(ReservationStatus.CONFIRMED);
             Reservation updated = reservationRepository.save(res);
+                Integer ownerId = updated.getUser() != null ? updated.getUser().getUserId() : null;
+                userNotificationService.notifyReservation(
+                    ownerId,
+                    "ACCOMMODATION",
+                    updated.getReservationId(),
+                    "Accommodation reservation confirmed",
+                    "Payment confirmed for your accommodation reservation.",
+                    "/mes-reservations"
+                );
             int nights = (int) ChronoUnit.DAYS.between(updated.getCheckInDate(), updated.getCheckOutDate());
             return mapToResponse(updated, nights, 0);
         } catch (NumberFormatException e) {

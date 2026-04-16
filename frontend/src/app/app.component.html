@@ -132,7 +132,7 @@
       </div>
     }
 
-    @if (!isArtisan()) {
+    @if (!isArtisan()&& isAuthenticated()) {
       @if (isAuthenticated()) {
         <a routerLink="/favoris" routerLinkActive="active" class="nav-icon-btn" aria-label="Favorites" title="Favorites">
           <i class="pi pi-heart nav-icon"></i>
@@ -148,7 +148,7 @@
 
     @if (isAuthenticated() && !isArtisan()) {
       <div class="challenges-wrap" (click)="$event.stopPropagation()">
-        <button type="button" class="nav-icon-btn challenges-btn" (click)="toggleChallengesPopup($event)" aria-label="Daily Challenges" title="Daily Challenges">
+        <button type="button" class="nav-icon-btn challenges-btn" (click)="toggleChallengesPopup($event)" aria-label="Notifications" title="Notifications">
           <i class="pi pi-bell nav-icon"></i>
           @if (challengeCount() > 0) {
             <span class="nav-badge pulse-badge">{{ challengeCount() }}</span>
@@ -158,46 +158,32 @@
         @if (isChallengesPopupOpen()) {
           <div class="challenges-popup animate-up">
             <div class="cp-header">
-              <h3>Daily Challenges</h3>
-              <button class="btn-close-sm" (click)="closeChallengesPopup()">✕</button>
+              <h3>Notifications</h3>
+              <div class="cp-header-actions">
+                @if (challengeCount() > 0) {
+                  <button type="button" class="btn-mark-all" (click)="markAllNotificationsRead($event)">Mark all read</button>
+                }
+                <button class="btn-close-sm" (click)="closeChallengesPopup()">✕</button>
+              </div>
             </div>
             <div class="cp-body">
-              @if (activeChallenges().length === 0) {
-                <p class="empty-msg">No active challenges for today. Check back later!</p>
+              @if (notificationsBusy()) {
+                <p class="empty-msg">Loading notifications...</p>
+              } @else if (reservationNotifications().length === 0) {
+                <p class="empty-msg">No reservation notifications for this account yet.</p>
               } @else {
-                @for (c of activeChallenges(); track c.challengeId) {
-                  <div class="challenge-item" [class.completed]="c.completed">
-                    <div class="ci-left">
-                      <div class="ci-icon">
-                        @if (c.gameKind === 'QUIZ') { 🧪 }
-                        @else if (c.gameKind === 'CROSSWORD') { 🧩 }
-                        @else { 🎯 }
+                <div class="notif-list">
+                  @for (n of reservationNotifications(); track n.notificationId) {
+                    <button type="button" class="notif-item" [class.unread]="!n.read" (click)="openNotification(n)">
+                      <div class="notif-item-top">
+                        <span class="notif-type">{{ notificationTypeLabel(n.reservationType) }}</span>
+                        <span class="notif-date">{{ formatNotificationDate(n.createdAt) }}</span>
                       </div>
-                    </div>
-                    <div class="ci-right">
-                      <h4 class="ci-title">{{ c.title }}</h4>
-                      <p class="ci-desc">{{ c.description || 'Complete the target to earn points!' }}</p>
-                      <div class="ci-foot">
-                        <span class="ci-points">💰 {{ c.pointsReward }} pts</span>
-                        @if (c.completed) {
-                          <span class="ci-status done">✓ Completed</span>
-                        } @else {
-                          @if (c.gameKind === 'QUIZ' && c.targetId) {
-                            <a [routerLink]="['/games/quiz', c.targetId]" (click)="closeChallengesPopup()" class="ci-link">Play now →</a>
-                          } @else if (c.gameKind === 'CROSSWORD' && c.targetId) {
-                            <a [routerLink]="['/games/crossword', c.targetId]" (click)="closeChallengesPopup()" class="ci-link">Play now →</a>
-                          } @else if (c.gameKind === 'PUZZLE' && c.targetId) {
-                            <a [routerLink]="['/games/puzzle', c.targetId]" (click)="closeChallengesPopup()" class="ci-link">Play now →</a>
-                          } @else if (c.gameKind === 'LUDO') {
-                            <a [routerLink]="['/games/ludo']" (click)="closeChallengesPopup()" class="ci-link">Play now →</a>
-                          } @else {
-                            <a [routerLink]="['/games']" (click)="closeChallengesPopup()" class="ci-link">View Games →</a>
-                          }
-                        }
-                      </div>
-                    </div>
-                  </div>
-                }
+                      <strong class="notif-title">{{ n.title }}</strong>
+                      <p class="notif-message">{{ n.message }}</p>
+                    </button>
+                  }
+                </div>
               }
             </div>
           </div>

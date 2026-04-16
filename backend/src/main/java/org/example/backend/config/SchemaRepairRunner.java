@@ -30,6 +30,7 @@ public class SchemaRepairRunner implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        ensureUserNotificationsTable();
         fixStatusColumn("orders");
         fixStatusColumn("order_items");
         ensureTicketTypeColumns();
@@ -40,6 +41,31 @@ public class SchemaRepairRunner implements CommandLineRunner {
         ensureUserE2eeColumns();
         fixTransportReservationEnumColumn("payment_method", 20);
         fixTransportReservationEnumColumn("payment_status", 20);
+    }
+
+    private void ensureUserNotificationsTable() {
+        try {
+            jdbcTemplate.execute(
+                    "CREATE TABLE IF NOT EXISTS user_notifications ("
+                            + "notification_id INT AUTO_INCREMENT PRIMARY KEY,"
+                            + "user_id INT NOT NULL,"
+                            + "type VARCHAR(40) NOT NULL,"
+                            + "title VARCHAR(180) NOT NULL,"
+                            + "message VARCHAR(500) NOT NULL,"
+                            + "route VARCHAR(255) NULL,"
+                            + "reservation_type VARCHAR(40) NULL,"
+                            + "reservation_id INT NULL,"
+                            + "is_read TINYINT(1) NOT NULL DEFAULT 0,"
+                            + "created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+                            + "INDEX idx_user_notifications_user_created (user_id, created_at),"
+                            + "INDEX idx_user_notifications_user_read (user_id, is_read),"
+                            + "CONSTRAINT fk_user_notifications_user "
+                            + "FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE"
+                            + ")"
+            );
+        } catch (Exception e) {
+            log.error("SchemaRepairRunner: failed to ensure user_notifications table - {}", e.getMessage());
+        }
     }
 
     private void ensureMessageVoiceColumns() {

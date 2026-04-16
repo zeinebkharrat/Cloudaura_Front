@@ -43,10 +43,21 @@ public class ActivityReservationService {
     private final ActivityRepository activityRepository;
     private final ActivityReservationRepository reservationRepository;
     private final UserRepository userRepository;
+    private final UserNotificationService userNotificationService;
 
     @Transactional
     public ActivityReservationResponse create(Integer activityId, CreateActivityReservationRequest request) {
         ActivityReservation saved = createPendingReservation(activityId, request);
+        Integer userId = saved.getUser() != null ? saved.getUser().getUserId() : null;
+        String activityName = saved.getActivity() != null ? saved.getActivity().getName() : "activity";
+        userNotificationService.notifyReservation(
+            userId,
+            "ACTIVITY",
+            saved.getActivityReservationId(),
+            "Activity reservation created",
+            "Your reservation for \"" + activityName + "\" was created.",
+            "/mes-reservations"
+        );
         return toResponse(saved);
     }
 

@@ -10,7 +10,8 @@ import { NotificationService } from './core/notification.service';
 import { LoginRequiredPromptService } from './core/login-required-prompt.service';
 import { SignInComponent } from './sign-in.component';
 import { SignUpComponent } from './sign-up.component';
-import { DailyChallengeRow, GamificationBadgeEntry, GamificationService } from './core/gamification.service';
+import { GamificationBadgeEntry, GamificationService } from './core/gamification.service';
+import { ReservationNotificationItem, ReservationNotificationsService } from './core/reservation-notifications.service';
 
 @Component({
   selector: 'app-root',
@@ -26,6 +27,7 @@ export class AppComponent implements OnInit {
   readonly shop = inject(ShopService);
   private readonly chatService = inject(ChatService);
   private readonly gamification = inject(GamificationService);
+  private readonly reservationNotificationsService = inject(ReservationNotificationsService);
   readonly notifier = inject(NotificationService);
   readonly loginPrompt = inject(LoginRequiredPromptService);
 
@@ -47,7 +49,8 @@ export class AppComponent implements OnInit {
 
   readonly authModalMode = signal<'signin' | 'signup'>('signin');
   readonly isChallengesPopupOpen = signal(false);
-  readonly activeChallenges = signal<DailyChallengeRow[]>([]);
+  readonly reservationNotifications = this.reservationNotificationsService.items;
+  readonly notificationsBusy = this.reservationNotificationsService.busy;
   readonly userBadgeCollection = signal<GamificationBadgeEntry[]>([]);
   readonly userPoints = computed(() => {
     const fromAuth = this.currentUser()?.points;
@@ -56,7 +59,8 @@ export class AppComponent implements OnInit {
     }
     return 0;
   });
-  readonly challengeCount = computed(() => this.activeChallenges().filter((c) => !c.completed).length);
+  readonly challengeCount = computed(() => this.reservationNotifications().filter((n) => !n.read).length);
+  private gamificationRequestVersion = 0;
 
   constructor() {
     effect(
@@ -64,8 +68,14 @@ export class AppComponent implements OnInit {
         if (this.isAuthenticated()) {
           this.chatService.connect();
           this.chatService.loadConversations();
+          this.shop.refreshCartCount();
+          this.reservationNotificationsService.connect();
+          this.reservationNotificationsService.load();
         } else {
           this.chatService.disconnect();
+          this.shop.cartCount.set(0);
+          this.reservationNotificationsService.disconnect();
+          this.reservationNotifications.set([]);
         }
       },
       { allowSignalWrites: true }
@@ -80,7 +90,7 @@ export class AppComponent implements OnInit {
         if (this.isAuthenticated()) {
           this.loadGamificationSummary();
         } else {
-          this.activeChallenges.set([]);
+          this.gamificationRequestVersion++;
           this.userBadgeCollection.set([]);
           this.isChallengesPopupOpen.set(false);
         }
@@ -168,7 +178,15 @@ export class AppComponent implements OnInit {
 
   toggleChallengesPopup(event: Event): void {
     event.stopPropagation();
-    this.isChallengesPopupOpen.set(!this.isChallengesPopupOpen());
+    const next = !this.isChallengesPopupOpen();
+    this.isChallengesPopupOpen.set(next);
+    if (next) {
+      if (this.challengeCount() > 0) {
+        this.reservationNotificationsService.markAllAsRead();
+      } else if (this.reservationNotifications().length === 0) {
+        this.reservationNotificationsService.load();
+      }
+    }
   }
 
   closeChallengesPopup(): void {
@@ -176,20 +194,105 @@ export class AppComponent implements OnInit {
   }
 
   private loadGamificationSummary(): void {
+    const userId = this.currentUser()?.id;
+    if (!userId) {
+      this.userBadgeCollection.set([]);
+      return;
+    }
+
+    const requestVersion = ++this.gamificationRequestVersion;
+
     this.gamification.me().subscribe({
       next: (me) => {
+        if (requestVersion !== this.gamificationRequestVersion) {
+          return;
+        }
+        if (!this.isAuthenticated() || this.currentUser()?.id !== userId) {
+          return;
+        }
         this.userBadgeCollection.set(me.badges ?? []);
       },
-      error: () => this.userBadgeCollection.set([]),
+      error: () => {
+        if (requestVersion !== this.gamificationRequestVersion) {
+          return;
+        }
+        if (!this.isAuthenticated() || this.currentUser()?.id !== userId) {
+          return;
+        }
+        this.userBadgeCollection.set([]);
+      },
     });
 
-    this.gamification.todayChallenges().subscribe({
-      next: (rows) => this.activeChallenges.set(rows ?? []),
-      error: () => this.activeChallenges.set([]),
+  }
+
+  openNotification(item: ReservationNotificationItem): void {
+    if (!item.read) {
+      this.reservationNotificationsService.markAsRead(item.notificationId);
+    }
+    this.closeChallengesPopup();
+    const type = this.notificationTypeKey(item.reservationType);
+    void this.router.navigate(['/settings'], {
+      queryParams: {
+        section: 'history',
+        type,
+      },
     });
   }
 
+  markAllNotificationsRead(event: Event): void {
+    event.stopPropagation();
+    this.reservationNotificationsService.markAllAsRead();
+  }
+
+  notificationTypeLabel(value: string | null | undefined): string {
+    const key = this.notificationTypeKey(value);
+    if (key === 'stay') {
+      return 'Stay';
+    }
+    return key.charAt(0).toUpperCase() + key.slice(1);
+  }
+
+  private notificationTypeKey(value: string | null | undefined): 'transport' | 'stay' | 'activity' | 'event' | 'artisan' {
+    const normalized = (value ?? '').trim().toUpperCase();
+    if (normalized === 'TRANSPORT') {
+      return 'transport';
+    }
+    if (normalized === 'STAY' || normalized === 'ACCOMMODATION' || normalized === 'HEBERGEMENT') {
+      return 'stay';
+    }
+    if (normalized === 'ACTIVITY') {
+      return 'activity';
+    }
+    if (normalized === 'EVENT') {
+      return 'event';
+    }
+    if (normalized === 'ARTISAN' || normalized === 'ORDER') {
+      return 'artisan';
+    }
+    return 'transport';
+  }
+
+  formatNotificationDate(value: string | null | undefined): string {
+    if (!value) {
+      return 'Unknown date';
+    }
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return value;
+    }
+    return new Intl.DateTimeFormat('en-GB', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+    }).format(parsed);
+  }
+
   logout() {
+    this.gamificationRequestVersion++;
+    this.reservationNotificationsService.disconnect();
+    this.reservationNotifications.set([]);
+    this.userBadgeCollection.set([]);
+    this.isChallengesPopupOpen.set(false);
+    this.shop.cartCount.set(0);
     this.auth.logout();
     this.isUserMenuOpen.set(false);
     this.router.navigate(['/signin']);

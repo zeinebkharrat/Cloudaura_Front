@@ -53,6 +53,7 @@ public class TransportReservationService {
     private final QrCodeService qrCodeService;
     private final TransportWhatsAppMessageBuilder transportWhatsAppMessageBuilder;
     private final TwilioWhatsAppService twilioWhatsAppService;
+    private final UserNotificationService userNotificationService;
 
     @Value("${stripe.api.key:disabled}")
     private String stripeApiKey;
@@ -118,6 +119,14 @@ public class TransportReservationService {
         }
 
         TransportReservation saved = reservationRepository.save(reservation);
+        userNotificationService.notifyReservation(
+            user.getUserId(),
+            "TRANSPORT",
+            saved.getTransportReservationId(),
+            "Transport reservation created",
+            "Your transport reservation " + safeRef(saved.getReservationRef()) + " was created.",
+            "/mes-reservations"
+        );
         if (saved.getPaymentMethod() == TransportReservation.PaymentMethod.KONNECT
                 && saved.getStatus() == TransportReservation.ReservationStatus.CONFIRMED) {
             sendTransportConfirmationWhatsAppSafely(saved);
@@ -144,6 +153,15 @@ public class TransportReservationService {
             if (!isStripeTransportPaymentsEnabled()) {
                 applyPaidAndConfirmed(existing);
                 existing = reservationRepository.save(existing);
+                Integer ownerId = existing.getUser() != null ? existing.getUser().getUserId() : null;
+                userNotificationService.notifyReservation(
+                        ownerId,
+                        "TRANSPORT",
+                        existing.getTransportReservationId(),
+                        "Transport reservation confirmed",
+                        "Your transport reservation " + safeRef(existing.getReservationRef()) + " is confirmed.",
+                        "/mes-reservations"
+                );
                 sendTransportConfirmationWhatsAppSafely(existing);
                 return new TransportStripeCheckoutHandoff(buildLocalPaymentReturnUrl(existing), null, 0.0);
             }
@@ -189,6 +207,15 @@ public class TransportReservationService {
         if (!isStripeTransportPaymentsEnabled()) {
             applyPaidAndConfirmed(reservation);
             reservation = reservationRepository.save(reservation);
+            Integer ownerId = reservation.getUser() != null ? reservation.getUser().getUserId() : null;
+            userNotificationService.notifyReservation(
+                    ownerId,
+                    "TRANSPORT",
+                    reservation.getTransportReservationId(),
+                    "Transport reservation confirmed",
+                    "Your transport reservation " + safeRef(reservation.getReservationRef()) + " is confirmed.",
+                    "/mes-reservations"
+            );
             sendTransportConfirmationWhatsAppSafely(reservation);
             return new TransportStripeCheckoutHandoff(buildLocalPaymentReturnUrl(reservation), null, 0.0);
         }
@@ -304,6 +331,15 @@ public class TransportReservationService {
 
         applyPaidAndConfirmed(res);
         res = reservationRepository.save(res);
+        Integer ownerId = res.getUser() != null ? res.getUser().getUserId() : null;
+        userNotificationService.notifyReservation(
+            ownerId,
+            "TRANSPORT",
+            res.getTransportReservationId(),
+            "Transport reservation confirmed",
+            "Your transport reservation " + safeRef(res.getReservationRef()) + " is confirmed.",
+            "/mes-reservations"
+        );
         log.info(
                 "PayPal transport reservation CONFIRMED: reservationId={} orderId={}; 1h reminder eligible via scheduler",
                 reservationId,
@@ -387,6 +423,15 @@ public class TransportReservationService {
             }
             applyPaidAndConfirmed(res);
             res = reservationRepository.save(res);
+                Integer ownerId = res.getUser() != null ? res.getUser().getUserId() : null;
+                userNotificationService.notifyReservation(
+                    ownerId,
+                    "TRANSPORT",
+                    res.getTransportReservationId(),
+                    "Transport reservation confirmed",
+                    "Your transport reservation " + safeRef(res.getReservationRef()) + " is confirmed.",
+                    "/mes-reservations"
+                );
             sendTransportConfirmationWhatsAppSafely(res);
             return TransportReservationMapper.toResponse(res);
         } catch (NumberFormatException e) {
@@ -618,5 +663,12 @@ public class TransportReservationService {
         if (!Objects.equals(ownerId, userId)) {
             throw new AccessDeniedException("Not your reservation");
         }
+    }
+
+    private static String safeRef(String reservationRef) {
+        if (reservationRef == null || reservationRef.isBlank()) {
+            return "";
+        }
+        return "(" + reservationRef.trim() + ")";
     }
 }

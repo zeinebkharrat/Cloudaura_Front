@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, ElementRef, HostListener, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, ParamMap, RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -75,6 +75,7 @@ export class SettingsComponent implements OnInit {
   private readonly likeService = inject(LikeService);
   private readonly commentService = inject(CommentService);
   private readonly dataSource = inject(DATA_SOURCE_TOKEN);
+  private readonly route = inject(ActivatedRoute);
 
   @ViewChild('avatarPicker') private avatarPickerRef?: ElementRef<HTMLInputElement>;
   @ViewChild('coverPicker') private coverPickerRef?: ElementRef<HTMLInputElement>;
@@ -248,6 +249,10 @@ export class SettingsComponent implements OnInit {
   readonly activeSessionsCount = computed(() => this.deviceSessions().filter((session) => session.active).length);
 
   ngOnInit(): void {
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      this.applyDeepLinkParams(params);
+    });
+
     this.auth.getNationalities().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (list) => this.nationalities.set(list),
       error: () => this.nationalities.set([]),
@@ -918,6 +923,36 @@ export class SettingsComponent implements OnInit {
 
   private coverStorageKey(userId: number): string {
     return `profile-cover-${userId}`;
+  }
+
+  private applyDeepLinkParams(params: ParamMap): void {
+    const section = params.get('section');
+    if (section === 'profile' || section === 'security' || section === 'devices' || section === 'logs' || section === 'history') {
+      this.section.set(section);
+    }
+
+    const type = this.parseHistoryType(params.get('type'));
+    if (type) {
+      this.historyTypeFilter.set(type);
+    }
+  }
+
+  private parseHistoryType(value: string | null): HistoryTypeFilter | null {
+    if (!value) {
+      return null;
+    }
+    const normalized = value.trim().toLowerCase();
+    if (
+      normalized === 'all' ||
+      normalized === 'transport' ||
+      normalized === 'stay' ||
+      normalized === 'activity' ||
+      normalized === 'event' ||
+      normalized === 'artisan'
+    ) {
+      return normalized;
+    }
+    return null;
   }
 
   private clip(value: string, maxLength: number): string {

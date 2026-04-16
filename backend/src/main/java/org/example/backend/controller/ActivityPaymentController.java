@@ -23,6 +23,7 @@ import org.example.backend.service.ActivityReceiptPdfService;
 import org.example.backend.service.ActivityReservationService;
 import org.example.backend.service.QrCodeService;
 import org.example.backend.service.UserIdentityResolver;
+import org.example.backend.service.UserNotificationService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -51,6 +52,7 @@ public class ActivityPaymentController {
     private final ActivityReceiptPdfService activityReceiptPdfService;
     private final QrCodeService qrCodeService;
     private final UserIdentityResolver userIdentityResolver;
+    private final UserNotificationService userNotificationService;
 
     @Value("${app.frontend.base-url:http://localhost:4200}")
     private String frontendBaseUrl;
@@ -170,6 +172,17 @@ public class ActivityPaymentController {
             if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
                 reservation.setStatus(ReservationStatus.CONFIRMED);
                 reservationRepository.save(reservation);
+
+                Integer ownerId = reservation.getUser() != null ? reservation.getUser().getUserId() : null;
+                String activityName = reservation.getActivity() != null ? reservation.getActivity().getName() : "activity";
+                userNotificationService.notifyReservation(
+                    ownerId,
+                    "ACTIVITY",
+                    reservation.getActivityReservationId(),
+                    "Activity reservation confirmed",
+                    "Payment confirmed for \"" + activityName + "\".",
+                    "/mes-reservations"
+                );
             }
 
             ActivityReservationResponse response = reservationService.toResponse(reservation);
