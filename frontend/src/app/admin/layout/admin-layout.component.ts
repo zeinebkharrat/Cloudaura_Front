@@ -1,4 +1,4 @@
-import { Component, signal, computed } from '@angular/core';
+import { Component, signal, computed, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
@@ -18,9 +18,10 @@ export interface AdminNavItem {
   templateUrl: './admin-layout.component.html',
   styleUrl: './admin-layout.component.css',
 })
-export class AdminLayoutComponent {
+export class AdminLayoutComponent implements OnInit {
   open = signal(true);
   sidebarVisible = signal(true);
+  isDarkMode = signal(true);
   user = computed(() => this.auth.currentUser());
   readonly logoPath = 'assets/logo/yallatn-logo.png';
 
@@ -47,6 +48,11 @@ export class AdminLayoutComponent {
 
   constructor(public auth: AuthService, private router: Router) {}
 
+  ngOnInit(): void {
+    const currentTheme = localStorage.getItem('theme') || document.documentElement.getAttribute('data-theme') || 'dark';
+    this.setTheme(currentTheme === 'light' ? 'light' : 'dark');
+  }
+
   navDomId(item: AdminNavItem): string {
     return 'nav-' + item.route.replace(/\//g, '-').replace(/^-/, '');
   }
@@ -64,6 +70,17 @@ export class AdminLayoutComponent {
 
   showSidebar() {
     this.sidebarVisible.set(true);
+  }
+
+  toggleTheme(): void {
+    const nextTheme = this.isDarkMode() ? 'light' : 'dark';
+    this.setTheme(nextTheme);
+  }
+
+  private setTheme(theme: 'dark' | 'light'): void {
+    this.isDarkMode.set(theme === 'dark');
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
   }
 
   toggleEventsMenu() {

@@ -2,6 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  color: var(--text-color);
 }
 
 .page-head {
@@ -22,8 +23,8 @@
 }
 
 .stat-card {
-  background: rgba(15, 23, 42, 0.5);
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: var(--surface-1);
+  border: 1px solid var(--border-soft);
   border-radius: 14px;
   padding: 0.9rem;
   display: flex;
@@ -32,20 +33,21 @@
 }
 
 .stat-card span {
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 0.82rem;
 }
 
 .stat-card strong {
   font-size: 1.35rem;
-  color: #f8fafc;
+  color: var(--text-color);
 }
 
 .card.surface {
-  background: rgba(15, 23, 42, 0.55);
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: var(--surface-1);
+  border: 1px solid var(--border-soft);
   border-radius: 16px;
   padding: 1rem;
+  box-shadow: var(--shadow-soft);
 }
 
 .toolbar {
@@ -65,7 +67,7 @@
   left: 0.6rem;
   top: 50%;
   transform: translateY(-50%);
-  color: #94a3b8;
+  color: var(--text-muted);
   width: 16px;
   height: 16px;
 }
@@ -77,16 +79,16 @@
 
 input,
 select {
-  border: 1px solid rgba(148, 163, 184, 0.25);
+  border: 1px solid var(--border-soft);
   border-radius: 10px;
   padding: 0.55rem 0.65rem;
-  background: rgba(15, 23, 42, 0.65);
-  color: #f8fafc;
+  background: var(--surface-2);
+  color: var(--text-color);
 }
 
 .table-wrap {
   overflow: auto;
-  border: 1px solid rgba(148, 163, 184, 0.15);
+  border: 1px solid var(--border-soft);
   border-radius: 12px;
 }
 
@@ -100,18 +102,18 @@ th,
 td {
   text-align: left;
   padding: 0.7rem;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  border-bottom: 1px solid var(--border-soft);
   vertical-align: top;
 }
 
 th {
-  color: #cbd5e1;
+  color: var(--text-muted);
   font-weight: 600;
   font-size: 0.83rem;
 }
 
 td {
-  color: #e2e8f0;
+  color: var(--text-color);
   font-size: 0.9rem;
 }
 
@@ -162,9 +164,9 @@ td {
 }
 
 .btn {
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  background: rgba(30, 41, 59, 0.9);
-  color: #f8fafc;
+  border: 1px solid var(--border-soft);
+  background: var(--surface-2);
+  color: var(--text-color);
   border-radius: 10px;
   padding: 0.45rem 0.75rem;
   cursor: pointer;
@@ -224,7 +226,7 @@ td {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #cbd5e1;
+  color: var(--text-muted);
 }
 
 .pager > div {
@@ -256,11 +258,12 @@ td {
   width: min(760px, calc(100vw - 2rem));
   max-height: 85vh;
   overflow: auto;
-  background: #0f172a;
-  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: var(--surface-1);
+  border: 1px solid var(--border-soft);
   border-radius: 16px;
   padding: 1rem;
   z-index: 90;
+  color: var(--text-color);
 }
 
 .modal-head {
@@ -276,7 +279,7 @@ td {
 
 .modal-subtitle {
   margin: 0.2rem 0 0;
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 0.86rem;
 }
 
@@ -288,8 +291,8 @@ td {
 }
 
 .meta-tile {
-  background: rgba(15, 23, 42, 0.72);
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
   border-radius: 12px;
   padding: 0.6rem 0.75rem;
   display: flex;
@@ -298,14 +301,14 @@ td {
 }
 
 .meta-tile span {
-  color: #94a3b8;
+  color: var(--text-muted);
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 
 .meta-tile strong {
-  color: #f8fafc;
+  color: var(--text-color);
   font-size: 0.96rem;
   line-height: 1.35;
 }
@@ -315,19 +318,19 @@ td {
 }
 
 .details-body {
-  border-top: 1px solid rgba(148, 163, 184, 0.2);
+  border-top: 1px solid var(--border-soft);
   padding-top: 0.75rem;
 }
 
 .details-body h3 {
   margin: 0.55rem 0 0.35rem;
   font-size: 0.95rem;
-  color: #cbd5e1;
+  color: var(--text-muted);
 }
 
 .details-body p {
   margin: 0;
-  color: #e2e8f0;
+  color: var(--text-color);
   white-space: pre-wrap;
 }
 
@@ -347,8 +350,8 @@ td {
 }
 
 .media-card {
-  background: rgba(15, 23, 42, 0.72);
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: var(--surface-2);
+  border: 1px solid var(--border-soft);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -367,7 +370,7 @@ td {
   justify-content: space-between;
   align-items: center;
   gap: 0.45rem;
-  color: #cbd5e1;
+  color: var(--text-muted);
   font-size: 0.76rem;
 }
 
@@ -383,6 +386,10 @@ td {
 
 .media-error {
   color: #fecaca;
+}
+
+:host-context([data-theme='light']) .modal-backdrop {
+  background: rgba(148, 163, 184, 0.26);
 }
 
 @media (max-width: 900px) {

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -14,10 +14,11 @@ import { AppAlertsService } from '../../core/services/app-alerts.service';
   templateUrl: './event-management.component.html',
   styleUrl: './event-management.component.css'
 })
-export class EventManagementComponent implements OnInit {
+export class EventManagementComponent implements OnInit, OnDestroy {
   private alerts = inject(AppAlertsService);
   private readonly aiGeneratedImageStorageKey = 'eventManagement.aiGeneratedImages';
   private aiGeneratedImageUrls = new Set<string>();
+  private themeObserver?: MutationObserver;
 
   isDarkMode = true;
   events: Event[] = [];
@@ -72,6 +73,8 @@ export class EventManagementComponent implements OnInit {
 
 
   ngOnInit(): void {
+    this.syncThemeFromRoot();
+    this.startThemeObserver();
     this.loadAiGeneratedImageUrls();
     this.loadEvents();
     this.route.queryParams.subscribe(params => {
@@ -100,6 +103,10 @@ export class EventManagementComponent implements OnInit {
         }
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    this.themeObserver?.disconnect();
   }
 
   get totalItems(): number {
@@ -832,6 +839,21 @@ resetFilters() {
   private normalizeImageUrl(url: string | undefined): string {
     const value = String(url ?? '').trim();
     return value;
+  }
+
+  private syncThemeFromRoot(): void {
+    this.isDarkMode = document.documentElement.getAttribute('data-theme') !== 'light';
+  }
+
+  private startThemeObserver(): void {
+    this.themeObserver?.disconnect();
+    this.themeObserver = new MutationObserver(() => {
+      this.syncThemeFromRoot();
+    });
+    this.themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
   }
 
   saveEvent() {
