@@ -800,7 +800,7 @@ export class FeaturePageComponent implements OnInit {
     return normalized === 'UPCOMING' || normalized === 'ONGOING';
   }
 
-  private toEventCityLabel(event: TravelEvent): string {
+  toEventCityLabel(event: TravelEvent): string {
     const fromCity = event.city?.name?.trim();
     if (fromCity) {
       return fromCity;
@@ -897,7 +897,7 @@ export class FeaturePageComponent implements OnInit {
     return tokens;
   }
 
-  eventDisplayDate(event: TravelEvent): string {
+  eventDisplayDatePart(event: TravelEvent): string {
     const raw = String(event.startDate ?? '').trim();
     if (!raw) {
       return 'Date TBA';
@@ -906,11 +906,78 @@ export class FeaturePageComponent implements OnInit {
     if (Number.isNaN(date.getTime())) {
       return raw;
     }
-    return date.toLocaleDateString(undefined, {
+    const dateLabel = date.toLocaleDateString('fr-FR', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
+      timeZone: 'Africa/Tunis'
     });
+
+    return dateLabel;
+  }
+
+  eventDisplayTimePart(event: TravelEvent): string {
+    const raw = String(event.startDate ?? '').trim();
+    if (!raw) {
+      return '';
+    }
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) {
+      return '';
+    }
+
+    if (!this.hasExplicitTime(raw)) {
+      return 'Time TBA';
+    }
+
+    const timeLabel = date.toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'Africa/Tunis'
+    });
+
+    return timeLabel;
+  }
+
+  eventDisplayDateTimeLine(event: TravelEvent): string {
+    const datePart = this.eventDisplayDatePart(event);
+    const timePart = this.eventDisplayTimePart(event);
+    if (!timePart) {
+      return datePart;
+    }
+    return `${datePart} • ${timePart}`;
+  }
+
+  eventDetailDateTimeLabel(event: TravelEvent | null): string {
+    const raw = String(event?.startDate ?? '').trim();
+    if (!raw) {
+      return 'Date TBA';
+    }
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) {
+      return raw;
+    }
+
+    const dateLabel = date.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'Africa/Tunis'
+    });
+
+    if (!this.hasExplicitTime(raw)) {
+      return `${dateLabel} • Time TBA`;
+    }
+
+    const timeLabel = date.toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'Africa/Tunis'
+    });
+
+    return `${dateLabel} • ${timeLabel}`;
   }
 
   isAiGeneratedPoster(event: TravelEvent | null): boolean {
@@ -938,6 +1005,18 @@ export class FeaturePageComponent implements OnInit {
     return `${start} - ${end}`;
   }
 
+  eventPosterTimeRange(event: TravelEvent | null): string {
+    const start = this.formatPosterDisplayTime(event?.startDate);
+    const end = this.formatPosterDisplayTime(event?.endDate);
+    if (!start && !end) {
+      return '';
+    }
+    if (!end || start === end) {
+      return start || end;
+    }
+    return `${start} - ${end}`;
+  }
+
   private formatPosterDisplayDate(value: string | undefined): string {
     const raw = String(value ?? '').trim();
     if (!raw) {
@@ -952,6 +1031,30 @@ export class FeaturePageComponent implements OnInit {
       month: '2-digit',
       year: 'numeric',
     });
+  }
+
+  private formatPosterDisplayTime(value: string | undefined): string {
+    const raw = String(value ?? '').trim();
+    if (!raw) {
+      return '';
+    }
+    if (!this.hasExplicitTime(raw)) {
+      return '';
+    }
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) {
+      return '';
+    }
+    return date.toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: 'Africa/Tunis'
+    });
+  }
+
+  private hasExplicitTime(raw: string): boolean {
+    return /T\d{2}:\d{2}/.test(raw);
   }
 
   private getStoredAiGeneratedImages(): Set<string> {

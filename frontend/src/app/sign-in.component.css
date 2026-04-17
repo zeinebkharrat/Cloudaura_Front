@@ -339,3 +339,33 @@ input:focus {
     padding: 24px;
   }
 }
+
+@media (max-width: 480px) {
+  .auth-page {
+    padding: 112px 12px 30px;
+  }
+
+  .auth-card {
+    border-radius: 22px;
+    padding: 18px;
+  }
+
+  .auth-hero-visual {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .auth-hero-frame {
+    width: 120px;
+    height: 120px;
+  }
+
+  .auth-brand-mark__img {
+    height: 30px;
+  }
+
+  .auth-links-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

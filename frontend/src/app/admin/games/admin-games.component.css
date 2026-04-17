@@ -274,3 +274,113 @@ input:checked + .slider:before { transform: translateX(24px); }
   margin-top: 10px;
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+:host-context([data-theme='light']) .lud-dash {
+  color: #0f172a;
+}
+
+:host-context([data-theme='light']) .dash-h1 {
+  background: linear-gradient(135deg, #0f172a, #334155);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+:host-context([data-theme='light']) .dash-p {
+  color: #475569;
+}
+
+:host-context([data-theme='light']) .glass-card,
+:host-context([data-theme='light']) .modal-box,
+:host-context([data-theme='light']) .rn-card,
+:host-context([data-theme='light']) .question-card {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(148, 163, 184, 0.34);
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+}
+
+:host-context([data-theme='light']) .tab {
+  color: #475569;
+}
+
+:host-context([data-theme='light']) .tab:hover {
+  background: rgba(148, 163, 184, 0.14);
+  color: #1e293b;
+}
+
+:host-context([data-theme='light']) .tab.active {
+  background: rgba(148, 163, 184, 0.22);
+  color: #0f172a;
+}
+
+:host-context([data-theme='light']) .empty-state,
+:host-context([data-theme='light']) .gc-desc,
+:host-context([data-theme='light']) .rn-type,
+:host-context([data-theme='light']) .form-hint {
+  color: #475569;
+}
+
+:host-context([data-theme='light']) .gc-title,
+:host-context([data-theme='light']) .rl-title,
+:host-context([data-theme='light']) .rn-label,
+:host-context([data-theme='light']) .md-head h3,
+:host-context([data-theme='light']) .qs-header h4 {
+  color: #0f172a;
+}
+
+:host-context([data-theme='light']) .gc-foot,
+:host-context([data-theme='light']) .questions-section {
+  border-color: rgba(148, 163, 184, 0.34);
+}
+
+:host-context([data-theme='light']) .gc-meta {
+  color: #64748b;
+}
+
+:host-context([data-theme='light']) .gc-meta strong,
+:host-context([data-theme='light']) .tg-label,
+:host-context([data-theme='light']) .form-group label,
+:host-context([data-theme='light']) .q-card-head {
+  color: #334155;
+}
+
+:host-context([data-theme='light']) .btn-cancel {
+  color: #334155;
+  border-color: rgba(148, 163, 184, 0.4);
+}
+
+:host-context([data-theme='light']) .btn-cancel:hover {
+  background: rgba(148, 163, 184, 0.14);
+}
+
+:host-context([data-theme='light']) .g-input {
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: rgba(148, 163, 184, 0.42);
+}
+
+:host-context([data-theme='light']) .g-input option {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+:host-context([data-theme='light']) .visual-grid {
+  background: #f1f5f9;
+  border-color: rgba(148, 163, 184, 0.32);
+}
+
+:host-context([data-theme='light']) .grid-cell {
+  background: #e2e8f0;
+  border-color: rgba(148, 163, 184, 0.4);
+  color: #0f172a;
+}
+
+:host-context([data-theme='light']) .modal-overlay {
+  background: rgba(15, 23, 42, 0.4);
+}
+
+:host-context([data-theme='light']) .md-foot {
+  background: rgba(148, 163, 184, 0.1);
+  border-top-color: rgba(148, 163, 184, 0.34);
+}
+

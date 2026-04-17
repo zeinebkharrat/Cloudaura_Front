@@ -31,6 +31,7 @@ public class SchemaRepairRunner implements CommandLineRunner {
     @Override
     public void run(String... args) {
         ensureMediaScoreSchema();
+        ensureUserNotificationsTable();
         fixStatusColumn("orders");
         fixStatusColumn("order_items");
         ensureTicketTypeColumns();
@@ -73,6 +74,40 @@ public class SchemaRepairRunner implements CommandLineRunner {
         } catch (Exception e) {
             log.error("SchemaRepairRunner: failed to ensure post_views table - {}", e.getMessage());
         }
+    }
+
+    private void ensureUserNotificationsTable() {
+        try {
+            jdbcTemplate.execute(
+                    "CREATE TABLE IF NOT EXISTS user_notifications ("
+                            + "notification_id INT AUTO_INCREMENT PRIMARY KEY,"
+                            + "user_id INT NOT NULL,"
+                            + "type VARCHAR(40) NOT NULL,"
+                            + "title VARCHAR(180) NOT NULL,"
+                            + "message VARCHAR(500) NOT NULL,"
+                            + "route VARCHAR(255) NULL,"
+                            + "reservation_type VARCHAR(40) NULL,"
+                            + "reservation_id INT NULL,"
+                            + "interaction_count INT NULL,"
+                            + "last_actor_user_id INT NULL,"
+                            + "last_actor_name VARCHAR(120) NULL,"
+                            + "last_actor_avatar_url VARCHAR(500) NULL,"
+                            + "is_read TINYINT(1) NOT NULL DEFAULT 0,"
+                            + "created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+                            + "INDEX idx_user_notifications_user_created (user_id, created_at),"
+                            + "INDEX idx_user_notifications_user_read (user_id, is_read),"
+                            + "CONSTRAINT fk_user_notifications_user "
+                            + "FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE"
+                            + ")"
+            );
+        } catch (Exception e) {
+            log.error("SchemaRepairRunner: failed to ensure user_notifications table - {}", e.getMessage());
+        }
+
+        ensureColumnExists("user_notifications", "interaction_count", "INT NULL");
+        ensureColumnExists("user_notifications", "last_actor_user_id", "INT NULL");
+        ensureColumnExists("user_notifications", "last_actor_name", "VARCHAR(120) NULL");
+        ensureColumnExists("user_notifications", "last_actor_avatar_url", "VARCHAR(500) NULL");
     }
 
     private void ensureMessageVoiceColumns() {

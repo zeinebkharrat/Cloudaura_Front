@@ -5,8 +5,8 @@
 ══════════════════════════════════════════════════════════════ */
 .feature-page {
   position: relative;
-  padding: 96px 4% 120px;
-  max-width: 1440px;
+  padding: clamp(74px, 10vw, 96px) clamp(12px, 4vw, 4%) clamp(56px, 10vw, 120px);
+  max-width: min(1440px, 100%);
   margin: 0 auto;
   min-height: calc(100vh - 180px);
 }
@@ -85,9 +85,9 @@
 
 /* ── Hero Header ── */
 .feature-page__hero {
-  padding: 40px 44px;
+  padding: clamp(20px, 4vw, 40px) clamp(16px, 4.5vw, 44px);
   border-radius: 28px;
-  margin-bottom: 44px;
+  margin-bottom: clamp(20px, 4vw, 44px);
   background: linear-gradient(145deg, rgba(255,255,255,0.06), rgba(232,0,45,0.04));
   border: 1px solid rgba(255,255,255,0.1);
   box-shadow: 0 32px 64px rgba(0,0,0,0.4);
@@ -412,6 +412,18 @@
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
+.crafts-filter-field select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  color-scheme: dark;
+}
+
+.crafts-filter-field select option {
+  background-color: var(--surface-1);
+  color: var(--text-color);
+}
+
 .crafts-filter-field input:focus,
 .crafts-filter-field select:focus {
   outline: none;
@@ -424,6 +436,15 @@
 :host-context(html:not([data-theme="dark"])) .crafts-filter-field select {
   background: #ffffff;
   border-color: rgba(15,23,42,0.12);
+  color: #0f172a;
+}
+
+:host-context(html:not([data-theme="dark"])) .crafts-filter-field select {
+  color-scheme: light;
+}
+
+:host-context(html:not([data-theme="dark"])) .crafts-filter-field select option {
+  background-color: #ffffff;
   color: #0f172a;
 }
 
@@ -1938,7 +1959,7 @@
 .event-card__meta-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 8px;
   margin-bottom: 10px;
 }
@@ -2266,11 +2287,30 @@
   display: block;
 }
 
+.event-poster--generated {
+  background: #050b17;
+}
+
+.event-poster__image--generated {
+  width: 100%;
+  height: min(74vh, 860px);
+  max-height: none;
+  object-fit: cover;
+  object-position: center;
+  background: transparent;
+}
+
 .event-poster__scrim,
-.event-poster__gradient {
+.event-poster__gradient,
+.event-poster__top-mask {
   position: absolute;
   inset: 0;
   pointer-events: none;
+}
+
+.event-poster__top-mask {
+  z-index: 2;
+  background: linear-gradient(180deg, rgba(4, 9, 21, 0.9) 0%, rgba(4, 9, 21, 0.45) 22%, rgba(4, 9, 21, 0.05) 38%, rgba(4, 9, 21, 0) 56%);
 }
 
 .event-poster__scrim {
@@ -2283,7 +2323,7 @@
 
 .event-poster__brand {
   position: absolute;
-  top: 14px;
+  top: clamp(12px, 2.4vw, 18px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 3;
@@ -2291,8 +2331,9 @@
 
 .event-poster__brand img {
   display: block;
-  width: min(190px, 42vw);
+  width: min(180px, 40vw);
   height: auto;
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.5));
 }
 
 .event-poster__meta {
@@ -2333,6 +2374,29 @@
   font-family: 'Montserrat', sans-serif;
   font-size: 0.9rem;
   font-weight: 600;
+}
+
+.event-poster__fact--schedule {
+  font-family: 'Outfit', 'Montserrat', sans-serif;
+  letter-spacing: 0.01em;
+  text-shadow: 0 3px 14px rgba(0, 0, 0, 0.75);
+}
+
+.event-poster__schedule {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.event-poster__time-accent {
+  color: #ffd166;
+  font-weight: 800;
+  background: rgba(255, 209, 102, 0.15);
+  border: 1px solid rgba(255, 209, 102, 0.48);
+  border-radius: 999px;
+  padding: 2px 10px;
 }
 
 .event-poster__icon {
@@ -2600,13 +2664,17 @@
     max-height: 54vh;
   }
 
-  .event-poster__brand img {
-    width: min(160px, 52vw);
+  .event-poster__image--generated {
+    height: min(62vh, 560px);
   }
 
   .event-poster__title {
     font-size: clamp(1.8rem, 8.5vw, 2.7rem);
     letter-spacing: 0.08em;
+  }
+
+  .event-poster__brand img {
+    width: min(150px, 46vw);
   }
 
   .event-poster-summary {
@@ -2820,9 +2888,31 @@
 }
 
 .event-date-badge {
-  border-color: rgba(138, 172, 235, 0.44);
-  background: rgba(94, 130, 196, 0.26);
-  color: #edf4ff;
+  border: 1px solid rgba(120, 158, 235, 0.65);
+  background: linear-gradient(135deg, rgba(34, 66, 130, 0.88), rgba(54, 94, 168, 0.88));
+  color: #f4f8ff;
+  box-shadow: 0 10px 20px rgba(22, 50, 104, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  padding: 5px 10px;
+  gap: 6px;
+}
+
+.event-date-badge__icon {
+  font-size: 0.72rem;
+  opacity: 0.95;
+}
+
+.event-date-badge__date {
+  letter-spacing: 0.03em;
+}
+
+.event-date-badge__time {
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: linear-gradient(135deg, #ff4d6d, #e11d48);
+  color: #fff7fb;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  box-shadow: 0 0 0 1px rgba(255, 126, 156, 0.45), 0 8px 14px rgba(225, 29, 72, 0.34);
 }
 
 .event-status-badge {
@@ -2876,7 +2966,14 @@
 }
 
 :host-context(html:not([data-theme="dark"])) .event-date-badge {
-  border-color: rgba(66, 107, 186, 0.4);
-  background: rgba(66, 107, 186, 0.16);
-  color: #2f4f8d;
+  border-color: rgba(52, 95, 177, 0.46);
+  background: linear-gradient(135deg, rgba(239, 247, 255, 0.98), rgba(220, 236, 255, 0.98));
+  color: #1f447f;
+  box-shadow: 0 8px 18px rgba(38, 79, 151, 0.18), inset 0 0 0 1px rgba(255, 255, 255, 0.7);
 }
+
+:host-context(html:not([data-theme="dark"])) .event-date-badge__time {
+  color: #ffffff;
+  box-shadow: 0 0 0 1px rgba(255, 110, 150, 0.55), 0 6px 12px rgba(225, 29, 72, 0.24);
+}
+

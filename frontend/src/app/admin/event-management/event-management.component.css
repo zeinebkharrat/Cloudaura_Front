@@ -474,15 +474,35 @@ label { display: block; margin-bottom: 6px; color: var(--text-secondary); font-s
   height: 34px;
   border-radius: 10px;
   border: 1px solid rgba(148, 163, 184, 0.3);
-  background: rgba(15, 23, 42, 0.35);
-  font-size: 1rem;
+  background: transparent;
   cursor: pointer;
   color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.btn-icon svg {
+  width: 16px;
+  height: 16px;
 }
 
 .btn-icon:hover {
-  border-color: #3b82f6;
-  color: #dbeafe;
+  box-shadow: none;
+  transform: translateY(-1px);
+}
+
+.btn-icon.icon-view {
+  color: var(--text-primary);
+}
+
+.btn-icon.icon-edit {
+  color: #0ea5e9;
+}
+
+.btn-icon.icon-delete {
+  color: #ef4444;
 }
 
 .details-backdrop {
@@ -556,11 +576,30 @@ label { display: block; margin-bottom: 6px; color: var(--text-secondary); font-s
   display: block;
 }
 
+.details-poster--generated {
+  background: #050b17;
+}
+
+.details-modal__image--generated {
+  width: 100%;
+  height: min(74vh, 860px);
+  max-height: none;
+  object-fit: cover;
+  object-position: center;
+  background: transparent;
+}
+
 .details-poster__scrim,
-.details-poster__gradient {
+.details-poster__gradient,
+.details-poster__top-mask {
   position: absolute;
   inset: 0;
   pointer-events: none;
+}
+
+.details-poster__top-mask {
+  z-index: 2;
+  background: linear-gradient(180deg, rgba(4, 9, 21, 0.9) 0%, rgba(4, 9, 21, 0.45) 22%, rgba(4, 9, 21, 0.05) 38%, rgba(4, 9, 21, 0) 56%);
 }
 
 .details-poster__scrim {
@@ -573,7 +612,7 @@ label { display: block; margin-bottom: 6px; color: var(--text-secondary); font-s
 
 .details-poster__brand {
   position: absolute;
-  top: 14px;
+  top: clamp(12px, 2.4vw, 18px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 3;
@@ -581,37 +620,42 @@ label { display: block; margin-bottom: 6px; color: var(--text-secondary); font-s
 
 .details-poster__brand img {
   display: block;
-  width: min(220px, 48vw);
+  width: min(180px, 40vw);
   height: auto;
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.5));
 }
 
 .details-poster__meta {
   position: absolute;
   left: 50%;
-  bottom: 18px;
+  bottom: 20px;
   transform: translateX(-50%);
-  width: min(92%, 540px);
+  width: min(92%, 620px);
   z-index: 3;
   color: #fff;
   text-align: center;
-  padding: 2px 8px;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
+  padding: 10px 10px 6px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(2, 6, 23, 0.15), rgba(2, 6, 23, 0.46));
+  backdrop-filter: blur(2px);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 }
 
 .details-poster__title {
-  margin: 0 0 10px;
+  margin: 0 0 12px;
   font-family: 'Bebas Neue', 'Montserrat', sans-serif;
   text-transform: uppercase;
-  font-size: clamp(2rem, 4.4vw, 3.8rem);
+  font-size: clamp(1.8rem, 4vw, 3.2rem);
   font-weight: 800;
-  line-height: 1;
-  letter-spacing: 0.06em;
+  line-height: 0.98;
+  letter-spacing: 0.05em;
 }
 
 .details-poster__facts {
   display: inline-flex;
-  flex-direction: column;
-  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
   padding: 0;
 }
 
@@ -622,8 +666,35 @@ label { display: block; margin-bottom: 6px; color: var(--text-secondary); font-s
   gap: 7px;
   margin: 0;
   font-family: 'Montserrat', sans-serif;
-  font-size: 0.93rem;
-  font-weight: 500;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.details-poster__fact--schedule {
+  font-family: 'Outfit', 'Montserrat', sans-serif;
+  letter-spacing: 0.01em;
+  text-shadow: 0 3px 14px rgba(0, 0, 0, 0.7);
+}
+
+.details-poster__schedule {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.details-poster__time-accent {
+  color: #ffd166;
+  font-weight: 800;
+  background: rgba(255, 209, 102, 0.22);
+  border: 1px solid rgba(255, 209, 102, 0.6);
+  border-radius: 999px;
+  padding: 2px 9px;
 }
 
 .details-poster__icon {
@@ -632,8 +703,10 @@ label { display: block; margin-bottom: 6px; color: var(--text-secondary); font-s
 }
 
 .details-poster__fact--price {
-  color: #93c5fd;
+  color: #dbeafe;
   font-weight: 700;
+  background: rgba(30, 64, 175, 0.42);
+  border-color: rgba(147, 197, 253, 0.45);
 }
 
 .details-grid {
@@ -650,6 +723,14 @@ label { display: block; margin-bottom: 6px; color: var(--text-secondary); font-s
 }
 
 @media (max-width: 640px) {
+  .details-modal__image--generated {
+    height: min(62vh, 560px);
+  }
+
+  .details-poster__brand img {
+    width: min(150px, 46vw);
+  }
+
   .details-grid {
     grid-template-columns: 1fr;
   }

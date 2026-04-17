@@ -898,3 +898,49 @@ select option {
   }
 }
 
+@media (max-width: 480px) {
+  .auth-page {
+    padding: 112px 12px 30px;
+  }
+
+  .auth-card {
+    border-radius: 22px;
+    padding: 18px;
+  }
+
+  .auth-hero-visual {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .auth-hero-frame {
+    width: 120px;
+    height: 120px;
+  }
+
+  .upload-top-layout {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .upload-preview-shell {
+    width: 92px;
+    height: 92px;
+  }
+
+  .upload-actions {
+    width: 100%;
+    padding: 10px;
+  }
+
+  .gender-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .gender-card img {
+    width: 76px;
+    height: 92px;
+  }
+}
+

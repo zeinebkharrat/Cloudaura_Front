@@ -113,6 +113,28 @@ table {
   min-width: 1180px;
 }
 
+@media (max-width: 1024px) {
+  table {
+    min-width: 920px;
+  }
+}
+
+@media (max-width: 768px) {
+  table {
+    min-width: 760px;
+  }
+
+  th,
+  td {
+    padding: 0.62rem;
+    font-size: 0.82rem;
+  }
+
+  .desc-cell {
+    max-width: 220px;
+  }
+}
+
 th,
 td {
   text-align: left;

@@ -14,6 +14,19 @@
         </span>
       }
       <div class="sb-head-actions">
+        <button
+          class="tog tog-theme"
+          (click)="toggleTheme()"
+          aria-label="Toggle theme"
+          [title]="isDarkMode() ? 'Light mode' : 'Dark mode'"
+          [attr.data-tip]="isDarkMode() ? 'Light mode' : 'Dark mode'"
+        >
+          @if (isDarkMode()) {
+            <i class="pi pi-sun" aria-hidden="true"></i>
+          } @else {
+            <i class="pi pi-moon" aria-hidden="true"></i>
+          }
+        </button>
         <button class="tog" (click)="toggle()" id="sidebar-toggle-btn" title="Compact sidebar" aria-label="Compact sidebar" data-tip="Compact sidebar">
           <i class="pi pi-bars" aria-hidden="true"></i>
         </button>

@@ -39,6 +39,9 @@ public class PostService implements IPostService {
     @Autowired
     MediaScoreService mediaScoreService;
 
+    @Autowired
+    UserNotificationService userNotificationService;
+
     @Override
     @Transactional(readOnly = true)
     public List<Post> retrievePosts() {
@@ -150,6 +153,15 @@ public class PostService implements IPostService {
             mediaScoreService.recomputeAuthorMonthlyScoreFromPost(savedRepost.getPostId());
         }
         mediaScoreService.recomputeAuthorMonthlyScoreFromPost(original.getPostId());
+
+        if (original.getAuthor() != null) {
+            userNotificationService.notifyPostInteraction(
+                    original.getAuthor().getUserId(),
+                    original.getPostId(),
+                    "POST_REPOST",
+                    author
+            );
+        }
 
         return savedRepost;
     }

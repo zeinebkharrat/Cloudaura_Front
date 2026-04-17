@@ -80,6 +80,10 @@ export class EventCalendarComponent implements OnInit {
     return this.toIsoDate(end);
   }
 
+  private toDateTimeLocal(isoDate: string, hour: number, minute: number): string {
+    return `${isoDate}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  }
+
   // --- 1. CLIC SUR UNE CASE VIDE (CRÉATION) ---
   handleDateSelect(selectInfo: any) {
     const startIso = (selectInfo.startStr ?? '').slice(0, 10);
@@ -96,6 +100,8 @@ export class EventCalendarComponent implements OnInit {
     }
 
     const endIso = this.toInclusiveEndIso(selectInfo);
+    const startDateTime = this.toDateTimeLocal(startIso, 9, 0);
+    const endDateTime = this.toDateTimeLocal(endIso, 18, 0);
     const rangeText = startIso === endIso ? startIso : `${startIso} → ${endIso}`;
 
     Swal.fire({
@@ -111,7 +117,7 @@ export class EventCalendarComponent implements OnInit {
       if (result.isConfirmed) {
         // On redirige vers le dashboard en passant la date en paramètre
         this.router.navigate(['/admin/events/dashboard'], { 
-          queryParams: { action: 'new', startDate: startIso, endDate: endIso } 
+          queryParams: { action: 'new', startDate: startDateTime, endDate: endDateTime } 
         });
       }
     });

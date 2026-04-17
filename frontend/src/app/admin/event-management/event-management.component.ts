@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -14,10 +14,11 @@ import { AppAlertsService } from '../../core/services/app-alerts.service';
   templateUrl: './event-management.component.html',
   styleUrl: './event-management.component.css'
 })
-export class EventManagementComponent implements OnInit {
+export class EventManagementComponent implements OnInit, OnDestroy {
   private alerts = inject(AppAlertsService);
   private readonly aiGeneratedImageStorageKey = 'eventManagement.aiGeneratedImages';
   private aiGeneratedImageUrls = new Set<string>();
+  private themeObserver?: MutationObserver;
 
   isDarkMode = true;
   events: Event[] = [];
@@ -72,6 +73,8 @@ export class EventManagementComponent implements OnInit {
 
 
   ngOnInit(): void {
+    this.syncThemeFromRoot();
+    this.startThemeObserver();
     this.loadAiGeneratedImageUrls();
     this.loadEvents();
     this.route.queryParams.subscribe(params => {
@@ -92,12 +95,18 @@ export class EventManagementComponent implements OnInit {
         this.openAddModal();
         const startDate = params['startDate'] ?? params['date'] ?? '';
         const endDate = params['endDate'] ?? startDate;
-        if (startDate) {
-          this.currentEvent.startDate = startDate;
-          this.currentEvent.endDate = endDate;
+        const startDateTime = this.toDateTimeLocalInput(startDate, 9, 0);
+        const endDateTime = this.toDateTimeLocalInput(endDate, 18, 0);
+        if (startDateTime) {
+          this.currentEvent.startDate = startDateTime;
+          this.currentEvent.endDate = endDateTime || startDateTime;
         }
       }
     });
+  }
+
+  ngOnDestroy(): void {
+    this.themeObserver?.disconnect();
   }
 
   get totalItems(): number {
@@ -139,9 +148,7 @@ export class EventManagementComponent implements OnInit {
   this.eventService.getEvents().subscribe({
     next: (data) => {
       this.events = data;
-      this.filteredEvents = data; // <--- TRÈS IMPORTANT
-      this.currentPage = 1;
-      this.applyFilters(); // Force un premier tri si des filtres sont déjà remplis
+      this.applyFilters(false); // Re-apply active filters while preserving current page.
       if (this.pendingEditId != null) {
         const eventToEdit = this.events.find(e => e.eventId === this.pendingEditId);
         if (eventToEdit) {
@@ -154,7 +161,7 @@ export class EventManagementComponent implements OnInit {
   });
 }
 
-applyFilters() {
+applyFilters(resetPage: boolean = true) {
   console.log('Filtrage en cours...', this.searchQuery); // Regarde dans la console (F12) si ça s'affiche !
 
   const query = this.searchQuery.toLowerCase().trim();
@@ -174,7 +181,10 @@ applyFilters() {
 
     return matchesSearch && matchesType && matchesStatus && matchesCity;
   });
-  this.currentPage = 1;
+
+  if (resetPage) {
+    this.currentPage = 1;
+  }
   this.clampCurrentPage();
 }
 
@@ -224,6 +234,8 @@ resetFilters() {
   openEditModal(event: Event) {
     this.isEditMode = true;
     this.currentEvent = JSON.parse(JSON.stringify(event)); // Deep copy
+    this.currentEvent.startDate = this.toDateTimeLocalInput(this.currentEvent.startDate, 9, 0);
+    this.currentEvent.endDate = this.toDateTimeLocalInput(this.currentEvent.endDate, 18, 0);
     this.syncCitySearchTermFromCurrentEvent();
     this.aiPosterDescription = '';
     this.selectedImageFileName = '';
@@ -501,8 +513,10 @@ resetFilters() {
     }
 
     if (detectedDates.startDate) {
-      this.currentEvent.startDate = detectedDates.startDate;
-      this.currentEvent.endDate = detectedDates.endDate ?? detectedDates.startDate;
+      const detectedStartDateTime = this.toDateTimeLocalInput(detectedDates.startDate, 9, 0);
+      const detectedEndDateTime = this.toDateTimeLocalInput(detectedDates.endDate ?? detectedDates.startDate, 18, 0);
+      this.currentEvent.startDate = detectedStartDateTime;
+      this.currentEvent.endDate = detectedEndDateTime || detectedStartDateTime;
     }
 
     if (detectedType) {
@@ -740,6 +754,18 @@ resetFilters() {
     return `${start} - ${end}`;
   }
 
+  detailsPosterTimeRange(event: Event | null | undefined): string {
+    const start = this.formatPosterDisplayTime(event?.startDate);
+    const end = this.formatPosterDisplayTime(event?.endDate);
+    if (!start && !end) {
+      return '';
+    }
+    if (!end || start === end) {
+      return start || end;
+    }
+    return `${start} - ${end}`;
+  }
+
   private formatPosterDisplayDate(value: string | undefined): string {
     const raw = String(value ?? '').trim();
     if (!raw) {
@@ -753,6 +779,21 @@ resetFilters() {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
+    });
+  }
+
+  private formatPosterDisplayTime(value: string | undefined): string {
+    const raw = String(value ?? '').trim();
+    if (!raw) {
+      return '';
+    }
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) {
+      return '';
+    }
+    return date.toLocaleTimeString('fr-FR', {
+      hour: '2-digit',
+      minute: '2-digit'
     });
   }
 
@@ -800,11 +841,28 @@ resetFilters() {
     return value;
   }
 
+  private syncThemeFromRoot(): void {
+    this.isDarkMode = document.documentElement.getAttribute('data-theme') !== 'light';
+  }
+
+  private startThemeObserver(): void {
+    this.themeObserver?.disconnect();
+    this.themeObserver = new MutationObserver(() => {
+      this.syncThemeFromRoot();
+    });
+    this.themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
+  }
+
   saveEvent() {
   if (!this.validateDates()) return;
 
   // 1. Créer une copie de l'événement pour ne pas modifier l'affichage pendant l'envoi
   const eventToSave = JSON.parse(JSON.stringify(this.currentEvent));
+  eventToSave.startDate = this.toApiDateTime(eventToSave.startDate);
+  eventToSave.endDate = this.toApiDateTime(eventToSave.endDate);
 
   // 2. Nettoyer l'objet City : Le backend veut juste l'ID pour le mapping Hibernate
   if (eventToSave.city && eventToSave.city.cityId) {
@@ -860,20 +918,61 @@ resetFilters() {
   }
 
   validateDates(): boolean {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
     const start = new Date(this.currentEvent.startDate);
     const end = new Date(this.currentEvent.endDate);
+    const now = new Date();
 
-    if (start < today) {
-      void this.alerts.error('Date error', 'Start date cannot be in the past.');
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      void this.alerts.error('Date error', 'Please provide valid start and end date-time values.');
+      return false;
+    }
+
+    if (!this.isEditMode && start < now) {
+      void this.alerts.error('Date error', 'Start date-time cannot be in the past.');
       return false;
     }
     if (end < start) {
-      void this.alerts.error('Date error', 'End date must be after the start date.');
+      void this.alerts.error('Date error', 'End date-time must be after the start date-time.');
       return false;
     }
     return true;
+  }
+
+  private toDateTimeLocalInput(value: string | undefined | null, fallbackHour = 9, fallbackMinute = 0): string {
+    const raw = String(value ?? '').trim();
+    if (!raw) {
+      return '';
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(raw)) {
+      return raw;
+    }
+
+    const dateOnlyMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (dateOnlyMatch) {
+      return `${dateOnlyMatch[1]}-${dateOnlyMatch[2]}-${dateOnlyMatch[3]}T${this.pad2(fallbackHour)}:${this.pad2(fallbackMinute)}`;
+    }
+
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) {
+      return raw.slice(0, 16);
+    }
+
+    return `${date.getFullYear()}-${this.pad2(date.getMonth() + 1)}-${this.pad2(date.getDate())}T${this.pad2(date.getHours())}:${this.pad2(date.getMinutes())}`;
+  }
+
+  private toApiDateTime(value: string | undefined | null): string {
+    const localInput = this.toDateTimeLocalInput(value);
+    const date = new Date(localInput);
+    if (Number.isNaN(date.getTime())) {
+      return String(value ?? '').trim();
+    }
+
+    return `${date.getFullYear()}-${this.pad2(date.getMonth() + 1)}-${this.pad2(date.getDate())}T${this.pad2(date.getHours())}:${this.pad2(date.getMinutes())}:00`;
+  }
+
+  private pad2(value: number): string {
+    return String(value).padStart(2, '0');
   }
   
   handleResponse(msg: string) {

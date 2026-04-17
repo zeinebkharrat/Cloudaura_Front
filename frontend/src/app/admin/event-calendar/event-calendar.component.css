@@ -1,6 +1,38 @@
+:host {
+  --calendar-text: #0f172a;
+  --calendar-muted: #64748b;
+  --calendar-card-bg: #ffffff;
+  --calendar-card-border: rgba(148, 163, 184, 0.26);
+  --calendar-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+  --calendar-fc-border: rgba(148, 163, 184, 0.3);
+  --fc-button-bg: #3b82f6;
+  --fc-button-border: #3b82f6;
+  --fc-button-hover: #2563eb;
+  --fc-today-bg: rgba(59, 130, 246, 0.12);
+  --fc-toolbar-title: #0f172a;
+  --fc-day-number: #64748b;
+  --fc-header-label: #64748b;
+}
+
+:host-context([data-theme='dark']) {
+  --calendar-text: #f8fafc;
+  --calendar-muted: #94a3b8;
+  --calendar-card-bg: #1e293b;
+  --calendar-card-border: rgba(255, 255, 255, 0.08);
+  --calendar-shadow: 0 10px 20px rgba(0, 0, 0, 0.28);
+  --calendar-fc-border: rgba(255, 255, 255, 0.1);
+  --fc-button-bg: #3b82f6;
+  --fc-button-border: #3b82f6;
+  --fc-button-hover: #2563eb;
+  --fc-today-bg: rgba(99, 102, 241, 0.12);
+  --fc-toolbar-title: #f8fafc;
+  --fc-day-number: #94a3b8;
+  --fc-header-label: #94a3b8;
+}
+
 .calendar-wrapper {
   padding: 2rem;
-  color: #f8fafc;
+  color: var(--calendar-text);
 }
 
 .calendar-header {
@@ -14,34 +46,34 @@
 }
 
 .calendar-subtitle {
-  color: #94a3b8;
+  color: var(--calendar-muted);
 }
 
 .calendar-card {
-  background: #1e293b; /* Bleu nuit de ton dashboard */
+  background: var(--calendar-card-bg);
   padding: 1.5rem;
   border-radius: 1rem;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: var(--calendar-shadow);
+  border: 1px solid var(--calendar-card-border);
 }
 
 /* --- Styles spécifiques à FullCalendar --- */
 :host ::ng-deep .fc {
   font-family: inherit;
-  --fc-border-color: rgba(255, 255, 255, 0.1);
-  --fc-button-bg-color: #3b82f6;
-  --fc-button-border-color: #3b82f6;
-  --fc-button-hover-bg-color: #2563eb;
-  --fc-today-bg-color: rgba(99, 102, 241, 0.1);
+  --fc-border-color: var(--calendar-fc-border);
+  --fc-button-bg-color: var(--fc-button-bg);
+  --fc-button-border-color: var(--fc-button-border);
+  --fc-button-hover-bg-color: var(--fc-button-hover);
+  --fc-today-bg-color: var(--fc-today-bg);
 }
 
 :host ::ng-deep .fc-toolbar-title {
-  color: #f8fafc !important;
+  color: var(--fc-toolbar-title) !important;
   font-size: 1.25rem !important;
 }
 
 :host ::ng-deep .fc-daygrid-day-number {
-  color: #94a3b8;
+  color: var(--fc-day-number);
   padding: 8px !important;
   text-decoration: none;
 }
@@ -63,7 +95,7 @@
   text-transform: uppercase;
   font-size: 0.8rem;
   letter-spacing: 1px;
-  color: #94a3b8;
+  color: var(--fc-header-label);
   padding: 10px 0 !important;
 }
 

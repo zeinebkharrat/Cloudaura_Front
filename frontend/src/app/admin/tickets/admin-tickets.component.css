@@ -25,21 +25,6 @@
   --ticket-shadow: 0 20px 36px rgba(0, 0, 0, 0.35);
 }
 
-@media (prefers-color-scheme: dark) {
-  :host {
-    --ticket-bg: #0b1220;
-    --ticket-surface: rgba(16, 23, 38, 0.92);
-    --ticket-border: rgba(148, 163, 184, 0.24);
-    --ticket-text: #e2e8f0;
-    --ticket-muted: #94a3b8;
-    --ticket-input-bg: rgba(15, 23, 42, 0.92);
-    --ticket-input-border: rgba(148, 163, 184, 0.35);
-    --ticket-header-bg: rgba(30, 41, 59, 0.55);
-    --ticket-row-alt: rgba(148, 163, 184, 0.08);
-    --ticket-shadow: 0 20px 36px rgba(0, 0, 0, 0.35);
-  }
-}
-
 .tickets-page {
   padding: 28px;
   display: grid;

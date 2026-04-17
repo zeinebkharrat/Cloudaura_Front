@@ -41,6 +41,9 @@ public class LikeService implements ILikeService {
     @Autowired
     MediaScoreService mediaScoreService;
 
+    @Autowired
+    UserNotificationService userNotificationService;
+
     @Override
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public List<LikeEntity> retrieveAllLikes() {
@@ -118,6 +121,14 @@ public class LikeService implements ILikeService {
             
             LikeEntity saved = likeRepo.save(newLike);
             refreshPostLikesCount(postId);
+            if (post.getAuthor() != null) {
+                userNotificationService.notifyPostInteraction(
+                        post.getAuthor().getUserId(),
+                        post.getPostId(),
+                        "POST_LIKE",
+                        user
+                );
+            }
             return saved;
         }
     }

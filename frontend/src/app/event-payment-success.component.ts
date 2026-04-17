@@ -14,7 +14,7 @@ import { extractApiErrorMessage } from './api-error.util';
     <main class="payment-page">
       <div class="payment-inner animate-in">
         <header class="payment-head">
-          <p class="kicker">Paiement securise</p>
+          <p class="kicker">Secure payment</p>
           <h1 class="title">YallaTN<span class="accent">+</span> · <span class="sub">events</span></h1>
         </header>
 
@@ -24,20 +24,19 @@ import { extractApiErrorMessage } from './api-error.util';
 
         <div class="state-card ok" *ngIf="status === 'ok'">
           <div class="success-icon-wrap"><i class="pi pi-check-circle success-icon"></i></div>
-          <h2>Paiement confirme</h2>
-          <p>Votre reservation d'evenement est validee.</p>
-          <p *ngIf="reservationId != null" class="ref">Reservation #{{ reservationId }}</p>
-          <a routerLink="/evenements" class="btn-pay">Retour aux evenements</a>
+          <h2>Payment confirmed</h2>
+          <p>Your event reservation is confirmed.</p>
+          <a routerLink="/evenements" class="btn-pay">Back to events</a>
         </div>
 
         <div class="state-card err" *ngIf="status === 'error'">
-          <h2>Echec de confirmation</h2>
+          <h2>Confirmation failed</h2>
           <p>{{ message }}</p>
-          <a routerLink="/evenements" class="btn-pay">Retour aux evenements</a>
+          <a routerLink="/evenements" class="btn-pay">Back to events</a>
         </div>
 
         <footer class="payment-foot">
-          <span class="security"><i class="pi pi-lock"></i> Confirmation securisee</span>
+          <span class="security"><i class="pi pi-lock"></i> Secure confirmation</span>
         </footer>
       </div>
     </main>
@@ -97,10 +96,6 @@ import { extractApiErrorMessage } from './api-error.util';
         margin-bottom: 12px;
       }
       .success-icon { font-size: 2.5rem; color: #22c55e; }
-      .ref {
-        font-weight: 600;
-        color: var(--text-color);
-      }
       .btn-pay {
         display: inline-block;
         margin-top: 1.25rem;
@@ -128,7 +123,6 @@ export class EventPaymentSuccessComponent implements OnInit {
 
   status: 'loading' | 'ok' | 'error' = 'loading';
   message = '';
-  reservationId: number | null = null;
 
   ngOnInit(): void {
     const sessionId = this.route.snapshot.queryParamMap.get('session_id');
@@ -146,7 +140,6 @@ export class EventPaymentSuccessComponent implements OnInit {
     this.eventService.finalizeCheckout(sessionId).subscribe({
       next: (res) => {
         this.status = 'ok';
-        this.reservationId = res.eventReservationId ?? null;
       },
       error: (err: HttpErrorResponse) => {
         this.status = 'error';
