@@ -153,6 +153,31 @@
   border-bottom: 1px solid var(--border-soft);
 }
 
+.receipt-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.receipt-logo {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.receipt-app-name {
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.receipt-app-subtitle {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
 .receipt-header h2 {
   margin: 0 0 10px;
   font-size: 1.5rem;
@@ -747,4 +772,27 @@
 
 .cart-summary .total {
   font-family: 'Outfit', sans-serif;
+}
+
+@media print {
+  .back,
+  .cart-head,
+  .lines,
+  .cart-footer,
+  .receipt-actions {
+    display: none !important;
+  }
+
+  .cart-page {
+    max-width: 100%;
+    padding: 0;
+    margin: 0;
+  }
+
+  .order-receipt {
+    border: 1px solid #ddd;
+    box-shadow: none;
+    background: #fff;
+    color: #000;
+  }
 }

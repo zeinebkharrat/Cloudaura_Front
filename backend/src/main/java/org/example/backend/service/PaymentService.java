@@ -92,10 +92,11 @@ public class PaymentService {
     }
 
     public String generatePaymentUrl(OrderEntity order) {
-        if (!StripeSecretKeys.isStripeSecretConfigured(StripeSecretKeys.normalize(stripeApiKey))) {
-            // Simulated local payment gateway (Konnect/Stripe mock)
-            return frontendBaseUrl + "/mock-payment?orderId=" + order.getOrderId() + "&amount=" + order.getTotalAmount();
+        String key = StripeSecretKeys.normalize(stripeApiKey);
+        if (!StripeSecretKeys.isStripeSecretConfigured(key)) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Paiement Stripe indisponible.");
         }
+        Stripe.apiKey = key;
 
         String checkoutCurrency = normalizedStripeCurrency();
         List<SessionCreateParams.LineItem> stripeLines = new ArrayList<>();
@@ -196,7 +197,7 @@ public class PaymentService {
 
             SessionCreateParams params = SessionCreateParams.builder()
                 .setMode(SessionCreateParams.Mode.PAYMENT)
-                .setSuccessUrl(frontendBaseUrl + "/mes-commandes?success=true")
+                .setSuccessUrl(frontendBaseUrl + "/mes-commandes?success=true&session_id={CHECKOUT_SESSION_ID}")
                 .setCancelUrl(frontendBaseUrl + "/mes-commandes?canceled=true")
                 .putMetadata("orderId", String.valueOf(order.getOrderId()))
                 .addAllLineItem(stripeLines)
@@ -206,7 +207,43 @@ public class PaymentService {
             return session.getUrl();
         } catch (StripeException e) {
             log.error("Stripe checkout session (shop) failed", e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Erreur génération Stripe");
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Erreur Stripe lors de la creation du paiement.");
+        }
+    }
+
+    @Transactional
+    public void confirmShopStripeSession(String sessionId) {
+        if (sessionId == null || sessionId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "session_id requis");
+        }
+        String key = StripeSecretKeys.normalize(stripeApiKey);
+        if (!StripeSecretKeys.isStripeSecretConfigured(key)) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Paiement Stripe indisponible.");
+        }
+        Stripe.apiKey = key;
+        try {
+            Session session = Session.retrieve(sessionId.trim());
+            if (session == null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Session Stripe introuvable.");
+            }
+            String orderIdRaw = session.getMetadata() != null ? session.getMetadata().get("orderId") : null;
+            if (orderIdRaw == null || orderIdRaw.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Session Stripe invalide (orderId manquant).");
+            }
+            Integer orderId;
+            try {
+                orderId = Integer.valueOf(orderIdRaw.trim());
+            } catch (NumberFormatException ex) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Session Stripe invalide (orderId incorrect).");
+            }
+
+            boolean paid = "paid".equalsIgnoreCase(session.getPaymentStatus());
+            if (paid) {
+                markOrderAsPaid(orderId);
+            }
+        } catch (StripeException e) {
+            log.error("Stripe shop confirm-session failed for sessionId={}", sessionId, e);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Impossible de verifier la session Stripe.");
         }
     }
 

@@ -5,7 +5,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.UUID;
 import org.example.backend.dto.shop.AddToCartRequest;
 import org.example.backend.dto.shop.CheckoutBuyerDto;
 import org.example.backend.dto.shop.CheckoutOrderDto;
@@ -22,7 +21,6 @@ import org.example.backend.model.OrderStatus;
 import org.example.backend.model.Product;
 import org.example.backend.model.User;
 import org.example.backend.model.ProductVariant;
-import org.example.backend.model.PromoCode;
 import org.example.backend.repository.CartItemRepository;
 import org.example.backend.repository.CartRepository;
 import org.example.backend.repository.OrderEntityRepository;
@@ -30,7 +28,6 @@ import org.example.backend.repository.OrderItemRepository;
 import org.example.backend.repository.ProductRepository;
 import org.example.backend.repository.ProductVariantRepository;
 import org.example.backend.repository.UserRepository;
-import org.example.backend.repository.PromoCodeRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -46,9 +43,9 @@ public class ShopService {
     private final OrderEntityRepository orderEntityRepository;
     private final OrderItemRepository orderItemRepository;
     private final ProductVariantRepository productVariantRepository;
-    private final PromoCodeRepository promoCodeRepository;
     private final EmailService emailService;
     private final PaymentService paymentService;
+    private final ShopReceiptPdfService shopReceiptPdfService;
 
     public ShopService(
         UserRepository userRepository,
@@ -58,9 +55,9 @@ public class ShopService {
         OrderEntityRepository orderEntityRepository,
         OrderItemRepository orderItemRepository,
         ProductVariantRepository productVariantRepository,
-        PromoCodeRepository promoCodeRepository,
         EmailService emailService,
-        PaymentService paymentService
+        PaymentService paymentService,
+        ShopReceiptPdfService shopReceiptPdfService
     ) {
         this.userRepository = userRepository;
         this.cartRepository = cartRepository;
@@ -69,9 +66,9 @@ public class ShopService {
         this.orderEntityRepository = orderEntityRepository;
         this.orderItemRepository = orderItemRepository;
         this.productVariantRepository = productVariantRepository;
-        this.promoCodeRepository = promoCodeRepository;
         this.emailService = emailService;
         this.paymentService = paymentService;
+        this.shopReceiptPdfService = shopReceiptPdfService;
     }
 
     @Transactional(readOnly = true)
@@ -256,23 +253,6 @@ public class ShopService {
         order.setCreatedAt(new Date());
         order = orderEntityRepository.save(order);
 
-        String autoPromo = null;
-        if (total >= 200.0) {
-            try {
-                // Code unique (évite collision sur la contrainte unique + erreur 500 au checkout)
-                autoPromo = "GIFT-" + UUID.randomUUID().toString().replace("-", "").substring(0, 10).toUpperCase();
-                PromoCode pc = new PromoCode();
-                pc.setCode(autoPromo);
-                pc.setDiscountPercent(5.0);
-                pc.setActive(true);
-                pc.setExpiryDate(new Date(System.currentTimeMillis() + 30L * 24 * 3600 * 1000));
-                promoCodeRepository.save(pc);
-            } catch (Exception ex) {
-                System.err.println("Promo auto non enregistrée (checkout continue) : " + ex.getMessage());
-                autoPromo = null;
-            }
-        }
-
         List<OrderLineDto> outLines = new ArrayList<>();
         for (CartItem line : lines) {
             Product p = line.getProduct();
@@ -297,16 +277,10 @@ public class ShopService {
                     .mapToInt(var -> var.getStock() != null ? var.getStock() : 0)
                     .sum();
                 p.setStock(totalProductStock);
-                if (totalProductStock <= 0) {
-                    p.setStatus(org.example.backend.model.ProductStatus.OUT_OF_STOCK);
-                }
                 productRepository.save(p);
             } else {
                 int newStock = Math.max(0, (p.getStock() != null ? p.getStock() : 0) - qty);
                 p.setStock(newStock);
-                if (newStock <= 0) {
-                    p.setStatus(org.example.backend.model.ProductStatus.OUT_OF_STOCK);
-                }
                 productRepository.save(p);
             }
 
@@ -335,14 +309,11 @@ public class ShopService {
         dto.setOrderedAt(formatOrderInstant(order.getCreatedAt()));
         dto.setBuyer(toBuyerDto(user));
         dto.setPaymentMethod(pm);
-        dto.setNewPromoCode(autoPromo);
-        // Emails (récap + code promo si créé)
+        dto.setNewPromoCode(null);
+        // Email recap only
         try {
             if (user.getEmail() != null && !user.getEmail().isBlank()) {
                 emailService.sendOrderConfirmation(user.getEmail(), order.getOrderId().toString(), order.getTotalAmount());
-                if (autoPromo != null) {
-                    emailService.sendPromoCode(user.getEmail(), user.getFirstName(), autoPromo);
-                }
             }
         } catch (Exception ex) {
             // Log error but don't block checkout
@@ -445,7 +416,14 @@ public class ShopService {
         dto.setLines(lines);
         dto.setOrderedAt(formatOrderInstant(order.getCreatedAt()));
         dto.setBuyer(toBuyerDto(buyer));
+        dto.setPaymentMethod(order.getPaymentMethod());
         return dto;
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] generateMyOrderReceiptPdf(String username, Integer orderId) {
+        CheckoutOrderDto dto = getMyOrderDetail(username, orderId);
+        return shopReceiptPdfService.generateReceiptPdf(dto);
     }
 
     @Transactional
