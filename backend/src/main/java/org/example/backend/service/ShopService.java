@@ -453,6 +453,56 @@ public class ShopService {
 
         // Optional: Update main order status if all items are delivered?
         // For now, per-item is enough.
+         if (item.getOrder() != null && item.getOrder().getOrderId() != null) {
+            reconcileOrderHeaderStatus(item.getOrder().getOrderId());
+        }
+    }
+ /**
+     * Keeps {@code orders.status} aligned with line items so DB/UI stay consistent
+     * (artisans often check the parent {@code orders} row).
+     */
+    private void reconcileOrderHeaderStatus(Integer orderId) {
+        OrderEntity order = orderEntityRepository.findById(orderId).orElse(null);
+        if (order == null) {
+            return;
+        }
+        List<OrderItem> lines = orderItemRepository.findByOrderIdWithProduct(orderId);
+        if (lines.isEmpty()) {
+            return;
+        }
+        List<OrderItem> active = lines.stream()
+            .filter(i -> i.getStatus() != OrderStatus.CANCELLED)
+            .toList();
+        if (active.isEmpty()) {
+            order.setStatus(OrderStatus.CANCELLED);
+            orderEntityRepository.save(order);
+            return;
+        }
+
+         boolean allDelivered = active.stream().allMatch(i -> i.getStatus() == OrderStatus.DELIVERED);
+        if (allDelivered) {
+            order.setStatus(OrderStatus.DELIVERED);
+            orderEntityRepository.save(order);
+            return;
+        }
+        boolean anyShippedOrDelivered = active.stream()
+            .anyMatch(i -> i.getStatus() == OrderStatus.SHIPPED || i.getStatus() == OrderStatus.DELIVERED);
+        if (anyShippedOrDelivered) {
+            order.setStatus(OrderStatus.SHIPPED);
+            orderEntityRepository.save(order);
+            return;
+        }
+        boolean anyProcessing = active.stream().anyMatch(i -> i.getStatus() == OrderStatus.PROCESSING);
+        if (anyProcessing) {
+            order.setStatus(OrderStatus.PROCESSING);
+            orderEntityRepository.save(order);
+            return;
+        }
+        boolean allPending = active.stream().allMatch(i -> i.getStatus() == OrderStatus.PENDING);
+        if (allPending) {
+            order.setStatus(OrderStatus.PENDING);
+            orderEntityRepository.save(order);
+        }
     }
 
     private static String formatOrderInstant(Date createdAt) {

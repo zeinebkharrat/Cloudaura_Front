@@ -43,10 +43,10 @@ export class ArtisanOrdersComponent implements OnInit {
   readonly expandedOrderId = signal<number | null>(null);
   readonly detail = signal<CheckoutOrder | null>(null);
   readonly detailLoading = signal(false);
-
+  /** Must match backend {@link OrderStatus}: PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED */
   readonly statusOptions = [
     { value: 'PENDING', label: 'Pending' },
-    { value: 'CONFIRMED', label: 'Confirmed' },
+    { value: 'PROCESSING', label: 'Processing' },    
     { value: 'SHIPPED', label: 'Shipped' },
     { value: 'DELIVERED', label: 'Delivered' },
     { value: 'CANCELLED', label: 'Cancelled' },
@@ -57,7 +57,7 @@ export class ArtisanOrdersComponent implements OnInit {
   orderStatusLabel(status: string | undefined | null): string {
     const map: Record<string, string> = {
       PENDING: 'Pending',
-      CONFIRMED: 'Confirmed',
+      PROCESSING: 'Processing',      
       SHIPPED: 'Shipped',
       DELIVERED: 'Delivered',
       CANCELLED: 'Cancelled',
@@ -119,6 +119,20 @@ export class ArtisanOrdersComponent implements OnInit {
       next: () => {
         this.updatingItems.update(s => { s.delete(orderItemId); return new Set(s); });
         this.notifier.show('Status updated.', 'success');
+        this.loadList();
+        const openId = this.expandedOrderId();
+        if (openId != null) {
+          this.detailLoading.set(true);
+          this.shop.getMyOrderDetail(openId).subscribe({
+            next: (o) => {
+              if (this.expandedOrderId() === openId) {
+                this.detail.set(o);
+              }
+              this.detailLoading.set(false);
+            },
+            error: () => this.detailLoading.set(false),
+          });
+        }
       },
       error: () => {
         this.updatingItems.update(s => { s.delete(orderItemId); return new Set(s); });
