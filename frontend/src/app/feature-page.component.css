@@ -2597,6 +2597,10 @@
   font-size: 0.9rem;
 }
 
+.event-join-error--footer {
+  margin: 0 0 12px;
+}
+
 .btn-join:disabled,
 .btn-secondary:disabled {
   opacity: 0.55;
@@ -2802,7 +2806,16 @@
 }
 
 .event-detail-footer.modal-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   padding: 14px 20px 18px;
+}
+
+.event-detail-footer__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
 }
 
 .btn-secondary {
@@ -2832,6 +2845,12 @@
   border-color: #ffc6d6;
 }
 
+:host-context(html:not([data-theme="dark"])) .event-join-error {
+  background: #fff1f2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
 :host-context(html:not([data-theme="dark"])) .event-detail-content .status-badge {
   background: #edf4ff;
   border: 1px solid #caddff;
@@ -2855,6 +2874,10 @@
 
   .event-detail-footer.modal-actions {
     gap: 10px;
+  }
+
+  .event-detail-footer__actions {
+    width: 100%;
   }
 
   .btn-secondary,

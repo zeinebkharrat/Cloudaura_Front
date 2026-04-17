@@ -14,6 +14,8 @@ export interface Event {
   status: string;
   imageUrl?: string;
   price?: number;
+  totalCapacity?: number;
+  reservedCount?: number;
   city: City;
   
 }

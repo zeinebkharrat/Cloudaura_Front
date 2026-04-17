@@ -444,7 +444,11 @@
             </p>
             <p class="detail-row">
               <i class="pi pi-calendar detail-pi" aria-hidden="true"></i>
-              <span><strong>Date:</strong> {{ eventDetailDateTimeLabel(selectedEvent) }}</span>
+              <span><strong>Start Date:</strong> {{ eventDetailDateTimeLabel(selectedEvent) }}</span>
+            </p>
+            <p class="detail-row">
+              <i class="pi pi-calendar detail-pi" aria-hidden="true"></i>
+              <span><strong>End Date:</strong> {{ eventDetailEndDateTimeLabel(selectedEvent) }}</span>
             </p>
             <p class="detail-row detail-price">
               <img src="icones/money-bag.png" alt="" class="detail-ico" width="18" height="18" />
@@ -453,18 +457,19 @@
                   {{ isPaidEvent(selectedEvent) ? (eventPriceAmount(selectedEvent) | number:'1.2-2') + ' TND' : 'Free' }}
                 </span></span>
             </p>
-            <p class="detail-row"><strong>Status:</strong> <span class="status-badge">{{ selectedEvent.status }}</span></p>
           </div>
-          <p class="event-join-error" *ngIf="eventJoinError() as err">{{ err }}</p>
         </div>
       </div>
 
       <div class="event-detail-footer modal-actions">
-        <button class="btn-secondary" type="button" (click)="closeEventDetails()" [disabled]="eventJoinLoading()">Cancel</button>
-        <button class="btn-join" type="button" (click)="onJoinEvent(selectedEvent); $event.stopPropagation()" [disabled]="eventJoinLoading()">
-          <span>{{ eventJoinLoading() ? joinLoadingLabel(selectedEvent) : joinActionLabel(selectedEvent) }}</span>
-          <i class="icon-arrow" *ngIf="!eventJoinLoading()">→</i>
-        </button>
+        <p class="event-join-error event-join-error--footer" *ngIf="eventJoinError() as err">{{ err }}</p>
+        <div class="event-detail-footer__actions">
+          <button class="btn-secondary" type="button" (click)="closeEventDetails()" [disabled]="eventJoinLoading()">Cancel</button>
+          <button class="btn-join" type="button" (click)="onJoinEvent(selectedEvent); $event.stopPropagation()" [disabled]="eventJoinLoading()">
+            <span>{{ eventJoinLoading() ? joinLoadingLabel(selectedEvent) : joinActionLabel(selectedEvent) }}</span>
+            <i class="icon-arrow" *ngIf="!eventJoinLoading()">→</i>
+          </button>
+        </div>
       </div>
     </article>
   </div>

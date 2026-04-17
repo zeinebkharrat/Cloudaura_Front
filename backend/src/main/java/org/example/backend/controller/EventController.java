@@ -22,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
@@ -97,8 +98,14 @@ public class EventController {
 
     // --- GET ---
     @GetMapping
-    public List<Event> getAllEvents() {
-        return eventService.getAllEvents();
+    public List<Event> getAllEvents(Authentication authentication) {
+        List<Event> events = eventService.getAllEvents();
+        if (isAdminAuthentication(authentication)) {
+            return events;
+        }
+        return events.stream()
+                .filter(this::isVisibleForUsers)
+                .toList();
     }
 
     @GetMapping("/{id:\\d+}")
@@ -113,6 +120,10 @@ public class EventController {
         try {
             System.out.println("Received Event: " + event.getTitle() + " for City ID: " +
                     (event.getCity() != null ? event.getCity().getCityId() : "null"));
+
+            int totalCapacity = Math.max(0, event.getTotalCapacity() == null ? 0 : event.getTotalCapacity());
+            event.setTotalCapacity(totalCapacity);
+            event.setReservedCount(0);
 
             Event savedEvent = eventService.createOrUpdateEvent(event);
             return ResponseEntity.ok(savedEvent);
@@ -134,6 +145,7 @@ public class EventController {
             event.setStatus(eventDetails.getStatus());
             event.setImageUrl(eventDetails.getImageUrl());
             event.setPrice(eventDetails.getPrice()); // Mise à jour du prix
+            event.setTotalCapacity(Math.max(0, eventDetails.getTotalCapacity() == null ? 0 : eventDetails.getTotalCapacity()));
 
             // Gestion de la ville pour l'update
             if(eventDetails.getCity() != null) {
@@ -281,6 +293,10 @@ public class EventController {
             Event event = eventService.getEventById(eventId)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found"));
 
+            if (!eventService.reserveSeats(eventId, quantity)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body("Sold Out");
+            }
+
                 User userRef = new User();
                 userRef.setUserId(currentUserId);
 
@@ -373,6 +389,7 @@ public class EventController {
                     "emailError", emailError
             ));
         } catch (Exception e) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             return ResponseEntity.status(500).body("Erreur : " + e.getMessage());
         }
     }
@@ -402,6 +419,10 @@ public class EventController {
 
             Event e = eventService.getEventById(eventId)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found"));
+
+            if (!eventService.hasAvailableSeats(eventId, quantity)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body("Sold Out");
+            }
 
             Double dbPrice = e.getPrice() != null ? e.getPrice() : 0d;
             if (dbPrice <= 0) {
@@ -546,6 +567,11 @@ public class EventController {
 
             TicketType ticketType = ticketTypeRepository.findById(ticketTypeId)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket type not found"));
+
+            Integer eventId = res.getEvent() != null ? res.getEvent().getEventId() : null;
+            if (!eventService.reserveSeats(eventId, quantity)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body("Sold Out");
+            }
 
             List<String> qrTokens = new ArrayList<>();
             for (int i = 0; i < quantity; i++) {
@@ -940,5 +966,32 @@ public class EventController {
             return envKey;
         }
         return null;
+    }
+
+    private boolean isVisibleForUsers(Event event) {
+        if (event == null) {
+            return false;
+        }
+        String normalizedStatus = event.getStatus() == null ? "" : event.getStatus().trim().toUpperCase();
+        boolean visibleStatus = "UPCOMING".equals(normalizedStatus) || "ONGOING".equals(normalizedStatus);
+        if (!visibleStatus) {
+            return false;
+        }
+        int total = Math.max(0, event.getTotalCapacity() == null ? 0 : event.getTotalCapacity());
+        int reserved = Math.max(0, event.getReservedCount() == null ? 0 : event.getReservedCount());
+        return reserved < total;
+    }
+
+    private boolean isAdminAuthentication(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return false;
+        }
+        try {
+            User user = resolveAuthenticatedUser(authentication);
+            return user.getRoles() != null && user.getRoles().stream()
+                    .anyMatch(r -> r != null && "ROLE_ADMIN".equalsIgnoreCase(r.getName()));
+        } catch (Exception ex) {
+            return false;
+        }
     }
 }

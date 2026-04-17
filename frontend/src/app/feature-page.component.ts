@@ -62,6 +62,22 @@ export interface CatalogProduct {
 })
 export class FeaturePageComponent implements OnInit {
   private readonly aiGeneratedImageStorageKey = 'eventManagement.aiGeneratedImages';
+  private readonly cityLabelCorrections: Record<string, string> = {
+    'beja': 'Beja',
+    'b?ja': 'Beja',
+    'b??ja': 'Beja',
+    'gabes': 'Gabes',
+    'gab?s': 'Gabes',
+    'gab??s': 'Gabes',
+    'medenine': 'Medenine',
+    'm?denine': 'Medenine',
+    'm??denine': 'Medenine',
+    'kasserine': 'Kasserine',
+    'kass?rine': 'Kasserine',
+    'kass??rine': 'Kasserine',
+    'tozeur': 'Tozeur',
+    'toz??ur': 'Tozeur'
+  };
   private route = inject(ActivatedRoute);
   private http = inject(HttpClient);
   readonly router = inject(Router);
@@ -802,7 +818,7 @@ export class FeaturePageComponent implements OnInit {
   }
 
   toEventCityLabel(event: TravelEvent): string {
-    const fromCity = event.city?.name?.trim();
+    const fromCity = this.normalizeCityLabel(event.city?.name);
     if (fromCity) {
       return fromCity;
     }
@@ -811,11 +827,36 @@ export class FeaturePageComponent implements OnInit {
       return 'Unknown';
     }
     const firstChunk = venue.split(',')[0]?.trim();
-    return firstChunk || venue;
+    return this.normalizeCityLabel(firstChunk || venue) || firstChunk || venue;
+  }
+
+  private normalizeCityLabel(raw: unknown): string {
+    const input = String(raw ?? '').trim();
+    if (!input) {
+      return '';
+    }
+
+    const directKey = input.toLowerCase();
+    const corrected = this.cityLabelCorrections[directKey];
+    if (corrected) {
+      return corrected;
+    }
+
+    const repaired = input
+      .replace(/\uFFFD+/g, 'e')
+      .replace(/\?\?/g, 'e')
+      .replace(/\?/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const repairedKey = repaired.toLowerCase();
+    return this.cityLabelCorrections[repairedKey] ?? repaired;
   }
 
   get eventCityOptions(): string[] {
-    const allCities = this.cities().map((c) => String(c?.name ?? '').trim()).filter((v) => !!v);
+    const allCities = this.cities()
+      .map((c) => this.normalizeCityLabel(c?.name))
+      .filter((v) => !!v);
     if (allCities.length > 0) {
       return [...new Set(allCities)].sort((a, b) => a.localeCompare(b));
     }
@@ -837,7 +878,7 @@ export class FeaturePageComponent implements OnInit {
   }
 
   get selectedEventCityLabel(): string {
-    return this.eventFilterCity === 'ALL' ? 'All cities' : this.eventFilterCity;
+    return this.eventFilterCity === 'ALL' ? 'All cities' : this.normalizeCityLabel(this.eventFilterCity);
   }
 
   toggleEventCityDropdown(event: MouseEvent): void {
@@ -846,7 +887,7 @@ export class FeaturePageComponent implements OnInit {
   }
 
   selectEventCity(city: string): void {
-    this.eventFilterCity = city;
+    this.eventFilterCity = city === 'ALL' ? 'ALL' : this.normalizeCityLabel(city);
     this.eventCityDropdownOpen = false;
     this.eventCitySearch = '';
   }
@@ -862,7 +903,8 @@ export class FeaturePageComponent implements OnInit {
 
   get filteredEvents(): TravelEvent[] {
     return this.events.filter((event) => {
-      const cityOk = this.eventFilterCity === 'ALL' || this.toEventCityLabel(event) === this.eventFilterCity;
+      const cityOk = this.eventFilterCity === 'ALL'
+        || this.normalizeCityLabel(this.toEventCityLabel(event)) === this.normalizeCityLabel(this.eventFilterCity);
       const typeOk = this.eventFilterType === 'ALL' || String(event.eventType ?? '').trim() === this.eventFilterType;
       const price = this.eventPriceAmount(event);
       const budgetOk = price <= this.eventMaxPrice;
@@ -951,7 +993,15 @@ export class FeaturePageComponent implements OnInit {
   }
 
   eventDetailDateTimeLabel(event: TravelEvent | null): string {
-    const raw = String(event?.startDate ?? '').trim();
+    return this.eventDetailDateTimeValue(event?.startDate);
+  }
+
+  eventDetailEndDateTimeLabel(event: TravelEvent | null): string {
+    return this.eventDetailDateTimeValue(event?.endDate);
+  }
+
+  private eventDetailDateTimeValue(value: string | undefined): string {
+    const raw = String(value ?? '').trim();
     if (!raw) {
       return 'Date TBA';
     }

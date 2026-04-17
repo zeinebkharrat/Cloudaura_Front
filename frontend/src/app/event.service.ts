@@ -51,6 +51,8 @@ export class EventService {
         const startDate = source?.startDate ?? source?.start_date ?? source?.date ?? source?.start ?? '';
         const endDate = source?.endDate ?? source?.end_date ?? source?.date ?? source?.end ?? '';
         const price = source?.price != null ? Number(source.price) : undefined;
+        const totalCapacity = source?.totalCapacity != null ? Number(source.totalCapacity) : undefined;
+        const reservedCount = source?.reservedCount != null ? Number(source.reservedCount) : undefined;
 
         return {
           eventId,
@@ -62,6 +64,8 @@ export class EventService {
           status,
           imageUrl,
           price,
+          totalCapacity,
+          reservedCount,
           city: source?.city ?? { cityId: 0 },
         } as Event;
       })

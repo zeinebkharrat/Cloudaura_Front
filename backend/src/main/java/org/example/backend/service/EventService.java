@@ -67,9 +67,33 @@ public class EventService {
             event.setCity(null); // Autorise l'ajout sans ville si besoin
         }
 
+        normalizeCapacity(event);
+
         applyAutomaticStatusByDate(event);
 
         return eventRepository.save(event);
+    }
+
+    @Transactional
+    public boolean reserveSeats(Integer eventId, int quantity) {
+        if (eventId == null || quantity <= 0) {
+            return false;
+        }
+        return eventRepository.reserveSpotsIfAvailable(eventId, quantity) > 0;
+    }
+
+    @Transactional
+    public boolean hasAvailableSeats(Integer eventId, int requestedQuantity) {
+        if (eventId == null || requestedQuantity <= 0) {
+            return false;
+        }
+        return eventRepository.findById(eventId)
+                .map(event -> {
+                    int total = Math.max(0, event.getTotalCapacity() == null ? 0 : event.getTotalCapacity());
+                    int reserved = Math.max(0, event.getReservedCount() == null ? 0 : event.getReservedCount());
+                    return reserved + requestedQuantity <= total;
+                })
+                .orElse(false);
     }
 
     public void deleteEvent(Integer id) {
@@ -127,5 +151,17 @@ public class EventService {
         eventRepository.markCompletedByDate();
         eventRepository.markOngoingByDate();
         eventRepository.markUpcomingByDate();
+    }
+
+    private void normalizeCapacity(Event event) {
+        int totalCapacity = Math.max(0, event.getTotalCapacity() == null ? 0 : event.getTotalCapacity());
+        int reservedCount = Math.max(0, event.getReservedCount() == null ? 0 : event.getReservedCount());
+
+        if (reservedCount > totalCapacity) {
+            throw new IllegalArgumentException("totalCapacity must be >= reservedCount");
+        }
+
+        event.setTotalCapacity(totalCapacity);
+        event.setReservedCount(reservedCount);
     }
 }
