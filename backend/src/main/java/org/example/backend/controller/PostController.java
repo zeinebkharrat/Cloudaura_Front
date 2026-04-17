@@ -4,6 +4,7 @@ import org.example.backend.model.Post;
 import org.example.backend.model.User;
 import org.example.backend.service.CustomUserDetailsService;
 import org.example.backend.service.IPostService;
+import org.example.backend.service.PostViewService;
 import org.example.backend.service.SightengineCommentModerationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -27,6 +28,9 @@ public class PostController {
 
     @Autowired
     SightengineCommentModerationService moderationService;
+
+    @Autowired
+    PostViewService postViewService;
 
     @GetMapping("/allPosts")
     public List<Post> getAllPosts() {
@@ -60,6 +64,15 @@ public class PostController {
         if (post.getCommentsCount() == null) {
             post.setCommentsCount(0);
         }
+        if (post.getTotalViews() == null) {
+            post.setTotalViews(0);
+        }
+        if (post.getRepostCount() == null) {
+            post.setRepostCount(0);
+        }
+        if (post.getPostScore() == null) {
+            post.setPostScore(1.0);
+        }
 
         return postService.addPost(post);
     }
@@ -90,8 +103,18 @@ public class PostController {
         post.setHashtags(buildHashtagString(post.getHashtags(), post.getLocation()));
         post.setLikesCount(existingPost.getLikesCount());
         post.setCommentsCount(existingPost.getCommentsCount());
+        post.setTotalViews(existingPost.getTotalViews());
+        post.setRepostCount(existingPost.getRepostCount());
+        post.setPostScore(existingPost.getPostScore());
         post.setRepostOf(existingPost.getRepostOf());
         return postService.updatePost(post);
+    }
+
+    @PostMapping("/recordView/{id}")
+    public ResponseEntity<Map<String, Object>> recordView(@PathVariable Integer id) {
+        User currentUser = getCurrentUser();
+        boolean counted = postViewService.recordMonthlyView(id, currentUser.getUserId());
+        return ResponseEntity.ok(Map.of("counted", counted));
     }
 
     @PostMapping("/repost/{id}")

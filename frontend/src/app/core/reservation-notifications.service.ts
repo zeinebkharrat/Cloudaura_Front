@@ -12,6 +12,10 @@ export interface ReservationNotificationItem {
   route: string | null;
   reservationType: string | null;
   reservationId: number | null;
+  interactionCount: number | null;
+  lastActorUserId: number | null;
+  lastActorName: string | null;
+  lastActorAvatarUrl: string | null;
   read: boolean;
   createdAt: string | null;
 }
@@ -168,6 +172,10 @@ export class ReservationNotificationsService implements OnDestroy {
       route: row['route'] == null ? null : String(row['route']),
       reservationType: row['reservationType'] == null ? null : String(row['reservationType']),
       reservationId: Number.isFinite(reservationId) ? reservationId : null,
+      interactionCount: Number.isFinite(Number(row['interactionCount'])) ? Number(row['interactionCount']) : null,
+      lastActorUserId: Number.isFinite(Number(row['lastActorUserId'])) ? Number(row['lastActorUserId']) : null,
+      lastActorName: row['lastActorName'] == null ? null : String(row['lastActorName']),
+      lastActorAvatarUrl: row['lastActorAvatarUrl'] == null ? null : String(row['lastActorAvatarUrl']),
       read: Boolean(row['read'] ?? row['isRead']),
       createdAt: row['createdAt'] == null ? null : String(row['createdAt']),
     };

@@ -29,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.security.core.Authentication;
 import org.example.backend.service.ImageDescriptionService;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/products")
@@ -148,6 +149,9 @@ public class ProductController {
             return ResponseEntity
                 .created(URI.create("/api/products/" + created.productId()))
                 .body(created);
+        } catch (ResponseStatusException ex) {
+            return ResponseEntity.status(ex.getStatusCode())
+                    .body(Map.of("error", ex.getReason() != null ? ex.getReason() : "Request rejected"));
         } catch (NoSuchElementException ex) {
             return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
         } catch (Exception ex) {

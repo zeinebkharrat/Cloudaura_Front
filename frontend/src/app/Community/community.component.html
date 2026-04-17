@@ -166,12 +166,7 @@
 
       <ng-container *ngFor="let post of visiblePosts(); trackBy: trackByPost">
         <ng-container *ngIf="post.postId != null">
-          <article
-            class="post-card glass-panel"
-            [attr.id]="'community-post-' + post.postId"
-            [class.post-card--location-hover]="isLocationHoverVisible(post.postId!)"
-            [class.post-card--focus-target]="focusedPostId() === post.postId"
-          >
+          <article class="post-card glass-panel" [attr.data-post-id]="post.postId" [class.post-card--location-hover]="isLocationHoverVisible(post.postId!)">
             <header class="post-header">
               <div class="post-author">
                 <div class="avatar">
@@ -433,6 +428,10 @@
                     <img src="icones/commenter.png" alt="" class="stat-ico stat-ico--comment" width="18" height="18" />
                     <span>{{ getCommentCount(post.postId!) }} comments</span>
                   </button>
+                  <span class="stat-item">
+                    <span>{{ post.totalViews ?? 0 }} views</span>
+                  </span>
+                  
                 </div>
 
                 <div class="post-stats-right" *ngIf="authService.isAuthenticated()">
@@ -670,70 +669,106 @@
       (mouseleave)="scheduleUserHoverClose()"
       (click)="goToHoveredUserProfile($event)"
     >
-      <header class="user-hover-card__header">
-        <div class="avatar user-hover-card__avatar">
-          <img *ngIf="userAvatarUrl(hover.user); else hoverAvatarFallback" [src]="userAvatarUrl(hover.user)!" [alt]="displayName(hover.user)" class="avatar-img" />
-          <ng-template #hoverAvatarFallback>{{ displayName(hover.user).charAt(0).toUpperCase() || 'U' }}</ng-template>
-        </div>
-        <div class="user-hover-card__identity">
-          <h4>{{ displayName(hover.user) }}</h4>
-          <p>{{ hover.user.username || 'traveler' }}</p>
-        </div>
-      </header>
+      <div class="user-hover-card__cover" [style.background-image]="hoverCardCover(hover.user)"></div>
 
-      <div class="user-hover-card__meta">
-        <p><strong>Country:</strong> {{ hoverCardCountry(hover.user) }}</p>
-        <p *ngIf="hover.user.cityName"><strong>City:</strong> {{ hover.user.cityName }}</p>
-        <p *ngIf="hover.user.followersCount != null"><strong>{{ hover.user.followersCount }}</strong> followers</p>
-      </div>
+      <div class="user-hover-card__content">
+        <header class="user-hover-card__header">
+          <div class="avatar user-hover-card__avatar">
+            <img *ngIf="userAvatarUrl(hover.user); else hoverAvatarFallback" [src]="userAvatarUrl(hover.user)!" [alt]="displayName(hover.user)" class="avatar-img" />
+            <ng-template #hoverAvatarFallback>{{ displayName(hover.user).charAt(0).toUpperCase() || 'U' }}</ng-template>
+          </div>
+          <div class="user-hover-card__identity">
+            <h4>{{ displayName(hover.user) }}</h4>
+            <p>{{ hover.user.username || 'traveler' }}</p>
+          </div>
+        </header>
 
-      <div class="user-hover-card__actions" *ngIf="hover.user.userId">
-        <button
-          type="button"
-          class="user-hover-card__btn user-hover-card__btn--primary"
-          *ngIf="authService.isAuthenticated() && authService.currentUser()?.id !== hover.user.userId"
-          (click)="toggleFollowFromHover(hover.user.userId, $event)"
-        >{{ isFollowing(hover.user.userId) ? 'Following' : 'Follow' }}</button>
-        <button
-          type="button"
-          class="user-hover-card__btn"
-          *ngIf="authService.isAuthenticated() && authService.currentUser()?.id !== hover.user.userId"
-          (click)="openChatWithHoveredUser($event)"
-        >Chat</button>
+        <div class="user-hover-card__meta">
+          <p><strong>Country:</strong> {{ hoverCardCountry(hover.user) }}</p>
+          <p *ngIf="hover.user.cityName"><strong>City:</strong> {{ hover.user.cityName }}</p>
+          <div class="user-hover-card__stats">
+            <span><strong>{{ hover.user.followersCount ?? 0 }}</strong> followers</span>
+            <span><strong>{{ hover.user.followingCount ?? 0 }}</strong> following</span>
+          </div>
+        </div>
+
+        <div class="user-hover-card__actions" *ngIf="hover.user.userId">
+          <button
+            type="button"
+            class="user-hover-card__btn user-hover-card__btn--primary"
+            *ngIf="authService.isAuthenticated() && authService.currentUser()?.id !== hover.user.userId"
+            (click)="toggleFollowFromHover(hover.user.userId, $event)"
+          >{{ isFollowing(hover.user.userId) ? 'Following' : 'Follow' }}</button>
+          <button
+            type="button"
+            class="user-hover-card__btn"
+            *ngIf="authService.isAuthenticated() && authService.currentUser()?.id !== hover.user.userId"
+            (click)="openChatWithHoveredUser($event)"
+          >Chat</button>
+        </div>
       </div>
     </article>
     </section>
     </div>
 
-    <aside class="community-suggestions glass-panel" *ngIf="suggestedUsers().length > 0">
-      <header class="community-suggestions__head">
-        <h3>Suggestions for You</h3>
-      </header>
+    <aside class="community-right-rail" *ngIf="leaderboardUsers().length > 0 || suggestedUsers().length > 0">
+      <section class="community-leaderboard glass-panel" *ngIf="leaderboardUsers().length > 0">
+        <header class="community-leaderboard__head">
+          <h3>Leaderboard: Creator of the Month</h3>
+        </header>
 
-      <div class="community-suggestions__list">
-        <article class="community-suggestion-item" *ngFor="let user of suggestedUsers(); trackBy: trackByUserRef">
-          <button type="button" class="community-suggestion-user" (click)="goToUserProfile(user.userId)">
-            <div class="avatar community-suggestion-avatar">
-              <img *ngIf="userAvatarUrl(user); else suggestionFallback" [src]="userAvatarUrl(user)!" [alt]="displayName(user)" class="avatar-img" />
-              <ng-template #suggestionFallback>{{ displayName(user).charAt(0).toUpperCase() || 'U' }}</ng-template>
+        <div class="community-leaderboard__list">
+          <article class="community-leaderboard-item" *ngFor="let user of leaderboardUsers(); index as i; trackBy: trackByUserRef">
+            <span class="community-leaderboard-medal" [class]="'community-leaderboard-medal community-leaderboard-medal--' + (i + 1)">
+              <span class="community-leaderboard-medal__number">{{ i + 1 }}</span>
+            </span>
+
+            <div class="community-leaderboard-avatar-wrap">
+              <span class="community-leaderboard-crown" *ngIf="i === 0" aria-hidden="true">👑</span>
+              <div class="avatar community-leaderboard-avatar">
+                <img *ngIf="userAvatarUrl(user); else leaderboardFallback" [src]="userAvatarUrl(user)!" [alt]="displayName(user)" class="avatar-img" />
+                <ng-template #leaderboardFallback>{{ displayName(user).charAt(0).toUpperCase() || 'U' }}</ng-template>
+              </div>
             </div>
 
-            <span class="community-suggestion-meta">
+            <span class="community-leaderboard-meta">
               <strong>{{ displayName(user) }}</strong>
-              <small *ngIf="suggestionLocation(user)">{{ suggestionLocation(user) }}</small>
+              <small>{{ leaderboardMonthlyScore(user) }} monthly score</small>
             </span>
-          </button>
+          </article>
+        </div>
+      </section>
 
-          <button
-            type="button"
-            class="community-suggestion-follow"
-            (click)="toggleFollow(user.userId)"
-            *ngIf="authService.isAuthenticated()"
-          >
-            {{ isFollowing(user.userId) ? 'Following' : '+ Add Friend' }}
-          </button>
-        </article>
-      </div>
+      <section class="community-suggestions glass-panel" *ngIf="suggestedUsers().length > 0">
+        <header class="community-suggestions__head">
+          <h3>Suggestions for You</h3>
+        </header>
+
+        <div class="community-suggestions__list">
+          <article class="community-suggestion-item" *ngFor="let user of suggestedUsers(); trackBy: trackByUserRef">
+            <button type="button" class="community-suggestion-user" (click)="goToUserProfile(user.userId)">
+              <div class="avatar community-suggestion-avatar">
+                <img *ngIf="userAvatarUrl(user); else suggestionFallback" [src]="userAvatarUrl(user)!" [alt]="displayName(user)" class="avatar-img" />
+                <ng-template #suggestionFallback>{{ displayName(user).charAt(0).toUpperCase() || 'U' }}</ng-template>
+              </div>
+
+              <span class="community-suggestion-meta">
+                <strong>{{ displayName(user) }}</strong>
+                <small *ngIf="suggestionLocation(user)">{{ suggestionLocation(user) }}</small>
+              </span>
+            </button>
+
+            <button
+              type="button"
+              class="community-suggestion-follow"
+              (click)="toggleFollow(user.userId)"
+              *ngIf="authService.isAuthenticated()"
+            >
+              {{ isFollowing(user.userId) ? 'Following' : '+ Add Friend' }}
+            </button>
+          </article>
+        </div>
+      </section>
     </aside>
   </div>
 </section>

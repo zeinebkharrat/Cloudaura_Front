@@ -59,6 +59,55 @@ public class UserNotificationService {
         pushRealtime(saved);
     }
 
+    @Transactional
+    public void notifyPostInteraction(Integer targetUserId, Integer postId, String interactionType, User actor) {
+        if (targetUserId == null || postId == null || interactionType == null || actor == null || actor.getUserId() == null) {
+            return;
+        }
+        if (targetUserId.equals(actor.getUserId())) {
+            return;
+        }
+
+        Optional<User> targetUserOpt = userRepository.findById(targetUserId);
+        if (targetUserOpt.isEmpty()) {
+            return;
+        }
+
+        String normalizedType = interactionType.trim().toUpperCase(Locale.ROOT);
+        Optional<UserNotification> existingOpt = userNotificationRepository
+                .findFirstByUserUserIdAndTypeAndReservationTypeAndReservationIdOrderByCreatedAtDesc(
+                        targetUserId,
+                        normalizedType,
+                        "POST",
+                        postId
+                );
+
+        UserNotification notification = existingOpt.orElseGet(UserNotification::new);
+        if (notification.getNotificationId() == null) {
+            notification.setUser(targetUserOpt.get());
+            notification.setType(normalizedType);
+            notification.setReservationType("POST");
+            notification.setReservationId(postId);
+            notification.setRoute("/communaute");
+            notification.setInteractionCount(0);
+        }
+
+        int nextCount = (notification.getInteractionCount() == null ? 0 : notification.getInteractionCount()) + 1;
+        String actorName = resolveActorName(actor);
+
+        notification.setInteractionCount(nextCount);
+        notification.setLastActorUserId(actor.getUserId());
+        notification.setLastActorName(actorName);
+        notification.setLastActorAvatarUrl(actor.getProfileImageUrl());
+        notification.setTitle(buildSocialTitle(normalizedType));
+        notification.setMessage(buildSocialMessage(normalizedType, actorName, nextCount));
+        notification.setReadFlag(false);
+        notification.setCreatedAt(LocalDateTime.now());
+
+        UserNotification saved = userNotificationRepository.save(notification);
+        pushRealtime(saved);
+    }
+
     @Transactional(readOnly = true)
     public List<UserNotification> listByUser(Integer userId) {
         return userNotificationRepository.findByUserUserIdOrderByCreatedAtDesc(userId);
@@ -119,8 +168,50 @@ public class UserNotificationService {
         row.put("route", n.getRoute());
         row.put("reservationType", n.getReservationType());
         row.put("reservationId", n.getReservationId());
+        row.put("interactionCount", n.getInteractionCount());
+        row.put("lastActorUserId", n.getLastActorUserId());
+        row.put("lastActorName", n.getLastActorName());
+        row.put("lastActorAvatarUrl", n.getLastActorAvatarUrl());
         row.put("read", n.isReadFlag());
         row.put("createdAt", n.getCreatedAt());
         return row;
+    }
+
+    private String resolveActorName(User actor) {
+        String firstName = actor.getFirstName();
+        if (firstName != null && !firstName.isBlank()) {
+            return firstName.trim();
+        }
+        String username = actor.getUsername();
+        if (username != null && !username.isBlank()) {
+            return username.trim();
+        }
+        return "Someone";
+    }
+
+    private String buildSocialTitle(String type) {
+        return switch (type) {
+            case "POST_LIKE" -> "New likes on your post";
+            case "POST_COMMENT" -> "New comments on your post";
+            case "POST_REPOST" -> "Your post was reposted";
+            default -> "New activity on your post";
+        };
+    }
+
+    private String buildSocialMessage(String type, String actorName, int count) {
+        String verb = switch (type) {
+            case "POST_LIKE" -> "liked";
+            case "POST_COMMENT" -> "commented on";
+            case "POST_REPOST" -> "reposted";
+            default -> "interacted with";
+        };
+
+        if (count <= 1) {
+            return actorName + " " + verb + " your post.";
+        }
+        if (count == 2) {
+            return actorName + " and 1 other person " + verb + " your post.";
+        }
+        return actorName + " and " + (count - 1) + " others " + verb + " your post.";
     }
 }

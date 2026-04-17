@@ -1,5 +1,6 @@
 package org.example.backend.dto;
 
+import java.time.LocalDate;
 import java.util.Set;
 
 public record UserSummaryResponse(
@@ -10,12 +11,16 @@ public record UserSummaryResponse(
         String lastName,
         String phone,
         String nationality,
+        String gender,
+        LocalDate dateOfBirth,
         Integer cityId,
         String cityName,
         Set<String> roles,
         String status,
         Boolean artisanRequestPending,
         String profileImageUrl,
-        Integer points
+        Integer points,
+        Double monthlyScore,
+        Double lifetimeScore
 ) {
 }

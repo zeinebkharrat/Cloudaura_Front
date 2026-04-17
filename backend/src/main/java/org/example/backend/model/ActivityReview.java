@@ -34,6 +34,18 @@ public class ActivityReview {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String commentText;
 
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String originalCommentText;
+
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String sanitizedCommentText;
+
+    @Lob
+    @Column(columnDefinition = "TEXT")
+    private String abuseCategories;
+
     @Temporal(TemporalType.TIMESTAMP)
     @Column(nullable = false)
     private Date createdAt;

@@ -80,6 +80,7 @@ export class SignUpComponent implements OnDestroy {
   readonly passwordStrengthTone = signal('#ef4444');
   readonly passwordMatchHint = signal('Waiting for confirmation');
   readonly passwordMatchOk = signal(false);
+  readonly maxBirthDate = new Date().toISOString().slice(0, 10);
 
   private recaptchaWidgetId = -1;
   private recaptchaInitInFlight = false;
@@ -96,6 +97,8 @@ export class SignUpComponent implements OnDestroy {
       email: ['', [Validators.required, Validators.email]],
       phone: ['', [Validators.pattern(/^\+?[0-9\s-]{8,20}$/)]],
       nationality: [''],
+      gender: ['' as '' | 'MALE' | 'FEMALE'],
+      dateOfBirth: [''],
       cityId: [null as number | null],
       password: ['', [Validators.required, Validators.minLength(8)]],
       confirmPassword: ['', [Validators.required]],
@@ -142,6 +145,9 @@ export class SignUpComponent implements OnDestroy {
       if (!this.isTunisiaNationality(nat)) {
         this.form.controls.cityId.setValue(null);
         this.form.controls.cityId.markAsUntouched();
+        if (this.form.controls.becomeArtisan.value) {
+          this.form.controls.becomeArtisan.setValue(false);
+        }
       }
     });
 
@@ -202,7 +208,7 @@ export class SignUpComponent implements OnDestroy {
   }
 
   controlInvalid(
-    controlName: 'firstName' | 'lastName' | 'username' | 'email' | 'phone' | 'password' | 'confirmPassword' | 'cityId'
+    controlName: 'firstName' | 'lastName' | 'username' | 'email' | 'phone' | 'password' | 'confirmPassword' | 'cityId' | 'gender' | 'dateOfBirth'
   ): boolean {
     const control = this.form.controls[controlName];
     return control.invalid && control.touched;
@@ -263,6 +269,10 @@ export class SignUpComponent implements OnDestroy {
       this.formError.set('Please select a city for Tunisia.');
       return;
     }
+    if (raw.becomeArtisan && !isTunisia) {
+      this.formError.set('Only Tunisian users can request the artisan role.');
+      return;
+    }
 
     let captchaToken: string | null = null;
     if (this.captchaEnabled() && !this.captchaV3()) {
@@ -309,6 +319,8 @@ export class SignUpComponent implements OnDestroy {
       email: string;
       phone: string;
       nationality: string;
+      gender: '' | 'MALE' | 'FEMALE';
+      dateOfBirth: string;
       cityId: number | null;
       password: string;
       confirmPassword: string;
@@ -327,6 +339,8 @@ export class SignUpComponent implements OnDestroy {
       lastName: raw.lastName,
       becomeArtisan: raw.becomeArtisan,
       nationality: raw.nationality?.trim() || null,
+      gender: raw.gender || null,
+      dateOfBirth: raw.dateOfBirth?.trim() || null,
       cityId: isTunisia ? cityId : null,
       profileImageUrl: this.uploadedImageUrl(),
       captchaToken,
@@ -523,6 +537,10 @@ export class SignUpComponent implements OnDestroy {
   }
 
   showCityField(): boolean {
+    return this.isTunisiaNationality(this.form.controls.nationality.value);
+  }
+
+  canRequestArtisan(): boolean {
     return this.isTunisiaNationality(this.form.controls.nationality.value);
   }
 }

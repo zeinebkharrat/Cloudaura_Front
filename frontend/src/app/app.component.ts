@@ -21,6 +21,7 @@ import { ReservationNotificationItem, ReservationNotificationsService } from './
   styleUrl: './app.component.css',
 })
 export class AppComponent implements OnInit {
+  private static readonly APP_BASE_TITLE = 'YallaTN+ - Premium Tunisian Tourism';
   private readonly router = inject(Router);
   private readonly renderer = inject(Renderer2);
   readonly auth = inject(AuthService);
@@ -34,6 +35,7 @@ export class AppComponent implements OnInit {
   isDarkMode = signal(true);
   isUserMenuOpen = signal(false);
   isServicesMenuOpen = signal(false);
+  isMobileNavOpen = signal(false);
   selectedCityName = signal<string | null>(null);
   isScrolled = signal(false);
   isHomeRoute = signal(false);
@@ -52,6 +54,7 @@ export class AppComponent implements OnInit {
   readonly reservationNotifications = this.reservationNotificationsService.items;
   readonly notificationsBusy = this.reservationNotificationsService.busy;
   readonly userBadgeCollection = signal<GamificationBadgeEntry[]>([]);
+  readonly acknowledgedNotificationIds = signal<Set<number>>(new Set());
   readonly userPoints = computed(() => {
     const fromAuth = this.currentUser()?.points;
     if (fromAuth != null) {
@@ -59,7 +62,11 @@ export class AppComponent implements OnInit {
     }
     return 0;
   });
-  readonly challengeCount = computed(() => this.reservationNotifications().filter((n) => !n.read).length);
+  readonly challengeCount = computed(() => {
+    const acknowledged = this.acknowledgedNotificationIds();
+    return this.reservationNotifications().filter((n) => !n.read && !acknowledged.has(n.notificationId)).length;
+  });
+  readonly unreadNotificationCount = computed(() => this.reservationNotifications().filter((n) => !n.read).length);
   private gamificationRequestVersion = 0;
 
   constructor() {
@@ -76,10 +83,20 @@ export class AppComponent implements OnInit {
           this.shop.cartCount.set(0);
           this.reservationNotificationsService.disconnect();
           this.reservationNotifications.set([]);
+          this.acknowledgedNotificationIds.set(new Set());
         }
       },
       { allowSignalWrites: true }
     );
+
+    effect(() => {
+      const count = this.isAuthenticated() ? this.unreadNotificationCount() : 0;
+      if (count > 0) {
+        document.title = '(' + count + ') ' + AppComponent.APP_BASE_TITLE;
+        return;
+      }
+      document.title = AppComponent.APP_BASE_TITLE;
+    });
 
     this.router.events
       .pipe(filter((event) => event instanceof NavigationEnd))
@@ -128,6 +145,7 @@ export class AppComponent implements OnInit {
     const path = this.router.url.split('?')[0].split('#')[0];
     this.isHomeRoute.set(path === '' || path === '/');
     this.isCityRoute.set(path.startsWith('/city/'));
+    this.isMobileNavOpen.set(false);
     this.onWindowScroll();
   }
 
@@ -169,11 +187,21 @@ export class AppComponent implements OnInit {
     this.isServicesMenuOpen.set(false);
   }
 
+  toggleMobileNav(event: Event): void {
+    event.stopPropagation();
+    this.isMobileNavOpen.set(!this.isMobileNavOpen());
+  }
+
+  closeMobileNav(): void {
+    this.isMobileNavOpen.set(false);
+  }
+
   @HostListener('document:click')
   onDocumentClick() {
     this.isUserMenuOpen.set(false);
     this.isServicesMenuOpen.set(false);
     this.isChallengesPopupOpen.set(false);
+    this.isMobileNavOpen.set(false);
   }
 
   toggleChallengesPopup(event: Event): void {
@@ -181,9 +209,8 @@ export class AppComponent implements OnInit {
     const next = !this.isChallengesPopupOpen();
     this.isChallengesPopupOpen.set(next);
     if (next) {
-      if (this.challengeCount() > 0) {
-        this.reservationNotificationsService.markAllAsRead();
-      } else if (this.reservationNotifications().length === 0) {
+      this.acknowledgeCurrentUnreadNotifications();
+      if (this.reservationNotifications().length === 0) {
         this.reservationNotificationsService.load();
       }
     }
@@ -230,6 +257,15 @@ export class AppComponent implements OnInit {
       this.reservationNotificationsService.markAsRead(item.notificationId);
     }
     this.closeChallengesPopup();
+    if (this.isSocialNotification(item)) {
+      const queryParams: Record<string, string | number> = {};
+      if (item.reservationId != null) {
+        queryParams['postId'] = item.reservationId;
+      }
+      void this.router.navigate([item.route || '/communaute'], { queryParams });
+      return;
+    }
+
     const type = this.notificationTypeKey(item.reservationType);
     void this.router.navigate(['/settings'], {
       queryParams: {
@@ -242,6 +278,17 @@ export class AppComponent implements OnInit {
   markAllNotificationsRead(event: Event): void {
     event.stopPropagation();
     this.reservationNotificationsService.markAllAsRead();
+    this.acknowledgedNotificationIds.set(new Set());
+  }
+
+  private acknowledgeCurrentUnreadNotifications(): void {
+    const next = new Set(this.acknowledgedNotificationIds());
+    for (const item of this.reservationNotifications()) {
+      if (!item.read) {
+        next.add(item.notificationId);
+      }
+    }
+    this.acknowledgedNotificationIds.set(next);
   }
 
   notificationTypeLabel(value: string | null | undefined): string {
@@ -250,6 +297,51 @@ export class AppComponent implements OnInit {
       return 'Stay';
     }
     return key.charAt(0).toUpperCase() + key.slice(1);
+  }
+
+  notificationCategoryLabel(item: ReservationNotificationItem): string {
+    const normalizedType = (item.type ?? '').toUpperCase();
+    if (normalizedType === 'POST_LIKE') {
+      return 'Likes';
+    }
+    if (normalizedType === 'POST_COMMENT') {
+      return 'Comments';
+    }
+    if (normalizedType === 'POST_REPOST') {
+      return 'Reposts';
+    }
+    return this.notificationTypeLabel(item.reservationType);
+  }
+
+  notificationActorInitial(item: ReservationNotificationItem): string {
+    const value = item.lastActorName?.trim();
+    if (!value) {
+      return 'U';
+    }
+    return value.charAt(0).toUpperCase();
+  }
+
+  isSocialNotificationPublic(item: ReservationNotificationItem): boolean {
+    const normalizedType = (item.type ?? '').toUpperCase();
+    return normalizedType === 'POST_LIKE' || normalizedType === 'POST_COMMENT' || normalizedType === 'POST_REPOST';
+  }
+
+  notificationReactionEmoji(item: ReservationNotificationItem): string {
+    const normalizedType = (item.type ?? '').toUpperCase();
+    if (normalizedType === 'POST_LIKE') {
+      return '❤';
+    }
+    if (normalizedType === 'POST_COMMENT') {
+      return '💬';
+    }
+    if (normalizedType === 'POST_REPOST') {
+      return '🔁';
+    }
+    return '';
+  }
+
+  private isSocialNotification(item: ReservationNotificationItem): boolean {
+    return this.isSocialNotificationPublic(item);
   }
 
   private notificationTypeKey(value: string | null | undefined): 'transport' | 'stay' | 'activity' | 'event' | 'artisan' {
@@ -290,6 +382,7 @@ export class AppComponent implements OnInit {
     this.gamificationRequestVersion++;
     this.reservationNotificationsService.disconnect();
     this.reservationNotifications.set([]);
+    this.acknowledgedNotificationIds.set(new Set());
     this.userBadgeCollection.set([]);
     this.isChallengesPopupOpen.set(false);
     this.shop.cartCount.set(0);

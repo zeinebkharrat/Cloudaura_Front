@@ -2,6 +2,22 @@
   <aside class="community-sidebar glass-panel">
     <h2 class="community-sidebar-title">Community</h2>
 
+    <div class="community-user-card" *ngIf="authService.isAuthenticated() && authService.currentUser() as user">
+      <img
+        *ngIf="user.profileImageUrl; else communityAvatarFallback"
+        [src]="user.profileImageUrl"
+        alt="Profile"
+        class="community-user-avatar"
+      />
+      <ng-template #communityAvatarFallback>
+        <div class="community-user-avatar community-user-avatar--fallback">{{ communityInitials() }}</div>
+      </ng-template>
+      <div class="community-user-meta">
+        <h3>{{ communityDisplayName() }}</h3>
+        <p>{{ user.email }}</p>
+      </div>
+    </div>
+
     <nav class="community-nav" aria-label="Community navigation">
       <a
         routerLink="/communaute"

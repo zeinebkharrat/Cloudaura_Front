@@ -143,12 +143,20 @@ public class AuthService {
         user.setStatus("ACTIVE");
         user.setCreatedAt(new Date());
         user.setPoints(0);
+        user.setMonthlyScore(0.0);
+        user.setLifetimeScore(0.0);
         boolean becomeArtisant = Boolean.TRUE.equals(request.becomeArtisan());
         user.setArtisanRequestPending(becomeArtisant);
         user.setArtisanRequestedAt(becomeArtisant ? new Date() : null);
         user.setAuthProvider("LOCAL");
         user.setProfileImageUrl(request.profileImageUrl() != null ? request.profileImageUrl().trim() : null);
         user.setNationality(request.nationality() != null ? request.nationality().trim() : null);
+        user.setGender(request.gender());
+        user.setDateOfBirth(request.dateOfBirth());
+        if (becomeArtisant && !isTunisiaNationality(user.getNationality())) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY,
+                "Artisan request is available only for Tunisian nationality");
+        }
         user.setCity(resolveCityForNationality(user.getNationality(), request.cityId()));
         user.setEmailVerified(false);
         user.setFailedLoginAttempts(0);
@@ -166,6 +174,7 @@ public class AuthService {
                     savedUser.getUsername(),
                     savedUser.getPhone(),
                     savedUser.getNationality(),
+                    savedUser.getGender(),
                     verificationLink);
         } catch (MailException ex) {
             return new AuthMessageResponse(
@@ -363,6 +372,7 @@ public class AuthService {
                                 user.getUsername(),
                                 user.getPhone(),
                                 user.getNationality(),
+                            user.getGender(),
                                 verificationLink);
                     } catch (MailException ex) {
                         throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Email service unavailable. Check SMTP credentials.");
@@ -446,6 +456,8 @@ public class AuthService {
         user.setStatus("ACTIVE");
         user.setCreatedAt(new Date());
         user.setPoints(0);
+        user.setMonthlyScore(0.0);
+        user.setLifetimeScore(0.0);
         user.setArtisanRequestPending(false);
         user.setArtisanRequestedAt(null);
         user.setAuthProvider(provider.toUpperCase(Locale.ROOT));
@@ -733,13 +745,17 @@ public class AuthService {
                 user.getLastName(),
                 user.getPhone(),
                 user.getNationality(),
+                user.getGender(),
+                user.getDateOfBirth(),
                 user.getCity() != null ? user.getCity().getCityId().intValue() : null,
                 user.getCity() != null ? user.getCity().getName() : null,
                 roles,
                 user.getStatus(),
                 Boolean.TRUE.equals(user.getArtisanRequestPending()),
                 user.getProfileImageUrl(),
-                user.getPoints()
+                user.getPoints(),
+                user.getMonthlyScore(),
+                user.getLifetimeScore()
         );
     }
 }

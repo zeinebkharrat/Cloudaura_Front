@@ -38,6 +38,8 @@
         <option value="createdAt,asc">Oldest first</option>
         <option value="likesCount,desc">Most liked</option>
         <option value="commentsCount,desc">Most commented</option>
+        <option value="totalViews,desc">Most viewed</option>
+        <option value="postScore,desc">Best score</option>
       </select>
     </div>
 
@@ -52,6 +54,9 @@
             <th>Location</th>
             <th>Likes</th>
             <th>Comments</th>
+            <th>Views</th>
+            <th>Score</th>
+            <th>Image</th>
             <th>Created</th>
             <th>Type</th>
             <th class="actions-head">Actions</th>
@@ -87,6 +92,15 @@
               </td>
               <td>{{ post.likesCount }}</td>
               <td>{{ post.commentsCount }}</td>
+              <td>{{ post.totalViews ?? 0 }}</td>
+              <td>{{ post.postScore ?? 0 }}</td>
+              <td>
+                <img
+                  class="post-thumb"
+                  [src]="postThumbnail(post) || 'assets/placeholder.png'"
+                  alt="Post image"
+                />
+              </td>
               <td>{{ formatDate(post.createdAt) }}</td>
               <td>
                 @if (post.repostOfPostId) {
@@ -142,6 +156,14 @@
         <article class="meta-tile">
           <span>Comments</span>
           <strong>{{ detailsPost.commentsCount }}</strong>
+        </article>
+        <article class="meta-tile">
+          <span>Views</span>
+          <strong>{{ detailsPost.totalViews ?? 0 }}</strong>
+        </article>
+        <article class="meta-tile">
+          <span>Score</span>
+          <strong>{{ detailsPost.postScore ?? 0 }}</strong>
         </article>
         <article class="meta-tile">
           <span>Type</span>

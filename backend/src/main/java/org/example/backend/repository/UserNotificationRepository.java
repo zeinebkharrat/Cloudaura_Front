@@ -17,6 +17,13 @@ public interface UserNotificationRepository extends JpaRepository<UserNotificati
 
     Optional<UserNotification> findByNotificationIdAndUserUserId(Integer notificationId, Integer userId);
 
+        Optional<UserNotification> findFirstByUserUserIdAndTypeAndReservationTypeAndReservationIdOrderByCreatedAtDesc(
+            Integer userId,
+            String type,
+            String reservationType,
+            Integer reservationId
+        );
+
     @Modifying
     @Query("update UserNotification n set n.readFlag = true where n.user.userId = :userId and n.readFlag = false")
     int markAllAsReadForUser(@Param("userId") Integer userId);

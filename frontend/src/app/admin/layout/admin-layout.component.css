@@ -464,6 +464,93 @@
   color: #e0f2fe;
 }
 
+@media (max-width: 1024px) {
+  .shell {
+    grid-template-columns: 116px 1fr;
+  }
+
+  .shell.sidebar-hidden {
+    grid-template-columns: 0 1fr;
+  }
+
+  .sb-head {
+    padding: 14px 12px;
+  }
+
+  .sb-logo-mark {
+    width: 52px;
+    height: 52px;
+  }
+
+  .sb-logo-img {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+@media (max-width: 768px) {
+  .shell,
+  .shell.collapsed {
+    grid-template-columns: 96px 1fr;
+  }
+
+  .sidebar {
+    box-shadow: 4px 0 22px rgba(2, 6, 23, 0.34);
+  }
+
+  .sb-main {
+    min-width: 0;
+  }
+
+  .show-sidebar-btn {
+    top: 12px;
+    left: 12px;
+  }
+}
+
+@media (max-width: 560px) {
+  .shell,
+  .shell.collapsed {
+    grid-template-columns: 80px 1fr;
+  }
+
+  .sb-nav {
+    padding-inline: 6px;
+  }
+
+  .sb-item {
+    padding: 10px 8px;
+    justify-content: center;
+  }
+
+  .sb-item .sb-lbl,
+  .sb-section-label,
+  .sb-chevron,
+  .sub-menu,
+  .sb-logo-text-wrap,
+  .sb-badge,
+  .sb-foot {
+    display: none;
+  }
+
+  .sb-head {
+    justify-content: center;
+    padding: 10px 8px;
+  }
+
+  .sb-head-actions {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+  }
+
+  .tog {
+    width: 30px;
+    height: 30px;
+    min-width: 30px;
+  }
+}
+
 @keyframes sidebarReveal {
   from {
     opacity: 0;

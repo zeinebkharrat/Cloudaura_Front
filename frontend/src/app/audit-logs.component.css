@@ -92,6 +92,35 @@ button:disabled {
   min-width: 1180px;
 }
 
+@media (max-width: 1024px) {
+  .users-table {
+    min-width: 920px;
+  }
+}
+
+@media (max-width: 768px) {
+  .users-table {
+    min-width: 760px;
+  }
+
+  .users-table th,
+  .users-table td {
+    padding: 9px;
+    font-size: 0.78rem;
+  }
+
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .export-actions {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+}
+
 .users-table th,
 .users-table td {
   border-bottom: 1px solid var(--glass-border);

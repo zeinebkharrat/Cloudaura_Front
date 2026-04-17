@@ -71,6 +71,7 @@ public class EmailService {
             String username,
             String phone,
             String nationality,
+            String gender,
             String verificationLink) {
         String displayName = (firstName == null || firstName.isBlank()) ? "Voyageur" : firstName;
         String fullName = formatFullName(firstName, lastName);
@@ -97,6 +98,7 @@ public class EmailService {
             emailValue,
             phoneValue,
             nationalityValue,
+            gender,
             verificationLink);
         sendEmail(userMailSender, userFromAddress, toEmail, subject, plainText, html);
     }
@@ -561,6 +563,7 @@ public class EmailService {
             String email,
             String phone,
             String nationality,
+            String gender,
             String verificationLink) {
         String safeFirstName = escapeHtml(firstName);
         String safeFullName = escapeHtml(fullName);
@@ -569,7 +572,13 @@ public class EmailService {
         String safePhone = escapeHtml(phone);
         String safeNationality = escapeHtml(nationality);
         String safeLink = escapeHtml(verificationLink);
-        String bannerUrl = escapeHtml(frontendBaseUrl + "/assets/banner.png");
+        String normalizedGender = gender == null ? "" : gender.trim().toUpperCase();
+        String characterImageUrl = "FEMALE".equals(normalizedGender)
+            ? frontendBaseUrl + "/assets/female.png"
+            : ("MALE".equals(normalizedGender)
+                ? frontendBaseUrl + "/assets/male.png"
+                : frontendBaseUrl + "/assets/guide-mascot.png");
+        String safeCharacterImageUrl = escapeHtml(characterImageUrl);
 
         return """
                 <!doctype html>
@@ -579,35 +588,45 @@ public class EmailService {
                     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
                     <title>Confirmation d'inscription</title>
                 </head>
-                <body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#0f172a;">
+                <body style="margin:0;padding:0;background:#e7eef8;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif;color:#0f172a;">
                     <div style="display:none;max-height:0;overflow:hidden;opacity:0;">Confirmez votre email pour activer votre compte YallaTN+.</div>
 
-                    <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:28px 10px;">
+                    <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="background:#e7eef8;padding:28px 10px;">
                         <tr>
                             <td align="center">
-                                <table role="presentation" width="680" cellpadding="0" cellspacing="0" style="max-width:680px;width:100%%;background:#ffffff;border:1px solid #e2e8f0;border-radius:24px;overflow:hidden;box-shadow:0 18px 40px rgba(15,23,42,0.12);">
+                                <table role="presentation" width="680" cellpadding="0" cellspacing="0" style="max-width:680px;width:100%%;background:#ffffff;border:1px solid #cfdaea;border-radius:24px;overflow:hidden;box-shadow:0 20px 48px rgba(15,23,42,0.16);">
                                     <tr>
-                                        <td style="padding:18px 26px;background:#f8fafc;border-bottom:1px solid #e2e8f0;font-size:13px;line-height:1.5;font-weight:800;letter-spacing:.08em;color:#1e293b;text-transform:uppercase;">
+                                        <td style="padding:16px 26px;background:linear-gradient(120deg,#f8fafc,#eef6ff);border-bottom:1px solid #d4e1f1;font-size:13px;line-height:1.5;font-weight:800;letter-spacing:.08em;color:#1e293b;text-transform:uppercase;">
                                             Confirmation d'inscription
                                         </td>
                                     </tr>
 
                                     <tr>
-                                        <td style="padding:18px 26px 10px;">
-                                            <div style="font-size:42px;line-height:1;letter-spacing:.02em;font-weight:900;color:#0f172a;text-align:center;">YALLATN+ <span style="font-size:30px;vertical-align:middle;">•</span> ACCES VOYAGEUR <span style="font-size:28px;vertical-align:middle;">🇹🇳</span></div>
+                                        <td style="padding:22px 26px 10px;background:linear-gradient(140deg,#0f172a,#1e3a8a 55%%,#0ea5e9);">
+                                            <div style="font-size:35px;line-height:1;letter-spacing:.02em;font-weight:900;color:#ffffff;text-align:center;">YALLATN+ <span style="font-size:24px;vertical-align:middle;">•</span> ACCES VOYAGEUR</div>
+                                            <div style="margin-top:8px;text-align:center;font-size:13px;color:#dbeafe;letter-spacing:.06em;text-transform:uppercase;">Votre aventure tunisienne commence ici</div>
                                         </td>
                                     </tr>
 
                                     <tr>
-                                        <td style="padding:8px 26px 0;">
-                                            <img src="%s" alt="Tunisie" width="628" style="width:100%%;max-width:628px;height:auto;display:block;border-radius:16px;border:1px solid #dbe4f0;" />
+                                        <td style="padding:18px 30px 4px;">
+                                            <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="border:1px solid #d7e3f4;border-radius:16px;background:linear-gradient(130deg,#f8fbff,#eef5ff);">
+                                                <tr>
+                                                    <td style="padding:16px 14px 6px;text-align:center;">
+                                                        <img src="%s" alt="Voyageur" width="160" style="width:160px;height:auto;display:inline-block;" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td style="padding:0 16px 14px;text-align:center;font-size:13px;color:#334155;font-weight:600;">Profil voyageur personnalise</td>
+                                                </tr>
+                                            </table>
                                         </td>
                                     </tr>
 
                                     <tr>
-                                        <td style="padding:24px 30px 10px;">
-                                            <div style="font-size:40px;line-height:1.08;font-weight:900;color:#0f172a;">Bienvenue, %s !</div>
-                                            <div style="margin-top:12px;font-size:15px;color:#334155;line-height:1.75;">Votre compte est presque pret. Verifiez votre adresse email pour commencer a planifier vos aventures en Tunisie.</div>
+                                        <td style="padding:20px 30px 10px;">
+                                            <div style="font-size:36px;line-height:1.08;font-weight:900;color:#0f172a;">Bienvenue, %s !</div>
+                                            <div style="margin-top:12px;font-size:15px;color:#334155;line-height:1.75;">Votre compte est presque pret. Verifiez votre adresse email pour activer votre espace personnel et explorer la Tunisie en toute simplicite.</div>
                                         </td>
                                     </tr>
 
@@ -634,7 +653,7 @@ public class EmailService {
                                         <td style="padding:24px 30px 0;">
                                             <table role="presentation" cellpadding="0" cellspacing="0" align="center">
                                                 <tr>
-                                                    <td style="border-radius:999px;background:linear-gradient(135deg,#ef4444,#dc2626);box-shadow:0 12px 26px rgba(220,38,38,.28);">
+                                                    <td style="border-radius:999px;background:linear-gradient(135deg,#ef4444,#dc2626);box-shadow:0 14px 30px rgba(220,38,38,.32);">
                                                         <a href="%s" style="display:inline-block;padding:14px 28px;font-size:16px;font-weight:800;color:#ffffff;text-decoration:none;border-radius:999px;">Confirmer votre adresse email</a>
                                                     </td>
                                                 </tr>
@@ -680,7 +699,7 @@ public class EmailService {
                 </body>
                 </html>
                 """.formatted(
-                bannerUrl,
+                safeCharacterImageUrl,
                 safeFirstName,
                 safeFullName,
                 safeUsername,

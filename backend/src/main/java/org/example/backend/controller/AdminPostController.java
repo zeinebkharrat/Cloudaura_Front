@@ -79,6 +79,8 @@ public class AdminPostController {
         switch (sortBy) {
             case "likesCount" -> comparator = Comparator.comparingInt(p -> p.getLikesCount() == null ? 0 : p.getLikesCount());
             case "commentsCount" -> comparator = Comparator.comparingInt(p -> p.getCommentsCount() == null ? 0 : p.getCommentsCount());
+            case "totalViews" -> comparator = Comparator.comparingInt(p -> p.getTotalViews() == null ? 0 : p.getTotalViews());
+            case "postScore" -> comparator = Comparator.comparingDouble(p -> p.getPostScore() == null ? 0.0 : p.getPostScore());
             case "author" -> comparator = Comparator.comparing(this::authorName, String.CASE_INSENSITIVE_ORDER);
             case "postId" -> comparator = Comparator.comparingInt(p -> p.getPostId() == null ? 0 : p.getPostId());
             case "createdAt" -> comparator = Comparator.comparing(this::createdAtOrEpoch);
@@ -149,6 +151,8 @@ public class AdminPostController {
                 post.getVisibility(),
                 post.getLikesCount() == null ? 0 : post.getLikesCount(),
                 post.getCommentsCount() == null ? 0 : post.getCommentsCount(),
+                post.getTotalViews() == null ? 0 : post.getTotalViews(),
+                post.getPostScore() == null ? 0.0 : post.getPostScore(),
                 post.getCreatedAt(),
                 post.getRepostOf() != null ? post.getRepostOf().getPostId() : null
         );
@@ -164,6 +168,8 @@ public class AdminPostController {
             String visibility,
             Integer likesCount,
             Integer commentsCount,
+            Integer totalViews,
+            Double postScore,
             Date createdAt,
             Integer repostOfPostId
     ) {

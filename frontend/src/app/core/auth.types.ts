@@ -6,6 +6,8 @@ export interface UserProfile {
   lastName: string;
   phone?: string | null;
   nationality?: string | null;
+  gender?: 'MALE' | 'FEMALE' | null;
+  dateOfBirth?: string | null;
   cityId?: number | null;
   cityName?: string | null;
   roles: string[];
@@ -14,6 +16,8 @@ export interface UserProfile {
   profileImageUrl?: string | null;
   /** Gamification points (also returned by GET /api/profile and /api/auth/me). */
   points?: number | null;
+  monthlyScore?: number | null;
+  lifetimeScore?: number | null;
 }
 
 export interface AuthResponse {
@@ -40,6 +44,8 @@ export interface SignUpPayload {
   lastName: string;
   becomeArtisan: boolean;
   nationality?: string | null;
+  gender?: 'MALE' | 'FEMALE' | null;
+  dateOfBirth?: string | null;
   cityId?: number | null;
   profileImageUrl?: string | null;
   captchaToken?: string | null;

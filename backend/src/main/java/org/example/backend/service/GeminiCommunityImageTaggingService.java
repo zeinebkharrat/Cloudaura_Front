@@ -57,7 +57,7 @@ public class GeminiCommunityImageTaggingService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Value("${gemini.api.key.community:${GEMINI_API_KEY_COMMUNITY:}}")
+    @Value("${app.gemini.api-key:}")
     private String geminiApiKey;
 
     @Value("${gemini.api.model.community:${GEMINI_API_MODEL_COMMUNITY:gemini-1.5-flash-latest}}")

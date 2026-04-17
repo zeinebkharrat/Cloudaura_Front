@@ -44,6 +44,18 @@ public class UserNotification {
     @Column(name = "reservation_id")
     private Integer reservationId;
 
+    @Column(name = "interaction_count")
+    private Integer interactionCount;
+
+    @Column(name = "last_actor_user_id")
+    private Integer lastActorUserId;
+
+    @Column(name = "last_actor_name", length = 120)
+    private String lastActorName;
+
+    @Column(name = "last_actor_avatar_url", length = 500)
+    private String lastActorAvatarUrl;
+
     @Column(name = "is_read", nullable = false)
     private boolean readFlag;
 
@@ -115,6 +127,38 @@ public class UserNotification {
 
     public void setReservationId(Integer reservationId) {
         this.reservationId = reservationId;
+    }
+
+    public Integer getInteractionCount() {
+        return interactionCount;
+    }
+
+    public void setInteractionCount(Integer interactionCount) {
+        this.interactionCount = interactionCount;
+    }
+
+    public Integer getLastActorUserId() {
+        return lastActorUserId;
+    }
+
+    public void setLastActorUserId(Integer lastActorUserId) {
+        this.lastActorUserId = lastActorUserId;
+    }
+
+    public String getLastActorName() {
+        return lastActorName;
+    }
+
+    public void setLastActorName(String lastActorName) {
+        this.lastActorName = lastActorName;
+    }
+
+    public String getLastActorAvatarUrl() {
+        return lastActorAvatarUrl;
+    }
+
+    public void setLastActorAvatarUrl(String lastActorAvatarUrl) {
+        this.lastActorAvatarUrl = lastActorAvatarUrl;
     }
 
     public boolean isReadFlag() {

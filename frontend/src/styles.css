@@ -300,6 +300,13 @@ div:where(.swal2-container) {
 }
 
 :root {
+  --bp-phone-sm: 480px;
+  --bp-tablet: 768px;
+  --bp-laptop: 1024px;
+  --bp-desktop: 1280px;
+  --page-gutter: clamp(12px, 2vw, 32px);
+  --content-max: min(1260px, calc(100% - (var(--page-gutter) * 2)));
+  --touch-target: 44px;
   --bg-color: #f6f8fc;
   --text-color: #1d2433;
   --text-muted: #667085;
@@ -427,6 +434,36 @@ h1, h2, h3, h4, h5, h6 {
 .animate-in {
   opacity: 0;
   animation: fadeInData 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.rwd-container {
+  width: 100%;
+  max-width: var(--content-max);
+  margin-inline: auto;
+}
+
+.rwd-grid-auto {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: clamp(10px, 1.6vw, 22px);
+}
+
+.rwd-modal {
+  width: min(680px, calc(100vw - 24px));
+  max-height: calc(100vh - 28px);
+  overflow: auto;
+}
+
+.rwd-scroll-x {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+@media (max-width: 768px) {
+  .rwd-modal {
+    width: calc(100vw - 16px);
+    max-height: calc(100vh - 16px);
+  }
 }
 
 .delay-1 { animation-delay: 0.2s; }

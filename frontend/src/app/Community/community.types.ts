@@ -23,6 +23,9 @@ export interface Post {
   repostOf?: Post | null;
   likesCount?: number | null;
   commentsCount?: number | null;
+  totalViews?: number | null;
+  repostCount?: number | null;
+  postScore?: number | null;
   createdAt?: string | null;
   updatedAt?: string | null;
 }
