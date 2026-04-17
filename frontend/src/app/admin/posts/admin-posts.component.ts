@@ -125,10 +125,15 @@ export class AdminPostsComponent implements OnInit, OnDestroy {
         this.loadPosts();
       },
       error: async (err) => {
+        const isFkConflict = err?.status === 409;
+        const fallbackText = isFkConflict
+          ? 'This post is linked to other records (comments, reposts, views, notifications). Remove those links first, then retry.'
+          : 'Please try again.';
+
         await Swal.fire({
           icon: 'error',
-          title: 'Could not delete',
-          text: err?.error?.message ?? 'Please try again.',
+          title: isFkConflict ? 'Delete blocked by linked data' : 'Could not delete',
+          text: err?.error?.message ?? fallbackText,
         });
       },
     });

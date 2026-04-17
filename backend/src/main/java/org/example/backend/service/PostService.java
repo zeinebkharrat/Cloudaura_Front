@@ -180,6 +180,19 @@ public class PostService implements IPostService {
         String placeholders = String.join(",", Collections.nCopies(targetPostIds.size(), "?"));
         Object[] args = targetPostIds.toArray();
 
+        // Clear comment parent references that may point to comments attached to target posts.
+        List<Integer> targetCommentIds = jdbcTemplate.queryForList(
+            "SELECT comment_id FROM comments WHERE post_id IN (" + placeholders + ")",
+            Integer.class,
+            args
+        );
+
+        if (!targetCommentIds.isEmpty()) {
+            String commentPlaceholders = String.join(",", Collections.nCopies(targetCommentIds.size(), "?"));
+            Object[] commentArgs = targetCommentIds.toArray();
+            jdbcTemplate.update("UPDATE comments SET parent_id = NULL WHERE parent_id IN (" + commentPlaceholders + ")", commentArgs);
+        }
+
         // Execute explicit SQL deletes to guarantee FK-safe ordering.
         jdbcTemplate.update(
                 "UPDATE posts SET repost_of_post_id = NULL "
@@ -189,6 +202,8 @@ public class PostService implements IPostService {
         );
         jdbcTemplate.update("DELETE FROM saved_posts WHERE post_id IN (" + placeholders + ")", args);
         jdbcTemplate.update("DELETE FROM likes WHERE post_id IN (" + placeholders + ")", args);
+        jdbcTemplate.update("DELETE FROM user_notifications WHERE reservation_type = 'POST' AND reservation_id IN (" + placeholders + ")", args);
+        jdbcTemplate.update("DELETE FROM post_views WHERE post_id IN (" + placeholders + ")", args);
         jdbcTemplate.update("UPDATE comments SET parent_id = NULL WHERE post_id IN (" + placeholders + ")", args);
         jdbcTemplate.update("DELETE FROM comments WHERE post_id IN (" + placeholders + ")", args);
         jdbcTemplate.update("DELETE FROM post_media WHERE post_id IN (" + placeholders + ")", args);

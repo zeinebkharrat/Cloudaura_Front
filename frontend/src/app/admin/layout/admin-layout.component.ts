@@ -91,6 +91,10 @@ export class AdminLayoutComponent implements OnInit {
     this.router.navigateByUrl('/admin/profile');
   }
 
+  goHome() {
+    this.router.navigateByUrl('/');
+  }
+
   sectionLabel(section: AdminNavItem['section']): string {
     if (section === 'content') return 'Content';
     if (section === 'commerce') return 'Commerce';
