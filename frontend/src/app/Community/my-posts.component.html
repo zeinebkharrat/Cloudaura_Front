@@ -2,18 +2,18 @@
   <!-- Header -->
   <div class="my-posts-header glass-panel">
     <div class="my-posts-header__left">
-      <button type="button" class="back-btn" (click)="goToCommunity()" title="Back to community">
+      <button type="button" class="back-btn" (click)="goToCommunity()" [attr.title]="'COMMUNITY.BACK_TO_COMMUNITY' | translate">
         <span class="back-icon">←</span>
       </button>
       <div>
-        <h2>My posts</h2>
-        <p>Edit, delete, or review your content.</p>
+        <h2>{{ 'COMMUNITY.MY_POSTS_TITLE' | translate }}</h2>
+        <p>{{ 'COMMUNITY.MY_POSTS_SUB' | translate }}</p>
       </div>
     </div>
     <div class="my-posts-header__stats" *ngIf="feedLoaded()">
       <div class="stat-badge glass-panel">
         <span class="stat-number">{{ posts().length }}</span>
-        <span class="stat-label">Posts</span>
+        <span class="stat-label">{{ 'COMMUNITY.STAT_POSTS' | translate }}</span>
       </div>
     </div>
   </div>
@@ -21,7 +21,7 @@
   <!-- Loading State -->
   <div class="feed-loading glass-panel" *ngIf="!loadError() && !feedLoaded()">
     <div class="loading-spinner"></div>
-    <span>Loading your posts…</span>
+    <span>{{ 'COMMUNITY.LOADING_MY_POSTS' | translate }}</span>
   </div>
 
   <!-- Error State -->
@@ -34,10 +34,10 @@
   <div class="empty-state glass-panel" *ngIf="feedLoaded() && posts().length === 0">
     <div class="empty-state__content">
       <div class="empty-icon" aria-hidden="true"><i class="pi pi-inbox"></i></div>
-      <h3>No posts yet</h3>
-      <p>You have not created a post yet. Go back to the community to create one.</p>
+      <h3>{{ 'COMMUNITY.NO_MY_POSTS_TITLE' | translate }}</h3>
+      <p>{{ 'COMMUNITY.NO_MY_POSTS_DESC' | translate }}</p>
       <button type="button" class="btn-primary" (click)="goToCommunity()">
-        <i class="pi pi-arrow-right btn-ico-pi" aria-hidden="true"></i> Go to community
+        <i class="pi pi-arrow-right btn-ico-pi" aria-hidden="true"></i> {{ 'COMMUNITY.GO_COMMUNITY' | translate }}
       </button>
     </div>
   </div>
@@ -77,7 +77,7 @@
               <ng-container *ngIf="m.fileUrl">
                 <div class="media-item">
                   <video class="media-video" controls *ngIf="m.mediaType === 'VIDEO'" [src]="m.fileUrl"></video>
-                  <img class="media-image" *ngIf="m.mediaType !== 'VIDEO'" [src]="m.fileUrl" [alt]="'Post media ' + post.postId" />
+                  <img class="media-image" *ngIf="m.mediaType !== 'VIDEO'" [src]="m.fileUrl" [attr.alt]="'COMMUNITY.MEDIA_ALT' | translate" />
                 </div>
               </ng-container>
             </ng-container>
@@ -94,11 +94,11 @@
                 width="18"
                 height="18"
               />
-              <span>{{ getLikeNicknames(post.postId!).length }} likes</span>
+              <span>{{ 'COMMUNITY.LIKES_N' | translate: { n: getLikeNicknames(post.postId!).length } }}</span>
             </div>
             <div class="stat-item">
               <img src="icones/commenter.png" alt="" class="stat-ico stat-ico--comment" width="18" height="18" />
-              <span>{{ getCommentCount(post.postId!) }} comments</span>
+              <span>{{ 'COMMUNITY.COMMENTS_N' | translate: { n: getCommentCount(post.postId!) } }}</span>
             </div>
           </div>
 
@@ -119,16 +119,16 @@
         <ng-container *ngIf="editingPostId() === post.postId">
           <div class="edit-form">
             <div class="edit-form__header">
-              <h4><i class="pi pi-pencil edit-h-pi" aria-hidden="true"></i> Edit post</h4>
+              <h4><i class="pi pi-pencil edit-h-pi" aria-hidden="true"></i> {{ 'COMMUNITY.EDIT_POST_TITLE' | translate }}</h4>
             </div>
 
             <label class="field-label">
-              <span><i class="pi pi-align-left field-pi" aria-hidden="true"></i> Content</span>
+              <span><i class="pi pi-align-left field-pi" aria-hidden="true"></i> {{ 'COMMUNITY.CONTENT' | translate }}</span>
               <textarea
                 rows="4"
                 [value]="editPostContent()"
                 (input)="editPostContent.set($any($event.target).value)"
-                placeholder="Update your post…"
+                [attr.placeholder]="'COMMUNITY.UPDATE_POST_PH' | translate"
                 class="form-textarea"
               ></textarea>
             </label>
@@ -140,7 +140,7 @@
                   type="text"
                   [value]="editPostLocation()"
                   (input)="editPostLocation.set($any($event.target).value)"
-                  placeholder="Ex: Sidi Bou Saïd"
+                  [attr.placeholder]="'COMMUNITY.PLACE_EXAMPLE_PH' | translate"
                   class="form-input"
                 />
               </label>
@@ -152,8 +152,8 @@
                   (change)="editPostVisibility.set($any($event.target).value)"
                   class="form-select"
                 >
-                  <option value="public">Public</option>
-                  <option value="private">Private</option>
+                  <option value="public">{{ 'COMMUNITY.VIS_PUBLIC' | translate }}</option>
+                  <option value="private">{{ 'COMMUNITY.VIS_PRIVATE' | translate }}</option>
                 </select>
               </label>
             </div>
@@ -204,7 +204,7 @@
 
             <div class="edit-form__actions">
               <button type="button" class="btn-outline" (click)="cancelEdit()">
-                Cancel
+                {{ 'COMMUNITY.CANCEL' | translate }}
               </button>
               <button
                 type="button"
@@ -212,8 +212,8 @@
                 (click)="saveEdit()"
                 [disabled]="!editPostContent().trim() || isEditing()"
               >
-                <span *ngIf="!isEditing()"><i class="pi pi-save btn-ico-pi" aria-hidden="true"></i> Save</span>
-                <span *ngIf="isEditing()"><i class="pi pi-spinner pi-spin btn-ico-pi" aria-hidden="true"></i> Saving…</span>
+                <span *ngIf="!isEditing()"><i class="pi pi-save btn-ico-pi" aria-hidden="true"></i> {{ 'COMMUNITY.SAVE' | translate }}</span>
+                <span *ngIf="isEditing()"><i class="pi pi-spinner pi-spin btn-ico-pi" aria-hidden="true"></i> {{ 'COMMUNITY.SAVING' | translate }}</span>
               </button>
             </div>
           </div>
@@ -226,14 +226,14 @@
   <div class="delete-modal-backdrop" *ngIf="deletingPostId()" (click)="cancelDelete()">
     <div class="delete-modal glass-panel" (click)="$event.stopPropagation()">
       <div class="delete-modal__icon" aria-hidden="true"><i class="pi pi-trash"></i></div>
-      <h3>Delete this post?</h3>
-      <p>This cannot be undone. The post and all related content (comments, likes, media) will be permanently removed.</p>
+      <h3>{{ 'COMMUNITY.DELETE_POST_TITLE' | translate }}</h3>
+      <p>{{ 'COMMUNITY.DELETE_POST_BODY' | translate }}</p>
       <div class="delete-modal__actions">
         <button type="button" class="btn-outline" (click)="cancelDelete()">
-          Cancel
+          {{ 'COMMUNITY.CANCEL' | translate }}
         </button>
         <button type="button" class="btn-danger" (click)="confirmDelete()">
-          <i class="pi pi-trash btn-ico-pi" aria-hidden="true"></i> Delete permanently
+          <i class="pi pi-trash btn-ico-pi" aria-hidden="true"></i> {{ 'COMMUNITY.DELETE_PERMANENT' | translate }}
         </button>
       </div>
     </div>

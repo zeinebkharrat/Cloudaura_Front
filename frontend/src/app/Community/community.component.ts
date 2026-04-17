@@ -1,4 +1,4 @@
-import { Component, ElementRef, HostListener, OnDestroy, ViewChild, inject, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, OnDestroy, TemplateRef, ViewChild, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -30,6 +30,7 @@ import { GiphyItem, GiphyMediaType, GiphyService } from './giphy.service';
 import { tunisiaGeoJson } from '../tunisia-map';
 import { GOVERNORATE_LABEL_EN, GOVERNORATE_LABEL_FR } from '../tunisia-governorate-labels';
 import { CommunityStoriesComponent } from './community-stories.component';
+import { TranslateModule } from '@ngx-translate/core';
 
 const MINI_TUNISIA_MAP_NAME = 'TunisiaMiniPreview';
 const MINI_TUNISIA_MAP_NAME_PROP = '_echartsRegionId';
@@ -86,7 +87,7 @@ function tunisiaGeoWithUniqueRegionIds(geo: any) {
 @Component({
   selector: 'app-community',
   standalone: true,
-  imports: [CommonModule, CommunityStoriesComponent],
+  imports: [CommonModule, CommunityStoriesComponent, TranslateModule],
   templateUrl: './community.component.html',
   styleUrl: './community.component.css',
 })
@@ -95,6 +96,10 @@ export class CommunityComponent {
 
   @ViewChild('locationMiniMap')
   private locationMiniMapRef?: ElementRef<HTMLDivElement>;
+
+  /** Stable TemplateRef for recursive comments (avoids NgTemplateOutlet receiving a non-TemplateRef). */
+  @ViewChild('commentTpl', { static: true })
+  commentTplRef!: TemplateRef<unknown>;
 
   private readonly postService = inject(PostService);
   private readonly commentService = inject(CommentService);
@@ -807,10 +812,16 @@ export class CommunityComponent {
 
   // Ownership helpers
   canEditPost(post: Post): boolean {
+    if (this.isEventAnnouncementPost(post)) {
+      return false;
+    }
     return OwnershipUtil.canEditPost(post, this.authService);
   }
 
   canDeletePost(post: Post): boolean {
+    if (this.isEventAnnouncementPost(post)) {
+      return false;
+    }
     return OwnershipUtil.canDeletePost(post, this.authService);
   }
 
@@ -1364,6 +1375,11 @@ export class CommunityComponent {
   }
 
   toggleComments(postId: number): void {
+    const post = this.findPostById(postId);
+    if (post && !this.isCommentsAllowed(post)) {
+      return;
+    }
+
     const expanded = new Set(this.expandedCommentsPostIds());
     if (expanded.has(postId)) {
       expanded.delete(postId);
@@ -1458,6 +1474,17 @@ export class CommunityComponent {
 
   // Add comment with optional parent for replies
   async addComment(postId: number, parentCommentId?: number): Promise<void> {
+    const targetPost = this.findPostById(postId);
+    if (targetPost && !this.isCommentsAllowed(targetPost)) {
+      await Swal.fire({
+        icon: 'info',
+        title: 'Comments disabled',
+        text: 'This event announcement does not accept comments.',
+        ...this.swalTheme(),
+      });
+      return;
+    }
+
     if (!this.authService.isAuthenticated()) {
       this.router.navigate(['/signin']);
       return;
@@ -1971,6 +1998,27 @@ export class CommunityComponent {
 
   isRepost(post: Post): boolean {
     return !!post.repostOf;
+  }
+
+  isEventAnnouncementPost(post: Post): boolean {
+    return (post.postType ?? '').toUpperCase() === 'EVENT_ANNOUNCEMENT';
+  }
+
+  isCommentsAllowed(post: Post): boolean {
+    return post.commentsEnabled !== false;
+  }
+
+  openEventFromPost(post: Post, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.isEventAnnouncementPost(post) || post.linkedEventId == null) {
+      return;
+    }
+
+    this.router.navigate(['/evenements'], {
+      queryParams: {
+        eventId: post.linkedEventId,
+      },
+    });
   }
 
   getHashtagsFromText(source?: string | null): string[] {

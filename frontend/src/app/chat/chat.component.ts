@@ -21,6 +21,7 @@ import {
   MessageResponse,
   TypingEvent,
 } from './chat.types';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 interface StoryReplyPayload {
   kind: string;
@@ -37,7 +38,7 @@ interface StoryReplyPayload {
 @Component({
   selector: 'app-chat',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslateModule],
   templateUrl: './chat.component.html',
   styleUrl: './chat.component.css',
 })
@@ -47,6 +48,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   private readonly alerts = inject(AppAlertsService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly translate = inject(TranslateService);
 
   @ViewChild('messagesContainer') messagesContainer!: ElementRef;
   @ViewChild('messageInput') messageInput!: ElementRef;
@@ -458,16 +460,23 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
 
-    if (minutes < 1) return 'just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days < 7) return `${days}d ago`;
-    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+    if (minutes < 1) return this.translate.instant('COMMUNITY.CHAT_TIME_JUST_NOW');
+    if (minutes < 60) {
+      return this.translate.instant('COMMUNITY.CHAT_TIME_MINUTES', { n: minutes });
+    }
+    if (hours < 24) {
+      return this.translate.instant('COMMUNITY.CHAT_TIME_HOURS', { n: hours });
+    }
+    if (days < 7) {
+      return this.translate.instant('COMMUNITY.CHAT_TIME_DAYS', { n: days });
+    }
+    const locale = this.chatDateLocale();
+    return date.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
   }
 
   formatMessageTime(dateStr: string): string {
     const date = new Date(dateStr);
-    return date.toLocaleTimeString('en-GB', {
+    return date.toLocaleTimeString(this.chatDateLocale(), {
       hour: '2-digit',
       minute: '2-digit',
     });
@@ -475,46 +484,32 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   conversationPreview(conv: ConversationResponse): string {
     if (conv.unreadCount === 1) {
-      return 'Sent you one message';
+      return this.translate.instant('COMMUNITY.CHAT_PREVIEW_ONE');
     }
     if (conv.unreadCount > 1) {
-      return `Sent you ${conv.unreadCount} messages`;
+      return this.translate.instant('COMMUNITY.CHAT_PREVIEW_MANY', { count: conv.unreadCount });
     }
-    return 'No new messages';
+    return this.translate.instant('COMMUNITY.CHAT_PREVIEW_NONE');
   }
 
   getTypingText(): string {
     const users = Array.from(this.typingUsers().values());
     if (users.length === 0) return '';
-    if (users.length === 1) return `${users[0].username} is typing…`;
-    return `${users.length} people are typing…`;
+    if (users.length === 1) {
+      return this.translate.instant('COMMUNITY.CHAT_TYPING_ONE', { name: users[0].username });
+    }
+    return this.translate.instant('COMMUNITY.CHAT_TYPING_MANY', { count: users.length });
+  }
+
+  private chatDateLocale(): string {
+    const lang = (this.translate.currentLang || 'en').toLowerCase();
+    if (lang.startsWith('ar')) return 'ar';
+    if (lang.startsWith('fr')) return 'fr-FR';
+    return 'en-GB';
   }
 
   isVoiceMessage(msg: MessageResponse): boolean {
     return !!msg.voiceUrl || msg.messageType === 'VOICE';
-  }
-
-  isStoryReplyMessage(msg: MessageResponse): boolean {
-    return this.parseStoryReply(msg.content) != null;
-  }
-
-  storyReply(msg: MessageResponse): StoryReplyPayload | null {
-    return this.parseStoryReply(msg.content);
-  }
-
-  storyReplyMediaUrl(msg: MessageResponse): string {
-    const parsed = this.parseStoryReply(msg.content);
-    const raw = (parsed?.mediaUrl || '').trim();
-    if (!raw) {
-      return '';
-    }
-    if (/^https?:\/\//i.test(raw) || raw.startsWith('/')) {
-      return raw;
-    }
-    if (raw.startsWith('uploads/')) {
-      return `/${raw}`;
-    }
-    return `/${raw.replace(/^\/+/, '')}`;
   }
 
   registerVoiceAudio(messageId: number, event: Event): void {
@@ -559,6 +554,29 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     const minutes = Math.floor(sec / 60);
     const seconds = sec % 60;
     return `${minutes}:${String(seconds).padStart(2, '0')}`;
+  }
+
+  isStoryReplyMessage(msg: MessageResponse): boolean {
+    return this.parseStoryReply(msg.content) != null;
+  }
+
+  storyReply(msg: MessageResponse): StoryReplyPayload | null {
+    return this.parseStoryReply(msg.content);
+  }
+
+  storyReplyMediaUrl(msg: MessageResponse): string {
+    const parsed = this.parseStoryReply(msg.content);
+    const raw = (parsed?.mediaUrl || '').trim();
+    if (!raw) {
+      return '';
+    }
+    if (/^https?:\/\//i.test(raw) || raw.startsWith('/')) {
+      return raw;
+    }
+    if (raw.startsWith('uploads/')) {
+      return `/${raw}`;
+    }
+    return `/${raw.replace(/^\/+/, '')}`;
   }
 
   backToList(): void {

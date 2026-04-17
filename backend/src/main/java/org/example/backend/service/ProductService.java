@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 import org.example.backend.dto.ProductCatalogItem;
+import org.example.backend.i18n.CatalogKeyUtil;
 import org.example.backend.model.Product;
 import org.example.backend.model.ProductImage;
 import org.example.backend.model.ProductVariant;
@@ -25,16 +26,19 @@ public class ProductService {
     private final UserRepository userRepository;
     private final CartItemRepository cartItemRepository;
     private final OrderItemRepository orderItemRepository;
+    private final CatalogTranslationService catalogTranslationService;
 
     public ProductService(
             ProductRepository productRepository,
             UserRepository userRepository,
             CartItemRepository cartItemRepository,
-            OrderItemRepository orderItemRepository) {
+            OrderItemRepository orderItemRepository,
+            CatalogTranslationService catalogTranslationService) {
         this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.cartItemRepository = cartItemRepository;
         this.orderItemRepository = orderItemRepository;
+        this.catalogTranslationService = catalogTranslationService;
     }
 
     /**
@@ -44,6 +48,9 @@ public class ProductService {
         return productRepository.findAll();
     }
 
+    /**
+     * Catalog strings are resolved from the {@code translations} table only (see {@link CatalogTranslationService}).
+     */
     @Transactional(readOnly = true)
     public List<ProductCatalogItem> findAllWithCatalogDto() {
         return productRepository.findAll().stream().map(this::toCatalogItem).toList();
@@ -80,7 +87,11 @@ public class ProductService {
         ProductCatalogItem.CatalogSeller seller = null;
         User u = p.getUser();
         if (u != null && u.getUsername() != null && !u.getUsername().isBlank()) {
-            String city = (u.getCity() != null) ? u.getCity().getName() : null;
+            String city = null;
+            if (u.getCity() != null) {
+                int cid = u.getCity().getCityId();
+                city = catalogTranslationService.resolveForRequest("city." + cid + ".name", u.getCity().getName());
+            }
             seller = new ProductCatalogItem.CatalogSeller(u.getUsername(), city);
         }
 
@@ -104,10 +115,19 @@ public class ProductService {
             }
         }
 
+        int pid = p.getProductId();
+        String rawName = p.getName();
+        String resName = catalogTranslationService.resolveEntityField(pid, "product", "name", rawName);
+        String nameOut = CatalogKeyUtil.isBadI18nPlaceholder(rawName, resName) ? "" : resName;
+
+        String rawDesc = p.getDescription();
+        String resDesc = catalogTranslationService.resolveEntityField(pid, "product", "description", rawDesc);
+        String descOut = CatalogKeyUtil.isBadI18nPlaceholder(rawDesc, resDesc) ? null : resDesc;
+
         return new ProductCatalogItem(
                 p.getProductId(),
-                p.getName(),
-                p.getDescription(),
+                nameOut,
+                descOut,
                 p.getCategory() != null ? p.getCategory().name() : null,
                 p.getStatus() != null ? p.getStatus().name() : null,
                 normalizeImageUrlForApi(p.getImageUrl()),

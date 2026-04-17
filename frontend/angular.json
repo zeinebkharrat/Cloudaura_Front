@@ -34,6 +34,7 @@
             "styles": [
               "node_modules/primeicons/primeicons.css",
               "src/styles.css",
+              "src/app/admin/admin-modal-design-system.css",
               "node_modules/leaflet/dist/leaflet.css",
               "node_modules/pannellum/build/pannellum.css"
             ],
@@ -49,12 +50,12 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "4MB",
-                  "maximumError": "5MB"
+                  "maximumWarning": "5MB",
+                  "maximumError": "6MB"
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "45kB",
+                  "maximumWarning": "48kB",
                   "maximumError": "80kB"
                 }
               ],
@@ -113,6 +114,7 @@
             ],
             "styles": [
               "src/styles.css",
+              "src/app/admin/admin-modal-design-system.css",
               "node_modules/pannellum/build/pannellum.css"
             ],
             "scripts": [

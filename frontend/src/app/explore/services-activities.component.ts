@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit, computed, signal } from '@angular/core';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -7,15 +7,20 @@ import { ExploreService } from './explore.service';
 import { Activity, City, VoiceTranscriptionResponse } from './explore.models';
 import { VoiceSearchService } from './voice-search.service';
 import { parseActivityVoiceQuery } from './voice-query.parser';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { DualCurrencyPipe } from '../core/pipes/dual-currency.pipe';
+import { createCurrencyDisplaySyncEffect } from '../core/utils/currency-display-sync';
 
 @Component({
   selector: 'app-services-activities',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, DualCurrencyPipe, TranslateModule],
   templateUrl: './services-activities.component.html',
   styleUrl: './services-activities.component.css',
 })
 export class ServicesActivitiesComponent implements OnInit, OnDestroy {
+  private readonly _currencyDisplaySync = createCurrencyDisplaySyncEffect();
+
   loading = signal(true);
   error = signal('');
   activities = signal<Activity[]>([]);
@@ -50,6 +55,7 @@ export class ServicesActivitiesComponent implements OnInit, OnDestroy {
 
   private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
   private priceDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly translate = inject(TranslateService);
 
   pageNumbers = computed(() => Array.from({ length: this.totalPages() }, (_, index) => index));
 
@@ -340,7 +346,7 @@ export class ServicesActivitiesComponent implements OnInit, OnDestroy {
       },
       error: (err) => {
         this.loading.set(false);
-        this.error.set(err?.error?.message ?? 'Unable to load activities');
+        this.error.set(err?.error?.message ?? this.translate.instant('EXPLORE_SERVICES_ACTIVITIES.ERR_LOAD_ACTIVITIES'));
       },
     });
   }

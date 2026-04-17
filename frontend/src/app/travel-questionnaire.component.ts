@@ -1,6 +1,7 @@
 import { Component, inject, signal, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
+import { TranslateModule } from '@ngx-translate/core';
 import { AuthService } from './core/auth.service';
 import { markQuestionnaireDoneForUser } from './core/questionnaire-session.util';
 
@@ -10,7 +11,7 @@ type QuizStep = 'welcome' | 'hebergement' | 'transport' | 'all-done';
   selector: 'app-travel-questionnaire',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslateModule],
   template: `
     <div class="tq-overlay">
       <!-- Ambient orbs -->
@@ -46,36 +47,33 @@ type QuizStep = 'welcome' | 'hebergement' | 'transport' | 'all-done';
             </div>
 
             <h1 class="tq-main-title">
-              Welcome, <span class="tq-name">{{ userName() }}</span>!
+              {{ 'TRAVEL_TQ.WELCOME_TITLE' | translate: { name: userName() } }}
             </h1>
-            <p class="tq-main-sub">
-              Let us help you plan your trip to Tunisia.<br>
-              A few quick questions to guide you.
-            </p>
+            <p class="tq-main-sub" style="white-space: pre-line">{{ 'TRAVEL_TQ.WELCOME_SUB' | translate }}</p>
 
             <div class="tq-features">
               <div class="tq-feat">
                 <i class="pi pi-building tq-feat-pi"></i>
-                <span>Accommodation</span>
+                <span>{{ 'TRAVEL_TQ.FEAT_ACCOMMODATION' | translate }}</span>
               </div>
               <div class="tq-feat-sep" aria-hidden="true">&gt;</div>
               <div class="tq-feat">
                 <i class="pi pi-car tq-feat-pi"></i>
-                <span>Transport</span>
+                <span>{{ 'TRAVEL_TQ.FEAT_TRANSPORT' | translate }}</span>
               </div>
               <div class="tq-feat-sep" aria-hidden="true">&gt;</div>
               <div class="tq-feat">
                 <i class="pi pi-check-circle tq-feat-pi"></i>
-                <span>Trip ready</span>
+                <span>{{ 'TRAVEL_TQ.FEAT_READY' | translate }}</span>
               </div>
             </div>
 
             <div class="tq-actions">
               <button type="button" class="tq-btn-primary" (click)="goToStep('hebergement')">
-                Start <i class="pi pi-arrow-right tq-btn-arrow-pi"></i>
+                {{ 'TRAVEL_TQ.START' | translate }} <i class="pi pi-arrow-right tq-btn-arrow-pi"></i>
               </button>
               <button type="button" class="tq-btn-ghost" (click)="skipQuestionnaire()">
-                Skip this step
+                {{ 'TRAVEL_TQ.SKIP' | translate }}
               </button>
             </div>
           </div>
@@ -85,24 +83,22 @@ type QuizStep = 'welcome' | 'hebergement' | 'transport' | 'all-done';
         @if (currentStep() === 'hebergement') {
           <div class="tq-card tq-animate-in">
             <div class="tq-step-label">
-              <span class="tq-step-num">01</span>
-              <span class="tq-step-title">Accommodation</span>
+              <span class="tq-step-num">{{ 'TRAVEL_TQ.STEP01' | translate }}</span>
+              <span class="tq-step-title">{{ 'TRAVEL_TQ.LABEL_ACCOMMODATION' | translate }}</span>
             </div>
 
             <div class="tq-question-icon-wrap"><i class="pi pi-building tq-question-pi"></i></div>
-            <h2 class="tq-question">
-              Have you already booked <span class="tq-highlight">accommodation</span>?
-            </h2>
+            <h2 class="tq-question">{{ 'TRAVEL_TQ.Q_ACCOMM_TITLE' | translate }}</h2>
             <p class="tq-question-desc">
-              Hotel, guest house, or B&amp;B — do you already have a place to stay?
+              {{ 'TRAVEL_TQ.Q_ACCOMM_DESC' | translate }}
             </p>
 
             <div class="tq-choices">
               <button type="button" class="tq-choice tq-choice-yes" (click)="answerHebergement(true)">
                 <div class="tq-choice-icon"><i class="pi pi-check"></i></div>
                 <div class="tq-choice-body">
-                  <span class="tq-choice-title">Yes, I have accommodation</span>
-                  <span class="tq-choice-desc">Continue to transport search</span>
+                  <span class="tq-choice-title">{{ 'TRAVEL_TQ.CHOICE_YES_ACCOMM_T' | translate }}</span>
+                  <span class="tq-choice-desc">{{ 'TRAVEL_TQ.CHOICE_YES_ACCOMM_D' | translate }}</span>
                 </div>
                 <i class="pi pi-arrow-right tq-choice-arrow-pi"></i>
               </button>
@@ -110,15 +106,15 @@ type QuizStep = 'welcome' | 'hebergement' | 'transport' | 'all-done';
               <button type="button" class="tq-choice tq-choice-no" (click)="answerHebergement(false)">
                 <div class="tq-choice-icon"><i class="pi pi-building"></i></div>
                 <div class="tq-choice-body">
-                  <span class="tq-choice-title">No, I need to book</span>
-                  <span class="tq-choice-desc">Find accommodation now</span>
+                  <span class="tq-choice-title">{{ 'TRAVEL_TQ.CHOICE_NO_ACCOMM_T' | translate }}</span>
+                  <span class="tq-choice-desc">{{ 'TRAVEL_TQ.CHOICE_NO_ACCOMM_D' | translate }}</span>
                 </div>
                 <i class="pi pi-arrow-right tq-choice-arrow-pi"></i>
               </button>
             </div>
 
             <button type="button" class="tq-btn-back" (click)="goToStep('welcome')">
-              <i class="pi pi-arrow-left"></i> Back
+              <i class="pi pi-arrow-left"></i> {{ 'TRAVEL_TQ.BACK' | translate }}
             </button>
           </div>
         }
@@ -127,24 +123,22 @@ type QuizStep = 'welcome' | 'hebergement' | 'transport' | 'all-done';
         @if (currentStep() === 'transport') {
           <div class="tq-card tq-animate-in">
             <div class="tq-step-label">
-              <span class="tq-step-num">02</span>
-              <span class="tq-step-title">Transport</span>
+              <span class="tq-step-num">{{ 'TRAVEL_TQ.STEP02' | translate }}</span>
+              <span class="tq-step-title">{{ 'TRAVEL_TQ.LABEL_TRANSPORT' | translate }}</span>
             </div>
 
             <div class="tq-question-icon-wrap"><i class="pi pi-car tq-question-pi"></i></div>
-            <h2 class="tq-question">
-              Do you already have <span class="tq-highlight-red">transport</span> or a vehicle?
-            </h2>
+            <h2 class="tq-question">{{ 'TRAVEL_TQ.Q_TRANSPORT_TITLE' | translate }}</h2>
             <p class="tq-question-desc">
-              Personal car, booked bus, taxi, shared taxi (louage), or flight — is your travel sorted?
+              {{ 'TRAVEL_TQ.Q_TRANSPORT_DESC' | translate }}
             </p>
 
             <div class="tq-choices">
               <button type="button" class="tq-choice tq-choice-yes" (click)="answerTransport(true)">
                 <div class="tq-choice-icon"><i class="pi pi-check"></i></div>
                 <div class="tq-choice-body">
-                  <span class="tq-choice-title">Yes, I already have transport</span>
-                  <span class="tq-choice-desc">Browse available activities</span>
+                  <span class="tq-choice-title">{{ 'TRAVEL_TQ.CHOICE_YES_TRANSPORT_T' | translate }}</span>
+                  <span class="tq-choice-desc">{{ 'TRAVEL_TQ.CHOICE_YES_TRANSPORT_D' | translate }}</span>
                 </div>
                 <i class="pi pi-arrow-right tq-choice-arrow-pi"></i>
               </button>
@@ -152,15 +146,15 @@ type QuizStep = 'welcome' | 'hebergement' | 'transport' | 'all-done';
               <button type="button" class="tq-choice tq-choice-no" (click)="answerTransport(false)">
                 <div class="tq-choice-icon"><i class="pi pi-car"></i></div>
                 <div class="tq-choice-body">
-                  <span class="tq-choice-title">No, I need to book transport</span>
-                  <span class="tq-choice-desc">Search bus, taxi, louage, or flights</span>
+                  <span class="tq-choice-title">{{ 'TRAVEL_TQ.CHOICE_NO_TRANSPORT_T' | translate }}</span>
+                  <span class="tq-choice-desc">{{ 'TRAVEL_TQ.CHOICE_NO_TRANSPORT_D' | translate }}</span>
                 </div>
                 <i class="pi pi-arrow-right tq-choice-arrow-pi"></i>
               </button>
             </div>
 
             <button type="button" class="tq-btn-back" (click)="goToStep('hebergement')">
-              <i class="pi pi-arrow-left"></i> Back
+              <i class="pi pi-arrow-left"></i> {{ 'TRAVEL_TQ.BACK' | translate }}
             </button>
           </div>
         }
@@ -171,28 +165,28 @@ type QuizStep = 'welcome' | 'hebergement' | 'transport' | 'all-done';
             <div class="tq-done-circle">
               <i class="pi pi-check tq-done-check-pi"></i>
             </div>
-            <h2 class="tq-done-title">You’re all set!</h2>
+            <h2 class="tq-done-title">{{ 'TRAVEL_TQ.DONE_TITLE' | translate }}</h2>
             <p class="tq-done-desc">
-              Accommodation and transport are covered. Enjoy the activities Tunisia has to offer!
+              {{ 'TRAVEL_TQ.DONE_DESC' | translate }}
             </p>
 
             <div class="tq-done-cards">
               <div class="tq-done-item">
                 <i class="pi pi-building tq-done-item-pi"></i>
-                <span>Accommodation sorted</span>
+                <span>{{ 'TRAVEL_TQ.DONE_ITEM_ACCOMM' | translate }}</span>
               </div>
               <div class="tq-done-item">
                 <i class="pi pi-car tq-done-item-pi"></i>
-                <span>Transport sorted</span>
+                <span>{{ 'TRAVEL_TQ.DONE_ITEM_TRANSPORT' | translate }}</span>
               </div>
             </div>
 
             <div class="tq-actions">
               <button type="button" class="tq-btn-primary" (click)="goActivities()">
-                Explore activities
+                {{ 'TRAVEL_TQ.EXPLORE_ACTIVITIES' | translate }}
               </button>
               <button type="button" class="tq-btn-ghost" (click)="viewReservations()">
-                My bookings
+                {{ 'TRAVEL_TQ.MY_BOOKINGS' | translate }}
               </button>
             </div>
           </div>
@@ -201,7 +195,7 @@ type QuizStep = 'welcome' | 'hebergement' | 'transport' | 'all-done';
         <!-- Skip link -->
         @if (currentStep() !== 'all-done') {
           <p class="tq-skip-link" (click)="skipQuestionnaire()">
-            Go straight to my profile
+            {{ 'TRAVEL_TQ.SKIP_PROFILE' | translate }}
           </p>
         }
 

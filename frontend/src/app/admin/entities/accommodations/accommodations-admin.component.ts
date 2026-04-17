@@ -3,6 +3,12 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { catchError, of } from 'rxjs';
+import { DialogModule } from 'primeng/dialog';
+import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
+import { DropdownModule } from 'primeng/dropdown';
+import { InputNumberModule } from 'primeng/inputnumber';
+import { SliderModule } from 'primeng/slider';
 
 interface Accommodation {
   accommodationId: number;
@@ -33,7 +39,17 @@ interface City {
 @Component({
   selector: 'app-accommodations-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    ReactiveFormsModule,
+    DialogModule,
+    ButtonModule,
+    InputTextModule,
+    DropdownModule,
+    InputNumberModule,
+    SliderModule,
+  ],
   templateUrl: './accommodations-admin.component.html',
   styleUrl: './accommodations-admin.component.css'
 })
@@ -64,6 +80,27 @@ export class AccommodationsAdminComponent {
   accommodationTypes = ['HOTEL', 'GUESTHOUSE', 'MAISON_HOTE', 'AUTRE'];
   roomTypes = ['SINGLE', 'DOUBLE', 'SUITE', 'FAMILY', 'STUDIO'];
   statusOptions = ['AVAILABLE', 'UNAVAILABLE'];
+
+  readonly accTypeOptions = [
+    { label: 'Hotel', value: 'HOTEL' as const },
+    { label: 'Guest house', value: 'GUESTHOUSE' as const },
+    { label: "Maison d'hôte", value: 'MAISON_HOTE' as const },
+    { label: 'Other', value: 'AUTRE' as const },
+  ];
+
+  readonly accStatusOptions = [
+    { label: 'Available', value: 'AVAILABLE' as const },
+    { label: 'Unavailable', value: 'UNAVAILABLE' as const },
+  ];
+
+  cityDropdownOptions = computed(() =>
+    this.cities().map((c) => ({
+      label: `${c.name} (${c.region})`,
+      value: c.cityId,
+    }))
+  );
+
+  roomTypeOptions = this.roomTypes.map((rt) => ({ label: rt, value: rt }));
 
   // Filtered accommodations
   filteredAccommodations = computed(() => {
@@ -163,6 +200,28 @@ export class AccommodationsAdminComponent {
     this.filterType.set('');
     this.filterStatus.set('');
     this.accPage.set(1);
+  }
+
+  onAccommodationDialogVisible(visible: boolean): void {
+    if (!visible) {
+      this.closeForm();
+    }
+  }
+
+  onRoomDialogVisible(visible: boolean): void {
+    if (!visible) {
+      this.closeRoomForm();
+    }
+  }
+
+  accFieldInvalid(controlName: string): boolean {
+    const c = this.accommodationForm.get(controlName);
+    return !!(c && c.invalid && c.touched);
+  }
+
+  accFieldValid(controlName: string): boolean {
+    const c = this.accommodationForm.get(controlName);
+    return !!(c && c.valid && c.touched);
   }
 
   accPageEnd(): number {

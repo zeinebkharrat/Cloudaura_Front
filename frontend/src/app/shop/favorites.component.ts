@@ -2,6 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { API_BASE_URL } from '../core/api-url';
 import { AuthService } from '../core/auth.service';
 import { ShopService } from '../core/shop.service';
@@ -10,27 +11,27 @@ import { CatalogProduct } from '../feature-page.component';
 @Component({
   selector: 'app-favorites',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, TranslateModule],
   template: `
     <div class="favorites-page">
       <div class="favorites-header">
         <div class="favorites-header__icon">❤️</div>
-        <h1>Mes Favoris</h1>
-        <p>Vos produits artisanaux sauvegardés — retrouvez vos coups de cœur.</p>
+        <h1>{{ 'FAVORITES_PAGE.TITLE' | translate }}</h1>
+        <p>{{ 'FAVORITES_PAGE.SUBTITLE' | translate }}</p>
       </div>
 
       <div *ngIf="loading()" class="fav-state">
-        <i class="pi pi-spin pi-spinner"></i> Chargement de vos favoris…
+        <i class="pi pi-spin pi-spinner"></i> {{ 'FAVORITES_PAGE.LOADING' | translate }}
       </div>
       <div *ngIf="error()" class="fav-state fav-state--error">
         <i class="pi pi-exclamation-triangle"></i> {{ error() }}
-        <button (click)="load()">Réessayer</button>
+        <button (click)="load()">{{ 'FAVORITES_PAGE.RETRY' | translate }}</button>
       </div>
       <div *ngIf="!loading() && !error() && favorites().length === 0" class="fav-empty">
         <div class="fav-empty__icon">🫶</div>
-        <h3>Aucun favori pour l'instant</h3>
-        <p>Parcourez notre catalogue artisanat et cliquez sur ❤️ pour sauvegarder vos produits préférés.</p>
-        <a routerLink="/artisanat" class="btn-browse">Découvrir l'artisanat</a>
+        <h3>{{ 'FAVORITES_PAGE.EMPTY_TITLE' | translate }}</h3>
+        <p>{{ 'FAVORITES_PAGE.EMPTY_DESC' | translate }}</p>
+        <a routerLink="/artisanat" class="btn-browse">{{ 'FAVORITES_PAGE.BROWSE' | translate }}</a>
       </div>
 
       <div *ngIf="!loading() && favorites().length > 0" class="fav-toast-wrap">
@@ -39,7 +40,7 @@ import { CatalogProduct } from '../feature-page.component';
 
       <div *ngIf="!loading() && favorites().length > 0" class="fav-grid">
         <div *ngFor="let p of favorites(); let i = index" class="fav-card" [style.animation-delay.ms]="i * 50">
-          <button class="fav-card__remove" (click)="removeFavorite(p)" title="Retirer des favoris">
+          <button class="fav-card__remove" (click)="removeFavorite(p)" [attr.title]="'FAVORITES_PAGE.REMOVE_TITLE' | translate">
             <i class="pi pi-heart-fill"></i>
           </button>
           <div class="fav-card__media" [routerLink]="['/artisanat']">
@@ -60,7 +61,7 @@ import { CatalogProduct } from '../feature-page.component';
               <button class="fav-card__cart" (click)="addToCart(p)"
                 [disabled]="addingId() === p.productId || (p.stock != null && p.stock <= 0)">
                 <i class="pi pi-shopping-cart"></i>
-                {{ (p.stock != null && p.stock <= 0) ? 'Épuisé' : 'Ajouter' }}
+                {{ (p.stock != null && p.stock <= 0) ? ('FAVORITES_PAGE.OUT_OF_STOCK' | translate) : ('FAVORITES_PAGE.ADD' | translate) }}
               </button>
             </div>
           </div>
@@ -258,6 +259,7 @@ import { CatalogProduct } from '../feature-page.component';
 export class FavoritesComponent implements OnInit {
   private http = inject(HttpClient);
   private router = inject(Router);
+  private readonly translate = inject(TranslateService);
   readonly auth = inject(AuthService);
   readonly shop = inject(ShopService);
 
@@ -281,7 +283,7 @@ export class FavoritesComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
-        this.error.set('Impossible de charger vos favoris. Vérifiez votre connexion.');
+        this.error.set(this.translate.instant('FAVORITES_PAGE.ERR_LOAD'));
         this.loading.set(false);
       }
     });
@@ -292,17 +294,17 @@ export class FavoritesComponent implements OnInit {
       next: (res) => {
         if (!res.isFavorite) {
           this.favorites.update(list => list.filter(f => f.productId !== p.productId));
-          this.showToast(`"${p.name}" retiré des favoris.`, 'success');
+          this.showToast(this.translate.instant('FAVORITES_PAGE.TOAST_REMOVED', { name: p.name }), 'success');
         }
       },
-      error: () => this.showToast('Erreur lors de la mise à jour.', 'error')
+      error: () => this.showToast(this.translate.instant('FAVORITES_PAGE.TOAST_UPDATE_ERR'), 'error')
     });
   }
 
   addToCart(p: CatalogProduct): void {
     if (p.category === 'TEXTILE' && p.variants && p.variants.length > 1) {
       this.router.navigate(['/artisanat']);
-      this.showToast('Choisissez la taille et la couleur sur la fiche produit (Artisanat).', 'info');
+      this.showToast(this.translate.instant('FAVORITES_PAGE.TOAST_VARIANTS'), 'info');
       return;
     }
     let variantId: number | undefined;
@@ -316,11 +318,11 @@ export class FavoritesComponent implements OnInit {
       next: () => {
         this.addingId.set(null);
         this.shop.refreshCartCount();
-        this.showToast(`✓ "${p.name}" ajouté au panier !`, 'success');
+        this.showToast(this.translate.instant('FAVORITES_PAGE.TOAST_ADDED', { name: p.name }), 'success');
       },
       error: () => {
         this.addingId.set(null);
-        this.showToast('Impossible d\'ajouter au panier.', 'error');
+        this.showToast(this.translate.instant('FAVORITES_PAGE.TOAST_CART_ERR'), 'error');
       }
     });
   }

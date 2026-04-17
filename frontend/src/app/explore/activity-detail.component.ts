@@ -17,6 +17,11 @@ import {
 import { ExploreService } from './explore.service';
 import { LoginRequiredPromptService } from '../core/login-required-prompt.service';
 import { AuthService } from '../core/auth.service';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { DualCurrencyPipe } from '../core/pipes/dual-currency.pipe';
+import { createCurrencyDisplaySyncEffect } from '../core/utils/currency-display-sync';
+import { LanguageService } from '../core/services/language.service';
+import { CurrencyService } from '../core/services/currency.service';
 
 interface CalendarDayCell {
   dateIso: string;
@@ -30,11 +35,13 @@ interface CalendarDayCell {
 @Component({
   selector: 'app-activity-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, DualCurrencyPipe, TranslateModule],
   templateUrl: './activity-detail.component.html',
   styleUrl: './activity-detail.component.css',
 })
 export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
+  private readonly _currencyDisplaySync = createCurrencyDisplaySyncEffect();
+
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly exploreService = inject(ExploreService);
@@ -42,6 +49,9 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   private readonly http = inject(HttpClient);
   private readonly location = inject(Location);
   private readonly loginPrompt = inject(LoginRequiredPromptService);
+  private readonly translate = inject(TranslateService);
+  private readonly language = inject(LanguageService);
+  private readonly currency = inject(CurrencyService);
 
   activity?: Activity;
   activityMedia: ActivityMedia[] = [];
@@ -64,7 +74,7 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   availabilityByDate = new Map<string, ActivityAvailabilityDay>();
   calendarDays: CalendarDayCell[] = [];
   calendarMonth = this.startOfMonth(new Date());
-  weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  readonly weekdayIndices = [0, 1, 2, 3, 4, 5, 6] as const;
   showOnlyAvailable = false;
 
   form: CreateActivityReservationRequest = {
@@ -119,7 +129,7 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     const id = Number(this.route.snapshot.paramMap.get('activityId'));
     if (!id) {
       this.loading = false;
-      this.error = 'Activity not found.';
+      this.error = this.translate.instant('EXPLORE_ACTIVITY.ERR_NOT_FOUND');
       return;
     }
 
@@ -135,7 +145,8 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
       },
       error: (err) => {
         this.loading = false;
-        this.error = err?.error?.message || 'Unable to load this activity.';
+        this.error =
+          err?.error?.message || this.translate.instant('EXPLORE_ACTIVITY.ERR_LOAD');
       },
     });
   }
@@ -296,8 +307,10 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
         this.blurActiveElement();
         Swal.fire({
           icon: 'warning',
-          title: 'Places insuffisantes',
-          text: `Il reste ${selectedAvailability.remainingParticipants} place(s) pour cette date.`,
+          title: this.translate.instant('EXPLORE_ACTIVITY.SWAL_PLACES_TITLE'),
+          text: this.translate.instant('EXPLORE_ACTIVITY.SWAL_PLACES_TEXT', {
+            n: selectedAvailability.remainingParticipants,
+          }),
           confirmButtonColor: '#e63946',
         });
         return;
@@ -308,7 +321,7 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
     this.http
       .post<{ sessionId: string; sessionUrl: string }>(
         `/api/public/activities/${this.activity.activityId}/reservations/checkout`,
-        this.form
+        { ...this.form, presentmentCurrency: this.currency.selectedCode() }
       )
       .subscribe({
         next: (res: { sessionId: string; sessionUrl: string }) => {
@@ -520,8 +533,8 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
         if (err?.status === 401) {
           Swal.fire({
             icon: 'warning',
-            title: 'Sign in required',
-            text: 'Please sign in to post a comment.',
+            title: this.translate.instant('EXPLORE_ACTIVITY.SWAL_SIGNIN_POST_TITLE'),
+            text: this.translate.instant('EXPLORE_ACTIVITY.SWAL_SIGNIN_POST_TEXT'),
             confirmButtonColor: '#e63946',
           });
           return;
@@ -529,8 +542,9 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
 
         Swal.fire({
           icon: 'error',
-          title: 'Error',
-          text: err?.error?.message || 'Unable to publish comment.',
+          title: this.translate.instant('EXPLORE_ACTIVITY.SWAL_ERROR_TITLE'),
+          text:
+            err?.error?.message || this.translate.instant('EXPLORE_ACTIVITY.SWAL_PUBLISH_ERR'),
           confirmButtonColor: '#e63946',
         });
       },
@@ -662,7 +676,9 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   }
 
   monthLabel(): string {
-    return this.calendarMonth.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    const lang = this.language.currentLang();
+    const locale = lang === 'ar' ? 'ar-TN' : lang === 'fr' ? 'fr-FR' : 'en-GB';
+    return this.calendarMonth.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
   }
 
   totalPrice(): number {
@@ -673,10 +689,10 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   selectedRemainingPlaces(): string {
     const availability = this.availabilityByDate.get(this.form.reservationDate);
     if (!availability) {
-      return '—';
+      return this.translate.instant('COMMON.DASH');
     }
     if (availability.remainingParticipants == null) {
-      return 'Unlimited';
+      return this.translate.instant('EXPLORE_ACTIVITY.UNLIMITED');
     }
     return String(availability.remainingParticipants);
   }

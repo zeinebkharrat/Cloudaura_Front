@@ -23,38 +23,6 @@ public interface TransportRepository extends JpaRepository<Transport, Integer> {
 
     List<Transport> findByIsActiveTrue();
 
-    @Query("SELECT COUNT(t) > 0 FROM Transport t WHERE t.vehicle.vehicleId = :vehicleId " +
-           "AND t.isActive = true AND t.departureTime < :arrivalTime AND t.arrivalTime > :departureTime")
-    boolean existsByVehicleIdAndTimeOverlap(
-            @Param("vehicleId") Integer vehicleId,
-            @Param("departureTime") LocalDateTime departureTime,
-            @Param("arrivalTime") LocalDateTime arrivalTime);
-
-    @Query("SELECT COUNT(t) > 0 FROM Transport t WHERE t.vehicle.vehicleId = :vehicleId " +
-           "AND t.isActive = true AND t.departureTime < :arrivalTime AND t.arrivalTime > :departureTime " +
-           "AND t.transportId <> :excludeId")
-    boolean existsByVehicleIdAndTimeOverlapExcluding(
-            @Param("vehicleId") Integer vehicleId,
-            @Param("departureTime") LocalDateTime departureTime,
-            @Param("arrivalTime") LocalDateTime arrivalTime,
-            @Param("excludeId") Integer excludeId);
-
-    @Query("SELECT COUNT(t) > 0 FROM Transport t WHERE t.driver.driverId = :driverId " +
-           "AND t.isActive = true AND t.departureTime < :arrivalTime AND t.arrivalTime > :departureTime")
-    boolean existsByDriverIdAndTimeOverlap(
-            @Param("driverId") Integer driverId,
-            @Param("departureTime") LocalDateTime departureTime,
-            @Param("arrivalTime") LocalDateTime arrivalTime);
-
-    @Query("SELECT COUNT(t) > 0 FROM Transport t WHERE t.driver.driverId = :driverId " +
-           "AND t.isActive = true AND t.departureTime < :arrivalTime AND t.arrivalTime > :departureTime " +
-           "AND t.transportId <> :excludeId")
-    boolean existsByDriverIdAndTimeOverlapExcluding(
-            @Param("driverId") Integer driverId,
-            @Param("departureTime") LocalDateTime departureTime,
-            @Param("arrivalTime") LocalDateTime arrivalTime,
-            @Param("excludeId") Integer excludeId);
-
     @Query("SELECT COUNT(t) FROM Transport t WHERE t.isActive = true")
     long countActive();
 

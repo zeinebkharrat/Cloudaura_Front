@@ -45,6 +45,10 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): nu
   return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 }
 
+/** 1×1 px gray PNG — used when OSM tiles fail (offline / blocked). */
+const LEAFLET_ERROR_TILE =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+
 function formatDrivingDuration(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) {
     return '';
@@ -75,8 +79,14 @@ function formatDrivingDuration(seconds: number): string {
         © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>
         — itinéraire <a href="https://project-osrm.org/" target="_blank" rel="noopener noreferrer">OSRM</a>
       </p>
+      @if (tilesDegraded) {
+        <p class="trm-warn">Fond carte limité (hors ligne ou tuiles bloquées) — l’itinéraire reste affiché.</p>
+      }
+      @if (routingEstimated) {
+        <p class="trm-warn">Service d’itinéraire (OSRM) indisponible — distance et durée estimées (ligne droite).</p>
+      }
       @if (loadError) {
-        <p class="trm-err">Carte ou itinéraire indisponible (réseau ou serveur).</p>
+        <p class="trm-err">Impossible de joindre le serveur — vérifiez la connexion ou relancez l’application.</p>
       }
     </div>
   `,
@@ -120,6 +130,12 @@ function formatDrivingDuration(seconds: number): string {
       .trm-osm a:hover {
         text-decoration: underline;
       }
+      .trm-warn {
+        margin: 0;
+        padding: 0.5rem 1rem 0;
+        font-size: 0.78rem;
+        color: #fbbf24;
+      }
       .trm-err {
         margin: 0;
         padding: 0.5rem 1rem 0.85rem;
@@ -140,6 +156,8 @@ export class TransportRouteMapComponent implements OnChanges, OnDestroy {
   distanceKm: number | null = null;
   durationLabel = '';
   loadError = false;
+  tilesDegraded = false;
+  routingEstimated = false;
 
   private map: L.Map | null = null;
   private routeGroup: L.LayerGroup | null = null;
@@ -170,6 +188,8 @@ export class TransportRouteMapComponent implements OnChanges, OnDestroy {
 
   private async refreshRoute(): Promise<void> {
     this.loadError = false;
+    this.routingEstimated = false;
+    this.tilesDegraded = typeof navigator !== 'undefined' && navigator.onLine === false;
     const from = this.coordsOf(this.fromCity);
     const to = this.coordsOf(this.toCity);
     if (!from || !to) {
@@ -185,10 +205,18 @@ export class TransportRouteMapComponent implements OnChanges, OnDestroy {
         this.map = L.map(this.mapEl.nativeElement, {
           zoomControl: true,
         }).setView([from.lat, from.lng], 7);
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
           maxZoom: 19,
           attribution: '',
-        }).addTo(this.map);
+          errorTileUrl: LEAFLET_ERROR_TILE,
+        });
+        tiles.on('tileerror', () => {
+          this.zone.run(() => {
+            this.tilesDegraded = true;
+            this.cdr.markForCheck();
+          });
+        });
+        tiles.addTo(this.map);
       } else {
         this.map.setView([from.lat, from.lng], this.map.getZoom());
       }
@@ -201,10 +229,14 @@ export class TransportRouteMapComponent implements OnChanges, OnDestroy {
       .set('toLat', String(to.lat))
       .set('toLon', String(to.lng));
 
-    this.http.get<OsrmResponse>('/api/routing/driving', { params }).subscribe({
-      next: (body) => {
+    this.http.get<OsrmResponse>('/api/routing/driving', { params, observe: 'response' }).subscribe({
+      next: (resp) => {
         this.zone.run(() => {
+          const body = resp.body ?? {};
           const route = body.routes?.[0];
+          const hasGeom = !!(route?.geometry?.coordinates?.length);
+          const estimated = !hasGeom;
+          this.routingEstimated = estimated;
           let km: number;
           let sec: number;
           let latLngs: L.LatLng[];
@@ -220,7 +252,7 @@ export class TransportRouteMapComponent implements OnChanges, OnDestroy {
           }
 
           this.distanceKm = Math.round(km * 100) / 100;
-          this.durationLabel = formatDrivingDuration(sec);
+          this.durationLabel = formatDrivingDuration(sec) + (estimated ? ' (estimé)' : '');
           this.routeSummary.emit({ distanceKm: this.distanceKm, durationSeconds: Math.round(sec) });
 
           this.zone.runOutsideAngular(() => {
@@ -229,7 +261,10 @@ export class TransportRouteMapComponent implements OnChanges, OnDestroy {
             }
             this.clearRouteOverlay();
             this.routeGroup = L.layerGroup().addTo(this.map);
-            L.polyline(latLngs, { color: '#f12545', weight: 4, opacity: 0.9 }).addTo(this.routeGroup);
+            const lineOpts = estimated
+              ? ({ color: '#94a3b8', weight: 3, dashArray: '8 6', opacity: 0.85 } as L.PolylineOptions)
+              : ({ color: '#f12545', weight: 4, opacity: 0.9 } as L.PolylineOptions);
+            L.polyline(latLngs, lineOpts).addTo(this.routeGroup);
             L.circleMarker([from.lat, from.lng], { radius: 6, color: '#fff', fillColor: '#f12545', fillOpacity: 1 })
               .addTo(this.routeGroup);
             L.circleMarker([to.lat, to.lng], { radius: 6, color: '#fff', fillColor: '#297E95', fillOpacity: 1 })
@@ -248,6 +283,7 @@ export class TransportRouteMapComponent implements OnChanges, OnDestroy {
           this.distanceKm = Math.round(km * 100) / 100;
           this.durationLabel = formatDrivingDuration(sec) + ' (estimé)';
           this.routeSummary.emit({ distanceKm: this.distanceKm, durationSeconds: Math.round(sec) });
+          this.routingEstimated = false;
           this.loadError = true;
 
           this.zone.runOutsideAngular(() => {

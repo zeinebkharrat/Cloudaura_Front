@@ -97,6 +97,7 @@ export class EventService {
     eventName: string;
     requestedTickets?: number;
     participants?: EventParticipantPayload[];
+    presentmentCurrency?: string;
   }): Observable<{ sessionId: string; sessionUrl?: string }> {
     return this.http.post<{ sessionId: string; sessionUrl?: string }>(
       `${this.apiUrl}/create-checkout-session`,

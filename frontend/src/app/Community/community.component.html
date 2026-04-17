@@ -15,7 +15,7 @@
           class="composer-main-input"
           [value]="newPostContent()"
           (input)="newPostContent.set($any($event.target).value)"
-          placeholder="Share your Tunisia experience..."
+          [attr.placeholder]="'COMMUNITY.COMPOSER_PLACEHOLDER' | translate"
         />
       </div>
 
@@ -27,7 +27,7 @@
             multiple
             (change)="onNewPostMediaSelect($event)"
           />
-          <i class="pi pi-image" aria-hidden="true"></i> Photo
+          <i class="pi pi-image" aria-hidden="true"></i> {{ 'COMMUNITY.PHOTO' | translate }}
         </label>
 
         <label class="composer-chip location-chip">
@@ -37,7 +37,7 @@
             [value]="newPostLocation()"
             (change)="newPostLocation.set($any($event.target).value)"
           >
-            <option value="">Place</option>
+            <option value="">{{ 'COMMUNITY.PLACE' | translate }}</option>
             <option *ngFor="let city of cities(); trackBy: trackByCity" [value]="city.name">
               {{ city.name }}
             </option>
@@ -50,8 +50,8 @@
           (click)="createPost()"
           [disabled]="!newPostContent().trim() || isPosting()"
         >
-          <span *ngIf="!isPosting()">Publish</span>
-          <span *ngIf="isPosting()">...</span>
+          <span *ngIf="!isPosting()">{{ 'COMMUNITY.PUBLISH' | translate }}</span>
+          <span *ngIf="isPosting()">{{ 'COMMUNITY.POSTING' | translate }}</span>
         </button>
       </div>
 
@@ -71,7 +71,7 @@
     <div class="likers-modal-backdrop" *ngIf="activeLikersPostId()" (click)="toggleLikersModal(null)">
       <div class="likers-modal-content glass-panel" (click)="$event.stopPropagation()">
         <div class="likers-modal-header">
-          <h3>Likes</h3>
+          <h3>{{ 'COMMUNITY.LIKES_MODAL_TITLE' | translate }}</h3>
           <button type="button" class="btn-close" (click)="toggleLikersModal(null)">✕</button>
         </div>
         <div class="likers-list">
@@ -104,7 +104,7 @@
           class="media-lightbox-nav media-lightbox-nav--prev"
           *ngIf="activeMediaList().length > 1"
           (click)="prevMedia()"
-          aria-label="Previous image"
+          [attr.aria-label]="'COMMUNITY.LIGHTBOX_PREV' | translate"
         >
           ‹
         </button>
@@ -113,7 +113,7 @@
           class="media-lightbox-image"
           *ngIf="currentLightboxMedia()?.fileUrl"
           [src]="currentLightboxMedia()!.fileUrl!"
-          alt="Post media"
+          [attr.alt]="'COMMUNITY.LIGHTBOX_ALT' | translate"
         />
 
         <button
@@ -121,7 +121,7 @@
           class="media-lightbox-nav media-lightbox-nav--next"
           *ngIf="activeMediaList().length > 1"
           (click)="nextMedia()"
-          aria-label="Next image"
+          [attr.aria-label]="'COMMUNITY.LIGHTBOX_NEXT' | translate"
         >
           ›
         </button>
@@ -136,6 +136,115 @@
 
   <!-- Feed Section -->
   <section class="feed">
+    <!-- Declared before any *ngTemplateOutlet so commentTpl is a real TemplateRef (avoids createEmbeddedViewImpl errors) -->
+    <ng-template #commentTpl let-comment let-depth="depth" let-postId="postId">
+      <div class="comment-item" [style.marginLeft.px]="depth * 18">
+        <div class="comment-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="avatar comment-avatar">
+              <img *ngIf="userAvatarUrl(comment.author); else commentAuthorFallback" [src]="userAvatarUrl(comment.author)!" [alt]="displayName(comment.author)" class="avatar-img" />
+              <ng-template #commentAuthorFallback>{{ displayName(comment.author).charAt(0).toUpperCase() || 'U' }}</ng-template>
+            </div>
+            <button
+              type="button"
+              class="comment-author comment-author-link"
+              (mouseenter)="openUserHoverFromEvent($event, comment.author)"
+              (mouseleave)="scheduleUserHoverClose()"
+              (click)="goToUserProfile(comment.author?.userId)"
+            >{{ displayName(comment.author) }}</button>
+          </div>
+          <span class="comment-date">{{ formatDate(comment.createdAt) }}</span>
+        </div>
+
+        <ng-container *ngIf="getCommentGiphy(comment) as commentGiphy">
+          <img class="comment-giphy" [src]="commentGiphy.fullUrl" [alt]="commentGiphy.title || 'GIF'" />
+        </ng-container>
+
+        <p class="comment-content" *ngIf="getCommentDisplayText(comment)">{{ getCommentDisplayText(comment) }}</p>
+
+        <div class="comment-actions">
+          <button
+            type="button"
+            class="reply-btn"
+            (click)="openReply(comment.commentId!)"
+            [disabled]="activeReplyCommentId() === comment.commentId"
+          >
+            {{ 'COMMUNITY.REPLY' | translate }}
+          </button>
+          <button
+            type="button"
+            class="reply-btn reply-btn--danger"
+            *ngIf="canDeleteComment(comment)"
+            (click)="deleteComment(comment.commentId!)"
+          >
+            {{ 'COMMUNITY.DELETE' | translate }}
+          </button>
+        </div>
+
+        <div
+          class="reply-form glass-panel"
+          *ngIf="activeReplyCommentId() === comment.commentId!"
+        >
+          <textarea
+            rows="2"
+            [value]="getReplyDraft(comment.commentId!)"
+            (input)="setReplyDraft(comment.commentId!, $any($event.target).value)"
+            [attr.placeholder]="'COMMUNITY.REPLY_PLACEHOLDER' | translate"
+          ></textarea>
+
+          <div class="selected-giphy" *ngIf="getSelectedGiphyForReply(comment.commentId!) as selected">
+            <img [src]="selected.previewUrl || selected.fullUrl" alt="Selected GIF" />
+            <button type="button" class="reply-btn reply-btn--danger" (click)="clearSelectedGiphyForReply(comment.commentId!)">Remove</button>
+          </div>
+
+          <div class="reply-actions">
+            <button
+              type="button"
+              class="btn-outline btn-outline--small"
+              (click)="openGiphyPickerForReply(comment.commentId!)"
+            >
+              GIF
+            </button>
+            <button
+              type="button"
+              class="btn-primary btn-primary--small"
+              (click)="addComment(postId, comment.commentId!)"
+              [disabled]="getReplyDraft(comment.commentId!).trim().length === 0 && !getSelectedGiphyForReply(comment.commentId!)"
+            >
+              {{ 'COMMUNITY.REPLY' | translate }}
+            </button>
+            <button
+              type="button"
+              class="btn-outline btn-outline--small"
+              (click)="closeReply()"
+            >
+              {{ 'COMMUNITY.CANCEL' | translate }}
+            </button>
+          </div>
+        </div>
+
+        <ng-container *ngIf="comment.children?.length">
+          <ng-container
+            *ngFor="
+              let child of comment.children;
+              trackBy: trackByComment
+            "
+          >
+            <ng-container
+              *ngTemplateOutlet="
+                commentTplRef;
+                context: {
+                  $implicit: child,
+                  depth: depth + 1,
+                  postId: postId
+                }
+              "
+            ></ng-container>
+          </ng-container>
+        </ng-container>
+      </div>
+    </ng-template>
+
     <div class="feed-error glass-panel" *ngIf="loadError()">
       <i class="pi pi-exclamation-triangle feed-err-ico" aria-hidden="true"></i>
       <span>{{ loadError() }}</span>
@@ -143,7 +252,7 @@
 
     <div class="feed-loading glass-panel" *ngIf="!loadError() && !feedLoaded()">
       <i class="pi pi-spinner pi-spin feed-load-ico" aria-hidden="true"></i>
-      <span>Loading community…</span>
+      <span>{{ 'COMMUNITY.LOADING_FEED' | translate }}</span>
     </div>
 
     <div class="posts-container" *ngIf="feedLoaded()">
@@ -166,7 +275,17 @@
 
       <ng-container *ngFor="let post of visiblePosts(); trackBy: trackByPost">
         <ng-container *ngIf="post.postId != null">
-          <article class="post-card glass-panel" [attr.data-post-id]="post.postId" [class.post-card--location-hover]="isLocationHoverVisible(post.postId!)">
+          <article
+            class="post-card glass-panel"
+            [attr.data-post-id]="post.postId"
+            [class.post-card--location-hover]="isLocationHoverVisible(post.postId!)"
+            [class.post-card--event-announcement]="isEventAnnouncementPost(post)"
+            [class.post-card--clickable]="isEventAnnouncementPost(post)"
+            [attr.role]="isEventAnnouncementPost(post) ? 'button' : null"
+            [attr.tabindex]="isEventAnnouncementPost(post) ? 0 : null"
+            (click)="isEventAnnouncementPost(post) && openEventFromPost(post, $event)"
+            (keydown.enter)="isEventAnnouncementPost(post) && openEventFromPost(post, $event)"
+          >
             <header class="post-header">
               <div class="post-author">
                 <div class="avatar">
@@ -228,14 +347,14 @@
                   *ngIf="authService.isAuthenticated() && post.author?.userId && authService.currentUser()?.id !== post.author?.userId"
                   (click)="toggleFollow(post.author?.userId)"
                 >
-                  {{ isFollowing(post.author?.userId) ? 'Following' : '+ Follow' }}
+                  {{ isFollowing(post.author?.userId) ? ('COMMUNITY.FOLLOWING' | translate) : ('COMMUNITY.FOLLOW' | translate) }}
                 </button>
                 <div class="post-actions" *ngIf="canEditPost(post) || canDeletePost(post)" (click)="$event.stopPropagation()">
                   <button 
                     type="button"
                     class="btn-icon post-menu-trigger"
                     (click)="$event.stopPropagation(); togglePostMenu(post.postId!)"
-                    title="Options"
+                    [attr.title]="'COMMUNITY.OPTIONS' | translate"
                   >
                     <span aria-hidden="true">⋯</span>
                   </button>
@@ -247,7 +366,7 @@
                       (click)="startEditPost(post)"
                       *ngIf="canEditPost(post)"
                     >
-                      Edit
+                      {{ 'COMMUNITY.EDIT' | translate }}
                     </button>
                     <button
                       type="button"
@@ -255,7 +374,7 @@
                       (click)="deletePost(post.postId!)"
                       *ngIf="canDeletePost(post)"
                     >
-                      Delete
+                      {{ 'COMMUNITY.DELETE' | translate }}
                     </button>
                   </div>
                 </div>
@@ -265,7 +384,7 @@
             <div class="post-content">
               <ng-container *ngIf="!isEditingPost(post.postId!); else editPostForm">
                 <section class="repost-shell" *ngIf="isRepost(post) && post.repostOf">
-                  <p class="repost-credit"><i class="pi pi-replay repost-ico" aria-hidden="true"></i> Repost from {{ displayName(post.repostOf.author) }}</p>
+                  <p class="repost-credit"><i class="pi pi-replay repost-ico" aria-hidden="true"></i> {{ 'COMMUNITY.REPOST_FROM' | translate: { name: displayName(post.repostOf.author) } }}</p>
                   <article class="repost-card">
                     <header class="repost-head">
                       <div class="avatar small">
@@ -344,6 +463,17 @@
                   <span class="hashtag-chip" *ngFor="let tag of getHashtags(post)">{{ tag }}</span>
                 </div>
 
+                <section class="event-announcement-panel" *ngIf="isEventAnnouncementPost(post)">
+                  <div class="event-announcement-panel__badge">Live Event Drop</div>
+                  <button
+                    type="button"
+                    class="event-announcement-panel__cta"
+                    (click)="openEventFromPost(post, $event)"
+                  >
+                    Open Event Card
+                  </button>
+                </section>
+
                 <p class="post-caption">{{ post.content }}</p>
 
               </ng-container>
@@ -351,25 +481,25 @@
               <ng-template #editPostForm>
                 <div class="edit-post-form glass-panel">
                   <label class="field-label">
-                    <span>Edit content</span>
+                    <span>{{ 'COMMUNITY.EDIT_CONTENT' | translate }}</span>
                     <textarea
                       rows="3"
                       class="form-textarea"
                       [value]="editPostContent()"
                       (input)="editPostContent.set($any($event.target).value)"
-                      placeholder="Update your post…"
+                      [attr.placeholder]="'COMMUNITY.UPDATE_POST_PH' | translate"
                     ></textarea>
                   </label>
 
                   <div class="form-row">
                     <label class="field-label">
-                      <span>Place</span>
+                      <span>{{ 'COMMUNITY.PLACE' | translate }}</span>
                       <select
                         class="form-select"
                         [value]="editPostLocation()"
                         (change)="editPostLocation.set($any($event.target).value)"
                       >
-                        <option value="">Choose a city</option>
+                        <option value="">{{ 'COMMUNITY.CHOOSE_CITY' | translate }}</option>
                         <option *ngFor="let city of cities(); trackBy: trackByCity" [value]="city.name">
                           {{ cityDisplay(city) }}
                         </option>
@@ -377,21 +507,21 @@
                     </label>
 
                     <label class="field-label">
-                      <span>Visibility</span>
+                      <span>{{ 'COMMUNITY.VISIBILITY' | translate }}</span>
                       <select
                         class="form-select"
                         [value]="editPostVisibility()"
                         (change)="editPostVisibility.set($any($event.target).value)"
                       >
-                        <option value="public">Public</option>
-                        <option value="private">Private</option>
+                        <option value="public">{{ 'COMMUNITY.VIS_PUBLIC' | translate }}</option>
+                        <option value="private">{{ 'COMMUNITY.VIS_PRIVATE' | translate }}</option>
                       </select>
                     </label>
                   </div>
 
                   <div class="edit-post-actions">
                     <button type="button" class="btn-outline" (click)="cancelEditPost()">
-                      Cancel
+                      {{ 'COMMUNITY.CANCEL' | translate }}
                     </button>
                     <button
                       type="button"
@@ -399,8 +529,8 @@
                       [disabled]="!editPostContent().trim() || !editPostLocation().trim() || isSavingEdit()"
                       (click)="saveEditedPost(post)"
                     >
-                      <span *ngIf="!isSavingEdit()">Save</span>
-                      <span *ngIf="isSavingEdit()">Saving…</span>
+                      <span *ngIf="!isSavingEdit()">{{ 'COMMUNITY.SAVE' | translate }}</span>
+                      <span *ngIf="isSavingEdit()">{{ 'COMMUNITY.SAVING' | translate }}</span>
                     </button>
                   </div>
                 </div>
@@ -416,17 +546,23 @@
                   >
                     <span
                       class="like-heart-emoji"
-                      [attr.aria-label]="isPostLiked(post.postId!) ? 'Unlike' : 'Like'"
+                      [attr.aria-label]="isPostLiked(post.postId!) ? ('COMMUNITY.UNLIKE' | translate) : ('COMMUNITY.LIKE' | translate)"
                       role="img"
                     >{{ isPostLiked(post.postId!) ? '❤️' : '🤍' }}</span>
                     <span
                       class="stat-count"
                       (click)="$event.stopPropagation(); toggleLikersModal(post.postId!)"
-                    >{{ getLikeCount(post.postId!) }} likes</span>
+                    >{{ 'COMMUNITY.LIKES_N' | translate: { n: getLikeCount(post.postId!) } }}</span>
                   </div>
-                  <button type="button" class="stat-item stat-item--clickable stat-comment-trigger" (click)="toggleComments(post.postId!)">
+                  <button
+                    type="button"
+                    class="stat-item stat-item--clickable stat-comment-trigger"
+                    (click)="toggleComments(post.postId!)"
+                    [disabled]="!isCommentsAllowed(post)"
+                    [class.stat-item--disabled]="!isCommentsAllowed(post)"
+                  >
                     <img src="icones/commenter.png" alt="" class="stat-ico stat-ico--comment" width="18" height="18" />
-                    <span>{{ getCommentCount(post.postId!) }} comments</span>
+                    <span>{{ isCommentsAllowed(post) ? (getCommentCount(post.postId!) + ' comments') : 'Comments disabled' }}</span>
                   </button>
                   <span class="stat-item">
                     <span>{{ post.totalViews ?? 0 }} views</span>
@@ -439,7 +575,7 @@
                     type="button"
                     class="stat-action-btn stat-action-btn--repost"
                     (click)="repost(post.postId!)"
-                    title="Repost"
+                    [attr.title]="'COMMUNITY.REPOST' | translate"
                   >
                     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
                       <path d="M8 7h8.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -447,13 +583,13 @@
                       <path d="M16 17H7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                       <path d="M9.5 14l-3.5 3 3.5 3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                     </svg>
-                    <span>Repost</span>
+                    <span>{{ 'COMMUNITY.REPOST' | translate }}</span>
                   </button>
                   <button
                     type="button"
                     class="stat-action-btn stat-action-btn--bookmark"
                     (click)="toggleSavePost(post.postId!)"
-                    [title]="isPostSaved(post.postId!) ? 'Remove from saved' : 'Save'"
+                    [attr.title]="isPostSaved(post.postId!) ? ('COMMUNITY.REMOVE_SAVED' | translate) : ('COMMUNITY.SAVE_POST' | translate)"
                     [class.active]="isPostSaved(post.postId!)"
                   >
                     <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -465,12 +601,12 @@
 
               <div class="inline-comments-block" *ngIf="isCommentsExpanded(post.postId!)">
                 <p class="empty-thread" *ngIf="commentTreeForPost(post.postId!).length === 0">
-                  No comments on this post yet.
+                  {{ 'COMMUNITY.NO_COMMENTS_YET' | translate }}
                 </p>
 
                 <ng-container *ngFor="let root of commentTreeForPost(post.postId!); trackBy: trackByComment">
                   <ng-container
-                    *ngTemplateOutlet="commentTpl; context: { $implicit: root, depth: 0, postId: post.postId! }"
+                    *ngTemplateOutlet="commentTplRef; context: { $implicit: root, depth: 0, postId: post.postId! }"
                   ></ng-container>
                 </ng-container>
               </div>
@@ -487,7 +623,7 @@
                   [value]="getPostDraft(post.postId!)"
                   (input)="setPostDraft(post.postId!, $any($event.target).value)"
                   (keydown.enter)="addComment(post.postId!)"
-                  placeholder="Write a comment…"
+                  [attr.placeholder]="'COMMUNITY.COMMENT_PLACEHOLDER' | translate"
                 />
                 <button type="button" class="reply-btn giphy-btn" (click)="openGiphyPickerForPost(post.postId!)">GIF</button>
               </div>
@@ -501,115 +637,6 @@
         </ng-container>
         </ng-container>
       </div>
-
-      <!-- Comment Template -->
-      <ng-template #commentTpl let-comment let-depth="depth" let-postId="postId">
-      <div class="comment-item" [style.marginLeft.px]="depth * 18">
-        <div class="comment-header">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <div class="avatar comment-avatar">
-              <img *ngIf="userAvatarUrl(comment.author); else commentAuthorFallback" [src]="userAvatarUrl(comment.author)!" [alt]="displayName(comment.author)" class="avatar-img" />
-              <ng-template #commentAuthorFallback>{{ displayName(comment.author).charAt(0).toUpperCase() || 'U' }}</ng-template>
-            </div>
-            <button
-              type="button"
-              class="comment-author comment-author-link"
-              (mouseenter)="openUserHoverFromEvent($event, comment.author)"
-              (mouseleave)="scheduleUserHoverClose()"
-              (click)="goToUserProfile(comment.author?.userId)"
-            >{{ displayName(comment.author) }}</button>
-          </div>
-          <span class="comment-date">{{ formatDate(comment.createdAt) }}</span>
-        </div>
-        
-        <ng-container *ngIf="getCommentGiphy(comment) as commentGiphy">
-          <img class="comment-giphy" [src]="commentGiphy.fullUrl" [alt]="commentGiphy.title || 'GIF'" />
-        </ng-container>
-
-        <p class="comment-content" *ngIf="getCommentDisplayText(comment)">{{ getCommentDisplayText(comment) }}</p>
-
-        <div class="comment-actions">
-          <button
-            type="button"
-            class="reply-btn"
-            (click)="openReply(comment.commentId!)"
-            [disabled]="activeReplyCommentId() === comment.commentId"
-          >
-            Reply
-          </button>
-          <button
-            type="button"
-            class="reply-btn reply-btn--danger"
-            *ngIf="canDeleteComment(comment)"
-            (click)="deleteComment(comment.commentId!)"
-          >
-            Delete
-          </button>
-        </div>
-
-        <div
-          class="reply-form glass-panel"
-          *ngIf="activeReplyCommentId() === comment.commentId!"
-        >
-          <textarea
-            rows="2"
-            [value]="getReplyDraft(comment.commentId!)"
-            (input)="setReplyDraft(comment.commentId!, $any($event.target).value)"
-            placeholder="Your reply…"
-          ></textarea>
-
-          <div class="selected-giphy" *ngIf="getSelectedGiphyForReply(comment.commentId!) as selected">
-            <img [src]="selected.previewUrl || selected.fullUrl" alt="Selected GIF" />
-            <button type="button" class="reply-btn reply-btn--danger" (click)="clearSelectedGiphyForReply(comment.commentId!)">Remove</button>
-          </div>
-
-          <div class="reply-actions">
-            <button
-              type="button"
-              class="btn-outline btn-outline--small"
-              (click)="openGiphyPickerForReply(comment.commentId!)"
-            >
-              GIF
-            </button>
-            <button
-              type="button"
-              class="btn-primary btn-primary--small"
-              (click)="addComment(postId, comment.commentId!)"
-              [disabled]="getReplyDraft(comment.commentId!).trim().length === 0 && !getSelectedGiphyForReply(comment.commentId!)"
-            >
-              Reply
-            </button>
-            <button
-              type="button"
-              class="btn-outline btn-outline--small"
-              (click)="closeReply()"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-
-        <ng-container *ngIf="comment.children?.length">
-          <ng-container
-            *ngFor="
-              let child of comment.children;
-              trackBy: trackByComment
-            "
-          >
-            <ng-container
-              *ngTemplateOutlet="
-                commentTpl;
-                context: {
-                  $implicit: child,
-                  depth: depth + 1,
-                  postId: postId
-                }
-              "
-            ></ng-container>
-          </ng-container>
-        </ng-container>
-      </div>
-    </ng-template>
 
     <div class="giphy-modal-backdrop" *ngIf="showGiphyPicker()" (click)="closeGiphyPicker()">
       <section class="giphy-modal-card" (click)="$event.stopPropagation()">

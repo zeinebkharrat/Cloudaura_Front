@@ -13,19 +13,17 @@ TRUNCATE TABLE reservations;
 TRUNCATE TABLE rooms;
 TRUNCATE TABLE accommodations;
 TRUNCATE TABLE transports;
-TRUNCATE TABLE drivers;
-TRUNCATE TABLE vehicles;
 TRUNCATE TABLE cities;
 
 -- 3. Réactiver les contraintes FK
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- 4. Redémarrer le backend Spring Boot → DataInitializer s'exécute automatiquement
---    et insère les 24 gouvernorats + 120 hôtels + véhicules + chauffeurs + transports demo.
+--    et insère les 24 gouvernorats + 120 hôtels + transports demo.
 
 -- ============================================================
 -- VARIANTE PostgreSQL (si vous utilisez Postgres)
 -- ============================================================
 -- TRUNCATE TABLE transport_reservations, reservations, rooms, accommodations,
---               transports, drivers, vehicles, cities RESTART IDENTITY CASCADE;
+--               transports, cities RESTART IDENTITY CASCADE;
 -- ============================================================

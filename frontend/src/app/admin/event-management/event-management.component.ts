@@ -785,7 +785,7 @@ resetFilters() {
     if (Number.isNaN(date.getTime())) {
       return raw;
     }
-    return date.toLocaleDateString('fr-FR', {
+    return date.toLocaleDateString('en-US', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
@@ -801,7 +801,7 @@ resetFilters() {
     if (Number.isNaN(date.getTime())) {
       return '';
     }
-    return date.toLocaleTimeString('fr-FR', {
+    return date.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit'
     });

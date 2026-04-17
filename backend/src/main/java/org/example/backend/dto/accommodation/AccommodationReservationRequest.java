@@ -13,4 +13,7 @@ public class AccommodationReservationRequest {
     private LocalDate checkIn;
     private LocalDate checkOut;
     private Integer offerId;
+
+    /** Optional Stripe Checkout presentment: {@code tnd}, {@code eur}, or {@code usd}. */
+    private String presentmentCurrency;
 }

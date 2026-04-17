@@ -20,6 +20,9 @@ export interface Post {
   hashtags?: string | null;
   location?: string | null;
   visibility?: string | null;
+  postType?: string | null;
+  linkedEventId?: number | null;
+  commentsEnabled?: boolean | null;
   repostOf?: Post | null;
   likesCount?: number | null;
   commentsCount?: number | null;

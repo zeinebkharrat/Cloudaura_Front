@@ -1,6 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, ElementRef, OnDestroy, ViewChild, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { LanguageSelectorComponent } from './core/components/language-selector/language-selector.component';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import Swal from 'sweetalert2';
@@ -12,13 +14,14 @@ import { CityOption } from './core/auth.types';
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink, TranslateModule, LanguageSelectorComponent],
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.css',
 })
 export class ProfileComponent implements OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly fb = inject(FormBuilder);
+  private readonly translate = inject(TranslateService);
 
   readonly isSavingProfile = signal(false);
   readonly isChangingPassword = signal(false);
@@ -89,7 +92,7 @@ export class ProfileComponent implements OnDestroy {
         });
       },
       error: () => {
-        this.actionError.set('Could not load your profile.');
+        this.actionError.set(this.translate.instant('PROFILE.ERR_LOAD_PROFILE'));
       },
     });
 
@@ -107,7 +110,7 @@ export class ProfileComponent implements OnDestroy {
   }
 
   phoneErrorMessage(): string {
-    return 'Format: 8 chiffres ou +216 suivi de 8 chiffres (WhatsApp).';
+    return this.translate.instant('PROFILE.PHONE_ERR_FORMAT');
   }
 
   private normalizePhone(value: string): string | null {
@@ -138,7 +141,7 @@ export class ProfileComponent implements OnDestroy {
         this.profileForm.patchValue({ profileImageUrl: response.url });
       },
       error: (error: HttpErrorResponse) => {
-        this.actionError.set(extractApiErrorMessage(error, 'Image upload failed.'));
+        this.actionError.set(extractApiErrorMessage(error, this.translate.instant('PROFILE.ERR_UPLOAD_FALLBACK')));
       },
       complete: () => this.uploadBusy.set(false),
     });
@@ -318,7 +321,7 @@ export class ProfileComponent implements OnDestroy {
     if (isTunisia && (cityId == null || Number.isNaN(cityId))) {
       this.profileForm.controls.cityId.setErrors({ required: true });
       this.profileForm.controls.cityId.markAsTouched();
-      this.actionError.set('Please select a city if you choose Tunisia.');
+      this.actionError.set(this.translate.instant('PROFILE.ERR_CITY_REQUIRED'));
       this.isSavingProfile.set(false);
       return;
     }
@@ -344,10 +347,10 @@ export class ProfileComponent implements OnDestroy {
             cityId: user.cityId ?? null,
             profileImageUrl: user.profileImageUrl ?? '',
           });
-          this.actionSuccess.set('Profile updated successfully.');
+          this.actionSuccess.set(this.translate.instant('PROFILE.SUCCESS_PROFILE'));
         },
         error: (error: HttpErrorResponse) => {
-          this.actionError.set(extractApiErrorMessage(error, 'Mise a jour impossible.'));
+          this.actionError.set(extractApiErrorMessage(error, this.translate.instant('PROFILE.ERR_UPDATE_FALLBACK')));
         },
         complete: () => this.isSavingProfile.set(false),
       });
@@ -359,7 +362,7 @@ export class ProfileComponent implements OnDestroy {
     }
 
     const result = await Swal.fire({
-      title: 'Change password',
+      title: this.translate.instant('PROFILE.SWAL_PW_TITLE'),
       background: 'var(--surface-1)',
       color: 'var(--text-color)',
       customClass: {
@@ -370,8 +373,8 @@ export class ProfileComponent implements OnDestroy {
       },
       buttonsStyling: false,
       showCancelButton: true,
-      confirmButtonText: 'Confirm',
-      cancelButtonText: 'Cancel',
+      confirmButtonText: this.translate.instant('PROFILE.SWAL_CONFIRM'),
+      cancelButtonText: this.translate.instant('PROFILE.SWAL_CANCEL'),
       focusConfirm: false,
       html: `
         <div class="profile-swal-shell">
@@ -452,15 +455,15 @@ export class ProfileComponent implements OnDestroy {
         const confirmPassword = (document.getElementById('sw-confirm-password') as HTMLInputElement | null)?.value?.trim() ?? '';
 
         if (!currentPassword || !newPassword || !confirmPassword) {
-          Swal.showValidationMessage('Please fill in all fields.');
+          Swal.showValidationMessage(this.translate.instant('PROFILE.SWAL_FILL_ALL'));
           return null;
         }
         if (newPassword.length < 8) {
-          Swal.showValidationMessage('The new password must be at least 8 characters.');
+          Swal.showValidationMessage(this.translate.instant('PROFILE.SWAL_PW_MIN'));
           return null;
         }
         if (newPassword !== confirmPassword) {
-          Swal.showValidationMessage('Password confirmation does not match.');
+          Swal.showValidationMessage(this.translate.instant('PROFILE.SWAL_PW_MISMATCH'));
           return null;
         }
         return { currentPassword, newPassword };
@@ -479,8 +482,8 @@ export class ProfileComponent implements OnDestroy {
       await firstValueFrom(this.authService.changePassword(result.value));
       await Swal.fire({
         icon: 'success',
-        title: 'Password updated',
-        text: 'Your password has been updated successfully.',
+        title: this.translate.instant('PROFILE.SWAL_PW_SUCCESS_TITLE'),
+        text: this.translate.instant('PROFILE.SWAL_PW_SUCCESS_TEXT'),
         background: 'var(--surface-1)',
         color: 'var(--text-color)',
         customClass: {
@@ -488,16 +491,16 @@ export class ProfileComponent implements OnDestroy {
           confirmButton: 'profile-swal-confirm',
         },
         buttonsStyling: false,
-        confirmButtonText: 'OK',
+        confirmButtonText: this.translate.instant('PROFILE.SWAL_OK'),
       });
-      this.actionSuccess.set('Password updated successfully.');
+      this.actionSuccess.set(this.translate.instant('PROFILE.SUCCESS_PASSWORD'));
     } catch (error) {
       const apiError = error as HttpErrorResponse;
-      const message = extractApiErrorMessage(apiError, 'Could not change password.');
+      const message = extractApiErrorMessage(apiError, this.translate.instant('PROFILE.ERR_CHANGE_PW_FALLBACK'));
       this.actionError.set(message);
       await Swal.fire({
         icon: 'error',
-        title: 'Failed',
+        title: this.translate.instant('PROFILE.SWAL_FAILED_TITLE'),
         text: message,
         background: 'var(--surface-1)',
         color: 'var(--text-color)',
@@ -506,7 +509,7 @@ export class ProfileComponent implements OnDestroy {
           confirmButton: 'profile-swal-confirm',
         },
         buttonsStyling: false,
-        confirmButtonText: 'Close',
+        confirmButtonText: this.translate.instant('PROFILE.SWAL_CLOSE'),
       });
     } finally {
       this.isChangingPassword.set(false);

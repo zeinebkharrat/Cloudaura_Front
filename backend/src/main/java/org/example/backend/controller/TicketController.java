@@ -6,6 +6,7 @@ import org.example.backend.exception.ResourceNotFoundException;
 import org.example.backend.model.TransportReservation;
 import org.example.backend.repository.TransportReservationRepository;
 import org.example.backend.service.QrCodeService;
+import org.example.backend.service.ReservationTranslationHelper;
 import org.example.backend.service.TicketPdfService;
 import org.example.backend.service.TransportReservationMapper;
 import org.example.backend.service.TransportTicketQrPayload;
@@ -26,13 +27,15 @@ public class TicketController {
     private final QrCodeService qrCodeService;
     private final TicketPdfService ticketPdfService;
     private final UserIdentityResolver userIdentityResolver;
+    private final TransportReservationMapper transportReservationMapper;
+    private final ReservationTranslationHelper reservationLabels;
 
     @GetMapping("/{reservationId}/qr")
     public ResponseEntity<byte[]> getQrCode(
             @PathVariable int reservationId,
             Authentication authentication) {
         TransportReservation res = reservationRepo.findByIdWithAssociations(reservationId)
-                .orElseThrow(() -> new ResourceNotFoundException("Réservation non trouvée."));
+                .orElseThrow(() -> new ResourceNotFoundException("reservation.error.reservation_not_found"));
         assertReservationOwner(res, authentication);
 
         String content = TransportTicketQrPayload.jsonForReservation(res);
@@ -50,10 +53,10 @@ public class TicketController {
             @PathVariable int reservationId,
             Authentication authentication) {
         TransportReservation res = reservationRepo.findByIdWithAssociations(reservationId)
-                .orElseThrow(() -> new ResourceNotFoundException("Réservation non trouvée."));
+                .orElseThrow(() -> new ResourceNotFoundException("reservation.error.reservation_not_found"));
         assertReservationOwner(res, authentication);
 
-        TransportReservationResponse dto = TransportReservationMapper.toResponse(res);
+        TransportReservationResponse dto = transportReservationMapper.toResponse(res);
         byte[] pdf = ticketPdfService.generateTicketPdf(dto);
 
         String filename = "billet-" + res.getReservationRef() + ".pdf";
@@ -67,10 +70,10 @@ public class TicketController {
     private void assertReservationOwner(TransportReservation res, Authentication authentication) {
         Integer uid = userIdentityResolver.resolveUserId(authentication);
         if (uid == null) {
-            throw new AccessDeniedException("Authentication required");
+            throw new AccessDeniedException("reservation.error.auth_required");
         }
         if (res.getUser() == null || !uid.equals(res.getUser().getUserId())) {
-            throw new AccessDeniedException("Not your reservation");
+            throw new AccessDeniedException("api.error.ticket.reservation_wrong_user");
         }
     }
 

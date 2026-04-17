@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, Renderer2, effect, HostListener, computed } from '@angular/core';
+import { ApplicationRef, Component, inject, signal, OnInit, Renderer2, effect, HostListener, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NavigationEnd, Router, RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { filter } from 'rxjs';
@@ -12,11 +12,24 @@ import { SignInComponent } from './sign-in.component';
 import { SignUpComponent } from './sign-up.component';
 import { GamificationBadgeEntry, GamificationService } from './core/gamification.service';
 import { ReservationNotificationItem, ReservationNotificationsService } from './core/reservation-notifications.service';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { LanguageService } from './core/services/language.service';
+import { CurrencySelectorComponent } from './core/components/currency-selector/currency-selector.component';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, ChatBubbleComponent, SignInComponent, SignUpComponent],
+  imports: [
+    CommonModule,
+    RouterOutlet,
+    RouterLink,
+    RouterLinkActive,
+    TranslateModule,
+    ChatBubbleComponent,
+    SignInComponent,
+    SignUpComponent,
+    CurrencySelectorComponent,
+  ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
 })
@@ -24,6 +37,9 @@ export class AppComponent implements OnInit {
   private static readonly APP_BASE_TITLE = 'YallaTN+ - Premium Tunisian Tourism';
   private readonly router = inject(Router);
   private readonly renderer = inject(Renderer2);
+  private readonly appRef = inject(ApplicationRef);
+  private readonly language = inject(LanguageService);
+  private readonly translate = inject(TranslateService);
   readonly auth = inject(AuthService);
   readonly shop = inject(ShopService);
   private readonly chatService = inject(ChatService);

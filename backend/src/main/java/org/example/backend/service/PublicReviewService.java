@@ -160,7 +160,7 @@ public class PublicReviewService {
     private User currentAuthenticatedUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentification requise");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.review_auth_required");
         }
 
         String username = authentication.getName();

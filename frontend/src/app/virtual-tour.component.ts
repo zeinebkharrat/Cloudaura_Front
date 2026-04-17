@@ -9,6 +9,7 @@ import {
   signal,
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
 
 /** Optional partial-pano fields (degrees) — use when the JPEG is not a full 360×180 equirectangular. */
 export interface VirtualTourPartialPano {
@@ -19,7 +20,6 @@ export interface VirtualTourPartialPano {
 
 export interface VirtualTourScene {
   id: string;
-  label: string;
   panorama: string;
   partial?: VirtualTourPartialPano;
 }
@@ -33,14 +33,12 @@ const WIKI_THUMB = 'https://upload.wikimedia.org/wikipedia/commons/thumb';
 export const TUNISIA_VIRTUAL_TOUR_SCENES: VirtualTourScene[] = [
   {
     id: 'local',
-    label: 'Local View',
     /** Tabarka — cylindrical pano; EXIF FOV 103° × 50° (Hugin). CC BY-SA 4.0 — Habib Mhenni. */
     panorama: `${WIKI_THUMB}/7/71/Vue_de_Tabarka%2C_25_d%C3%A9cembre_2014.jpg/2048px-Vue_de_Tabarka%2C_25_d%C3%A9cembre_2014.jpg`,
     partial: { haov: 103, vaov: 50 },
   },
   {
     id: 'highlights',
-    label: 'Highlights View',
     /** Tozeur oasis strip panorama. CC BY 2.0 — McKay Savage. Approx. partial FOV for viewer. */
     panorama: `${WIKI_THUMB}/e/e6/Tunisia_10-12_-_165_-_Tozeur_-_Panorama_%286609494779%29.jpg/2048px-Tunisia_10-12_-_165_-_Tozeur_-_Panorama_%286609494779%29.jpg`,
     partial: { haov: 128, vaov: 44 },
@@ -50,21 +48,19 @@ export const TUNISIA_VIRTUAL_TOUR_SCENES: VirtualTourScene[] = [
 @Component({
   selector: 'app-virtual-tour',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslateModule],
   templateUrl: './virtual-tour.component.html',
   styleUrl: './virtual-tour.component.css',
 })
 export class VirtualTourComponent implements AfterViewInit, OnDestroy {
   @ViewChild('viewerHost', { static: false }) viewerHost!: ElementRef<HTMLElement>;
 
-  /** Taglines under the main section title (matches landing mockup messaging). */
-  readonly taglines = [
-    'Explore Tunisia in 360°',
-    'Step Into Tunisia',
-    'Discover Tunisia Virtually',
-  ] as const;
-
   readonly scenes = TUNISIA_VIRTUAL_TOUR_SCENES;
+
+  /** i18n key suffix 1..3 for rotating tagline under the title. */
+  taglineKey(): string {
+    return `VIRTUAL_TOUR.TAGLINE_${this.taglineIndex() + 1}`;
+  }
 
   taglineIndex = signal(0);
   selectedSceneId = signal<string>(this.scenes[0].id);
@@ -98,7 +94,7 @@ export class VirtualTourComponent implements AfterViewInit, OnDestroy {
   private advanceTagline(): void {
     this.taglineFading.set(true);
     this.fadeTimeout = setTimeout(() => {
-      this.taglineIndex.update((i) => (i + 1) % this.taglines.length);
+      this.taglineIndex.update((i) => (i + 1) % 3);
       this.taglineFading.set(false);
     }, 220);
   }

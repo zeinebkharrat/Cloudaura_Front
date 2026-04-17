@@ -8,6 +8,10 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import java.util.List;
 
+/**
+ * Hébergement : clé i18n catalogue {@code accommodation.{accommodationId}.name} — pas de champ {@code description}
+ * sur cette entité JPA.
+ */
 @Entity
 @Table(name = "accommodations")
 @Data @Builder @NoArgsConstructor @AllArgsConstructor
