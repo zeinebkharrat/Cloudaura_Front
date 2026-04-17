@@ -6,6 +6,10 @@ import { EventService } from './event.service';
 import { AuthService } from './core/auth.service';
 import { extractApiErrorMessage } from './api-error.util';
 
+interface CheckoutDraftPayload {
+  participants?: Array<{ firstName: string; lastName: string }>;
+}
+
 @Component({
   standalone: true,
   selector: 'app-event-payment-success',
@@ -124,6 +128,10 @@ export class EventPaymentSuccessComponent implements OnInit {
   status: 'loading' | 'ok' | 'error' = 'loading';
   message = '';
 
+  private checkoutDraftKey(sessionId: string): string {
+    return `eventCheckoutDraft:${sessionId}`;
+  }
+
   ngOnInit(): void {
     const sessionId = this.route.snapshot.queryParamMap.get('session_id');
     if (!sessionId) {
@@ -137,9 +145,28 @@ export class EventPaymentSuccessComponent implements OnInit {
         'Sign in with the same account you used to book, then use the return link from Stripe or book again.';
       return;
     }
-    this.eventService.finalizeCheckout(sessionId).subscribe({
+    const draftRaw = sessionStorage.getItem(this.checkoutDraftKey(sessionId));
+    let participants: Array<{ firstName: string; lastName: string }> | undefined;
+    if (draftRaw) {
+      try {
+        const parsed = JSON.parse(draftRaw) as CheckoutDraftPayload;
+        if (Array.isArray(parsed?.participants)) {
+          participants = parsed.participants
+            .map((p) => ({
+              firstName: String(p?.firstName ?? '').trim(),
+              lastName: String(p?.lastName ?? '').trim(),
+            }))
+            .filter((p) => !!p.firstName && !!p.lastName);
+        }
+      } catch {
+        participants = undefined;
+      }
+    }
+
+    this.eventService.finalizeCheckout({ sessionId, participants }).subscribe({
       next: (res) => {
         this.status = 'ok';
+        sessionStorage.removeItem(this.checkoutDraftKey(sessionId));
       },
       error: (err: HttpErrorResponse) => {
         this.status = 'error';

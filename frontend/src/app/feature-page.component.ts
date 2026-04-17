@@ -3,8 +3,7 @@ import { forkJoin } from 'rxjs';
 import { ActivatedRoute, Data, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { extractApiErrorMessage } from './api-error.util';
+import { HttpClient } from '@angular/common/http';
 import { API_BASE_URL, API_FALLBACK_ORIGIN } from './core/api-url';
 import { AuthService } from './core/auth.service';
 import { ShopService } from './core/shop.service';
@@ -18,7 +17,6 @@ import { ButtonModule } from 'primeng/button';
 import { CarouselModule } from 'primeng/carousel';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
-import Swal from 'sweetalert2';
 
 export interface FeatureBlock {
   title: string;
@@ -1208,20 +1206,6 @@ export class FeaturePageComponent implements OnInit {
     return this.isPaidEvent(event) ? 'Opening payment…' : 'Registering…';
   }
 
-  private toJoinUserMessage(err: HttpErrorResponse, fallback: string): string {
-    const raw = extractApiErrorMessage(err, fallback);
-    const lowered = raw.toLowerCase();
-    if (
-      lowered.includes('stripe is not configured') ||
-      lowered.includes('stripe.api.key') ||
-      lowered.includes('stripe_secret_key') ||
-      lowered.includes('stripe error')
-    ) {
-      return 'Online payment is temporarily unavailable. Please try again later.';
-    }
-    return raw;
-  }
-
   onJoinEvent(event: TravelEvent): void {
     this.eventJoinError.set(null);
 
@@ -1240,61 +1224,8 @@ export class FeaturePageComponent implements OnInit {
       return;
     }
 
-    const amount = this.eventPriceAmount(event);
-
-    if (amount > 0) {
-      this.eventJoinLoading.set(true);
-      this.eventService
-        .createCheckoutSession({
-          event_id: eventId,
-          amount,
-          eventName: event.title,
-        })
-        .subscribe({
-          next: (res) => {
-            this.eventJoinLoading.set(false);
-            if (res?.sessionUrl) {
-              window.location.href = res.sessionUrl;
-              return;
-            }
-            this.eventJoinError.set('Payment is temporarily unavailable. Please try again later.');
-          },
-          error: (err: HttpErrorResponse) => {
-            this.eventJoinLoading.set(false);
-            this.eventJoinError.set(this.toJoinUserMessage(err, 'Could not start payment.'));
-          },
-        });
-      return;
-    }
-
-    const reservationData = {
-      event_id: eventId,
-      total_amount: 0,
-      status: 'CONFIRMED',
-    };
-
-    this.eventJoinLoading.set(true);
-    this.eventService.createReservation(reservationData).subscribe({
-      next: (res) => {
-        this.eventJoinLoading.set(false);
-        const emailSent = res?.emailSent !== false;
-        Swal.fire({
-          icon: 'success',
-          title: "You're registered!",
-          text: emailSent
-            ? 'Thanks for joining this event. A confirmation email has been sent.'
-            : 'Thanks for joining this event. Registration is confirmed, but the email could not be sent now.',
-          confirmButtonText: 'Great'
-        });
-        this.closeEventDetails();
-      },
-      error: (err: HttpErrorResponse) => {
-        this.eventJoinLoading.set(false);
-        const apiMessage = extractApiErrorMessage(err, 'Could not complete registration.');
-        const providerError = typeof err?.error?.emailError === 'string' ? err.error.emailError.trim() : '';
-        this.eventJoinError.set(providerError ? `${apiMessage} (${providerError})` : apiMessage);
-      },
-    });
+    this.closeEventDetails();
+    this.router.navigate(['/evenements/reservation', eventId]);
   }
 
   getStatusLabel(status: string | undefined): string {

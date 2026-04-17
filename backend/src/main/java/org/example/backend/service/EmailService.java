@@ -723,6 +723,7 @@ public class EmailService {
             java.util.Date startDate,
             Integer reservationId,
             List<String> qrTokens,
+            List<String> participantNames,
             byte[] primaryQrPng) {
 
         String displayName = (firstName == null || firstName.isBlank()) ? "traveler" : firstName;
@@ -731,15 +732,39 @@ public class EmailService {
         String safeReservation = escapeHtml(String.valueOf(reservationId));
         String eventDateTime = formatEventDateTime(startDate);
 
-        String qrListHtml = "";
-        if (qrTokens != null && !qrTokens.isEmpty()) {
+        String ticketDetailsHtml = "";
+        StringBuilder ticketDetailsPlain = new StringBuilder();
+        int ticketsCount = qrTokens == null ? 0 : qrTokens.size();
+        if (ticketsCount > 0) {
             StringBuilder b = new StringBuilder();
-            for (String token : qrTokens) {
-                b.append("<li style=\"margin:4px 0;font-family:monospace;\">")
+            b.append("<ul style=\"padding-left:18px;color:#3a4d67;\">");
+            for (int i = 0; i < ticketsCount; i++) {
+                String token = qrTokens.get(i);
+                String participant = (participantNames != null && i < participantNames.size())
+                        ? participantNames.get(i)
+                        : ("Participant " + (i + 1));
+                b.append("<li style=\"margin:6px 0;\"><strong>Ticket #")
+                        .append(i + 1)
+                        .append("</strong> - Participant: ")
+                        .append(escapeHtml(participant))
+                        .append(" - Reservation ID: ")
+                        .append(safeReservation)
+                        .append("<br/><span style=\"font-family:monospace;\">QR: ")
                         .append(escapeHtml(token))
-                        .append("</li>");
+                        .append("</span></li>");
+
+                ticketDetailsPlain.append("Ticket #")
+                        .append(i + 1)
+                        .append(" - Participant: ")
+                        .append(participant)
+                        .append(" - Reservation ID: ")
+                        .append(reservationId)
+                        .append(" - QR: ")
+                        .append(token)
+                        .append("\n");
             }
-            qrListHtml = "<ul style=\"padding-left:18px;color:#3a4d67;\">" + b + "</ul>";
+            b.append("</ul>");
+            ticketDetailsHtml = b.toString();
         }
 
         String html = """
@@ -760,11 +785,10 @@ public class EmailService {
                                     <p style="margin:0;color:#3a4d67;"><strong>Event:</strong> %s</p>
                                     <p style="margin:6px 0;color:#3a4d67;"><strong>Venue:</strong> %s</p>
                                     <p style="margin:6px 0;color:#3a4d67;"><strong>Date &amp; Time:</strong> %s</p>
-                                    <p style="margin:6px 0 16px;color:#3a4d67;"><strong>Reservation ID:</strong> %s</p>
                                     <div style="margin:16px 0;text-align:center;">
                                         <img src="cid:event-ticket-qr" alt="QR Code" style="width:210px;height:210px;border:1px solid #e6eef7;border-radius:10px;padding:8px;background:#fff;"/>
                                     </div>
-                                    <p style="margin:0 0 8px;color:#3a4d67;"><strong>QR tokens:</strong></p>
+                                    <p style="margin:0 0 8px;color:#3a4d67;"><strong>Your tickets:</strong></p>
                                     %s
                                 </td></tr>
                             </table>
@@ -777,16 +801,15 @@ public class EmailService {
                 safeEventTitle,
                 safeVenue,
                 escapeHtml(eventDateTime),
-                safeReservation,
-                qrListHtml
+                ticketDetailsHtml
         );
 
         String plain = "Hi " + displayName + ",\n\n"
                 + "Your event reservation is confirmed.\n"
                 + "Event: " + (eventTitle == null ? "Event" : eventTitle) + "\n"
-                + "Reservation ID: " + reservationId + "\n"
                 + "Venue: " + (venue == null ? "TBA" : venue) + "\n"
-                + "Date & Time: " + eventDateTime + "\n";
+                + "Date & Time: " + eventDateTime + "\n"
+                + ticketDetailsPlain;
 
         MimeMessage message = userMailSender.createMimeMessage();
         try {

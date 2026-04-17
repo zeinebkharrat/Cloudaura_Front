@@ -83,6 +83,17 @@ public class EventService {
     }
 
     @Transactional
+    public void reserveSeatsOrThrow(Integer eventId, int requestedTickets) {
+        if (eventId == null || requestedTickets <= 0) {
+            throw new IllegalArgumentException("requestedTickets must be positive");
+        }
+        boolean reserved = eventRepository.reserveSpotsIfAvailable(eventId, requestedTickets) > 0;
+        if (!reserved) {
+            throw new IllegalStateException("Sold Out");
+        }
+    }
+
+    @Transactional
     public boolean hasAvailableSeats(Integer eventId, int requestedQuantity) {
         if (eventId == null || requestedQuantity <= 0) {
             return false;

@@ -14,6 +14,7 @@ import { ForgotPasswordComponent } from './forgot-password.component';
 import { ResetPasswordComponent } from './reset-password.component';
 import { VerifyEmailComponent } from './verify-email.component';
 import { EventPaymentSuccessComponent } from './event-payment-success.component';
+import { EventTicketBookingComponent } from './event-ticket-booking.component';
 import { authGuard } from './auth.guard';
 import { roleGuard } from './role.guard';
 import { AdminUsersComponent } from './admin-users.component';
@@ -70,6 +71,7 @@ export const routes: Routes = [
   { path: 'reset-password', component: ResetPasswordComponent },
   { path: 'verify-email', component: VerifyEmailComponent },
   { path: 'success', component: EventPaymentSuccessComponent },
+  { path: 'evenements/reservation/:eventId', component: EventTicketBookingComponent, canActivate: [authGuard] },
   { path: 'city/:cityId', component: CityExploreComponent },
   { path: 'services/restaurants', component: ServicesRestaurantsComponent },
   { path: 'services/activities', component: ServicesActivitiesComponent },

@@ -285,7 +285,8 @@ public class EventController {
                 return ResponseEntity.badRequest().body("event_id is required");
             }
             Integer requestedTicketTypeId = parseInteger(data.get("ticket_type_id"));
-            int quantity = parsePositiveInt(data.get("quantity"), 1);
+            int requestedTickets = parsePositiveInt(data.get("requestedTickets"), parsePositiveInt(data.get("quantity"), 1));
+            List<ParticipantInput> participants = normalizeParticipants(data.get("participants"), requestedTickets, currentUser);
             if (amount == null) {
                 amount = 0d;
             }
@@ -293,7 +294,9 @@ public class EventController {
             Event event = eventService.getEventById(eventId)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found"));
 
-            if (!eventService.reserveSeats(eventId, quantity)) {
+            try {
+                eventService.reserveSeatsOrThrow(eventId, requestedTickets);
+            } catch (IllegalStateException soldOut) {
                 return ResponseEntity.status(HttpStatus.CONFLICT).body("Sold Out");
             }
 
@@ -320,16 +323,21 @@ public class EventController {
 
             TicketType ticketType = resolveTicketTypeForCheckout(event, requestedTicketTypeId);
             List<String> qrTokens = new ArrayList<>();
-            for (int i = 0; i < quantity; i++) {
+            List<String> participantLabels = new ArrayList<>();
+            for (int i = 0; i < requestedTickets; i++) {
+                ParticipantInput participant = participants.get(i);
                 EventReservationItem item = new EventReservationItem();
                 item.setEventReservation(res);
                 item.setTicketType(ticketType);
                 item.setQuantity(1);
+                item.setParticipantFirstName(participant.firstName());
+                item.setParticipantLastName(participant.lastName());
                 String token = UUID.randomUUID().toString();
                 item.setQrCodeToken(token);
                 item.setIsScanned(false);
                 reservationItemRepository.save(item);
                 qrTokens.add(token);
+                participantLabels.add(participant.fullName());
             }
 
             boolean emailSent = false;
@@ -348,6 +356,7 @@ public class EventController {
                             event.getStartDate(),
                             res.getEventReservationId(),
                             qrTokens,
+                                participantLabels,
                             qrPng
                     );
                     emailSent = true;
@@ -383,7 +392,7 @@ public class EventController {
                     "message", "Reservation linked successfully.",
                     "event_reservation_id", res.getEventReservationId(),
                     "ticketTypeId", ticketType.getTicketTypeId(),
-                    "quantity", quantity,
+                    "quantity", requestedTickets,
                     "qrCodeTokens", qrTokens,
                     "emailSent", emailSent,
                     "emailError", emailError
@@ -415,12 +424,12 @@ public class EventController {
             }
 
             Integer requestedTicketTypeId = parseInteger(data.get("ticket_type_id"));
-            int quantity = parsePositiveInt(data.get("quantity"), 1);
+            int requestedTickets = parsePositiveInt(data.get("requestedTickets"), parsePositiveInt(data.get("quantity"), 1));
 
             Event e = eventService.getEventById(eventId)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Event not found"));
 
-            if (!eventService.hasAvailableSeats(eventId, quantity)) {
+            if (!eventService.hasAvailableSeats(eventId, requestedTickets)) {
                 return ResponseEntity.status(HttpStatus.CONFLICT).body("Sold Out");
             }
 
@@ -434,7 +443,7 @@ public class EventController {
 
             EventReservation res = new EventReservation();
             res.setStatus(ReservationStatus.PENDING);
-            res.setTotalAmount(ticketPrice * quantity);
+            res.setTotalAmount(ticketPrice * requestedTickets);
 
             User u = resolveAuthenticatedUser(authentication);
             if (u.getUserId() == null) {
@@ -472,11 +481,11 @@ public class EventController {
                     .putMetadata("reservationId", String.valueOf(res.getEventReservationId()))
                     .putMetadata("eventId", String.valueOf(eventId))
                     .putMetadata("ticketTypeId", String.valueOf(ticketType.getTicketTypeId()))
-                    .putMetadata("quantity", String.valueOf(quantity))
+                    .putMetadata("quantity", String.valueOf(requestedTickets))
                     .setSuccessUrl(base + "/success?session_id={CHECKOUT_SESSION_ID}")
                     .setCancelUrl(base + "/evenements")
                     .addLineItem(SessionCreateParams.LineItem.builder()
-                        .setQuantity((long) quantity)
+                        .setQuantity((long) requestedTickets)
                             .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
                                     .setCurrency(currency)
                                     .setUnitAmount(unitAmountMinor)
@@ -511,9 +520,10 @@ public class EventController {
      */
     @PostMapping("/finalize-checkout")
     @Transactional
-    public ResponseEntity<?> finalizeCheckout(@RequestBody Map<String, String> body, Authentication authentication) {
-        String sessionId = body != null ? body.get("sessionId") : null;
-        if (sessionId == null || sessionId.isBlank()) {
+    public ResponseEntity<?> finalizeCheckout(@RequestBody Map<String, Object> body, Authentication authentication) {
+        Object sessionId = body != null ? body.get("sessionId") : null;
+        String safeSessionId = sessionId == null ? null : String.valueOf(sessionId).trim();
+        if (safeSessionId == null || safeSessionId.isBlank()) {
             return ResponseEntity.badRequest().body("sessionId is required");
         }
         String effectiveStripeKey = resolveStripeApiKey();
@@ -522,7 +532,7 @@ public class EventController {
         }
         Stripe.apiKey = effectiveStripeKey;
         try {
-            Session session = Session.retrieve(sessionId);
+            Session session = Session.retrieve(safeSessionId);
             if (!"paid".equalsIgnoreCase(session.getPaymentStatus())) {
                 return ResponseEntity.badRequest().body("Payment not completed yet");
             }
@@ -560,7 +570,7 @@ public class EventController {
             }
 
             Integer ticketTypeId = metadataInt(session, "ticketTypeId");
-            int quantity = parsePositiveInt(metadataInt(session, "quantity"), 1);
+            int requestedTickets = parsePositiveInt(metadataInt(session, "quantity"), 1);
             if (ticketTypeId == null) {
                 return ResponseEntity.badRequest().body("Ticket type metadata is missing");
             }
@@ -568,22 +578,31 @@ public class EventController {
             TicketType ticketType = ticketTypeRepository.findById(ticketTypeId)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ticket type not found"));
 
+            List<ParticipantInput> participants = normalizeParticipants(body != null ? body.get("participants") : null, requestedTickets, current);
+
             Integer eventId = res.getEvent() != null ? res.getEvent().getEventId() : null;
-            if (!eventService.reserveSeats(eventId, quantity)) {
+            try {
+                eventService.reserveSeatsOrThrow(eventId, requestedTickets);
+            } catch (IllegalStateException soldOut) {
                 return ResponseEntity.status(HttpStatus.CONFLICT).body("Sold Out");
             }
 
             List<String> qrTokens = new ArrayList<>();
-            for (int i = 0; i < quantity; i++) {
+            List<String> participantLabels = new ArrayList<>();
+            for (int i = 0; i < requestedTickets; i++) {
+                ParticipantInput participant = participants.get(i);
                 EventReservationItem item = new EventReservationItem();
                 item.setEventReservation(res);
                 item.setTicketType(ticketType);
                 item.setQuantity(1);
+                item.setParticipantFirstName(participant.firstName());
+                item.setParticipantLastName(participant.lastName());
                 String token = UUID.randomUUID().toString();
                 item.setQrCodeToken(token);
                 item.setIsScanned(false);
                 reservationItemRepository.save(item);
                 qrTokens.add(token);
+                participantLabels.add(participant.fullName());
             }
 
             res.setStatus(ReservationStatus.CONFIRMED);
@@ -618,6 +637,7 @@ public class EventController {
                             res.getEvent() != null ? res.getEvent().getStartDate() : null,
                             res.getEventReservationId(),
                             qrTokens,
+                                participantLabels,
                             qrPng
                     );
                             emailSent = true;
@@ -632,7 +652,7 @@ public class EventController {
                     "eventReservationId", res.getEventReservationId(),
                     "eventId", res.getEvent() != null ? res.getEvent().getEventId() : null,
                     "ticketTypeId", ticketTypeId,
-                    "quantity", quantity,
+                        "quantity", requestedTickets,
                             "qrCodeTokens", qrTokens,
                             "emailSent", emailSent,
                             "emailError", emailError
@@ -933,10 +953,65 @@ public class EventController {
         }
         row.put("startDate", start != null ? start.toString() : null);
         row.put("qrCodeToken", item.getQrCodeToken());
+        row.put("participantFirstName", item.getParticipantFirstName());
+        row.put("participantLastName", item.getParticipantLastName());
         row.put("isScanned", Boolean.TRUE.equals(item.getIsScanned()));
         row.put("scannedAt", item.getScannedAt());
         row.put("attendanceStatus", computeAttendanceStatus(item));
         return row;
+    }
+
+    private List<ParticipantInput> normalizeParticipants(Object rawParticipants, int requestedTickets, User fallbackUser) {
+        if (requestedTickets <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "requestedTickets must be positive");
+        }
+
+        List<ParticipantInput> participants = new ArrayList<>();
+        if (rawParticipants instanceof List<?> rawList) {
+            for (Object entry : rawList) {
+                if (!(entry instanceof Map<?, ?> mapEntry)) {
+                    continue;
+                }
+                String firstName = safeName(mapEntry.get("firstName"));
+                String lastName = safeName(mapEntry.get("lastName"));
+                if (firstName.isBlank() || lastName.isBlank()) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Each participant must have firstName and lastName");
+                }
+                participants.add(new ParticipantInput(firstName, lastName));
+            }
+        }
+
+        if (participants.size() != requestedTickets) {
+            if (!participants.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "participants size must match requestedTickets");
+            }
+            String fallbackFirst = safeName(fallbackUser.getFirstName());
+            String fallbackLast = safeName(fallbackUser.getLastName());
+            if (fallbackFirst.isBlank()) {
+                fallbackFirst = "Guest";
+            }
+            if (fallbackLast.isBlank()) {
+                fallbackLast = "Traveler";
+            }
+            for (int i = 0; i < requestedTickets; i++) {
+                participants.add(new ParticipantInput(fallbackFirst, fallbackLast));
+            }
+        }
+
+        return participants;
+    }
+
+    private String safeName(Object value) {
+        if (value == null) {
+            return "";
+        }
+        return String.valueOf(value).trim();
+    }
+
+    private record ParticipantInput(String firstName, String lastName) {
+        String fullName() {
+            return (firstName + " " + lastName).trim();
+        }
     }
 
     private static Integer metadataInt(Session session, String key) {

@@ -4,6 +4,11 @@ import { Observable, catchError, map, throwError } from 'rxjs';
 import { Event } from './models/event';
 import { API_BASE_URL, API_FALLBACK_ORIGIN } from './core/api-url';
 
+export interface EventParticipantPayload {
+  firstName: string;
+  lastName: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -90,6 +95,8 @@ export class EventService {
     event_id: number | undefined;
     amount: number;
     eventName: string;
+    requestedTickets?: number;
+    participants?: EventParticipantPayload[];
   }): Observable<{ sessionId: string; sessionUrl?: string }> {
     return this.http.post<{ sessionId: string; sessionUrl?: string }>(
       `${this.apiUrl}/create-checkout-session`,
@@ -97,7 +104,7 @@ export class EventService {
     );
   }
 
-  finalizeCheckout(sessionId: string): Observable<{
+  finalizeCheckout(payload: { sessionId: string; participants?: EventParticipantPayload[] }): Observable<{
     message?: string;
     eventReservationId?: number;
     eventId?: number;
@@ -106,7 +113,7 @@ export class EventService {
       message?: string;
       eventReservationId?: number;
       eventId?: number;
-    }>(`${this.apiUrl}/finalize-checkout`, { sessionId });
+    }>(`${this.apiUrl}/finalize-checkout`, payload);
   }
 
   createReservation(data: any): Observable<any> {
