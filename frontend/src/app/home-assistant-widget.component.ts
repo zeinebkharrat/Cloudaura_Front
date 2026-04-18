@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
-import { Component, signal } from '@angular/core';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { Component, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { AuthService } from './core/auth.service';
 
 interface AssistantMessage {
   role: 'assistant' | 'user';
@@ -26,6 +27,10 @@ interface ChatbotQueryRequest {
   conversation: string[];
 }
 
+interface ChatbotConversationResponse {
+  conversation: string[];
+}
+
 @Component({
   selector: 'app-home-assistant-widget',
   standalone: true,
@@ -35,6 +40,12 @@ interface ChatbotQueryRequest {
 })
 export class HomeAssistantWidgetComponent {
   private static readonly URL_REGEX = /(https?:\/\/[^\s<>"']+)/gi;
+  private static readonly CLIENT_SESSION_STORAGE_KEY = 'assistant_chat_session_id';
+  private static readonly WELCOME_MESSAGE = 'Salam! Welcome to YallaTN, your AI guide for exploring Tunisia. Ask me anything about transport, accommodations, restaurants, activities, events, and artisan products!';
+
+  private readonly authService = inject(AuthService);
+  private previousAuthToken: string | null = null;
+  private clientSessionId = '';
 
   readonly isOpen = signal(false);
   readonly loading = signal(false);
@@ -45,15 +56,28 @@ export class HomeAssistantWidgetComponent {
     'Produits d artisanat disponibles',
   ];
   readonly messages = signal<AssistantMessage[]>([
-    {
-      role: 'assistant',
-      text: 'Salam! Welcome to YallaTN, your AI guide for exploring Tunisia. Ask me anything about transport, accommodations, restaurants, activities, events, and artisan products!',
-    },
+    this.buildWelcomeMessage(),
   ]);
 
   draft = '';
 
-  constructor(private readonly http: HttpClient) {}
+  constructor(private readonly http: HttpClient) {
+    this.previousAuthToken = this.authService.token();
+    this.clientSessionId = this.readOrCreateClientSessionId();
+    this.loadConversationHistory();
+
+    effect(() => {
+      const currentToken = this.authService.token();
+      if (currentToken === this.previousAuthToken) {
+        return;
+      }
+
+      this.previousAuthToken = currentToken;
+      this.rotateClientSessionId();
+      this.messages.set([this.buildWelcomeMessage()]);
+      this.loadConversationHistory();
+    });
+  }
 
   togglePanel(): void {
     this.isOpen.update((open) => !open);
@@ -78,7 +102,7 @@ export class HomeAssistantWidgetComponent {
       conversation,
     };
 
-    this.http.post<ChatbotQueryResponse>('/api/public/chatbot/query', payload).subscribe({
+    this.http.post<ChatbotQueryResponse>('/api/public/chatbot/query', payload, { headers: this.chatHeaders() }).subscribe({
       next: (response) => {
         this.loading.set(false);
         const answer = (response?.answer || 'Je peux repondre uniquement aux questions liees a la Tunisie et a cette application.').trim();
@@ -176,5 +200,100 @@ export class HomeAssistantWidgetComponent {
     }
 
     return 'le lien';
+  }
+
+  private loadConversationHistory(): void {
+    this.http.get<ChatbotConversationResponse>('/api/public/chatbot/history', { headers: this.chatHeaders() }).subscribe({
+      next: (response) => {
+        const restored = this.deserializeConversation(response?.conversation ?? []);
+        this.messages.set(restored.length > 0 ? restored : [this.buildWelcomeMessage()]);
+      },
+      error: () => {
+        this.messages.set([this.buildWelcomeMessage()]);
+      },
+    });
+  }
+
+  private deserializeConversation(lines: string[]): AssistantMessage[] {
+    if (!Array.isArray(lines) || lines.length === 0) {
+      return [];
+    }
+
+    const parsed = lines
+      .map((line) => this.parseConversationLine(line))
+      .filter((message): message is AssistantMessage => message !== null);
+
+    return parsed.slice(-24);
+  }
+
+  private parseConversationLine(line: string): AssistantMessage | null {
+    if (typeof line !== 'string') {
+      return null;
+    }
+
+    const normalized = line.trim();
+    if (!normalized) {
+      return null;
+    }
+
+    const separatorIndex = normalized.indexOf(':');
+    if (separatorIndex <= 0) {
+      return { role: 'assistant', text: normalized };
+    }
+
+    const roleToken = normalized.slice(0, separatorIndex).trim().toLowerCase();
+    const text = normalized.slice(separatorIndex + 1).trim();
+    if (!text) {
+      return null;
+    }
+
+    if (roleToken === 'user' || roleToken === 'assistant') {
+      return {
+        role: roleToken,
+        text,
+      };
+    }
+
+    return { role: 'assistant', text: normalized };
+  }
+
+  private buildWelcomeMessage(): AssistantMessage {
+    return {
+      role: 'assistant',
+      text: HomeAssistantWidgetComponent.WELCOME_MESSAGE,
+    };
+  }
+
+  private chatHeaders(): HttpHeaders {
+    return new HttpHeaders({
+      'X-Chat-Session-Id': this.clientSessionId,
+    });
+  }
+
+  private readOrCreateClientSessionId(): string {
+    const existing = localStorage.getItem(HomeAssistantWidgetComponent.CLIENT_SESSION_STORAGE_KEY);
+    if (this.isValidClientSessionId(existing)) {
+      return existing;
+    }
+
+    const generated = this.generateClientSessionId();
+    localStorage.setItem(HomeAssistantWidgetComponent.CLIENT_SESSION_STORAGE_KEY, generated);
+    return generated;
+  }
+
+  private rotateClientSessionId(): void {
+    this.clientSessionId = this.generateClientSessionId();
+    localStorage.setItem(HomeAssistantWidgetComponent.CLIENT_SESSION_STORAGE_KEY, this.clientSessionId);
+  }
+
+  private generateClientSessionId(): string {
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+      return globalThis.crypto.randomUUID();
+    }
+    return `${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+  }
+
+  private isValidClientSessionId(value: string | null): value is string {
+    return !!value && /^[A-Za-z0-9._-]{8,128}$/.test(value);
   }
 }

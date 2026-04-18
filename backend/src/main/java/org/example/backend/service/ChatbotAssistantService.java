@@ -266,6 +266,11 @@ public class ChatbotAssistantService {
         boolean asksTravelPlan = containsAny(normalizedQuestion,
             "plan", "itineraire", "itinerary", "programme", "ideal", "voyager", "voyage a", "voyage a", "travel plan", "trip plan")
             && containsAny(normalizedQuestion, "jour", "jours", "day", "days", "voyage", "travel", "trip", "sejour", "stay");
+        boolean asksGoToCity = containsAny(normalizedQuestion,
+            "i want to go to", "want to go to", "go to", "travel to",
+            "je veux aller", "aller a", "aller vers", "voyager a", "voyage a",
+            "اريد ان اذهب الى", "اريد الذهاب الى", "اذهب الى", "الذهاب الى")
+            && !hasFromToRoutePattern(normalizedQuestion);
         boolean asksWeather = containsAny(normalizedQuestion,
             "meteo", "météo", "weather", "temperature", "climat", "wind", "pluie")
             || containsExactWord(normalizedQuestion, "vent");
@@ -279,7 +284,9 @@ public class ChatbotAssistantService {
             && containsAny(normalizedQuestion, "notation", "note", "rating", "etoile", "etoiles", "star", "stars")
             && (containsAny(normalizedQuestion, "superieur", "inferieur", "plus de", "moins de", "above", "below", ">", "<")
                 || extractFirstNumber(normalizedQuestion) != null);
-        boolean asksActivity = containsAny(normalizedQuestion, "activity", "activities", "activite", "activites", "activies", "activis", "visit", "thing to do", "نشاط", "انشطة");
+        boolean asksActivity = containsAny(normalizedQuestion,
+            "activity", "activities", "activite", "activites", "activies", "activis", "visit", "thing to do",
+            "نشاط", "انشطة", "الانشطة", "الأنشطة", "نشاطات");
         boolean asksAccommodation = containsAny(normalizedQuestion, "hotel", "accommodation", "accommodations", "accomodation", "accomodations", "stay", "guesthouse", "maison d hote", "hebergement", "سكن", "اقامة");
         boolean asksTransport = containsAny(normalizedQuestion,
             "transport", "tansport", "transports", "bus", "train", "taxi", "plane", "ferry", "route", "trajet", "voyage", "travel", "trip", "departure", "destination", "vers", "نقل", "حافلة", "قطار")
@@ -300,7 +307,7 @@ public class ChatbotAssistantService {
             "application", "app", "compte", "account", "login", "connexion", "inscription", "reservation", "booking", "payment",
             "cart", "panier", "checkout", "commande", "order", "favoris", "profile", "profil");
         boolean asksReservationAvailability = containsAny(normalizedQuestion,
-            "reserver", "reservation", "booking", "book", "reserve")
+            "reserver", "reservation", "booking", "book", "reserve", "حجز", "الحجز", "احجز", "حجوزات")
             && (extractRequestedDate(normalizedQuestion) != null || extractRequestedActivityMonth(normalizedQuestion) != null
                 || containsAny(normalizedQuestion, "personne", "personnes", "participant", "participants", "pax"))
             && !asksTransport
@@ -317,6 +324,9 @@ public class ChatbotAssistantService {
             return Intent.CART_ACTION;
         }
         if (asksTravelPlan) {
+            return Intent.TRAVEL_PLAN;
+        }
+        if (asksGoToCity) {
             return Intent.TRAVEL_PLAN;
         }
         if (asksRestaurantStars) {
@@ -379,7 +389,8 @@ public class ChatbotAssistantService {
         boolean hasDirectEntityMention = inferEntityIntentFromNames(normalizedQuestion, city) != null;
         boolean shouldPreserveCurrentQuestion = hasReservationAction || hasDirectEntityMention;
 
-        if (isLowSignalQuestion(normalizedQuestion)
+        if (intent != Intent.SMALL_TALK
+            && isLowSignalQuestion(normalizedQuestion)
             && !shouldPreserveCurrentQuestion
             && normalizedConversation != null
             && !normalizedConversation.isBlank()) {
@@ -491,6 +502,18 @@ public class ChatbotAssistantService {
     }
 
     private IntentAnswer answerSmallTalk(Language language, String normalizedQuestion) {
+        if (containsAny(normalizedQuestion, "merci", "thanks", "thank you", "شكرا")) {
+            return new IntentAnswer(
+                t(language,
+                    "Avec plaisir. Si vous voulez, je peux aussi vous aider a trouver une ville, un restaurant, une activite, un transport ou un hebergement.",
+                    "You're welcome. If you want, I can also help you find a city, restaurant, activity, transport, or accommodation.",
+                    "على الرحب والسعة. إذا أردت، يمكنني أيضا مساعدتك في العثور على مدينة أو مطعم أو نشاط أو نقل أو إقامة."),
+                "SmallTalk=thanks",
+                List.of("application"),
+                0.98
+            );
+        }
+
         String mirroredGreeting = mirroredGreeting(normalizedQuestion, language);
         if (mirroredGreeting != null) {
             return new IntentAnswer(
@@ -521,6 +544,9 @@ public class ChatbotAssistantService {
         }
         if (containsAny(normalizedQuestion, "hello", "hi", "hey")) {
             return t(language, "Bonjour! Comment puis-je vous aider?", "Hello! How can I help you?", "مرحبا! كيف يمكنني مساعدتك؟");
+        }
+        if (containsAny(normalizedQuestion, "salut")) {
+            return t(language, "Salut! Comment puis-je vous aider?", "Hi! How can I help you?", "مرحبا! كيف يمكنني مساعدتك؟");
         }
         if (containsAny(normalizedQuestion, "salam", "marhba", "assalam", "السلام", "مرحبا")) {
             return t(language, "Salam! Comment puis-je vous aider?", "Salam! How can I help you?", "سلام! كيف يمكنني مساعدتك؟");
@@ -2367,6 +2393,41 @@ public class ChatbotAssistantService {
         boolean genericProductAvailabilityQuery = isGenericProductAvailabilityQuery(normalizedQuestion);
         boolean questionMentionsCity = findMentionedCity(normalizedQuestion, cityRepository.findAll()).isPresent();
         Optional<Product> matchedProduct = findBestMatchingProduct(normalizedQuestion, cityOpt);
+        boolean asksProductPurchaseAction = asksProductPurchaseAction(normalizedQuestion);
+
+        if (asksProductPurchaseAction) {
+            if (matchedProduct.isPresent()) {
+                Product product = matchedProduct.get();
+                String price = product.getPrice() == null
+                    ? t(language, "prix non disponible", "price not available", "السعر غير متوفر")
+                    : String.format(Locale.ROOT, "%.0f DT", product.getPrice());
+                int stock = effectiveProductStock(product);
+                String seller = describeProductSeller(product);
+
+                String answer = t(language,
+                    "Pour acheter " + product.getName() + ": ouvrez la fiche produit, choisissez la couleur/taille si disponible, ajoutez au panier, puis passez au paiement. Prix: "
+                        + price + ", stock: " + stock + "."
+                        + optionalText(seller, " Artisan: "),
+                    "To buy " + product.getName() + ": open the product details, choose color/size if available, add it to cart, then proceed to checkout. Price: "
+                        + price + ", stock: " + stock + "."
+                        + optionalText(seller, " Seller: "),
+                    "لشراء " + product.getName() + ": افتح صفحة المنتج، اختر اللون/المقاس إن وُجد، أضف إلى السلة، ثم أكمل الدفع. السعر: "
+                        + price + "، المخزون: " + stock + "."
+                        + optionalText(seller, " البائع: "));
+
+                return new IntentAnswer(answer, "ProductPurchase=" + product.getName(), List.of("products", "cart", "orders"), 0.95);
+            }
+
+            return new IntentAnswer(
+                t(language,
+                    "Pour acheter un produit artisanal: ouvrez sa fiche, choisissez les options, ajoutez-le au panier, puis validez le paiement.",
+                    "To buy an artisan product: open its details page, choose options, add it to cart, then complete checkout.",
+                    "لشراء منتج حرفي: افتح صفحة المنتج، اختر الخيارات، أضف إلى السلة، ثم أكمل الدفع."),
+                "ProductPurchase=generic",
+                List.of("products", "cart", "orders"),
+                0.91
+            );
+        }
 
         if (genericProductAvailabilityQuery) {
             List<Product> broadList = productRepository.findAllPublished().stream()
@@ -2753,6 +2814,13 @@ public class ChatbotAssistantService {
     private IntentAnswer answerGeneral(List<City> allCities, Optional<City> mentionedCity, Language language, String normalizedQuestion) {
         if (isCityCountQuestion(normalizedQuestion)) {
             return answerCityCount(allCities, language);
+        }
+
+        if (mentionedCity.isPresent() && containsAny(normalizedQuestion,
+            "go to", "travel to", "want to go", "i want to go", "u want to go",
+            "visit", "je veux aller", "aller a", "aller vers", "visiter", "voyager a", "voyage a",
+            "اريد ان اذهب الى", "اريد الذهاب الى", "اذهب الى", "الذهاب الى")) {
+            return answerTravelPlan(mentionedCity, language, normalizedQuestion);
         }
 
         boolean asksDesert = containsAny(normalizedQuestion, "desert", "dessert", "sahara");
@@ -3150,7 +3218,7 @@ public class ChatbotAssistantService {
             "artisanat", "artisan", "artisans", "product", "products", "produit", "produits",
             "reservation", "reservations", "booking", "bookings", "cart", "order", "orders", "combien", "price", "prix", "cost", "ou", "where",
             "plage", "beach", "sahel", "coast", "medina", "voyage", "tourisme", "trip", "plan", "itineraire", "weather", "meteo", "météo", "temperature", "app", "application", "login", "compte",
-            "نقل", "سكن", "مطعم", "نشاط", "فعالية", "منتج", "حرف", "تطبيق"
+            "نقل", "سكن", "مطعم", "نشاط", "انشطة", "الانشطة", "الأنشطة", "فعالية", "منتج", "حرف", "تطبيق", "مدينة", "مدن", "حجز", "الحجز", "حجوزات", "اذهب", "سفر"
         );
         for (String keyword : keywords) {
             if (containsToken(normalizedQuestion, normalize(keyword))) {
@@ -3217,7 +3285,7 @@ public class ChatbotAssistantService {
         if (word == null || token == null || word.isBlank() || token.isBlank()) {
             return false;
         }
-        // Avoid fuzzy collisions for very short tokens like "hi" vs "i".
+        // Avoid fuzzy collisions for very short tokens.
         if (word.length() <= 2 || token.length() <= 2) {
             return word.equals(token);
         }
@@ -3230,6 +3298,11 @@ public class ChatbotAssistantService {
 
         if (wordStem.equals(tokenStem)) {
             return true;
+        }
+
+        // Keep edit-distance matching for longer words only to avoid cases like "buy" matching "bus".
+        if (wordStem.length() < 4 || tokenStem.length() < 4) {
+            return false;
         }
 
         int diff = Math.abs(wordStem.length() - tokenStem.length());
@@ -3358,7 +3431,14 @@ public class ChatbotAssistantService {
 
     private boolean asksReservationAction(String normalizedQuestion) {
         return containsAny(normalizedQuestion,
-            "reservation", "reservations", "reserver", "réserver", "book", "booking", "reserve", "reservate", "make reservation", "make a reservation", "book me", "book it", "payer", "payment", "checkout", "buy ticket");
+            "reservation", "reservations", "reserver", "réserver", "book", "booking", "reserve", "reservate", "make reservation", "make a reservation", "book me", "book it", "payer", "payment", "checkout", "buy ticket",
+            "حجز", "الحجز", "احجز", "حجوزات", "دفع");
+    }
+
+    private boolean asksProductPurchaseAction(String normalizedQuestion) {
+        return containsAny(normalizedQuestion,
+            "buy", "how to buy", "purchase", "acheter", "comment acheter", "commander",
+            "order this product", "add to cart", "ajouter au panier", "checkout", "payer", "payment");
     }
 
     private Intent inferEntityIntentFromNames(String normalizedQuestion, Optional<City> cityOpt) {
@@ -3390,6 +3470,10 @@ public class ChatbotAssistantService {
             .orElseGet(accommodationRepository::findAll);
         if (findMentionedAccommodation(normalizedQuestion, accommodations).isPresent()) {
             return Intent.ACCOMMODATION;
+        }
+
+        if (findBestMatchingProduct(normalizedQuestion, cityOpt).isPresent()) {
+            return Intent.PRODUCT;
         }
 
         return null;
@@ -4667,26 +4751,56 @@ public class ChatbotAssistantService {
         if (normalizedQuestion == null || normalizedQuestion.isBlank() || normalizedCityName == null || normalizedCityName.isBlank()) {
             return false;
         }
-        if (containsToken(normalizedQuestion, normalizedCityName)) {
-            return true;
-        }
-        String[] parts = normalizedCityName.split(" ");
-        if (parts.length >= 2) {
-            String joined = String.join("", parts);
-            if (containsToken(normalizedQuestion, joined)) {
+        for (String alias : cityAliasTokens(normalizedCityName)) {
+            if (containsToken(normalizedQuestion, alias)) {
                 return true;
             }
-            if (parts[0].length() >= 3 && parts[1].length() >= 3) {
-                String dashed = parts[0] + "-" + parts[1];
-                if (containsToken(normalizedQuestion, normalize(dashed))) {
-                    return true;
-                }
-            }
-        }
-        if (containsToken(normalizedCityName, "tunis") && containsToken(normalizedQuestion, "tunis")) {
-            return true;
         }
         return false;
+    }
+
+    private List<String> cityAliasTokens(String normalizedCityName) {
+        String baseName = normalize(normalizedCityName);
+        if (baseName.isBlank()) {
+            return List.of();
+        }
+
+        java.util.LinkedHashSet<String> aliases = new java.util.LinkedHashSet<>();
+        aliases.add(baseName);
+
+        String[] parts = baseName.split(" ");
+        if (parts.length >= 2) {
+            aliases.add(String.join("", parts));
+            if (parts[0].length() >= 3 && parts[1].length() >= 3) {
+                aliases.add(parts[0] + "-" + parts[1]);
+            }
+        }
+
+        if (containsToken(baseName, "tunis")) {
+            aliases.add("tunis");
+            aliases.add("تونس");
+        }
+
+        aliases.addAll(arabicCityAliases(baseName));
+        return aliases.stream()
+            .filter(alias -> alias != null && !alias.isBlank())
+            .map(this::normalize)
+            .toList();
+    }
+
+    private List<String> arabicCityAliases(String normalizedCityName) {
+        return switch (normalize(normalizedCityName)) {
+            case "tunis" -> List.of("تونس");
+            case "sfax" -> List.of("صفاقس");
+            case "sousse" -> List.of("سوسة");
+            case "kairouan" -> List.of("القيروان", "قيروان");
+            case "ariana" -> List.of("اريانة");
+            case "ben arous" -> List.of("بن عروس");
+            case "bizerte" -> List.of("بنزرت");
+            case "nabeul" -> List.of("نابل");
+            case "jendouba" -> List.of("جندوبة");
+            default -> List.of();
+        };
     }
 
     private boolean matchesEventCity(Event event, City city, String normalizedQuestion) {
@@ -4735,19 +4849,14 @@ public class ChatbotAssistantService {
         if (normalizedQuestion == null || normalizedQuestion.isBlank() || normalizedCityName == null || normalizedCityName.isBlank()) {
             return -1;
         }
-        int index = normalizedQuestion.indexOf(normalizedCityName);
-        if (index >= 0) {
-            return index;
+        int bestIndex = -1;
+        for (String alias : cityAliasTokens(normalizedCityName)) {
+            int index = normalizedQuestion.indexOf(alias);
+            if (index >= 0 && (bestIndex < 0 || index < bestIndex)) {
+                bestIndex = index;
+            }
         }
-        String joined = normalizedCityName.replace(" ", "");
-        index = normalizedQuestion.indexOf(joined);
-        if (index >= 0) {
-            return index;
-        }
-        if (containsToken(normalizedCityName, "tunis")) {
-            return normalizedQuestion.indexOf("tunis");
-        }
-        return -1;
+        return bestIndex;
     }
 
     private int extractRequestedTripDays(String normalizedQuestion) {
@@ -5353,7 +5462,7 @@ public class ChatbotAssistantService {
             "vers", "reserver", "reservation", "personnes", "activite", "evenement", "transport", "hebergement", "ce lien"
         ));
         int enScore = languageScore(normalizedQuestion, List.of(
-            "hello", "hi", "good", "morning", "evening", "i", "i want", "i need", "show", "available", "events", "transport", "description", "cities", "please", "thanks", "give", "best", "from", "to", "days", "reservation", "reservations", "this link", "book", "booking", "how", "activity", "reservate"
+            "hello", "hi", "good", "morning", "evening", "i", "i want", "i need", "show", "available", "events", "transport", "description", "cities", "please", "thanks", "thank", "thank you", "give", "best", "from", "to", "days", "reservation", "reservations", "this link", "book", "booking", "how", "activity", "reservate", "want to", "go to", "travel to", "visit", "u want"
         ));
 
         // Strong language-specific structures
@@ -5381,6 +5490,10 @@ public class ChatbotAssistantService {
             return Language.FR;
         }
         if (containsAny(normalizedQuestion, "hello", "hi", "i want", "show", "please")) {
+            return Language.EN;
+        }
+
+        if (containsAny(normalizedQuestion, "thanks", "thank", "thank you", "go to", "travel to", "want to go", "u want")) {
             return Language.EN;
         }
 

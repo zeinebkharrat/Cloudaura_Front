@@ -68,10 +68,23 @@
       </div>
 
       @if (menuSpreads.length > 0 && currentMenuSpread) {
-        <div class="menu-book-shell">
+        <div
+          class="menu-book-shell"
+          [class.is-flipping-forward]="menuFlipDirection === 'forward'"
+          [class.is-flipping-backward]="menuFlipDirection === 'backward'"
+          [class.is-animating]="menuFlipDirection !== null"
+        >
           <div class="menu-book-spine" aria-hidden="true"></div>
+          @if (menuFlipDirection) {
+            <div
+              class="menu-turn-sheet"
+              [class.forward]="menuFlipDirection === 'forward'"
+              [class.backward]="menuFlipDirection === 'backward'"
+              aria-hidden="true"
+            ></div>
+          }
 
-          <section class="menu-page menu-page-left">
+          <section class="menu-page menu-page-left" [class.is-clickable]="canGoPrevious && !menuFlipDirection" (click)="onMenuPageClick('left')">
             <div class="menu-page-frame">
               @if (currentMenuSpread.left) {
                 <img [src]="currentMenuSpread.left.imageUrl" [alt]="restaurant.name + ' menu page ' + menuPageNumber('left')" />
@@ -82,7 +95,7 @@
             <span class="menu-page-index">Page {{ menuPageNumber('left') }}</span>
           </section>
 
-          <section class="menu-page menu-page-right">
+          <section class="menu-page menu-page-right" [class.is-clickable]="canGoNext && !menuFlipDirection" (click)="onMenuPageClick('right')">
             <div class="menu-page-frame">
               @if (currentMenuSpread.right) {
                 <img [src]="currentMenuSpread.right.imageUrl" [alt]="restaurant.name + ' menu page ' + menuPageNumber('right')" />
@@ -97,9 +110,9 @@
         </div>
 
         <div class="menu-book-controls">
-          <button class="mini-btn" type="button" (click)="previousMenuSpread()" [disabled]="menuSpreadIndex === 0">Previous spread</button>
+          <button class="mini-btn" type="button" (click)="previousMenuSpread()" [disabled]="menuSpreadIndex === 0 || menuFlipDirection !== null">Previous spread</button>
           <span>Spread {{ menuSpreadIndex + 1 }} / {{ menuSpreads.length }}</span>
-          <button class="mini-btn" type="button" (click)="nextMenuSpread()" [disabled]="menuSpreadIndex + 1 >= menuSpreads.length">Next spread</button>
+          <button class="mini-btn" type="button" (click)="nextMenuSpread()" [disabled]="menuSpreadIndex + 1 >= menuSpreads.length || menuFlipDirection !== null">Next spread</button>
         </div>
 
         <div class="menu-book-dots">
@@ -109,6 +122,7 @@
               class="menu-book-dot"
               [class.active]="$index === menuSpreadIndex"
               (click)="goToMenuSpread($index)"
+              [disabled]="menuFlipDirection !== null"
               [attr.aria-label]="'Go to spread ' + ($index + 1)"
             ></button>
           }

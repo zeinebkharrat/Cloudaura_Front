@@ -443,6 +443,12 @@ h1 {
   background:
     linear-gradient(180deg, rgba(111, 23, 37, 0.05), rgba(111, 23, 37, 0.02)),
     linear-gradient(90deg, rgba(255, 245, 241, 0.95), rgba(255, 250, 247, 0.98));
+  perspective: 2200px;
+  transform-style: preserve-3d;
+}
+
+.menu-book-shell.is-animating {
+  pointer-events: none;
 }
 
 .menu-book-spine {
@@ -462,6 +468,84 @@ h1 {
   display: grid;
   gap: 8px;
   min-height: 220px;
+}
+
+.menu-page.is-clickable {
+  cursor: pointer;
+}
+
+.menu-page.is-clickable .menu-page-frame {
+  transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
+}
+
+.menu-page.is-clickable:hover .menu-page-frame {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px rgba(111, 23, 37, 0.16);
+  border-color: rgba(230, 57, 70, 0.42);
+}
+
+.menu-page.is-clickable .menu-page-index {
+  transition: transform 0.24s ease, border-color 0.24s ease;
+}
+
+.menu-page.is-clickable:hover .menu-page-index {
+  transform: translateY(-1px);
+  border-color: rgba(230, 57, 70, 0.45);
+}
+
+.menu-turn-sheet {
+  position: absolute;
+  z-index: 6;
+  top: clamp(10px, 1.5vw, 14px);
+  bottom: clamp(10px, 1.5vw, 14px);
+  width: calc(50% - 11px);
+  border-radius: 11px;
+  border: 1px solid rgba(111, 23, 37, 0.24);
+  background:
+    linear-gradient(90deg, rgba(255, 245, 241, 0.98), rgba(255, 255, 255, 0.92) 34%, rgba(247, 226, 221, 0.96));
+  box-shadow: 0 16px 30px rgba(111, 23, 37, 0.24);
+  pointer-events: none;
+  backface-visibility: hidden;
+}
+
+.menu-turn-sheet.forward {
+  left: calc(50% + 11px);
+  transform-origin: left center;
+  animation: menuPageTurnForward 0.9s cubic-bezier(0.28, 0.72, 0.2, 1) both;
+}
+
+.menu-turn-sheet.backward {
+  left: 0;
+  transform-origin: right center;
+  animation: menuPageTurnBackward 0.9s cubic-bezier(0.28, 0.72, 0.2, 1) both;
+}
+
+@keyframes menuPageTurnForward {
+  0% {
+    transform: rotateY(0deg);
+    opacity: 0.2;
+  }
+  12% {
+    opacity: 0.96;
+  }
+  100% {
+    transform: rotateY(-175deg);
+    opacity: 0.08;
+  }
+}
+
+@keyframes menuPageTurnBackward {
+  0% {
+    transform: rotateY(0deg);
+    opacity: 0.2;
+  }
+  12% {
+    opacity: 0.96;
+  }
+  100% {
+    transform: rotateY(175deg);
+    opacity: 0.08;
+  }
 }
 
 .menu-page-frame {
@@ -564,6 +648,22 @@ h1 {
   background:
     linear-gradient(180deg, rgba(127, 29, 29, 0.3), rgba(30, 18, 22, 0.62)),
     linear-gradient(90deg, rgba(41, 22, 26, 0.95), rgba(32, 18, 22, 0.95));
+}
+
+:host-context([data-theme="dark"]) .menu-page.is-clickable:hover .menu-page-frame {
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.46);
+  border-color: rgba(251, 113, 133, 0.54);
+}
+
+:host-context([data-theme="dark"]) .menu-page.is-clickable:hover .menu-page-index {
+  border-color: rgba(251, 113, 133, 0.6);
+}
+
+:host-context([data-theme="dark"]) .menu-turn-sheet {
+  border-color: rgba(251, 113, 133, 0.48);
+  background:
+    linear-gradient(90deg, rgba(63, 30, 37, 0.96), rgba(49, 28, 34, 0.98) 34%, rgba(76, 33, 43, 0.94));
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.46);
 }
 
 :host-context([data-theme="dark"]) .menu-page-frame {
