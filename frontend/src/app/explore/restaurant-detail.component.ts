@@ -5,7 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import * as L from 'leaflet';
 import { ExploreService } from './explore.service';
-import { PublicReview, ReviewSummary, Restaurant } from './explore.models';
+import { PublicReview, Restaurant, RestaurantMenuImage, ReviewSummary } from './explore.models';
 import { AuthService } from '../core/auth.service';
 import Swal from 'sweetalert2';
 
@@ -30,6 +30,7 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
   reviews: PublicReview[] = [];
   reviewPage = 0;
   readonly reviewSize = 6;
+  menuSpreadIndex = 0;
   reviewSubmitting = false;
   reviewForm = {
     stars: 5,
@@ -54,6 +55,7 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
     this.exploreService.getRestaurantDetails(id).subscribe({
       next: (res) => {
         this.restaurant = res;
+        this.menuSpreadIndex = 0;
         if (res.imageUrl) {
           this.heroImage = res.imageUrl;
         }
@@ -151,7 +153,54 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
   goBack(): void {
     this.location.back();
   }
+  get menuPages(): RestaurantMenuImage[] {
+    return this.restaurant?.menuImages ?? [];
+  }
 
+  get menuSpreads(): Array<{ left: RestaurantMenuImage | null; right: RestaurantMenuImage | null }> {
+    const spreads: Array<{ left: RestaurantMenuImage | null; right: RestaurantMenuImage | null }> = [];
+    for (let index = 0; index < this.menuPages.length; index += 2) {
+      spreads.push({
+        left: this.menuPages[index] ?? null,
+        right: this.menuPages[index + 1] ?? null,
+      });
+    }
+    return spreads;
+  }
+
+  get currentMenuSpread(): { left: RestaurantMenuImage | null; right: RestaurantMenuImage | null } | null {
+    const spreads = this.menuSpreads;
+    if (spreads.length === 0) {
+      return null;
+    }
+
+    const safeIndex = Math.min(this.menuSpreadIndex, spreads.length - 1);
+    return spreads[safeIndex] ?? null;
+  }
+
+  previousMenuSpread(): void {
+    if (this.menuSpreadIndex > 0) {
+      this.menuSpreadIndex--;
+    }
+  }
+
+  nextMenuSpread(): void {
+    if (this.menuSpreadIndex + 1 < this.menuSpreads.length) {
+      this.menuSpreadIndex++;
+    }
+  }
+
+  goToMenuSpread(index: number): void {
+    if (index < 0 || index >= this.menuSpreads.length) {
+      return;
+    }
+    this.menuSpreadIndex = index;
+  }
+
+  menuPageNumber(side: 'left' | 'right'): number {
+    const firstPage = this.menuSpreadIndex * 2 + 1;
+    return side === 'left' ? firstPage : firstPage + 1;
+  }
   ratingValue(): number {
     return this.reviewSummary.averageStars || 0;
   }
@@ -341,5 +390,6 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
     );
   }
 }
+
 
 

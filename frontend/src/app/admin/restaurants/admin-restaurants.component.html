@@ -137,6 +137,13 @@
           }
         </label>
         <label>
+          Phone number *
+          <input type="tel" [(ngModel)]="form.phoneNumber" (ngModelChange)="clearFieldError('phoneNumber')" [class.input-invalid]="fieldErrors.phoneNumber" />
+          @if (fieldErrors.phoneNumber) {
+            <small class="field-error">{{ fieldErrors.phoneNumber }}</small>
+          }
+        </label>
+        <label>
           Cuisine type
           <input type="text" [(ngModel)]="form.cuisineType" />
         </label>
@@ -172,6 +179,50 @@
           @if (imagePreviewUrl) {
             <div class="image-preview-card">
               <img [src]="imagePreviewUrl" alt="Restaurant image preview" />
+            </div>
+          }
+        </label>
+        <label class="span-2">
+          Menu photos (optional)
+          <div class="upload-box modern menu-image-upload">
+            <input
+              id="restaurantMenuImagesInput"
+              class="file-native"
+              type="file"
+              accept="image/*"
+              multiple
+              (change)="onMenuImagesFileChange($event)"
+            />
+            <label class="file-trigger" for="restaurantMenuImagesInput">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5-5 5 5"/><path d="M12 5v12"/></svg>
+              Select menu pages
+            </label>
+            @if (selectedMenuImageFiles.length > 0) {
+              <span class="file-count">{{ selectedMenuImageFiles.length }} new image(s)</span>
+              <button class="btn ghost" type="button" (click)="clearMenuImageSelection()">Clear selection</button>
+            } @else if (persistedMenuImages.length > 0) {
+              <span class="file-count">{{ persistedMenuImages.length }} saved menu image(s)</span>
+            } @else {
+              <span class="file-count">No menu photos yet</span>
+            }
+          </div>
+
+          @if (persistedMenuImages.length > 0 || menuImagePreviewUrls.length > 0) {
+            <div class="menu-preview-grid">
+              @for (menuImage of persistedMenuImages; track menuImage.menuImageId) {
+                <figure class="menu-preview-item is-persisted">
+                  <img [src]="menuImage.imageUrl" [alt]="'Saved menu image ' + menuImage.displayOrder" />
+                  <button class="menu-preview-remove" type="button" (click)="removePersistedMenuImage(menuImage.menuImageId)">Remove</button>
+                  <figcaption>Saved</figcaption>
+                </figure>
+              }
+              @for (previewUrl of menuImagePreviewUrls; track $index; let idx = $index) {
+                <figure class="menu-preview-item is-new">
+                  <img [src]="previewUrl" alt="New menu image preview" />
+                  <button class="menu-preview-remove" type="button" (click)="removeSelectedMenuImage(idx)">Remove</button>
+                  <figcaption>New</figcaption>
+                </figure>
+              }
             </div>
           }
         </label>
@@ -259,9 +310,23 @@
             <div><strong>City:</strong> {{ detailsRestaurant.cityName }}</div>
             <div><strong>Cuisine:</strong> {{ detailsRestaurant.cuisineType || '—' }}</div>
             <div><strong>Rating:</strong> {{ detailsRestaurant.rating ?? '—' }}</div>
+            <div><strong>Phone:</strong> {{ detailsRestaurant.phoneNumber || '—' }}</div>
             <div><strong>Address:</strong> {{ detailsRestaurant.address || '—' }}</div>
             <div><strong>Latitude:</strong> {{ detailsRestaurant.latitude ?? '—' }}</div>
             <div><strong>Longitude:</strong> {{ detailsRestaurant.longitude ?? '—' }}</div>
+          </div>
+
+          <div class="details-menu-gallery">
+            <h4>Digital menu photos</h4>
+            @if ((detailsRestaurant.menuImages?.length ?? 0) > 0) {
+              <div class="details-menu-grid">
+                @for (menuImage of detailsRestaurant.menuImages!; track menuImage.menuImageId) {
+                  <img [src]="menuImage.imageUrl" [alt]="detailsRestaurant.name + ' menu page ' + menuImage.displayOrder" />
+                }
+              </div>
+            } @else {
+              <p>No menu photos uploaded yet.</p>
+            }
           </div>
         </article>
       </div>
