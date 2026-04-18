@@ -17,6 +17,8 @@ import {
 import { ExploreService } from './explore.service';
 import { LoginRequiredPromptService } from '../core/login-required-prompt.service';
 import { AuthService } from '../core/auth.service';
+import { TranslateModule } from '@ngx-translate/core';
+import { DualCurrencyPipe } from '../core/pipes/dual-currency.pipe';
 
 interface CalendarDayCell {
   dateIso: string;
@@ -30,7 +32,7 @@ interface CalendarDayCell {
 @Component({
   selector: 'app-activity-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, TranslateModule, DualCurrencyPipe],
   templateUrl: './activity-detail.component.html',
   styleUrl: './activity-detail.component.css',
 })
@@ -65,6 +67,7 @@ export class ActivityDetailComponent implements AfterViewInit, OnDestroy {
   calendarDays: CalendarDayCell[] = [];
   calendarMonth = this.startOfMonth(new Date());
   weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  weekdayIndices = [0, 1, 2, 3, 4, 5, 6];
   showOnlyAvailable = false;
 
   form: CreateActivityReservationRequest = {

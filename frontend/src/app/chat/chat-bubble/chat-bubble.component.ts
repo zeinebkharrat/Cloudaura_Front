@@ -21,6 +21,7 @@ import { ConversationResponse, MessageResponse, TypingEvent } from '../chat.type
 import { Router } from '@angular/router';
 import { AppAlertsService } from '../../core/services/app-alerts.service';
 import { isBackendLoginRedirectError } from '../../api-error.util';
+import { TranslateModule } from '@ngx-translate/core';
 
 interface StoryReplyPayload {
   kind: string;
@@ -37,7 +38,7 @@ interface StoryReplyPayload {
 @Component({
   selector: 'app-chat-bubble',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslateModule],
   templateUrl: './chat-bubble.component.html',
   styleUrl: './chat-bubble.component.css',
 })

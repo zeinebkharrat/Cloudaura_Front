@@ -29,6 +29,66 @@ public interface TransportRepository extends JpaRepository<Transport, Integer> {
     @Query("SELECT COALESCE(SUM(t.capacity), 0) FROM Transport t WHERE t.isActive = true")
     long sumCapacityActive();
 
+        @Query("""
+            SELECT CASE WHEN COUNT(t) > 0 THEN true ELSE false END
+            FROM Transport t
+            WHERE t.vehicle.vehicleId = :vehicleId
+              AND t.isActive = true
+              AND t.departureTime < :arrival
+              AND t.arrivalTime > :departure
+            """)
+        boolean existsByVehicleIdAndTimeOverlap(
+            @Param("vehicleId") Integer vehicleId,
+            @Param("departure") LocalDateTime departure,
+            @Param("arrival") LocalDateTime arrival
+        );
+
+        @Query("""
+            SELECT CASE WHEN COUNT(t) > 0 THEN true ELSE false END
+            FROM Transport t
+            WHERE t.vehicle.vehicleId = :vehicleId
+              AND t.transportId <> :excludeTransportId
+              AND t.isActive = true
+              AND t.departureTime < :arrival
+              AND t.arrivalTime > :departure
+            """)
+        boolean existsByVehicleIdAndTimeOverlapExcluding(
+            @Param("vehicleId") Integer vehicleId,
+            @Param("departure") LocalDateTime departure,
+            @Param("arrival") LocalDateTime arrival,
+            @Param("excludeTransportId") Integer excludeTransportId
+        );
+
+        @Query("""
+            SELECT CASE WHEN COUNT(t) > 0 THEN true ELSE false END
+            FROM Transport t
+            WHERE t.driver.driverId = :driverId
+              AND t.isActive = true
+              AND t.departureTime < :arrival
+              AND t.arrivalTime > :departure
+            """)
+        boolean existsByDriverIdAndTimeOverlap(
+            @Param("driverId") Integer driverId,
+            @Param("departure") LocalDateTime departure,
+            @Param("arrival") LocalDateTime arrival
+        );
+
+        @Query("""
+            SELECT CASE WHEN COUNT(t) > 0 THEN true ELSE false END
+            FROM Transport t
+            WHERE t.driver.driverId = :driverId
+              AND t.transportId <> :excludeTransportId
+              AND t.isActive = true
+              AND t.departureTime < :arrival
+              AND t.arrivalTime > :departure
+            """)
+        boolean existsByDriverIdAndTimeOverlapExcluding(
+            @Param("driverId") Integer driverId,
+            @Param("departure") LocalDateTime departure,
+            @Param("arrival") LocalDateTime arrival,
+            @Param("excludeTransportId") Integer excludeTransportId
+        );
+
     /**
      * Transports expirés : {@code departureTime + 1h < now} ⇔ {@code departureTime < now - 1h}
      * (cutoff passé en paramètre).

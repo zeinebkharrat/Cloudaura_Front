@@ -21,6 +21,7 @@ import { ExploreService } from './explore/explore.service';
 import { API_BASE_URL, API_FALLBACK_ORIGIN } from './core/api-url';
 import { AuthService } from './core/auth.service';
 import { PersonalizationService } from './core/personalization.service';
+import { TranslateModule } from '@ngx-translate/core';
 
 interface HomeImageCard {
   title: string;
@@ -90,7 +91,7 @@ function normalizeRegionToken(value: unknown): string {
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, TranslateModule],
   templateUrl: './home.component.html',
   styleUrl: './home.component.css',
 })

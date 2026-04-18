@@ -70,7 +70,7 @@ public class ShopController {
         @RequestParam(required = false) String presentmentCurrency
     ) {
         return ResponseEntity.ok(
-                shopService.checkout(requireUsername(authentication), paymentMethod, presentmentCurrency));
+                shopService.checkout(requireUsername(authentication), paymentMethod));
     }
 
     @GetMapping("/orders")

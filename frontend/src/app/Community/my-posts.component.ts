@@ -18,11 +18,12 @@ import { PostService } from './post.service';
 import { AuthService } from '../core/auth.service';
 import { OwnershipUtil } from './ownership.util';
 import Swal from 'sweetalert2';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-my-posts',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslateModule],
   templateUrl: './my-posts.component.html',
   styleUrl: './my-posts.component.css',
 })

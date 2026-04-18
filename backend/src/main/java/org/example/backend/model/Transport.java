@@ -52,6 +52,14 @@ public class Transport {
     @JoinColumn(name = "arrival_city_id")
     private City arrivalCity;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "vehicle_id")
+    private Vehicle vehicle;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "driver_id")
+    private Driver driver;
+
     @Transient
     private int availableSeats;
 

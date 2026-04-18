@@ -10,11 +10,13 @@ import {
 import { AuthService } from '../core/auth.service';
 import { FormsModule } from '@angular/forms';
 import { NotificationService } from '../core/notification.service';
+import { TranslateModule } from '@ngx-translate/core';
+import { DualCurrencyPipe } from '../core/pipes/dual-currency.pipe';
 
 @Component({
   selector: 'app-artisan-orders',
   standalone: true,
-  imports: [CommonModule,  FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink, TranslateModule, DualCurrencyPipe],
   templateUrl: './artisan-orders.component.html',
   styleUrl: './artisan-orders.component.css',
 })
@@ -51,6 +53,7 @@ export class ArtisanOrdersComponent implements OnInit {
     { value: 'DELIVERED', label: 'Delivered' },
     { value: 'CANCELLED', label: 'Cancelled' },
   ] as const;
+  readonly statusOptionValues = this.statusOptions.map((option) => option.value);
 
   readonly updatingItems = signal<Set<number>>(new Set());
 

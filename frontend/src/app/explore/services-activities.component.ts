@@ -7,11 +7,13 @@ import { ExploreService } from './explore.service';
 import { Activity, City, VoiceTranscriptionResponse } from './explore.models';
 import { VoiceSearchService } from './voice-search.service';
 import { parseActivityVoiceQuery } from './voice-query.parser';
+import { TranslateModule } from '@ngx-translate/core';
+import { DualCurrencyPipe } from '../core/pipes/dual-currency.pipe';
 
 @Component({
   selector: 'app-services-activities',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, TranslateModule, DualCurrencyPipe],
   templateUrl: './services-activities.component.html',
   styleUrl: './services-activities.component.css',
 })

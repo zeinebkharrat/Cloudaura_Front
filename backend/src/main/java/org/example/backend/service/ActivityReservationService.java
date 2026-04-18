@@ -113,14 +113,23 @@ public class ActivityReservationService {
             .atOffset(ZoneOffset.UTC)
             .toLocalDate();
 
+        String activityName = reservation.getActivity().getName();
+        Integer cityId = reservation.getActivity().getCity() != null ? reservation.getActivity().getCity().getCityId() : null;
+        String cityName = reservation.getActivity().getCity() != null ? reservation.getActivity().getCity().getName() : null;
+        String statusLabel = reservation.getStatus() != null ? reservation.getStatus().name() : null;
+
         return new ActivityReservationResponse(
             reservation.getActivityReservationId(),
             reservation.getActivity().getActivityId(),
-            reservation.getActivity().getName(),
+            activityName,
             date.toString(),
             reservation.getNumberOfPeople(),
             reservation.getTotalPrice(),
-            reservation.getStatus()
+            reservation.getStatus(),
+            statusLabel,
+            cityId,
+            cityName,
+            activityName
         );
     }
 
@@ -225,19 +234,25 @@ public class ActivityReservationService {
             .toLocalDate();
 
         User user = reservation.getUser();
+        String activityName = reservation.getActivity().getName();
+        String cityName = reservation.getActivity().getCity().getName();
+        String statusLabel = reservation.getStatus() != null ? reservation.getStatus().name() : null;
         return new ActivityReservationListItemResponse(
             reservation.getActivityReservationId(),
             reservation.getActivity().getActivityId(),
-            reservation.getActivity().getName(),
+            activityName,
             reservation.getActivity().getCity().getCityId(),
-            reservation.getActivity().getCity().getName(),
+            cityName,
             date.toString(),
             reservation.getNumberOfPeople(),
             reservation.getTotalPrice(),
             reservation.getStatus(),
+            statusLabel,
             user != null ? user.getUserId() : null,
             user != null ? user.getUsername() : null,
-            user != null ? user.getEmail() : null
+            user != null ? user.getEmail() : null,
+            activityName,
+            cityName
         );
     }
 
