@@ -52,14 +52,6 @@ public class Transport {
     @JoinColumn(name = "arrival_city_id")
     private City arrivalCity;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "driver_id")
-    private Driver driver;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "vehicle_id")
-    private Vehicle vehicle;
-
     @Transient
     private int availableSeats;
 
@@ -68,9 +60,6 @@ public class Transport {
     @PrePersist
     @PreUpdate
     private void validateBusinessRules() {
-        if (type == TransportType.PLANE && driver != null) {
-            throw new IllegalStateException("Un avion ne peut pas avoir de conducteur");
-        }
         if (type == TransportType.PLANE && (operatorName == null || operatorName.isBlank())) {
             throw new IllegalStateException("La compagnie aérienne est obligatoire pour un avion");
         }

@@ -30,16 +30,16 @@ public class FollowRelationService {
     @Transactional
     public Map<String, Object> toggleFollow(Integer followerId, Integer followedId) {
         if (followerId == null || followedId == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid user id");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.follow_invalid_user");
         }
         if (Objects.equals(followerId, followedId)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You cannot follow yourself");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.follow_self");
         }
 
         User follower = userRepo.findById(followerId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Follower user not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.follow_follower_not_found"));
         User followed = userRepo.findById(followedId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Target user not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.follow_target_not_found"));
 
         return followRepo.findByFollowerUserIdAndFollowedUserId(followerId, followedId)
                 .map(existing -> {

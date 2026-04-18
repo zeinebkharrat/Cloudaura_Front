@@ -1,6 +1,7 @@
 package org.example.backend.service;
 
 import org.example.backend.dto.ConversationResponse;
+import org.example.backend.exception.ResourceNotFoundException;
 import org.example.backend.model.ChatRoom;
 import org.example.backend.model.ChatRoomParticipant;
 import org.example.backend.model.Message;
@@ -10,8 +11,10 @@ import org.example.backend.repository.ChatRoomRepository;
 import org.example.backend.repository.MessageRepository;
 import org.example.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -85,7 +88,7 @@ public class ChatRoomService implements IChatRoomService {
     public ChatRoom getOrCreateChatRoom(Integer currentUserId, Integer targetUserId) {
         // Prevent creating a room with yourself
         if (currentUserId.equals(targetUserId)) {
-            throw new RuntimeException("Cannot create a chat room with yourself");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.chat.cannot_dm_self");
         }
 
         // Check if a room already exists between the two users
@@ -97,9 +100,9 @@ public class ChatRoomService implements IChatRoomService {
 
         // Create new chat room
         User currentUser = userRepo.findById(currentUserId)
-                .orElseThrow(() -> new RuntimeException("Current user not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("api.error.user_not_found"));
         User targetUser = userRepo.findById(targetUserId)
-                .orElseThrow(() -> new RuntimeException("Target user not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("api.error.user_not_found"));
 
         ChatRoom chatRoom = new ChatRoom();
         chatRoom.setName(currentUser.getUsername() + " & " + targetUser.getUsername());

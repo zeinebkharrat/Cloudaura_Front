@@ -96,7 +96,7 @@ public class CityMediaService {
 
     private CityMedia findMedia(Integer id) {
         return cityMediaRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Media introuvable: " + id));
+            .orElseThrow(() -> new ResourceNotFoundException("api.error.city_media_not_found"));
     }
 
     private void apply(CityMedia media, CityMediaRequest request) {

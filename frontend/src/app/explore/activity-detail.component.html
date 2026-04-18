@@ -1,5 +1,5 @@
 <section class="page" *ngIf="!loading; else loadingTpl">
-  <button class="back-btn floating-back" type="button" (click)="goBack()" aria-label="Back">←</button>
+  <button class="back-btn floating-back" type="button" (click)="goBack()" [attr.aria-label]="'COMMON.BACK' | translate">←</button>
   <div class="error" *ngIf="error">{{ error }}</div>
 
   <ng-container *ngIf="activity && !error">
@@ -11,20 +11,20 @@
       >
         <img class="cover-image" [src]="heroImage" [alt]="activity.name" />
         <div class="image-overlay"></div>
-        <span class="badge">Activity</span>
+        <span class="badge">{{ 'EXPLORE_ACTIVITY.BADGE' | translate }}</span>
         <button
           class="hero-nav hero-nav-left"
           type="button"
           (click)="previousMedia()"
           *ngIf="activityMedia.length > 1"
-          aria-label="Previous image"
+          [attr.aria-label]="'EXPLORE_ACTIVITY.PREV_IMG' | translate"
         >◀</button>
         <button
           class="hero-nav hero-nav-right"
           type="button"
           (click)="nextMedia()"
           *ngIf="activityMedia.length > 1"
-          aria-label="Next image"
+          [attr.aria-label]="'EXPLORE_ACTIVITY.NEXT_IMG' | translate"
         >▶</button>
         <div class="hero-counter" *ngIf="activityMedia.length > 1">
           {{ currentMediaIndex + 1 }} / {{ activityMedia.length }}
@@ -33,36 +33,36 @@
 
       <div class="content-panel">
         <div class="content-top">
-          <p class="kicker">Immersive experience</p>
-          <button class="book-btn" type="button" (click)="openBookingModal()">Book this activity</button>
+          <p class="kicker">{{ 'EXPLORE_ACTIVITY.KICKER' | translate }}</p>
+          <button class="book-btn" type="button" (click)="openBookingModal()">{{ 'EXPLORE_ACTIVITY.BOOK_CTA' | translate }}</button>
         </div>
         <h1>{{ activity.name }}</h1>
-        <p class="description">{{ activity.description || 'Enjoy an immersive local activity.' }}</p>
+        <p class="description">{{ activity.description || ('EXPLORE_ACTIVITY.DESC_FALLBACK' | translate) }}</p>
 
         <div class="rating-row">
-          <div class="stars" aria-label="activity rating">
+          <div class="stars" [attr.aria-label]="'EXPLORE_ACTIVITY.RATING_A11Y' | translate">
             @for (state of starStates(ratingValue()); track $index) {
               <span [class.filled]="state === 'full'">★</span>
             }
           </div>
           <strong>{{ ratingValue() | number:'1.1-1' }}/5</strong>
-          <small>({{ reviewSummary.totalReviews }} reviews)</small>
+          <small>{{ 'EXPLORE_ACTIVITY.REVIEWS_COUNT' | translate: { n: reviewSummary.totalReviews } }}</small>
         </div>
 
         <div class="chips-row">
-          <span class="chip">{{ activity.type || 'Tourist activity' }}</span>
+          <span class="chip">{{ activity.type || ('EXPLORE_ACTIVITY.TYPE_FALLBACK' | translate) }}</span>
           <span class="chip">{{ activity.cityName }}</span>
-          <span class="chip" *ngIf="activity.price != null">{{ activity.price | number: '1.2-2' }} TND</span>
+          <span class="chip" *ngIf="activity.price != null">{{ activity.price | dualCurrency }}</span>
         </div>
 
         <div class="info-grid">
           <article class="info-card">
-            <span>City</span>
+            <span>{{ 'EXPLORE_ACTIVITY.CITY' | translate }}</span>
             <strong>{{ activity.cityName }}</strong>
           </article>
           <article class="info-card">
-            <span>Address</span>
-            <strong>{{ activity.address || 'Not provided' }}</strong>
+            <span>{{ 'EXPLORE_ACTIVITY.ADDRESS' | translate }}</span>
+            <strong>{{ activity.address || ('EXPLORE_ACTIVITY.ADDRESS_MISSING' | translate) }}</strong>
           </article>
         </div>
 
@@ -72,13 +72,13 @@
 
     <article class="map-card animate-in delay-1">
       <div class="card-head">
-        <h2>Location & directions</h2>
-        <p>Find this activity on the map and navigate instantly.</p>
+        <h2>{{ 'EXPLORE_ACTIVITY.MAP_TITLE' | translate }}</h2>
+        <p>{{ 'EXPLORE_ACTIVITY.MAP_SUB' | translate }}</p>
       </div>
 
       <div id="activityMap" class="map" *ngIf="activity.latitude != null && activity.longitude != null"></div>
       <p class="empty" *ngIf="activity.latitude == null || activity.longitude == null">
-        Coordinates are not available for this activity.
+        {{ 'EXPLORE_ACTIVITY.COORDS_MISSING' | translate }}
       </p>
 
       <button
@@ -87,19 +87,19 @@
         (click)="openDirectionsFromCurrentPosition()"
         [disabled]="activity.latitude == null || activity.longitude == null"
       >
-        Directions from my location
+        {{ 'EXPLORE_ACTIVITY.DIRECTIONS_BTN' | translate }}
       </button>
     </article>
 
     <article class="map-card animate-in delay-1 review-card">
       <div class="card-head">
-        <h2>User reviews</h2>
-        <p>Read users' comments for this activity.</p>
+        <h2>{{ 'EXPLORE_ACTIVITY.REVIEWS_TITLE' | translate }}</h2>
+        <p>{{ 'EXPLORE_ACTIVITY.REVIEWS_SUB' | translate }}</p>
       </div>
 
       <div class="reviews-list">
         @if (reviews.length === 0) {
-          <p class="empty">No comments yet.</p>
+          <p class="empty">{{ 'EXPLORE_ACTIVITY.NO_COMMENTS' | translate }}</p>
         } @else {
           @for (review of reviews; track review.reviewId) {
             <article class="review-item">
@@ -137,7 +137,7 @@
 
       <form class="review-form" (ngSubmit)="submitReview()">
         <label>
-          Your rating
+          {{ 'EXPLORE_ACTIVITY.YOUR_RATING' | translate }}
           <div class="stars selectable">
             @for (star of [1,2,3,4,5]; track star) {
               <button type="button" class="star-btn" [class.filled]="reviewForm.stars >= star" (click)="setReviewStars(star)">★</button>
@@ -171,34 +171,34 @@
     </article>
 
     <div class="booking-modal-backdrop" *ngIf="showBookingModal" (click)="closeBookingModal()"></div>
-    <section class="booking-modal" *ngIf="showBookingModal" role="dialog" aria-modal="true" aria-label="Book this activity">
+    <section class="booking-modal" *ngIf="showBookingModal" role="dialog" aria-modal="true" [attr.aria-label]="'EXPLORE_ACTIVITY.MODAL_ARIA' | translate">
       <header class="booking-modal-head">
-        <h3>Book this activity</h3>
+        <h3>{{ 'EXPLORE_ACTIVITY.MODAL_TITLE' | translate }}</h3>
         <button class="city-link" type="button" (click)="closeBookingModal()" [disabled]="submitting">✕</button>
       </header>
 
       <form (ngSubmit)="submitReservation()" #reservationForm="ngForm" class="form">
         <div class="booking-grid">
           <label>
-            Nombre de participants
+            {{ 'EXPLORE_ACTIVITY.PARTICIPANTS_LABEL' | translate }}
             <input type="number" name="numberOfPeople" required min="1" [(ngModel)]="form.numberOfPeople" (ngModelChange)="onParticipantsChanged()" />
           </label>
 
           <label class="toggle-row">
             <input type="checkbox" name="showOnlyAvailable" [(ngModel)]="showOnlyAvailable" (ngModelChange)="buildCalendar()" />
-            Afficher seulement les dates disponibles
+            {{ 'EXPLORE_ACTIVITY.SHOW_AVAILABLE_ONLY' | translate }}
           </label>
         </div>
 
         <div class="calendar-wrap">
           <header class="calendar-head">
-            <button type="button" class="calendar-nav" (click)="previousMonth()">‹</button>
+            <button type="button" class="calendar-nav" (click)="previousMonth()" [attr.aria-label]="'EXPLORE_ACTIVITY.CAL_PREV' | translate">‹</button>
             <strong>{{ monthLabel() }}</strong>
-            <button type="button" class="calendar-nav" (click)="nextMonth()">›</button>
+            <button type="button" class="calendar-nav" (click)="nextMonth()" [attr.aria-label]="'EXPLORE_ACTIVITY.CAL_NEXT' | translate">›</button>
           </header>
 
           <div class="calendar-weekdays">
-            <span *ngFor="let weekday of weekdays">{{ weekday }}</span>
+            <span *ngFor="let i of weekdayIndices">{{ ('EXPLORE_ACTIVITY.WEEKDAY_' + i) | translate }}</span>
           </div>
 
           <div class="calendar-grid" [class.loading]="loadingAvailability">
@@ -216,7 +216,7 @@
                 <span class="day">{{ cell.dayNumber }}</span>
                 <small *ngIf="cell.inCurrentMonth">
                   <ng-container *ngIf="cell.remainingParticipants == null; else limitedPlaces">∞</ng-container>
-                  <ng-template #limitedPlaces>{{ cell.remainingParticipants }} pl.</ng-template>
+                  <ng-template #limitedPlaces>{{ 'EXPLORE_ACTIVITY.PLACES_ABBR' | translate: { n: cell.remainingParticipants } }}</ng-template>
                 </small>
               </button>
             </ng-container>
@@ -225,16 +225,16 @@
 
         <div class="booking-summary">
           <div>
-            <span>Date sélectionnée</span>
+            <span>{{ 'EXPLORE_ACTIVITY.SELECTED_DATE' | translate }}</span>
             <strong>{{ form.reservationDate }}</strong>
           </div>
           <div>
-            <span>Places restantes</span>
+            <span>{{ 'EXPLORE_ACTIVITY.REMAINING_PLACES' | translate }}</span>
             <strong>{{ selectedRemainingPlaces() }}</strong>
           </div>
           <div>
-            <span>Prix total</span>
-            <strong>{{ totalPrice() | number: '1.2-2' }} TND</strong>
+            <span>{{ 'EXPLORE_ACTIVITY.TOTAL_PRICE' | translate }}</span>
+            <strong>{{ totalPrice() | dualCurrency }}</strong>
           </div>
         </div>
 
@@ -253,6 +253,6 @@
 
 <ng-template #loadingTpl>
   <section class="page">
-    <div class="card">Loading activity...</div>
+    <div class="card">{{ 'EXPLORE_ACTIVITY.LOADING' | translate }}</div>
   </section>
 </ng-template>

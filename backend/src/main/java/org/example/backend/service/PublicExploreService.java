@@ -9,6 +9,7 @@ import org.example.backend.dto.RestaurantResponse;
 import org.example.backend.dto.publicapi.CityResolveResponse;
 import org.example.backend.dto.publicapi.PublicCityDetailsResponse;
 import org.example.backend.exception.ResourceNotFoundException;
+import org.example.backend.i18n.CatalogKeyUtil;
 import org.example.backend.model.Activity;
 import org.example.backend.model.ActivityMedia;
 import org.example.backend.model.City;
@@ -36,6 +37,7 @@ public class PublicExploreService {
     private final ActivityMediaRepository activityMediaRepository;
     private final RestaurantRepository restaurantRepository;
     private final ActivityRepository activityRepository;
+    private final CatalogTranslationService catalogTranslationService;
 
     public CityResolveResponse resolveCityByName(String mapLabel) {
         if (mapLabel == null || mapLabel.isBlank()) {
@@ -49,7 +51,7 @@ public class PublicExploreService {
             .toList();
 
         if (allCities.isEmpty()) {
-            throw new ResourceNotFoundException("Aucune ville disponible en base de données");
+            throw new ResourceNotFoundException("api.error.explore_no_cities");
         }
 
         City exact = allCities.stream()
@@ -63,7 +65,7 @@ public class PublicExploreService {
 
         City best = allCities.stream()
             .min(Comparator.comparingInt(city -> levenshtein(normalizedInput, normalize(city.getName()))))
-            .orElseThrow(() -> new ResourceNotFoundException("Aucune ville trouvée pour: " + mapLabel));
+            .orElseThrow(() -> new ResourceNotFoundException("api.error.city_not_found"));
 
         return new CityResolveResponse(toCityResponse(best), false);
     }
@@ -79,7 +81,7 @@ public class PublicExploreService {
     @Transactional(readOnly = true)
     public PublicCityDetailsResponse getCityDetails(Integer cityId) {
         City city = cityRepository.findById(cityId)
-            .orElseThrow(() -> new ResourceNotFoundException("Ville introuvable: " + cityId));
+            .orElseThrow(() -> new ResourceNotFoundException("api.error.city_not_found"));
 
         List<CityMediaResponse> media = cityMediaRepository.findByCityCityIdOrderByMediaIdDesc(cityId)
             .stream()
@@ -102,7 +104,7 @@ public class PublicExploreService {
     @Transactional(readOnly = true)
     public List<ActivityMediaResponse> getActivityMedia(Integer activityId) {
         Activity activity = activityRepository.findById(activityId)
-            .orElseThrow(() -> new ResourceNotFoundException("Activité introuvable: " + activityId));
+            .orElseThrow(() -> new ResourceNotFoundException("reservation.error.activity_not_found"));
 
         return activityMediaRepository.findByActivityActivityIdOrderByMediaIdDesc(activity.getActivityId())
             .stream()
@@ -140,36 +142,63 @@ public class PublicExploreService {
     }
 
     private CityResponse toCityResponse(City city) {
+        int id = city.getCityId();
         return new CityResponse(
             city.getCityId(),
-            city.getName(),
-            city.getRegion(),
-            city.getDescription(),
+            catalogTranslationService.resolveForRequest("city." + id + ".name", city.getName()),
+            catalogTranslationService.resolveForRequest("city." + id + ".region", city.getRegion()),
+            catalogTranslationService.resolveForRequest("city." + id + ".description", city.getDescription()),
             city.getLatitude(),
             city.getLongitude()
         );
     }
 
     private CityMediaResponse toCityMediaResponse(CityMedia media) {
+        City c = media.getCity();
+        int cid = c.getCityId();
         return new CityMediaResponse(
             media.getMediaId(),
-            media.getCity().getCityId(),
-            media.getCity().getName(),
+            cid,
+            catalogTranslationService.resolveForRequest("city." + cid + ".name", c.getName()),
             media.getUrl(),
             media.getMediaType()
         );
     }
 
     private RestaurantResponse toRestaurantResponse(Restaurant restaurant) {
+        int rid = restaurant.getRestaurantId();
+        int cid = restaurant.getCity().getCityId();
+        String rawName = restaurant.getName();
+        String nameOut =
+                catalogTranslationService.resolveEntityField(rid, "restaurant", "name", rawName);
+        if (CatalogKeyUtil.isBadI18nPlaceholder(rawName, nameOut)) {
+            nameOut = "";
+        }
+        String rawDesc = restaurant.getDescription();
+        String descOut =
+                catalogTranslationService.resolveEntityField(rid, "restaurant", "description", rawDesc);
+        if (CatalogKeyUtil.isBadI18nPlaceholder(rawDesc, descOut)) {
+            descOut = null;
+        }
+        String rawCuisine = restaurant.getCuisineType();
+        String cuisineOut =
+                rawCuisine == null || rawCuisine.isBlank() || CatalogKeyUtil.looksLikeCatalogKey(rawCuisine)
+                        ? null
+                        : rawCuisine;
+        String rawAddr = restaurant.getAddress();
+        String addrOut =
+                rawAddr == null || rawAddr.isBlank() || CatalogKeyUtil.looksLikeCatalogKey(rawAddr)
+                        ? null
+                        : rawAddr;
         return new RestaurantResponse(
             restaurant.getRestaurantId(),
-            restaurant.getCity().getCityId(),
-            restaurant.getCity().getName(),
-            restaurant.getName(),
-            restaurant.getCuisineType(),
+            cid,
+            catalogTranslationService.resolveEntityField(cid, "city", "name", restaurant.getCity().getName()),
+            nameOut,
+            cuisineOut,
             restaurant.getRating(),
-            restaurant.getDescription(),
-            restaurant.getAddress(),
+            descOut,
+            addrOut,
             restaurant.getLatitude(),
             restaurant.getLongitude(),
             restaurant.getImageUrl()
@@ -183,15 +212,33 @@ public class PublicExploreService {
             .map(ActivityMedia::getUrl)
             .orElse(null);
 
+        int aid = activity.getActivityId();
+        int cid = activity.getCity().getCityId();
+        String rawType = activity.getType();
+        String resType = catalogTranslationService.resolveEntityField(aid, "activity", "type", rawType);
+        String typeOut = CatalogKeyUtil.isBadI18nPlaceholder(rawType, resType) ? "" : resType;
+        String rawAddr = activity.getAddress();
+        String resAddr = catalogTranslationService.resolveEntityField(aid, "activity", "address", rawAddr);
+        String addrOut = CatalogKeyUtil.isBadI18nPlaceholder(rawAddr, resAddr) ? null : resAddr;
+        String rawName = activity.getName();
+        String nameOut = catalogTranslationService.resolveEntityField(aid, "activity", "name", rawName);
+        if (CatalogKeyUtil.isBadI18nPlaceholder(rawName, nameOut)) {
+            nameOut = "";
+        }
+        String rawDesc = activity.getDescription();
+        String descOut = catalogTranslationService.resolveEntityField(aid, "activity", "description", rawDesc);
+        if (CatalogKeyUtil.isBadI18nPlaceholder(rawDesc, descOut)) {
+            descOut = null;
+        }
         return new ActivityResponse(
             activity.getActivityId(),
-            activity.getCity().getCityId(),
-            activity.getCity().getName(),
-            activity.getName(),
-            activity.getType(),
+            cid,
+            catalogTranslationService.resolveEntityField(cid, "city", "name", activity.getCity().getName()),
+            nameOut,
+            typeOut,
             activity.getPrice(),
-            activity.getDescription(),
-            activity.getAddress(),
+            descOut,
+            addrOut,
             activity.getLatitude(),
             activity.getLongitude(),
             imageUrl,
@@ -201,10 +248,18 @@ public class PublicExploreService {
     }
 
     private ActivityMediaResponse toActivityMediaResponse(ActivityMedia media) {
+        Activity a = media.getActivity();
+        int aid = a.getActivityId();
+        String rawMediaActName = a.getName();
+        String mediaActName =
+                catalogTranslationService.resolveEntityField(aid, "activity", "name", rawMediaActName);
+        if (CatalogKeyUtil.isBadI18nPlaceholder(rawMediaActName, mediaActName)) {
+            mediaActName = "";
+        }
         return new ActivityMediaResponse(
             media.getMediaId(),
-            media.getActivity().getActivityId(),
-            media.getActivity().getName(),
+            aid,
+            mediaActName,
             media.getUrl(),
             media.getMediaType()
         );

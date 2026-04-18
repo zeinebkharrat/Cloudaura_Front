@@ -1,20 +1,20 @@
 <section class="follow-list-page">
   <div class="follow-shell">
     <header class="follow-head">
-      <button type="button" class="back-btn" (click)="backToProfile()">← Back to profile</button>
-      <h2>Réseau</h2>
+      <button type="button" class="back-btn" (click)="backToProfile()">{{ 'COMMUNITY.FOLLOW_BACK_PROFILE' | translate }}</button>
+      <h2>{{ 'COMMUNITY.FOLLOW_NETWORK' | translate }}</h2>
     </header>
 
     <div class="follow-tabs">
       <button type="button" [class.active]="activeTab() === 'followers'" (click)="openTab('followers')">
-        Followers ({{ followers().length }})
+        {{ 'COMMUNITY.FOLLOWERS_TAB' | translate: { n: followers().length } }}
       </button>
       <button type="button" [class.active]="activeTab() === 'following'" (click)="openTab('following')">
-        Following ({{ following().length }})
+        {{ 'COMMUNITY.FOLLOWING_TAB' | translate: { n: following().length } }}
       </button>
     </div>
 
-        <div class="state-box" *ngIf="loading()">Loading…</div>
+        <div class="state-box" *ngIf="loading()">{{ 'COMMUNITY.LOADING' | translate }}</div>
     <div class="state-box state-box--error" *ngIf="!loading() && error()">{{ error() }}</div>
 
     <div class="users-list" *ngIf="!loading() && !error()">
@@ -39,7 +39,7 @@
       </button>
 
       <div class="state-box" *ngIf="visibleUsers().length === 0">
-        No users in this list.
+        {{ 'COMMUNITY.FOLLOW_LIST_EMPTY' | translate }}
       </div>
     </div>
   </div>

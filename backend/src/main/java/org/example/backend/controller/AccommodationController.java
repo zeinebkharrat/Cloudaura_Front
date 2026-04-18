@@ -25,7 +25,7 @@ public class AccommodationController {
             @RequestParam(required = false) Double minRating,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkIn,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkOut) {
-        
+
         AccommodationSearchRequest request = AccommodationSearchRequest.builder()
                 .cityId(cityId)
                 .type(type)
@@ -35,7 +35,7 @@ public class AccommodationController {
                 .checkIn(checkIn)
                 .checkOut(checkOut)
                 .build();
-        
+
         return ApiResponse.success(accommodationService.searchAccommodations(request));
     }
 
@@ -44,10 +44,10 @@ public class AccommodationController {
             @PathVariable int id,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkIn,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate checkOut) {
-        
+
         return ApiResponse.success(accommodationService.getAccommodationDetails(
-                id, 
-                checkIn != null ? checkIn.atStartOfDay() : null, 
+                id,
+                checkIn != null ? checkIn.atStartOfDay() : null,
                 checkOut != null ? checkOut.atStartOfDay() : null));
     }
 }

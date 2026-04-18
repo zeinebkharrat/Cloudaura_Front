@@ -36,7 +36,7 @@
 
 <section id="map-section" class="destinations map-section map-section--hero-adjacent">
   <div class="map-wrapper animate-in delay-2 glass-panel" [class.map-wrapper--zooming]="isMapNavigating()">
-    <div class="map-view-tabs" role="tablist" aria-label="Map display mode">
+    <div class="map-view-tabs" role="tablist" [attr.aria-label]="'HOME.MAP_TABS_ARIA' | translate">
       <button
         type="button"
         class="map-view-tab"
@@ -45,7 +45,7 @@
         role="tab"
         [attr.aria-selected]="mapViewMode() === 'local'"
       >
-        Local View
+        {{ 'HOME.MAP_TAB_LOCAL' | translate }}
       </button>
       <button
         type="button"
@@ -55,7 +55,7 @@
         role="tab"
         [attr.aria-selected]="mapViewMode() === 'highlights'"
       >
-        Highlights View
+        {{ 'HOME.MAP_TAB_HIGHLIGHTS' | translate }}
       </button>
     </div>
     <div #mapContainer class="echarts-map"></div>
@@ -63,8 +63,8 @@
     <div *ngIf="selectedRegion()" class="region-info-panel slide-up">
       <button class="close-btn" (click)="selectedRegion.set(null)">&times;</button>
       <div class="region-badges">
-        <span class="region-chip">Tunisia</span>
-        <span class="region-chip">Interactive</span>
+        <span class="region-chip">{{ 'HOME.CHIP_TUNISIA' | translate }}</span>
+        <span class="region-chip">{{ 'HOME.CHIP_INTERACTIVE' | translate }}</span>
       </div>
       <h3>{{ selectedRegion()?.name }}</h3>
       <p>{{ selectedRegion()?.description }}</p>
@@ -74,7 +74,11 @@
         (click)="goToSelectedCity()"
         [disabled]="selectedRegion()?.resolving || !selectedRegion()?.cityId"
       >
-        {{ selectedRegion()?.resolving ? 'Loading...' : ('Explore ' + selectedRegion()?.name) }}
+        {{
+          selectedRegion()?.resolving
+            ? ('HOME.MAP_LOADING' | translate)
+            : ('HOME.MAP_EXPLORE_NAME' | translate: { name: selectedRegion()?.name ?? '' })
+        }}
       </button>
     </div>
 
@@ -102,8 +106,8 @@
   </div>
 
   <div class="map-section-heading section-header">
-    <h2 class="animate-in">Interactive 3D Map</h2>
-    <p class="animate-in delay-1">Explore all 24 Tunisian states. Click on a region to discover more.</p>
+    <h2 class="animate-in">{{ 'HOME.MAP_SECTION_TITLE' | translate }}</h2>
+    <p class="animate-in delay-1">{{ 'HOME.MAP_SECTION_SUB' | translate }}</p>
   </div>
 </section>
 

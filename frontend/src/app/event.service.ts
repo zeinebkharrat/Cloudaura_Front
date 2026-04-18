@@ -86,6 +86,7 @@ export class EventService {
     event_id: number | undefined;
     amount: number;
     eventName: string;
+    presentmentCurrency?: string;
   }): Observable<{ sessionId: string; sessionUrl?: string }> {
     return this.http.post<{ sessionId: string; sessionUrl?: string }>(
       `${this.apiUrl}/create-checkout-session`,

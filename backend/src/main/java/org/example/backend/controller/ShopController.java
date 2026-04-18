@@ -66,9 +66,11 @@ public class ShopController {
     @PostMapping("/checkout")
     public ResponseEntity<CheckoutOrderDto> checkout(
         Authentication authentication,
-        @RequestParam(required = false) String paymentMethod
+        @RequestParam(required = false) String paymentMethod,
+        @RequestParam(required = false) String presentmentCurrency
     ) {
-        return ResponseEntity.ok(shopService.checkout(requireUsername(authentication), paymentMethod));
+        return ResponseEntity.ok(
+                shopService.checkout(requireUsername(authentication), paymentMethod, presentmentCurrency));
     }
 
     @GetMapping("/orders")

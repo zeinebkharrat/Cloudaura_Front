@@ -1,6 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { DualCurrencyPipe } from '../core/pipes/dual-currency.pipe';
+import { createCurrencyDisplaySyncEffect } from '../core/utils/currency-display-sync';
 import {
   CheckoutBuyer,
   CheckoutOrder,
@@ -8,17 +10,21 @@ import {
   ShopService,
 } from '../core/shop.service';
 import { AuthService } from '../core/auth.service';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-my-orders',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, DualCurrencyPipe, TranslateModule],
   templateUrl: './my-orders.component.html',
   styleUrl: './my-orders.component.css',
 })
 export class MyOrdersComponent implements OnInit {
+  private readonly _currencyDisplaySync = createCurrencyDisplaySyncEffect();
+
   private readonly shop = inject(ShopService);
   private readonly auth = inject(AuthService);
+  private readonly translate = inject(TranslateService);
 
   readonly orders = signal<MyOrderSummary[] | null>(null);
   readonly loading = signal(true);
@@ -46,7 +52,7 @@ export class MyOrdersComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
-        this.error.set('Could not load data.');
+        this.error.set(this.translate.instant('MY_ORDERS.MSG_LIST_FAIL'));
         this.loading.set(false);
       },
     });
@@ -73,45 +79,40 @@ export class MyOrdersComponent implements OnInit {
       },
       error: () => {
         this.detailLoading.set(false);
-        this.detailError.set('Details unavailable or access denied.');
+        this.detailError.set(this.translate.instant('MY_ORDERS.MSG_DETAIL_FAIL'));
       },
     });
   }
 
-  formatPrice(p: number | null | undefined): string {
-    if (p == null || Number.isNaN(Number(p))) return '—';
-    return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'TND', minimumFractionDigits: 2 }).format(
-      Number(p)
-    );
-  }
-
   orderStatusLabel(status: string | null | undefined): string {
     const s = (status ?? '').toUpperCase();
-    if (s === 'PENDING') return 'Pending';
-    if (s === 'CONFIRMED' || s === 'CONFIRMÉE') return 'Confirmed';
-    if (s === 'SHIPPED') return 'Shipped';
-    if (s === 'DELIVERED') return 'Delivered';
-    if (s === 'CANCELLED') return 'Cancelled';
-    return status ?? '—';
+    if (s === 'PENDING') return this.translate.instant('CART_PAGE.STATUS_PENDING');
+    if (s === 'CONFIRMED' || s === 'CONFIRMÉE') return this.translate.instant('CART_PAGE.STATUS_CONFIRMED');
+    if (s === 'SHIPPED') return this.translate.instant('CART_PAGE.STATUS_SHIPPED');
+    if (s === 'DELIVERED') return this.translate.instant('CART_PAGE.STATUS_DELIVERED');
+    if (s === 'CANCELLED') return this.translate.instant('CART_PAGE.STATUS_CANCELLED');
+    return status ?? this.translate.instant('COMMON.DASH');
   }
 
   formatOrderedAt(iso: string | null | undefined): string {
-    if (!iso) return '—';
+    if (!iso) return this.translate.instant('COMMON.DASH');
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
-    return new Intl.DateTimeFormat('en-GB', {
+    const lang = this.translate.currentLang || this.translate.defaultLang || 'en';
+    const locale = lang === 'fr' ? 'fr-FR' : lang === 'ar' ? 'ar' : lang === 'en' ? 'en-GB' : lang;
+    return new Intl.DateTimeFormat(locale, {
       dateStyle: 'long',
       timeStyle: 'short',
     }).format(d);
   }
 
   buyerDisplayName(b: CheckoutBuyer | null | undefined): string {
-    if (!b) return '—';
+    if (!b) return this.translate.instant('COMMON.DASH');
     const fn = (b.firstName ?? '').trim();
     const ln = (b.lastName ?? '').trim();
     const full = `${fn} ${ln}`.trim();
     if (full) return full;
-    return b.username ?? '—';
+    return b.username ?? this.translate.instant('COMMON.DASH');
   }
 
   rowExpanded(row: MyOrderSummary): boolean {

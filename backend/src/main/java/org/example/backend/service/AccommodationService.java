@@ -4,6 +4,7 @@ import org.example.backend.dto.accommodation.AccommodationSearchRequest;
 import org.example.backend.dto.accommodation.AccommodationSearchResponse;
 import org.example.backend.dto.accommodation.RoomResponse;
 import org.example.backend.exception.ResourceNotFoundException;
+import org.example.backend.i18n.CatalogKeyUtil;
 import org.example.backend.model.Accommodation;
 import org.example.backend.model.Room;
 import org.example.backend.repository.AccommodationRepository;
@@ -20,6 +21,7 @@ import java.util.stream.Collectors;
 public class AccommodationService {
     private final AccommodationRepository accommodationRepository;
     private final RoomRepository roomRepository;
+    private final CatalogTranslationService catalogTranslationService;
 
     @Transactional(readOnly = true)
     public List<AccommodationSearchResponse> searchAccommodations(AccommodationSearchRequest request) {
@@ -46,7 +48,7 @@ public class AccommodationService {
     @Transactional(readOnly = true)
     public AccommodationSearchResponse getAccommodationDetails(int id, LocalDateTime checkIn, LocalDateTime checkOut) {
         Accommodation acc = accommodationRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Accommodation not found."));
+                .orElseThrow(() -> new ResourceNotFoundException("api.error.accommodation_not_found"));
 
         return mapToResponse(acc,
                 checkIn != null ? checkIn : LocalDateTime.now(),
@@ -67,15 +69,24 @@ public class AccommodationService {
                         .build())
                 .collect(Collectors.toList());
 
+        int accId = acc.getAccommodationId();
+        int cityId = acc.getCity().getCityId();
+
+        String rawName = acc.getName();
+        String resName = catalogTranslationService.resolveEntityField(accId, "accommodation", "name", rawName);
+        String nameOut = CatalogKeyUtil.isBadI18nPlaceholder(rawName, resName) ? "" : resName;
+
         return AccommodationSearchResponse.builder()
-                .accommodationId(acc.getAccommodationId())
-                .name(acc.getName())
+                .accommodationId(accId)
+                .name(nameOut)
                 .type(acc.getType().name())
                 .pricePerNight(acc.getPricePerNight())
                 .rating(acc.getRating())
                 .status(acc.getStatus().name())
-                .cityName(acc.getCity().getName())
-                .cityRegion(acc.getCity().getRegion())
+                .cityName(catalogTranslationService.resolveEntityField(cityId, "city", "name", acc.getCity().getName()))
+                .cityRegion(
+                        catalogTranslationService.resolveEntityField(
+                                cityId, "city", "region", acc.getCity().getRegion()))
                 .availableRoomsCount(availableRooms.size())
                 .rooms(roomResponses)
                 .build();

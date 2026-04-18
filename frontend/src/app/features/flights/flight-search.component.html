@@ -1,0 +1,51 @@
+<div class="flight-search-panel">
+  <div class="panel-block">
+    <h2 class="block-title">Search flights</h2>
+    <div class="fields-stack">
+      <div class="field-block">
+        <label class="field-label" for="flight-dest">Destination (city, airport or code)</label>
+        <input
+          pInputText
+          id="flight-dest"
+          class="field-input"
+          [ngModel]="destinationQuery"
+          (ngModelChange)="destinationQueryChange.emit($event)"
+          placeholder="e.g. Paris, CDG, Dubai…"
+          autocomplete="off"
+        />
+        @if (suggestions.length > 0) {
+          <ul class="suggest-list" role="listbox">
+            @for (s of suggestions; track s.pickValue) {
+              <li>
+                <button type="button" class="suggest-item" (click)="onPick(s)">{{ s.label }}</button>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+      <div class="field-block field-block-narrow">
+        <label class="field-label" for="flight-origin">From (IATA)</label>
+        <input
+          pInputText
+          id="flight-origin"
+          class="field-input"
+          [ngModel]="originIata"
+          (ngModelChange)="originIataChange.emit($event)"
+          maxlength="4"
+          placeholder="TUN"
+          autocomplete="off"
+        />
+      </div>
+      <button
+        pButton
+        type="button"
+        label="Search"
+        icon="pi pi-search"
+        class="search-btn"
+        [loading]="loading"
+        [disabled]="loading || !destinationQuery.trim()"
+        (click)="onSearchClick()"
+      ></button>
+    </div>
+  </div>
+</div>

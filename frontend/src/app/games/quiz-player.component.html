@@ -11,9 +11,9 @@
       </div>
     } @else if (quiz()) {
       <header class="qp-header">
-        <button class="btn-back" (click)="backToHub()">⟵ Quitter</button>
+        <button class="btn-back" (click)="backToHub()">{{ 'QUIZ_PLAYER.QUIT' | translate }}</button>
         <div class="qp-progress">
-          Question {{ currentQuestion() + 1 }} / {{ questions().length }}
+          {{ 'QUIZ_PLAYER.QUESTION_OF' | translate: { cur: currentQuestion() + 1, tot: questions().length } }}
         </div>
       </header>
 

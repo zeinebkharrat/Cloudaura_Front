@@ -1,5 +1,6 @@
 import { Component, HostListener, OnDestroy, OnInit, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { ExploreService } from './explore.service';
@@ -28,7 +29,7 @@ const HOME_MAP_RETURN_CONTEXT_KEY = 'homeMapReturnContext';
 @Component({
   selector: 'app-city-explore',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, TranslateModule],
   templateUrl: './city-explore.component.html',
   styleUrl: './city-explore.component.css',
 })

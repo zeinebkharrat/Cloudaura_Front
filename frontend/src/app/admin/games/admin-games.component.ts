@@ -13,6 +13,7 @@ import {
   PuzzleImage,
   LudoCard,
 } from '../../core/ludification.service';
+import { ChefQuestService } from '../../games/chef-quest.service';
 
 @Component({
   selector: 'app-admin-games',
@@ -24,13 +25,17 @@ import {
 export class AdminGamesComponent implements OnInit {
   private readonly http = inject(HttpClient);
 
-  activeTab = signal<'QUIZ' | 'CROSSWORD' | 'ROADMAP' | 'PUZZLE' | 'LUDO'>('QUIZ');
+  activeTab = signal<'QUIZ' | 'CROSSWORD' | 'ROADMAP' | 'PUZZLE' | 'LUDO' | 'CHEF'>('QUIZ');
   
   quizzes = signal<Quiz[]>([]);
   crosswords = signal<Crossword[]>([]);
   roadmaps = signal<RoadmapNode[]>([]);
   puzzles = signal<PuzzleImage[]>([]);
   ludoCards = signal<LudoCard[]>([]);
+  
+  // Chef Quest Data
+  chefRecipes = signal<any[]>([]);
+  chefIngredients = signal<any[]>([]);
 
   creationMode = signal<boolean>(false);
   isEditMode = signal<boolean>(false);
@@ -55,6 +60,12 @@ export class AdminGamesComponent implements OnInit {
     category: 'GENERAL',
     published: true,
   });
+
+  // Chef Quest New Items
+  newChefIngredient = signal<any>({ name: '', iconUrl: '', x: 50, y: 50 });
+  newChefRecipe = signal<any>({ title: '', description: '', rewardPoints: 1000, ingredients: [], bgImageUrl: 'assets/images/chef_bg.png', finalDishImageUrl: '' });
+  
+  private chefService = inject(ChefQuestService);
   
   constructor(private api: LudificationService) {}
 
@@ -76,9 +87,13 @@ export class AdminGamesComponent implements OnInit {
     this.api.getRoadmap().subscribe(d => this.roadmaps.set(d));
     this.api.getPuzzles().subscribe(d => this.puzzles.set(d));
     this.api.getLudoCards().subscribe(d => this.ludoCards.set(d));
+    
+    // Load Chef Quest Data
+    this.chefService.getRecipes().subscribe(d => this.chefRecipes.set(d));
+    this.chefService.getIngredients().subscribe(d => this.chefIngredients.set(d));
   }
   
-  setTab(tab: 'QUIZ' | 'CROSSWORD' | 'ROADMAP' | 'PUZZLE' | 'LUDO') {
+  setTab(tab: 'QUIZ' | 'CROSSWORD' | 'ROADMAP' | 'PUZZLE' | 'LUDO' | 'CHEF') {
     this.activeTab.set(tab); this.creationMode.set(false);
   }
 
@@ -107,8 +122,11 @@ export class AdminGamesComponent implements OnInit {
     else if (this.activeTab() === 'PUZZLE') {
       this.newPuzzle.set({ title: '', imageDataUrl: '', published: true });
       this.puzzleFile.set(null);
-    } else {
+    } else if (this.activeTab() === 'LUDO') {
       this.newLudo.set({ title: '', description: '', effectSteps: 0, category: 'GENERAL', published: true });
+    } else if (this.activeTab() === 'CHEF') {
+      this.newChefIngredient.set({ name: '', iconUrl: '', x: 50, y: 50 });
+      this.newChefRecipe.set({ title: '', description: '', rewardPoints: 1000, ingredients: [], bgImageUrl: 'assets/images/chef_bg.png' });
     }
   }
 
@@ -148,6 +166,14 @@ export class AdminGamesComponent implements OnInit {
         this.gridRows.set(parsed.rows || 10);
         this.gridCols.set(parsed.cols || 10);
       } catch (e) { this.crosswordWords.set([]); this.gridRows.set(10); this.gridCols.set(10); }
+    } else if (this.activeTab() === 'CHEF') {
+      if (item.title) {
+        this.newChefRecipe.set({ ...item });
+        this.newChefIngredient.set({ name: '', iconUrl: '', x: 50, y: 50 }); 
+      } else {
+        this.newChefIngredient.set({ ...item });
+        this.newChefRecipe.set({ title: '', description: '', rewardPoints: 1000, ingredients: [], bgImageUrl: 'assets/images/chef_bg.png', finalDishImageUrl: '' }); 
+      }
     }
   }
 
@@ -171,6 +197,57 @@ export class AdminGamesComponent implements OnInit {
         this.newQuiz.set({ ...qz });
       },
       error: () => alert('Échec de l’upload. Vérifiez la taille du fichier et le backend.'),
+    });
+    input.value = '';
+  }
+
+  uploadChefIngIcon(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    const body = new FormData();
+    body.append('file', file);
+    this.http.post<{ url: string }>('/api/public/uploads/profile-image', body).subscribe({
+      next: (res) => {
+        const ing = this.newChefIngredient();
+        ing.iconUrl = res.url;
+        this.newChefIngredient.set({ ...ing });
+      },
+      error: () => alert('Upload failed.')
+    });
+    input.value = '';
+  }
+
+  uploadChefRecipeBg(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    const body = new FormData();
+    body.append('file', file);
+    this.http.post<{ url: string }>('/api/public/uploads/profile-image', body).subscribe({
+      next: (res) => {
+        const rec = this.newChefRecipe();
+        rec.bgImageUrl = res.url;
+        this.newChefRecipe.set({ ...rec });
+      },
+      error: () => alert('Upload failed.')
+    });
+    input.value = '';
+  }
+
+  uploadChefRecipeFinal(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    const body = new FormData();
+    body.append('file', file);
+    this.http.post<{ url: string }>('/api/public/uploads/profile-image', body).subscribe({
+      next: (res) => {
+        const rec = this.newChefRecipe();
+        rec.finalDishImageUrl = res.url;
+        this.newChefRecipe.set({ ...rec });
+      },
+      error: () => alert('Upload failed.')
     });
     input.value = '';
   }
@@ -404,16 +481,62 @@ export class AdminGamesComponent implements OnInit {
           this.refreshAll();
           this.closeCreate();
         });
+    } else if (this.activeTab() === 'CHEF') {
+      const recipe = this.newChefRecipe();
+      const ingredient = this.newChefIngredient();
+
+      if (recipe.title && recipe.title.trim() && recipe.title !== ' ') {
+        const obs = (this.isEditMode() && recipe.id) 
+          ? this.chefService.updateRecipe(recipe.id, recipe)
+          : this.chefService.saveRecipe(recipe);
+          
+        obs.subscribe({
+          next: () => {
+            alert('Recipe saved successfully!');
+            this.refreshAll();
+            this.closeCreate();
+          },
+          error: (err) => {
+            console.error(err);
+            alert('Failed to save recipe. Check if the server is running.');
+          }
+        });
+      } else if (ingredient.name && ingredient.name.trim()) {
+        const obs = (this.isEditMode() && ingredient.id)
+          ? this.chefService.updateIngredient(ingredient.id, ingredient)
+          : this.chefService.saveIngredient(ingredient);
+
+        obs.subscribe({
+          next: () => {
+            alert('Ingredient saved successfully!');
+            this.refreshAll();
+            this.closeCreate();
+          },
+          error: (err) => {
+            console.error(err);
+            alert('Failed to save ingredient.');
+          }
+        });
+      } else {
+        alert('Please fill in a valid Title for the Recipe or Name for the Ingredient.');
+      }
     }
   }
 
-  deleteItem(id: number | undefined, type: 'QUIZ' | 'CROSSWORD' | 'ROADMAP' | 'PUZZLE' | 'LUDO') {
+  deleteItem(id: number | undefined, type: 'QUIZ' | 'CROSSWORD' | 'ROADMAP' | 'PUZZLE' | 'LUDO' | 'CHEF', subType?: 'ING' | 'REC') {
     if(!id) return;
     if (type === 'QUIZ') this.api.deleteQuiz(id).subscribe(() => this.refreshAll());
     if (type === 'CROSSWORD') this.api.deleteCrossword(id).subscribe(() => this.refreshAll());
     if (type === 'ROADMAP') this.api.deleteRoadmapNode(id).subscribe(() => this.refreshAll());
     if (type === 'PUZZLE') this.api.deletePuzzle(id).subscribe(() => this.refreshAll());
     if (type === 'LUDO') this.api.deleteLudoCard(id).subscribe(() => this.refreshAll());
+    if (type === 'CHEF') {
+      if (subType === 'ING') {
+        this.chefService.deleteIngredient(id).subscribe(() => this.refreshAll());
+      } else {
+        this.chefService.deleteRecipe(id).subscribe(() => this.refreshAll());
+      }
+    }
   }
 
   onPuzzleFileSelected(event: Event): void {
@@ -449,6 +572,31 @@ export class AdminGamesComponent implements OnInit {
        }
     });
     return grid;
+  }
+
+  isIngInRecipe(ing: any): boolean {
+    const list = this.newChefRecipe().ingredients || [];
+    return list.some((i: any) => i.id === ing.id);
+  }
+
+  toggleIngInRecipe(ing: any) {
+    const r = this.newChefRecipe();
+    let list = r.ingredients || [];
+    if (this.isIngInRecipe(ing)) {
+      list = list.filter((i: any) => i.id !== ing.id);
+    } else {
+      list = [...list, ing];
+    }
+    r.ingredients = list;
+    this.newChefRecipe.set({ ...r });
+  }
+
+  toggleChefMode(mode: 'ING' | 'REC') {
+    if (mode === 'ING') {
+      this.newChefRecipe.set({ ...this.newChefRecipe(), title: '' });
+    } else {
+      this.newChefRecipe.set({ ...this.newChefRecipe(), title: ' ' }); // Trigger recipe mode
+    }
   }
 }
 

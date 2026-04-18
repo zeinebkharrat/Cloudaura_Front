@@ -4,11 +4,16 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import java.util.Date;
 
+/**
+ * Événement : PK colonne implicite {@code event_id} → {@link #eventId} / {@link #getEventId()}. Titre → clé
+ * {@code event.{eventId}.name}, lieu → {@code event.{eventId}.venue}. Pas de champ {@code description} JPA.
+ */
 @Entity
 @Table(name="events")
 public class Event {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "event_id")
     private Integer eventId;
 
     @ManyToOne
