@@ -155,6 +155,16 @@
   white-space: pre-line;
 }
 
+.assistant-msg a {
+  color: #0b5fd8;
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+.assistant-msg a:hover {
+  text-decoration-thickness: 2px;
+}
+
 .assistant-msg--user {
   border-radius: 14px 14px 4px 14px;
   border-color: color-mix(in srgb, #0ea5e9 44%, var(--border-soft));

@@ -8,6 +8,12 @@ interface AssistantMessage {
   text: string;
 }
 
+interface MessagePart {
+  kind: 'text' | 'link';
+  value: string;
+  href?: string;
+}
+
 interface ChatbotQueryResponse {
   answer: string;
   outOfScope: boolean;
@@ -28,6 +34,8 @@ interface ChatbotQueryRequest {
   styleUrl: './home-assistant-widget.component.css',
 })
 export class HomeAssistantWidgetComponent {
+  private static readonly URL_REGEX = /(https?:\/\/[^\s<>"']+)/gi;
+
   readonly isOpen = signal(false);
   readonly loading = signal(false);
   readonly quickPrompts = [
@@ -95,5 +103,78 @@ export class HomeAssistantWidgetComponent {
     }
     this.draft = prompt;
     this.sendQuestion();
+  }
+
+  messageParts(text: string): MessagePart[] {
+    if (!text) {
+      return [];
+    }
+
+    const parts: MessagePart[] = [];
+    let lastIndex = 0;
+    let match: RegExpExecArray | null;
+    const regex = new RegExp(HomeAssistantWidgetComponent.URL_REGEX);
+
+    while ((match = regex.exec(text)) !== null) {
+      const fullMatch = match[0];
+      const urlIndex = match.index;
+
+      if (urlIndex > lastIndex) {
+        parts.push({
+          kind: 'text',
+          value: text.slice(lastIndex, urlIndex),
+        });
+      }
+
+      const normalized = this.trimTrailingPunctuation(fullMatch);
+      const trailing = fullMatch.slice(normalized.length);
+
+      parts.push({
+        kind: 'link',
+        value: this.linkLabel(text),
+        href: normalized,
+      });
+
+      if (trailing) {
+        parts.push({
+          kind: 'text',
+          value: trailing,
+        });
+      }
+
+      lastIndex = urlIndex + fullMatch.length;
+    }
+
+    if (lastIndex < text.length) {
+      parts.push({
+        kind: 'text',
+        value: text.slice(lastIndex),
+      });
+    }
+
+    return parts;
+  }
+
+  private trimTrailingPunctuation(value: string): string {
+    return value.replace(/[),.;!?]+$/g, '');
+  }
+
+  private linkLabel(messageText: string): string {
+    if (/[\u0600-\u06FF]/.test(messageText || '')) {
+      return 'هذا الرابط';
+    }
+
+    const text = (messageText || '').toLowerCase();
+    if (
+      text.includes(' use this link')
+      || text.includes(' here is this link')
+      || text.includes(' book')
+      || text.includes(' booking')
+      || text.includes(' reserve')
+    ) {
+      return 'this link';
+    }
+
+    return 'le lien';
   }
 }

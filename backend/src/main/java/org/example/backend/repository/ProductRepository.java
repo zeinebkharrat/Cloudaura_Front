@@ -26,5 +26,8 @@ public interface ProductRepository extends JpaRepository<Product, Integer> {
 
     @Query("SELECT p FROM Product p LEFT JOIN FETCH p.user WHERE p.status IN ('PUBLISHED', 'PENDING') AND p.user.city.cityId = :cityId")
     List<Product> findPublishedByCity(@Param("cityId") Integer cityId);
+
+    @Query("SELECT DISTINCT p FROM User u JOIN u.favorites p LEFT JOIN FETCH p.user WHERE u.userId = :userId")
+    List<Product> findFavoritesByUserId(@Param("userId") Integer userId);
 }
 

@@ -29,7 +29,13 @@
               <img src="assets/guide_welcome.png" alt="Guide" class="assistant-msg-avatar" />
             }
             <article class="assistant-msg" [class.assistant-msg--user]="message.role === 'user'">
-              {{ message.text }}
+              @for (part of messageParts(message.text); track $index) {
+                @if (part.kind === 'link') {
+                  <a [href]="part.href">{{ part.value }}</a>
+                } @else {
+                  <span>{{ part.value }}</span>
+                }
+              }
             </article>
           </div>
         }
@@ -46,7 +52,7 @@
           type="text"
           [(ngModel)]="draft"
           (keydown.enter)="sendQuestion()"
-          placeholder="Posez votre question..."
+          placeholder="Ask your question..."
           maxlength="400"
         />
         <button type="button" class="assistant-send" (click)="sendQuestion()" [disabled]="loading() || !draft.trim()">Envoyer</button>
