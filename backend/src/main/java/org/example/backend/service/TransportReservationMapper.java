@@ -8,6 +8,8 @@ import org.example.backend.model.Transport;
 import org.example.backend.model.TransportReservation;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
+
 /**
  * Maps {@link TransportReservation} to API DTO with null-safe handling for incomplete DB rows.
  * User-facing labels use {@link CatalogTranslationService} (request language + French fallback).
@@ -23,14 +25,17 @@ public class TransportReservationMapper {
             throw new ResourceNotFoundException("reservation.error.reservation_not_found");
         }
         Transport t = r.getTransport();
-        if (t == null) {
-            throw new ResourceNotFoundException("reservation.error.transport_missing_for_reservation");
-        }
 
-        City dep = t.getDepartureCity();
-        City arr = t.getArrivalCity();
+        City dep = t != null ? t.getDepartureCity() : null;
+        City arr = t != null ? t.getArrivalCity() : null;
         String depName = resolveCityName(dep);
         String arrName = resolveCityName(arr);
+        if (depName.isBlank()) {
+            depName = "Unknown departure";
+        }
+        if (arrName.isBlank()) {
+            arrName = "Unknown arrival";
+        }
 
         String fn = r.getPassengerFirstName() != null ? r.getPassengerFirstName() : "";
         String ln = r.getPassengerLastName() != null ? r.getPassengerLastName() : "";
@@ -42,15 +47,21 @@ public class TransportReservationMapper {
         String payStatusCode = r.getPaymentStatus() != null ? r.getPaymentStatus().name() : "UNKNOWN";
         String payMethodCode = r.getPaymentMethod() != null ? r.getPaymentMethod().name() : "CASH";
 
-        Integer tid = t.getTransportId();
+        Integer tid = t != null ? t.getTransportId() : null;
 
         String qrToken = null;
         if (r.getStatus() == TransportReservation.ReservationStatus.CONFIRMED) {
             qrToken = TransportTicketQrPayload.jsonForReservation(r);
         }
 
-        String typeCode = t.getType() != null ? t.getType().name() : "";
+        String typeCode = (t != null && t.getType() != null) ? t.getType().name() : "UNKNOWN";
         String typeLocalized = labels.transportTypeLabel(typeCode);
+        if (typeLocalized == null || typeLocalized.isBlank()) {
+            typeLocalized = "Unknown transport";
+        }
+
+        LocalDateTime departureTime = t != null ? t.getDepartureTime() : null;
+        LocalDateTime arrivalTime = t != null ? t.getArrivalTime() : null;
 
         return TransportReservationResponse.builder()
                 .transportReservationId(r.getTransportReservationId() != null ? r.getTransportReservationId() : 0)
@@ -78,6 +89,8 @@ public class TransportReservationMapper {
                 .type(typeCode)
                 .transportTypeLabel(typeLocalized)
                 .typeLabel(typeLocalized)
+                .departureTime(departureTime)
+                .arrivalTime(arrivalTime)
                 .createdAt(r.getCreatedAt())
                 .qrCodeToken(qrToken)
                 .build();

@@ -31,9 +31,9 @@ public class EmailService {
             JavaMailSender userMailSender,
             @Qualifier("shopMailSender") JavaMailSender shopMailSender,
             @Value("${app.mail.from.name:YallaTN+}") String userFromName,
-            @Value("${app.mail.from.address:${spring.mail.username}}") String userFromEmail,
+            @Value("${app.mail.from.address:${spring.mail.username:no-reply@localhost}}") String userFromEmail,
             @Value("${app.shop.mail.from.name:YallaTN}") String shopFromName,
-            @Value("${app.shop.mail.from.address:${app.shop.mail.username}}") String shopFromEmail,
+            @Value("${app.shop.mail.from.address:${app.shop.mail.username:no-reply@localhost}}") String shopFromEmail,
             @Value("${app.frontend.base-url:http://localhost:4200}") String frontendBaseUrl) {
         this.userMailSender = userMailSender;
         this.shopMailSender = shopMailSender;
@@ -188,12 +188,12 @@ public class EmailService {
         String bodyHtml = "Votre départ est prévu dans environ <strong>une heure</strong>.<br/><br/>"
                 + "<strong>Référence</strong> : " + safeRef + "<br/>"
                 + "<strong>Trajet</strong> : " + safeRoute + "<br/>"
-                + "<strong>Départ</strong> : " + safeWhen + "<br/><br/>"
+            + "<strong>Départ après</strong> : environ 1h (prévu le " + safeWhen + ")<br/><br/>"
                 + "Votre billet QR est joint à cet e-mail. Présentez-le à l'embarquement.";
         String plain = "Bonjour " + displayName + ",\n\n"
                 + "Rappel : votre transport (" + reservationRef + ") part dans environ une heure.\n"
                 + "Trajet : " + routeLabel + "\n"
-                + "Départ : " + departureWhenLabel + "\n\n"
+            + "Départ après : environ 1h (prévu le " + departureWhenLabel + ")\n\n"
                 + "Le QR code est en pièce jointe (ticket-qr.png).\n\n"
                 + "— YallaTN+";
         String tripsUrl = frontendBaseUrl + "/mes-reservations?tab=transport";

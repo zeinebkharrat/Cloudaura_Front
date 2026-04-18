@@ -10,8 +10,10 @@ export interface ApiResponse<T> {
   timestamp?: string;
 }
 
-/** Mirrors backend {@code FlightDto}. */
-export interface FlightDto {
+/** Mirrors backend {@code FlightOfferDto}. */
+export interface FlightOfferDto {
+  offerId: string;
+  transportId: number | null;
   flightNumber: string;
   airline: string;
   departureAirport: string;
@@ -26,6 +28,8 @@ export interface FlightDto {
   departureLongitude: number | null;
   arrivalLatitude: number | null;
   arrivalLongitude: number | null;
+  totalAmount: string | null;
+  totalCurrency: string | null;
 }
 
 export interface FlightSuggestionResponse {
@@ -33,7 +37,7 @@ export interface FlightSuggestionResponse {
   destinationAirportIata: string | null;
   resolvedDestinationLabel: string | null;
   hint: string | null;
-  flights: FlightDto[];
+  flights: FlightOfferDto[];
 }
 
 export interface AirportResolveResponse {
@@ -41,4 +45,22 @@ export interface AirportResolveResponse {
   iata: string | null;
   label: string | null;
   found: boolean;
+}
+
+export interface FlightBookingRequest {
+  offerId: string;
+  givenName: string;
+  familyName: string;
+  email: string;
+  phoneNumber?: string;
+  bornOn?: string;
+}
+
+export interface FlightBookingResponse {
+  orderId: string | null;
+  bookingReference: string | null;
+  owner: string | null;
+  totalAmount: string | null;
+  totalCurrency: string | null;
+  status: string | null;
 }

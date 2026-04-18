@@ -23,6 +23,7 @@ import org.example.backend.dto.transport.TransportStripeCheckoutHandoff;
 import org.example.backend.dto.transport.TransportReservationRequest;
 import org.example.backend.dto.transport.TransportReservationResponse;
 import org.example.backend.dto.transport.TransportReservationUpdateRequest;
+import org.example.backend.exception.CancellationNotAllowedException;
 import org.example.backend.exception.NoSeatsAvailableException;
 import org.example.backend.exception.ResourceNotFoundException;
 import org.example.backend.model.Transport;
@@ -61,6 +62,11 @@ public class TransportReservationService {
 
     @Transactional
     public TransportReservationResponse createReservation(TransportReservationRequest req) {
+        return createReservationForUser(req, req.getUserId());
+    }
+
+    @Transactional
+    public TransportReservationResponse createReservationForUser(TransportReservationRequest req, int authenticatedUserId) {
         String pmRaw = req.getPaymentMethod() == null ? "" : req.getPaymentMethod().trim();
         if ("STRIPE".equalsIgnoreCase(pmRaw)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.use_checkout_for_stripe");
@@ -87,12 +93,17 @@ public class TransportReservationService {
         validateTaxiRouteKm(transport, req.getRouteKm());
 
         User user = userRepository
-                .findById(req.getUserId())
+            .findById(authenticatedUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("reservation.error.user_not_found"));
 
         LocalDateTime travelDate = resolveTravelDateTime(req.getTravelDate(), transport.getDepartureTime());
         double total = transportPricingService.computeTotalTnd(
-                transport, req.getNumberOfSeats(), req.getRouteKm(), req.getRentalDays());
+            transport,
+            req.getNumberOfSeats(),
+            req.getRouteKm(),
+            req.getRouteDurationMin(),
+            req.getRentalDays(),
+            travelDate);
 
         TransportReservation reservation = TransportReservation.builder()
                 .status(TransportReservation.ReservationStatus.PENDING)
@@ -165,7 +176,12 @@ public class TransportReservationService {
 
         LocalDateTime travelDate = resolveTravelDateTime(req.getTravelDate(), transport.getDepartureTime());
         double total = transportPricingService.computeTotalTnd(
-                transport, req.getNumberOfSeats(), req.getRouteKm(), req.getRentalDays());
+            transport,
+            req.getNumberOfSeats(),
+            req.getRouteKm(),
+            req.getRouteDurationMin(),
+            req.getRentalDays(),
+            travelDate);
 
         TransportReservation reservation = TransportReservation.builder()
                 .status(TransportReservation.ReservationStatus.PENDING)
@@ -207,8 +223,15 @@ public class TransportReservationService {
         validateTaxiRouteKm(transport, req.getRouteKm());
 
         Integer rentalDays = transport.getType() == Transport.TransportType.CAR ? 1 : null;
+        LocalDateTime travelDate = resolveTravelDateTime(req.getTravelDate(), transport.getDepartureTime());
         double serverTotal =
-                transportPricingService.computeTotalTnd(transport, req.getSeats(), req.getRouteKm(), rentalDays);
+            transportPricingService.computeTotalTnd(
+                transport,
+                req.getSeats(),
+                req.getRouteKm(),
+                req.getRouteDurationMin(),
+                rentalDays,
+                travelDate);
         if (Math.abs(serverTotal - req.getAmountTnd()) > 0.05) {
             log.warn(
                     "PayPal amount mismatch: client amountTnd={} serverTotal={} transportId={}",
@@ -221,8 +244,6 @@ public class TransportReservationService {
         User user = userRepository
                 .findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("reservation.error.user_not_found"));
-
-        LocalDateTime travelDate = resolveTravelDateTime(req.getTravelDate(), transport.getDepartureTime());
 
         String fn = req.getPassengerFirstName() != null && !req.getPassengerFirstName().isBlank()
                 ? req.getPassengerFirstName().trim()
@@ -408,7 +429,13 @@ public class TransportReservationService {
                 .orElseThrow(() -> new ResourceNotFoundException("reservation.error.reservation_not_found"));
         assertReservationOwner(res, userId);
         if (res.getStatus() == TransportReservation.ReservationStatus.CANCELLED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.already_cancelled");
+            return transportReservationMapper.toResponse(res);
+        }
+
+        LocalDateTime startAt = resolveTransportStartDateTime(res);
+        LocalDateTime cancellationDeadline = LocalDateTime.now().plusHours(24);
+        if (startAt != null && startAt.isBefore(cancellationDeadline)) {
+            throw new CancellationNotAllowedException("reservation.error.cancellation_window_transport");
         }
 
         res.setStatus(TransportReservation.ReservationStatus.CANCELLED);
@@ -421,7 +448,7 @@ public class TransportReservationService {
 
     @Transactional(readOnly = true)
     public List<TransportReservationResponse> getUserReservations(int userId) {
-        return reservationRepository.findByUser_UserId(userId).stream()
+        return reservationRepository.findByUserIdWithAssociations(userId).stream()
                 .filter(r -> r.getStatus() != TransportReservation.ReservationStatus.CANCELLED)
                 .sorted(Comparator.comparing(
                         TransportReservation::getCreatedAt,
@@ -429,8 +456,9 @@ public class TransportReservationService {
                 .flatMap(r -> {
                     try {
                         return Stream.of(transportReservationMapper.toResponse(r));
-                    } catch (ResourceNotFoundException e) {
-                        log.warn("Skip transport reservation {}: {}", r.getTransportReservationId(), e.getMessage());
+                    } catch (Exception e) {
+                        log.warn("Skip transport reservation {} due to mapping/load error: {}",
+                                r.getTransportReservationId(), e.getMessage());
                         return Stream.empty();
                     }
                 })
@@ -545,8 +573,11 @@ public class TransportReservationService {
             TransportReservation full =
                     reservationRepository.findByIdWithAssociations(res.getTransportReservationId()).orElse(res);
             String msg = transportWhatsAppMessageBuilder.buildConfirmationMessage(full);
+                String toPhone = (full.getPassengerPhone() != null && !full.getPassengerPhone().isBlank())
+                    ? full.getPassengerPhone()
+                    : (full.getUser() != null ? full.getUser().getPhone() : null);
             twilioWhatsAppService.sendWhatsApp(
-                    full.getUser() != null ? full.getUser().getPhone() : null, msg);
+                    toPhone, msg);
         } catch (Exception e) {
             log.warn("WhatsApp confirmation skipped: {}", e.getMessage());
         }
@@ -604,7 +635,11 @@ public class TransportReservationService {
             if (t.contains("T")) {
                 return LocalDateTime.parse(t, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
             }
-            return LocalDate.parse(t, DateTimeFormatter.ISO_LOCAL_DATE).atStartOfDay();
+            LocalDate date = LocalDate.parse(t, DateTimeFormatter.ISO_LOCAL_DATE);
+            if (fallback != null) {
+                return LocalDateTime.of(date, fallback.toLocalTime());
+            }
+            return date.atStartOfDay();
         } catch (DateTimeParseException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.invalid_travel_date");
         }
@@ -615,5 +650,19 @@ public class TransportReservationService {
         if (!Objects.equals(ownerId, userId)) {
             throw new AccessDeniedException("reservation.error.access_not_owner");
         }
+    }
+
+    private LocalDateTime resolveTransportStartDateTime(TransportReservation reservation) {
+        if (reservation == null) {
+            return null;
+        }
+        // Use booked departure datetime first (reservation-level), then fallback to transport schedule.
+        if (reservation.getTravelDate() != null) {
+            return reservation.getTravelDate();
+        }
+        if (reservation.getTransport() != null && reservation.getTransport().getDepartureTime() != null) {
+            return reservation.getTransport().getDepartureTime();
+        }
+        return null;
     }
 }

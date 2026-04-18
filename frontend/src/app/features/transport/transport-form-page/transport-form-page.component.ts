@@ -17,11 +17,11 @@ import { TunisiaCityMatchService } from '../tunisia-city-match.service';
         <!-- Top Navigation Tabs -->
         <div class="tabs-container">
           <div class="nav-tabs">
-            <button class="tab-btn" [class.active]="transportType === 'BUS'" (click)="setType('BUS')"><img src="/icones/bus.png" alt="Bus" class="tab-icon" /> Bus</button>
+            <button class="tab-btn" [class.active]="transportType === 'BUS'" (click)="setType('BUS')"><img src="/icones/autobus.png" alt="Bus" class="tab-icon" /> Bus</button>
             <button class="tab-btn" [class.active]="transportType === 'TAXI'" (click)="setType('TAXI')"><img src="/icones/taxi.png" alt="Taxi" class="tab-icon" /> Taxi/Louage</button>
             <button class="tab-btn" [class.active]="transportType === 'VAN'" (click)="setType('VAN')"><img src="/icones/taxi.png" alt="Van" class="tab-icon" /> Van privé</button>
             <button class="tab-btn" [class.active]="transportType === 'CAR'" (click)="setType('CAR')"><img src="/icones/car.png" alt="Voiture" class="tab-icon" /> Voiture</button>
-            <button class="tab-btn" [class.active]="transportType === 'PLANE'" (click)="setType('PLANE')"><img src="/icones/plane.png" alt="Avion" class="tab-icon" /> Avion</button>
+            <button class="tab-btn" [class.active]="transportType === 'PLANE'" (click)="setType('PLANE')"><img src="/icones/avion.png" alt="Avion" class="tab-icon" /> Avion</button>
             <button class="tab-btn" [class.active]="transportType === 'TRAIN'" (click)="setType('TRAIN')"><i class="pi pi-compass tab-pi" aria-hidden="true"></i> Train</button>
             <button class="tab-btn" [class.active]="transportType === 'FERRY'" (click)="setType('FERRY')"><i class="pi pi-send tab-pi" aria-hidden="true"></i> Bateau</button>
           </div>

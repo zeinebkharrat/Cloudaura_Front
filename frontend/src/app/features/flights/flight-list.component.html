@@ -34,12 +34,15 @@
   @if (!loading && !error && flights.length > 0) {
     <div class="cards-grid">
       @for (f of flights; track trackByFn($index, f)) {
-        <article class="flight-card" [class.selected]="mapMode && isSelected(f)">
+        <article class="flight-card" [class.selected]="mapMode && isSelected(f)" [class.cheapest]="isCheapest(f)">
           <header class="card-top">
             <div class="airline-block">
               <span class="airline">{{ f.airline }}</span>
               <span class="flight-no">{{ f.flightNumber }}</span>
             </div>
+            @if (isCheapest(f)) {
+              <span class="cheap-badge">Best price</span>
+            }
             <p-tag [value]="badge(f).label" [severity]="badge(f).severity"></p-tag>
           </header>
           <div class="route-visual">
@@ -58,6 +61,15 @@
             </div>
           </div>
           <footer class="card-foot">
+            <div class="price-chip">{{ displayPrice(f) }}</div>
+            <button
+              pButton
+              type="button"
+              label="Book"
+              class="p-button-sm book-btn"
+              [disabled]="!f.transportId"
+              (click)="bookFlight.emit(f)"
+            ></button>
             @if (mapMode) {
               <button
                 pButton

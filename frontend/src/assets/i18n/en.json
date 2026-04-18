@@ -607,6 +607,8 @@
     "CONFIRM_KEEP": "Keep booking",
     "ALERT_CANCEL_FAILED_TITLE": "Cancellation failed",
     "ALERT_CANCEL_FAILED_BODY": "We could not cancel this booking. Try again or contact support.",
+    "ALERT_CANCEL_TOO_LATE_TRANSPORT": "Cancellation is not allowed less than 24 hours before departure.",
+    "ALERT_CANCEL_TOO_LATE_STAY": "Cancellation is not allowed less than 24 hours before check-in.",
     "ALERT_ALREADY_CANCELLED_TRIP_TITLE": "Already cancelled",
     "ALERT_ALREADY_CANCELLED_TRIP_BODY": "This trip was already cancelled. Your list is refreshed.",
     "TOAST_ALREADY_CANCELLED_TRIP": "This trip was already cancelled.",

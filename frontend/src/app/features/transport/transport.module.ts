@@ -5,6 +5,8 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MessageService } from 'primeng/api';
 import { DropdownModule } from 'primeng/dropdown';
 import { CalendarModule } from 'primeng/calendar';
+import { SelectModule } from 'primeng/select';
+import { DatePickerModule } from 'primeng/datepicker';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { ButtonModule } from 'primeng/button';
 import { RippleModule } from 'primeng/ripple';
@@ -40,6 +42,8 @@ import { TranslateModule } from '@ngx-translate/core';
     RouterModule.forChild(TRANSPORT_ROUTES),
     DropdownModule,
     CalendarModule,
+    SelectModule,
+    DatePickerModule,
     InputNumberModule,
     ButtonModule,
     RippleModule,

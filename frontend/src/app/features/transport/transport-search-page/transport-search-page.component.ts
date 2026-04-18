@@ -3,8 +3,8 @@ import { FormBuilder, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { skip } from 'rxjs/operators';
-import { DropdownModule } from 'primeng/dropdown';
-import { CalendarModule } from 'primeng/calendar';
+import { SelectModule } from 'primeng/select';
+import { DatePickerModule } from 'primeng/datepicker';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { ButtonModule } from 'primeng/button';
 import { RippleModule } from 'primeng/ripple';
@@ -12,7 +12,7 @@ import { TooltipModule } from 'primeng/tooltip';
 import { TripContextStore } from '../../../core/stores/trip-context.store';
 import { DATA_SOURCE_TOKEN } from '../../../core/adapters/data-source.adapter';
 import { AppAlertsService } from '../../../core/services/app-alerts.service';
-import { City, TransportType, TRANSPORT_TYPE_META, TransportTypeAvailability } from '../../../core/models/travel.models';
+import { City, TransportType, TRANSPORT_TYPE_META } from '../../../core/models/travel.models';
 import { TunisiaCityMatchService } from '../tunisia-city-match.service';
 import { TranslateService } from '@ngx-translate/core';
 import { LanguageService } from '../../../core/services/language.service';
@@ -50,9 +50,9 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
             <span class="sb-icon"><i class="pi pi-map-marker"></i></span>
             <div class="sb-inner">
               <span class="sb-label">{{ 'TRANSPORT_SEARCH.FROM' | translate }}</span>
-              <p-dropdown
+              <p-select
                 formControlName="from"
-                [options]="cities()"
+                [options]="transportCities()"
                 optionLabel="name"
                 optionValue="id"
                 [filter]="true"
@@ -60,8 +60,9 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
                 [placeholder]="'TRANSPORT_SEARCH.PLACEHOLDER_FROM' | translate"
                 [showClear]="false"
                 appendTo="body"
-                styleClass="sb-dropdown">
-              </p-dropdown>
+                styleClass="sb-dropdown"
+                panelStyleClass="transport-city-dropdown-panel">
+              </p-select>
             </div>
           </div>
 
@@ -76,9 +77,9 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
             <span class="sb-icon"><i class="pi pi-flag"></i></span>
             <div class="sb-inner">
               <span class="sb-label">{{ 'TRANSPORT_SEARCH.TO' | translate }}</span>
-              <p-dropdown
+              <p-select
                 formControlName="to"
-                [options]="cities()"
+                [options]="transportCities()"
                 optionLabel="name"
                 optionValue="id"
                 [filter]="true"
@@ -86,8 +87,9 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
                 [placeholder]="'TRANSPORT_SEARCH.PLACEHOLDER_TO' | translate"
                 [showClear]="false"
                 appendTo="body"
-                styleClass="sb-dropdown">
-              </p-dropdown>
+                styleClass="sb-dropdown"
+                panelStyleClass="transport-city-dropdown-panel">
+              </p-select>
             </div>
           </div>
 
@@ -98,7 +100,7 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
             <span class="sb-icon"><i class="pi pi-calendar"></i></span>
             <div class="sb-inner">
               <span class="sb-label">{{ 'TRANSPORT_SEARCH.DATE_TIME' | translate }}</span>
-              <p-calendar
+              <p-datepicker
                 formControlName="date"
                 dateFormat="dd/mm/yy"
                 [minDate]="today"
@@ -112,10 +114,13 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
                 [touchUI]="false"
                 [readonlyInput]="true"
                 [keepInvalid]="false"
+                appendTo="body"
+                showTransitionOptions="280ms cubic-bezier(0.22, 1, 0.36, 1)"
+                hideTransitionOptions="220ms cubic-bezier(0.4, 0, 0.2, 1)"
                 [placeholder]="'TRANSPORT_SEARCH.PLACEHOLDER_DATE' | translate"
                 styleClass="sb-calendar"
                 panelStyleClass="transport-search-calendar-panel">
-              </p-calendar>
+              </p-datepicker>
             </div>
           </div>
 
@@ -141,6 +146,15 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
             </div>
           </div>
         </form>
+
+        <div class="intl-btn-wrap">
+          <button type="button" class="intl-icon-btn" (click)="openInternationalFlights()" aria-label="Vols internationaux vers la Tunisie">
+            <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2.5 19.5 21 12 2.5 4.5l3.8 6.1 8.2 1.4-8.2 1.4-3.8 6.1Z"></path>
+            </svg>
+          </button>
+        </div>
       </section>
 
       @if (hasBothCities()) {
@@ -185,11 +199,11 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
       <section class="popular">
         <h3 class="popular-heading">{{ 'TRANSPORT_SEARCH.POPULAR_HEADING' | translate }}</h3>
         <div class="popular-list">
-          @for (r of popularRoutes; track r.labelKey) {
-            <button class="pop-chip" pRipple (click)="quickSearch(r)">
+          @for (r of popularRoutes; track r.fromId + '-' + r.toId + '-' + r.type) {
+            <button type="button" class="pop-chip" pRipple (click)="quickSearch(r)">
               <img [src]="r.icon" [alt]="r.type" class="pop-icon-img" />
-              {{ r.labelKey | translate }}
-              <i class="pi pi-chevron-right pop-arrow"></i>
+              {{ popularRouteLabel(r) }}
+              <i class="pi pi-chevron-right pop-arrow" aria-hidden="true"></i>
             </button>
           }
         </div>
@@ -260,6 +274,16 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
       border-radius: 12px;
       transition: background 0.2s ease;
     }
+    /* Villes + date : alignement vertical centré (icône + libellé + contrôle) */
+    .sb-field.sb-city,
+    .sb-field.sb-date {
+      align-items: center;
+    }
+    .sb-field.sb-city .sb-icon,
+    .sb-field.sb-date .sb-icon {
+      margin-top: 0;
+      align-self: center;
+    }
     :host-context([data-theme="light"]) .sb-field:hover { background: rgba(15,23,42,0.025); }
     :host-context([data-theme="dark"]) .sb-field:hover { background: rgba(255,255,255,0.04); }
     .sb-city { flex: 1.25 1 0; min-width: 0; }
@@ -310,7 +334,7 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
       color: var(--text-color); cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       align-self: center;
-      margin-top: 1.85rem;
+      margin-top: 0;
       margin-left: -0.25rem;
       margin-right: -0.25rem;
       transition: background 0.22s ease, color 0.22s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.22s ease;
@@ -350,34 +374,34 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
         flex: 0 0 auto !important;
       }
 
-      .sb-dropdown .p-dropdown {
+      .sb-dropdown .p-select {
         background: transparent !important; border: none !important;
         box-shadow: none !important; padding: 0;
       }
-      :host-context([data-theme="light"]) .sb-dropdown .p-dropdown.p-inputwrapper {
+      :host-context([data-theme="light"]) .sb-dropdown .p-select.p-inputwrapper {
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
       }
-      .sb-dropdown .p-dropdown-label {
+      .sb-dropdown .p-select-label {
         padding: 0.2rem 0 !important; font-weight: 600;
         font-size: 0.95rem; color: var(--text-color) !important;
         transition: color 0.2s ease;
       }
-      .sb-dropdown .p-dropdown.p-inputwrapper-filled .p-dropdown-label {
+      .sb-dropdown .p-select.p-inputwrapper-filled .p-select-label {
         color: var(--tunisia-red) !important;
       }
-      .sb-dropdown .p-dropdown.p-inputwrapper-filled .p-dropdown-trigger {
+      .sb-dropdown .p-select.p-inputwrapper-filled .p-select-dropdown {
         color: color-mix(in srgb, var(--tunisia-red) 75%, var(--text-muted)) !important;
       }
-      .sb-dropdown .p-dropdown-label.p-placeholder { color: var(--text-muted) !important; opacity: 0.9; }
-      .sb-dropdown .p-dropdown-trigger { color: var(--text-muted) !important; transition: color 0.2s ease; }
-      .sb-dropdown .p-dropdown:not(.p-disabled).p-focus .p-dropdown-label { color: var(--text-color) !important; }
-      .sb-dropdown .p-dropdown:not(.p-disabled).p-focus.p-inputwrapper-filled .p-dropdown-label {
+      .sb-dropdown .p-select-label.p-placeholder { color: var(--text-muted) !important; opacity: 0.9; }
+      .sb-dropdown .p-select-dropdown { color: var(--text-muted) !important; transition: color 0.2s ease; }
+      .sb-dropdown .p-select:not(.p-disabled).p-focus .p-select-label { color: var(--text-color) !important; }
+      .sb-dropdown .p-select:not(.p-disabled).p-focus.p-inputwrapper-filled .p-select-label {
         color: var(--tunisia-red) !important;
       }
 
-      .sb-calendar .p-calendar { background: transparent !important; width: 100%; display: block; }
+      .sb-calendar .p-datepicker { background: transparent !important; width: 100%; display: block; }
       .sb-calendar .p-inputtext {
         background: transparent !important; border: none !important;
         box-shadow: none !important; padding: 0.2rem 0 !important;
@@ -556,6 +580,67 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
       }
       .types-grid { grid-template-columns: repeat(2, 1fr); }
     }
+
+    .intl-btn-wrap {
+      padding: 0;
+      max-width: none;
+      margin: 0;
+      display: flex;
+      justify-content: flex-start;
+      position: fixed;
+      left: 12px;
+      bottom: 12px;
+      z-index: 12;
+    }
+
+    .intl-icon-btn {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      border: none;
+      padding: 0;
+      background: linear-gradient(135deg, var(--mediterranean-blue), #00b4d8);
+      cursor: pointer;
+      line-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 0 8px 32px rgba(0, 119, 182, 0.4);
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease;
+    }
+
+    .intl-icon-btn svg {
+      width: 28px;
+      height: 28px;
+      display: block;
+    }
+
+    .intl-icon-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3), 0 12px 40px rgba(0, 119, 182, 0.5);
+    }
+
+    .intl-icon-btn:active {
+      transform: scale(0.95);
+    }
+
+    .intl-icon-btn:focus-visible {
+      outline: 2px solid #8b9bff;
+      outline-offset: 3px;
+    }
+
+    @media (max-width: 480px) {
+      .intl-btn-wrap {
+        left: 8px;
+        bottom: 10px;
+      }
+
+      .intl-icon-btn {
+        width: 60px;
+        height: 60px;
+      }
+    }
   `]
 })
 export class TransportSearchPageComponent implements OnInit, OnDestroy {
@@ -570,8 +655,10 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
   private translate = inject(TranslateService);
   private language = inject(LanguageService);
   private subs = new Subscription();
+  private readonly tunisianInternationalDestinations = ['TUN', 'DJE', 'SFA', 'MIR', 'NBE', 'TOE', 'GAF'];
 
   cities = signal<City[]>([]);
+  transportCities = computed(() => this.cities().filter((c) => !this.isVirtualAirportCity(c)));
   today = new Date();
 
   fromCityId = signal<number | null>(null);
@@ -590,8 +677,8 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
     void this.language.currentLang();
     const fromId = this.fromCityId();
     const toId = this.toCityId();
-    const fromCity = this.cities().find(c => c.id === fromId);
-    const toCity = this.cities().find(c => c.id === toId);
+    const fromCity = this.transportCities().find(c => c.id === fromId);
+    const toCity = this.transportCities().find(c => c.id === toId);
 
     return VISIBLE_TYPES.map(type => {
       const meta = TRANSPORT_TYPE_META[type];
@@ -628,11 +715,20 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
   });
 
   popularRoutes = [
-    { fromId: 1, toId: 3, type: 'BUS', labelKey: 'TRANSPORT_SEARCH.POP_TUNIS_SOUSSE', icon: '/icones/bus.png' },
-    { fromId: 1, toId: 8, type: 'PLANE', labelKey: 'TRANSPORT_SEARCH.POP_TUNIS_DJERBA', icon: '/icones/plane.png' },
+    { fromId: 1, toId: 3, type: 'BUS', labelKey: 'TRANSPORT_SEARCH.POP_TUNIS_SOUSSE', icon: '/icones/autobus.png' },
+    { fromId: 1, toId: 8, type: 'PLANE', labelKey: 'TRANSPORT_SEARCH.POP_TUNIS_DJERBA', icon: '/icones/avion.png' },
     { fromId: 3, toId: 5, type: 'TAXI', labelKey: 'TRANSPORT_SEARCH.POP_SOUSSE_HAMMAMET', icon: '/icones/taxi.png' },
     { fromId: 1, toId: 4, type: 'CAR', labelKey: 'TRANSPORT_SEARCH.POP_TUNIS_SFAX', icon: '/icones/car.png' },
   ];
+
+  popularRouteLabel(route: { fromId: number; toId: number; labelKey: string }): string {
+    const a = this.cityById(route.fromId)?.name;
+    const b = this.cityById(route.toId)?.name;
+    if (a && b) {
+      return `${a} → ${b}`;
+    }
+    return this.translate.instant(route.labelKey);
+  }
 
   ngOnInit() {
     const qp = this.route.snapshot.queryParams;
@@ -739,7 +835,16 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
     if (id == null) {
       return null;
     }
-    return this.cities().find((c) => c.id === id) ?? null;
+    return this.transportCities().find((c) => c.id === id) ?? null;
+  }
+
+  private isVirtualAirportCity(city: City): boolean {
+    const name = (city.name ?? '').toLowerCase();
+    const region = (city.region ?? '').toLowerCase();
+    const description = (city.description ?? '').toLowerCase();
+    return description.includes('virtual airport city for flight booking flow')
+      || region === 'airport'
+      || name.includes('international airport');
   }
 
   onRouteSummary(ev: { distanceKm: number; durationSeconds: number }): void {
@@ -749,6 +854,21 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
   ngOnDestroy() { this.subs.unsubscribe(); }
 
   onTypeClick(card: TypeCard) {
+    if (card.type === 'PLANE') {
+      const v = this.searchForm.value;
+      const dateStr = v.date ? this.travelDateTimeLocalIso(v.date) : '';
+      const queryParams: Record<string, string | number> = {};
+      if (v.from != null) queryParams['from'] = v.from;
+      if (v.to != null) queryParams['to'] = v.to;
+      if (dateStr) queryParams['date'] = dateStr;
+      if (v.passengers != null) queryParams['passengers'] = v.passengers;
+
+      this.router.navigate(['/transport/flights'], {
+        queryParams: Object.keys(queryParams).length > 0 ? queryParams : undefined,
+      });
+      return;
+    }
+
     if (!card.available) return;
     if (!this.validateSearchBusinessRules()) {
       return;
@@ -803,12 +923,21 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
     });
   }
 
+  openInternationalFlights(): void {
+    const to = this.tunisianInternationalDestinations[
+      Math.floor(Math.random() * this.tunisianInternationalDestinations.length)
+    ];
+    void this.router.navigate(['/flights/international'], {
+      queryParams: { to },
+    });
+  }
+
   private iconFor(type: TransportType): string {
     const map: Record<string, string> = {
-      BUS: '/icones/bus.png',
+      BUS: '/icones/autobus.png',
       TAXI: '/icones/taxi.png',
       CAR: '/icones/car.png',
-      PLANE: '/icones/plane.png',
+      PLANE: '/icones/avion.png',
     };
     return map[type] ?? '';
   }

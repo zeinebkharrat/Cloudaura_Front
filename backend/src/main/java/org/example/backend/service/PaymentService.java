@@ -107,6 +107,12 @@ public class PaymentService {
         return minorUnitsFromTnd(amountTnd, resolvePresentmentCurrency(presentmentPreference));
     }
 
+        /** Stripe presentment fallback: TND is displayed in-app but charged in EUR on Checkout. */
+        private String resolveStripeChargeCurrency(String presentmentPreference) {
+                String requested = resolvePresentmentCurrency(presentmentPreference);
+                return "tnd".equals(requested) ? "eur" : requested;
+        }
+
     /** Business DB amounts are TND; Stripe minor units for {@code checkoutCurrencyLower} (tnd|eur|usd). */
     private long minorUnitsFromTnd(double amountTnd, String checkoutCurrencyLower) {
         String c =
@@ -141,16 +147,6 @@ public class PaymentService {
             return fallback;
         }
         return catalogTranslationService.resolveEntityField(id, "product", "name", fallback);
-    }
-
-    private String stripeLineItemNameWithTndRef(String base, double totalTnd, String checkoutCurrencyLower) {
-        if ("tnd".equals(checkoutCurrencyLower)) {
-            return base;
-        }
-        String suffixPattern =
-                catalogTranslationService.resolveForRequest(
-                        "reservation.payment.stripe_tnd_ref_suffix", " (réf. %.2f TND)");
-        return base + String.format(Locale.US, suffixPattern, totalTnd);
     }
 
     public static boolean isStripePresentmentCurrencyRejected(StripeException e) {
@@ -319,7 +315,8 @@ public class PaymentService {
         }
         Stripe.apiKey = key;
 
-        String checkoutCurrency = resolvePresentmentCurrency(presentmentCurrency);
+        String requestedCurrency = resolvePresentmentCurrency(presentmentCurrency);
+        String checkoutCurrency = resolveStripeChargeCurrency(presentmentCurrency);
         long unitAmount = totalTnd <= 0 ? 0L : minorUnitsFromTnd(totalTnd, checkoutCurrency);
         assertTransportStripeChargeable(unitAmount, checkoutCurrency);
 
@@ -341,7 +338,7 @@ public class PaymentService {
                                         .setUnitAmount(unitAmount)
                                         .setProductData(
                                                 SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                                                        .setName(stripeLineItemNameWithTndRef(label, totalTnd, checkoutCurrency))
+                                                        .setName(label)
                                                         .build())
                                         .build())
                         .build());
@@ -356,6 +353,8 @@ public class PaymentService {
                     .putMetadata(
                             "transportReservationId",
                             String.valueOf(reservation.getTransportReservationId()))
+                    .putMetadata("requested_currency", requestedCurrency.toUpperCase(Locale.ROOT))
+                    .putMetadata("charged_currency", checkoutCurrency.toUpperCase(Locale.ROOT))
                     .addAllLineItem(stripeLines)
                     .build();
 
@@ -372,10 +371,11 @@ public class PaymentService {
                         HttpStatus.BAD_GATEWAY, "reservation.payment.stripe_no_checkout_url");
             }
             return TransportPaymentStartDto.builder().url(url).build();
-        } catch (StripeException e) {
-            if ("tnd".equals(checkoutCurrency) && isStripePresentmentCurrencyRejected(e)) {
+                } catch (StripeException e) {
+                        if (isStripePresentmentCurrencyRejected(e) && !"eur".equals(checkoutCurrency)) {
                 log.warn(
-                        "Stripe transport: TND presentment rejected ({}). Retrying Checkout in EUR.",
+                                                "Stripe transport: presentment {} rejected ({}). Retrying Checkout in EUR.",
+                                                checkoutCurrency,
                         e.getMessage());
                 long eurMinor = minorUnitsFromTnd(totalTnd, "eur");
                 assertTransportStripeChargeable(eurMinor, "eur");
@@ -390,9 +390,7 @@ public class PaymentService {
                                                         .setProductData(
                                                                 SessionCreateParams.LineItem.PriceData.ProductData
                                                                         .builder()
-                                                                        .setName(
-                                                                                stripeLineItemNameWithTndRef(
-                                                                                        label, totalTnd, "eur"))
+                                                                        .setName(label)
                                                                         .build())
                                                         .build())
                                         .build());
@@ -405,6 +403,8 @@ public class PaymentService {
                                     .putMetadata(
                                             "transportReservationId",
                                             String.valueOf(reservation.getTransportReservationId()))
+                                    .putMetadata("requested_currency", requestedCurrency.toUpperCase(Locale.ROOT))
+                                    .putMetadata("charged_currency", "EUR")
                                     .addAllLineItem(eurLines)
                                     .build();
                     Session sessionEur = Session.create(paramsEur);
@@ -446,7 +446,8 @@ public class PaymentService {
         }
         Stripe.apiKey = key;
 
-        String checkoutCurrency = resolvePresentmentCurrency(presentmentCurrency);
+        String requestedCurrency = resolvePresentmentCurrency(presentmentCurrency);
+        String checkoutCurrency = resolveStripeChargeCurrency(presentmentCurrency);
         long unitAmount = minorUnitsFromTnd(totalTnd, checkoutCurrency);
         assertTransportStripeChargeable(unitAmount, checkoutCurrency);
 
@@ -467,7 +468,7 @@ public class PaymentService {
                                         .setUnitAmount(unitAmount)
                                         .setProductData(
                                                 SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                                                        .setName(stripeLineItemNameWithTndRef(label, totalTnd, checkoutCurrency))
+                                                        .setName(label)
                                                         .build())
                                         .build())
                         .build());
@@ -482,6 +483,8 @@ public class PaymentService {
                     .putMetadata(
                             "accommodationReservationId",
                             String.valueOf(reservation.getReservationId()))
+                    .putMetadata("requested_currency", requestedCurrency.toUpperCase(Locale.ROOT))
+                    .putMetadata("charged_currency", checkoutCurrency.toUpperCase(Locale.ROOT))
                     .addAllLineItem(stripeLines)
                     .build();
 
@@ -499,10 +502,11 @@ public class PaymentService {
                         HttpStatus.BAD_GATEWAY, "reservation.payment.stripe_no_checkout_url");
             }
             return TransportPaymentStartDto.builder().url(url).build();
-        } catch (StripeException e) {
-            if ("tnd".equals(checkoutCurrency) && isStripePresentmentCurrencyRejected(e)) {
+                } catch (StripeException e) {
+                        if (isStripePresentmentCurrencyRejected(e) && !"eur".equals(checkoutCurrency)) {
                 log.warn(
-                        "Stripe accommodation: TND presentment rejected ({}). Retrying Checkout in EUR.",
+                                                "Stripe accommodation: presentment {} rejected ({}). Retrying Checkout in EUR.",
+                                                checkoutCurrency,
                         e.getMessage());
                 long eurMinor = minorUnitsFromTnd(totalTnd, "eur");
                 assertTransportStripeChargeable(eurMinor, "eur");
@@ -517,9 +521,7 @@ public class PaymentService {
                                                         .setProductData(
                                                                 SessionCreateParams.LineItem.PriceData.ProductData
                                                                         .builder()
-                                                                        .setName(
-                                                                                stripeLineItemNameWithTndRef(
-                                                                                        label, totalTnd, "eur"))
+                                                                        .setName(label)
                                                                         .build())
                                                         .build())
                                         .build());
@@ -532,6 +534,8 @@ public class PaymentService {
                                     .putMetadata(
                                             "accommodationReservationId",
                                             String.valueOf(reservation.getReservationId()))
+                                    .putMetadata("requested_currency", requestedCurrency.toUpperCase(Locale.ROOT))
+                                    .putMetadata("charged_currency", "EUR")
                                     .addAllLineItem(eurLines)
                                     .build();
                     Session sessionEur = Session.create(paramsEur);

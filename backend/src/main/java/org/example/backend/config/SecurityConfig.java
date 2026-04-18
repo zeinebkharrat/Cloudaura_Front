@@ -1,6 +1,7 @@
 package org.example.backend.config;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import jakarta.servlet.http.HttpServletResponse;
@@ -16,6 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
@@ -38,10 +40,12 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                                   OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler,
-                                                   OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler) throws Exception {
-        return http
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            ObjectProvider<ClientRegistrationRepository> clientRegistrationRepositoryProvider,
+            ObjectProvider<OAuth2AuthenticationSuccessHandler> successHandlerProvider,
+            ObjectProvider<OAuth2AuthenticationFailureHandler> failureHandlerProvider) throws Exception {
+        HttpSecurity chain = http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
@@ -60,14 +64,17 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                    .requestMatchers("/api/test/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/auth/**").permitAll()
                     .requestMatchers("/login", "/login/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/public/activities/*/reservations").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/public/activities/*/reservations/checkout").authenticated()
                         .requestMatchers("/api/public/activity-reservations/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/public/accommodations/*/reviews").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/public/restaurants/*/reviews").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/public/activities/*/reviews").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/public/accommodations/*/reviews/mine").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/public/restaurants/*/reviews/mine").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/public/activities/*/reviews/mine").authenticated()
                         .requestMatchers("/api/public/my/**").authenticated()
@@ -76,6 +83,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/cities/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/transports/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/flights", "/api/flights/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/flights/book").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/currency/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/translate").permitAll()
                         .requestMatchers("/api/engine/**").permitAll()
@@ -119,18 +127,29 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/ws/**", "/ws-native/**").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/transport/tracking/stream/**")
-                        .authenticated()
+                        .permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/transport/tracking/*/position")
                         .authenticated()
                         .requestMatchers("/api/transport/payments/paypal/**").authenticated()
                         .requestMatchers("/api/transport/payments/**").authenticated()
                         .requestMatchers("/api/accommodation/payments/**").authenticated()
                         .anyRequest().authenticated()
-                )
-                .oauth2Login(oauth2 -> oauth2
-                        .successHandler(oAuth2AuthenticationSuccessHandler)
-                        .failureHandler(oAuth2AuthenticationFailureHandler)
-                )
+                );
+
+        if (clientRegistrationRepositoryProvider.getIfAvailable() != null) {
+            chain = chain.oauth2Login(oauth2 -> {
+                OAuth2AuthenticationSuccessHandler successHandler = successHandlerProvider.getIfAvailable();
+                OAuth2AuthenticationFailureHandler failureHandler = failureHandlerProvider.getIfAvailable();
+                if (successHandler != null) {
+                    oauth2.successHandler(successHandler);
+                }
+                if (failureHandler != null) {
+                    oauth2.failureHandler(failureHandler);
+                }
+            });
+        }
+
+        return chain
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }

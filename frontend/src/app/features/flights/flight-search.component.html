@@ -1,21 +1,50 @@
 <div class="flight-search-panel">
   <div class="panel-block">
-    <h2 class="block-title">Search flights</h2>
-    <div class="fields-stack">
-      <div class="field-block">
-        <label class="field-label" for="flight-dest">Destination (city, airport or code)</label>
-        <input
-          pInputText
-          id="flight-dest"
-          class="field-input"
-          [ngModel]="destinationQuery"
-          (ngModelChange)="destinationQueryChange.emit($event)"
-          placeholder="e.g. Paris, CDG, Dubai…"
-          autocomplete="off"
-        />
-        @if (suggestions.length > 0) {
+    <h2 class="block-title" id="flight-search-title">Flight booking</h2>
+    <p class="assistive-help" id="flight-search-help">Choose different departure and arrival airports, then pick a travel date from today onward.</p>
+
+    @if (validationMessage) {
+      <div id="flight-search-error" class="search-error" role="alert" aria-live="polite">{{ validationMessage }}</div>
+    }
+
+    <div class="fields-stack" role="group" aria-labelledby="flight-search-title" [attr.aria-describedby]="validationMessage ? 'flight-search-error' : 'flight-search-help'">
+      <div class="field-block" [class.field-block-invalid]="fromInvalid">
+        <label class="field-label" for="flight-from">From</label>
+        @if (flightType === 'internal') {
+          <p-select
+            inputId="flight-from"
+            [options]="tunisianAirports"
+            optionLabel="label"
+            optionValue="iata"
+            [filter]="true"
+            [ngModel]="from"
+            (ngModelChange)="fromChange.emit($event)"
+            [showClear]="false"
+            appendTo="body"
+            placeholder="Select departure airport"
+            styleClass="field-input"
+            panelStyleClass="flight-search-select-panel"
+            [attr.aria-invalid]="fromInvalid"
+            [attr.aria-describedby]="fromDescribedBy"
+          ></p-select>
+        } @else {
+          <input
+            pInputText
+            id="flight-from"
+            class="field-input"
+            [ngModel]="from"
+            (ngModelChange)="fromChange.emit($event)"
+            placeholder="e.g. CDG, FRA, LHR"
+            autocomplete="off"
+            maxlength="3"
+            [attr.aria-invalid]="fromInvalid"
+            [attr.aria-describedby]="fromDescribedBy"
+          />
+        }
+
+        @if (flightType === 'external' && fromSuggestions.length > 0) {
           <ul class="suggest-list" role="listbox">
-            @for (s of suggestions; track s.pickValue) {
+            @for (s of fromSuggestions; track s.pickValue) {
               <li>
                 <button type="button" class="suggest-item" (click)="onPick(s)">{{ s.label }}</button>
               </li>
@@ -23,29 +52,72 @@
           </ul>
         }
       </div>
-      <div class="field-block field-block-narrow">
-        <label class="field-label" for="flight-origin">From (IATA)</label>
-        <input
-          pInputText
-          id="flight-origin"
-          class="field-input"
-          [ngModel]="originIata"
-          (ngModelChange)="originIataChange.emit($event)"
-          maxlength="4"
-          placeholder="TUN"
-          autocomplete="off"
-        />
+
+      @if (flightType === 'internal') {
+        <button
+          type="button"
+          class="swap-btn"
+          pButton
+          icon="pi pi-arrows-h"
+          [text]="true"
+          (click)="swapRequested.emit()"
+          aria-label="Swap departure and arrival"
+        ></button>
+      }
+
+      @if (flightType === 'internal') {
+        <div class="field-block" [class.field-block-invalid]="toInvalid">
+          <label class="field-label" for="flight-to">To</label>
+          <p-select
+            inputId="flight-to"
+            [options]="tunisianAirports"
+            optionLabel="label"
+            optionValue="iata"
+            [filter]="true"
+            [ngModel]="to"
+            (ngModelChange)="toChange.emit($event)"
+            [showClear]="false"
+            appendTo="body"
+            placeholder="Select arrival airport"
+            styleClass="field-input"
+            panelStyleClass="flight-search-select-panel"
+            [attr.aria-invalid]="toInvalid"
+            [attr.aria-describedby]="toDescribedBy"
+          ></p-select>
+        </div>
+      }
+
+      <div class="field-block field-block-date" [class.field-block-invalid]="dateInvalid">
+        <label class="field-label" for="flight-date">Date</label>
+        <p-datepicker
+          inputId="flight-date"
+          [ngModel]="travelDate"
+          (ngModelChange)="travelDateChange.emit($event)"
+          dateFormat="yy-mm-dd"
+          [showIcon]="true"
+          appendTo="body"
+          [minDate]="minTravelDate"
+          [readonlyInput]="true"
+          styleClass="field-input"
+          panelStyleClass="flight-search-date-panel"
+          placeholder="Pick travel date"
+          [attr.aria-invalid]="dateInvalid"
+          [attr.aria-describedby]="dateDescribedBy"
+        ></p-datepicker>
       </div>
-      <button
-        pButton
-        type="button"
-        label="Search"
-        icon="pi pi-search"
-        class="search-btn"
-        [loading]="loading"
-        [disabled]="loading || !destinationQuery.trim()"
-        (click)="onSearchClick()"
-      ></button>
+
+      <div class="actions-row">
+        <button
+          pButton
+          type="button"
+          label="Search flights"
+          icon="pi pi-send"
+          class="search-btn internal-btn"
+          [loading]="loading"
+          [disabled]="internalSearchDisabled"
+          (click)="onSearchClick()"
+        ></button>
+      </div>
     </div>
   </div>
 </div>

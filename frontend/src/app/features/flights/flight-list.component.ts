@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
 import { SkeletonModule } from 'primeng/skeleton';
-import { FlightDto } from './flight.models';
+import { FlightOfferDto } from './flight.models';
 import { flightBadge } from './flight-status.util';
 
 @Component({
@@ -14,20 +14,29 @@ import { flightBadge } from './flight-status.util';
   styleUrl: './flight-list.component.css',
 })
 export class FlightListComponent {
-  @Input() flights: FlightDto[] = [];
+  @Input() flights: FlightOfferDto[] = [];
   @Input() loading = false;
   @Input() error: string | null = null;
   @Input() emptyMessage = '';
   @Input() idleHint = '';
   @Input() hasSearched = false;
-  @Input() selected: FlightDto | null = null;
+  @Input() selected: FlightOfferDto | null = null;
   @Input() mapMode = false;
-  @Output() selectFlight = new EventEmitter<FlightDto>();
+  @Input() cheapestOfferId: string | null = null;
+  @Output() selectFlight = new EventEmitter<FlightOfferDto>();
+  @Output() bookFlight = new EventEmitter<FlightOfferDto>();
 
   readonly skeletonPlaceholders = [1, 2, 3, 4, 5, 6];
 
-  badge(f: FlightDto): { label: string; severity: 'success' | 'warn' | 'danger' | 'secondary' } {
+  badge(f: FlightOfferDto): { label: string; severity: 'success' | 'warn' | 'danger' | 'secondary' } {
     return flightBadge(f);
+  }
+
+  displayPrice(f: FlightOfferDto): string {
+    const amount = f.totalAmount?.trim();
+    const currency = f.totalCurrency?.trim();
+    if (!amount) return 'Price on request';
+    return currency ? `${amount} ${currency}` : amount;
   }
 
   formatTime(iso: string | null): string {
@@ -42,11 +51,11 @@ export class FlightListComponent {
     });
   }
 
-  trackByFn(_: number, f: FlightDto): string {
-    return `${f.flightNumber}-${f.departureTime}-${f.arrivalTime}`;
+  trackByFn(_: number, f: FlightOfferDto): string {
+    return f.offerId || `${f.flightNumber}-${f.departureTime}-${f.arrivalTime}`;
   }
 
-  isSelected(f: FlightDto): boolean {
+  isSelected(f: FlightOfferDto): boolean {
     const s = this.selected;
     if (!s) return false;
     return (
@@ -55,5 +64,9 @@ export class FlightListComponent {
       s.arrivalIata === f.arrivalIata &&
       s.departureTime === f.departureTime
     );
+  }
+
+  isCheapest(f: FlightOfferDto): boolean {
+    return !!this.cheapestOfferId && f.offerId === this.cheapestOfferId;
   }
 }

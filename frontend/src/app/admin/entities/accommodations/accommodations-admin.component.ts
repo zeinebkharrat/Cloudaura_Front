@@ -34,6 +34,8 @@ interface City {
   cityId: number;
   name: string;
   region: string;
+  description?: string;
+  hasAirport?: boolean;
 }
 
 @Component({
@@ -94,11 +96,23 @@ export class AccommodationsAdminComponent {
   ];
 
   cityDropdownOptions = computed(() =>
-    this.cities().map((c) => ({
-      label: `${c.name} (${c.region})`,
+    this.cities().filter((c) => !this.isAirportLikeCity(c)).map((c) => ({
+      label: c.name,
       value: c.cityId,
+      region: c.region,
     }))
   );
+
+  private isAirportLikeCity(city: City): boolean {
+    const name = (city.name ?? '').toLowerCase();
+    const region = (city.region ?? '').toLowerCase();
+    const description = (city.description ?? '').toLowerCase();
+    return city.hasAirport === true
+      || region === 'airport'
+      || name.includes('airport')
+      || description.includes('airport')
+      || description.includes('virtual airport city for flight booking flow');
+  }
 
   roomTypeOptions = this.roomTypes.map((rt) => ({ label: rt, value: rt }));
 

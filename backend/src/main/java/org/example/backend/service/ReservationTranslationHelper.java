@@ -2,7 +2,9 @@ package org.example.backend.service;
 
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.example.backend.model.TransportReservation;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
@@ -10,32 +12,51 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class ReservationTranslationHelper {
 
     private final CatalogTranslationService catalog;
 
+    /**
+     * Keep reservation flows resilient: translation can be toggled off without breaking booking/payment.
+     */
+    @Value("${app.i18n.reservations.translation.enabled:false}")
+    private boolean reservationTranslationEnabled;
+
+    private String safeResolve(String key, String fallback) {
+        if (!reservationTranslationEnabled) {
+            return fallback != null ? fallback : "";
+        }
+        try {
+            return catalog.resolveForRequest(key, fallback);
+        } catch (Exception ex) {
+            log.warn("Reservation translation fallback for key='{}': {}", key, ex.getMessage());
+            return fallback != null ? fallback : "";
+        }
+    }
+
     public String statusLabel(Enum<?> status) {
         if (status == null) {
-            return catalog.resolveForRequest("reservation.status.unknown", "—");
+            return safeResolve("reservation.status.unknown", "—");
         }
         String low = status.name().toLowerCase(Locale.ROOT);
-        return catalog.resolveForRequest("reservation.status." + low, defaultReservationStatusFr(low));
+        return safeResolve("reservation.status." + low, defaultReservationStatusFr(low));
     }
 
     public String transportPaymentStatus(TransportReservation.PaymentStatus s) {
         if (s == null) {
-            return catalog.resolveForRequest("reservation.payment.status.unknown", "—");
+            return safeResolve("reservation.payment.status.unknown", "—");
         }
         String low = s.name().toLowerCase(Locale.ROOT);
-        return catalog.resolveForRequest("reservation.payment.status." + low, defaultPaymentStatusFr(low));
+        return safeResolve("reservation.payment.status." + low, defaultPaymentStatusFr(low));
     }
 
     public String transportPaymentMethod(TransportReservation.PaymentMethod m) {
         if (m == null) {
-            return catalog.resolveForRequest("reservation.payment.method.unknown", "—");
+            return safeResolve("reservation.payment.method.unknown", "—");
         }
         String low = m.name().toLowerCase(Locale.ROOT);
-        return catalog.resolveForRequest("reservation.payment.method." + low, defaultPaymentMethodFr(low));
+        return safeResolve("reservation.payment.method." + low, defaultPaymentMethodFr(low));
     }
 
     public String transportTypeLabel(String typeEnumName) {
@@ -43,7 +64,7 @@ public class ReservationTranslationHelper {
             return "";
         }
         String low = typeEnumName.trim().toLowerCase(Locale.ROOT);
-        return catalog.resolveForRequest("reservation.transport_type." + low, defaultTransportTypeFr(low));
+        return safeResolve("reservation.transport_type." + low, defaultTransportTypeFr(low));
     }
 
     public String roomTypeLabel(String roomTypeEnumName) {
@@ -51,31 +72,31 @@ public class ReservationTranslationHelper {
             return "";
         }
         String low = roomTypeEnumName.trim().toLowerCase(Locale.ROOT);
-        return catalog.resolveForRequest("reservation.room_type." + low, defaultRoomTypeFr(low));
+        return safeResolve("reservation.room_type." + low, defaultRoomTypeFr(low));
     }
 
     public String cityName(int cityId, String dbFallback) {
         String fb = dbFallback != null ? dbFallback : "";
-        return catalog.resolveForRequest("city." + cityId + ".name", fb);
+        return safeResolve("city." + cityId + ".name", fb);
     }
 
     public String accommodationName(int accommodationId, String dbFallback) {
         String fb = dbFallback != null ? dbFallback : "";
-        return catalog.resolveForRequest("accommodation." + accommodationId + ".name", fb);
+        return safeResolve("accommodation." + accommodationId + ".name", fb);
     }
 
     public String activityName(int activityId, String dbFallback) {
         String fb = dbFallback != null ? dbFallback : "";
-        return catalog.resolveForRequest("activity." + activityId + ".name", fb);
+        return safeResolve("activity." + activityId + ".name", fb);
     }
 
     public String activityAddress(int activityId, String dbFallback) {
         String fb = dbFallback != null ? dbFallback : "";
-        return catalog.resolveForRequest("activity." + activityId + ".address", fb);
+        return safeResolve("activity." + activityId + ".address", fb);
     }
 
     public String tr(String key, String frenchFallback) {
-        return catalog.resolveForRequest(key, frenchFallback);
+        return safeResolve(key, frenchFallback);
     }
 
     private static String defaultReservationStatusFr(String low) {

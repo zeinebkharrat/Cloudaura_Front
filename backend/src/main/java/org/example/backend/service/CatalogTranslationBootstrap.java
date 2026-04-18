@@ -20,6 +20,7 @@ import org.example.backend.repository.TicketTypeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Seeds {@code translations} rows from existing domain data (idempotent).
  */
 @Component
+@ConditionalOnProperty(name = "app.i18n.catalog-bootstrap.enabled", havingValue = "true", matchIfMissing = true)
 @Order(50)
 @RequiredArgsConstructor
 public class CatalogTranslationBootstrap implements ApplicationRunner {
@@ -365,6 +367,11 @@ public class CatalogTranslationBootstrap implements ApplicationRunner {
                 "Annulation impossible moins de 24h avant l’arrivée.",
                 "Cancellation is not allowed less than 24 hours before check-in.",
                 "لا يمكن الإلغاء قبل أقل من 24 ساعة من الوصول.");
+        ensureTriple(
+                "reservation.error.cancellation_window_transport",
+                "Annulation impossible moins de 24h avant le départ.",
+                "Cancellation is not allowed less than 24 hours before departure.",
+                "لا يمكن الإلغاء قبل أقل من 24 ساعة من موعد الانطلاق.");
         ensureTriple(
                 "reservation.error.stay_cancelled",
                 "Réservation annulée.",

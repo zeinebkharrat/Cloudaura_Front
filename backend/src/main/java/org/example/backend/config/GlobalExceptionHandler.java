@@ -11,14 +11,17 @@ import lombok.extern.slf4j.Slf4j;
 import org.example.backend.dto.ApiResponse;
 import org.example.backend.exception.CancellationNotAllowedException;
 import org.example.backend.exception.DuplicateReservationException;
+import org.example.backend.exception.ExposableException;
+import org.example.backend.exception.InvalidInputException;
 import org.example.backend.exception.InvalidTransportException;
 import org.example.backend.exception.NoSeatsAvailableException;
 import org.example.backend.exception.ResourceNotFoundException;
 import org.example.backend.exception.RoomNotAvailableException;
 import org.example.backend.i18n.CatalogKeyUtil;
 import org.example.backend.service.CatalogTranslationService;
-import org.example.backend.service.flight.AviationStackUpstreamException;
+import org.example.backend.service.flight.DuffelUpstreamException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.orm.jpa.JpaObjectRetrievalFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -34,6 +37,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
 import org.apache.catalina.connector.ClientAbortException;
+import jakarta.persistence.EntityNotFoundException;
 
 @RestControllerAdvice
 @Slf4j
@@ -53,7 +57,15 @@ public class GlobalExceptionHandler {
     }
 
     private String resolve(String catalogKey, String frenchFallback) {
-        return catalogTranslationService.resolveForRequest(catalogKey, frenchFallback);
+        try {
+            return catalogTranslationService.resolveForRequest(catalogKey, frenchFallback);
+        } catch (Exception ex) {
+            log.warn("Catalog translation lookup failed for key='{}': {}", catalogKey, ex.getMessage());
+            if (frenchFallback != null && !frenchFallback.isBlank()) {
+                return frenchFallback;
+            }
+            return catalogKey != null ? catalogKey : "La requête a échoué.";
+        }
     }
 
     private String normalizeCatalogKeyOrFallback(String candidate, String fallbackKey) {
@@ -260,11 +272,20 @@ public class GlobalExceptionHandler {
                 key);
     }
 
-    @ExceptionHandler(AviationStackUpstreamException.class)
-    public ResponseEntity<ApiResponse<Void>> handleAviationStack(AviationStackUpstreamException ex) {
+    @ExceptionHandler(DuffelUpstreamException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDuffel(DuffelUpstreamException ex) {
         int code = ex.getHttpStatus();
         HttpStatus status = (code >= 400 && code < 600) ? HttpStatus.valueOf(code) : HttpStatus.BAD_GATEWAY;
-        log.warn("AviationStack upstream (redacted from client): {}", ex.getMessage());
+        log.warn("Duffel upstream (redacted from client): {}", ex.getMessage());
+
+        if (status == HttpStatus.CONFLICT) {
+            String key = "api.error.flight.offer_conflict";
+            return err(
+                    HttpStatus.CONFLICT,
+                    resolve(key, "This offer is no longer available. Please search again."),
+                    key);
+        }
+
         String key = "api.error.external_service_unavailable";
         return err(
                 status,
@@ -282,7 +303,19 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(IllegalArgumentException ex) {
-        log.warn("IllegalArgument (redacted from client): {}", ex.getMessage());
+        log.error("IllegalArgument captured (exposable={}): {}", ex instanceof ExposableException, ex.getMessage(), ex);
+
+        if (ex instanceof ExposableException) {
+            String key = "api.error.invalid_payload";
+            if (ex instanceof InvalidInputException iie) {
+                key = normalizeCatalogKeyOrFallback(iie.getCatalogKey(), key);
+            }
+            String safeMessage = (ex.getMessage() == null || ex.getMessage().isBlank())
+                    ? resolve(key, "Corps de requête invalide")
+                    : ex.getMessage();
+            return err(HttpStatus.BAD_REQUEST, safeMessage, key);
+        }
+
         return err(
                 HttpStatus.BAD_REQUEST,
                 resolve("api.error.invalid_payload", "Corps de requête invalide"),
@@ -297,6 +330,13 @@ public class GlobalExceptionHandler {
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 resolve(key, "Une erreur inattendue s'est produite."),
                 key);
+    }
+
+    @ExceptionHandler({JpaObjectRetrievalFailureException.class, EntityNotFoundException.class})
+    public ResponseEntity<ApiResponse<Void>> handleJpaEntityNotFound(Exception ex) {
+        String key = "api.error.not_found";
+        log.warn("JPA entity reference not found (redacted from client): {}", ex.getMessage());
+        return err(HttpStatus.NOT_FOUND, resolve(key, "Ressource introuvable."), key);
     }
 
     @ExceptionHandler(ClientAbortException.class)

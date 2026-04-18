@@ -337,13 +337,26 @@
                 [options]="cityDropdownOptions()"
                 optionLabel="label"
                 optionValue="value"
-                placeholder="Search city…"
-                [filter]="true"
-                filterPlaceholder="Tunis, Sousse, Hammamet…"
+                placeholder=""
+                [filter]="false"
                 [showClear]="true"
                 styleClass="adm-p-dropdown w-full"
+                panelStyleClass="adm-city-dropdown-panel"
                 appendTo="body"
               >
+                <ng-template pTemplate="item" let-city>
+                  <div class="adm-city-option">
+                    <span class="adm-city-option__name">{{ city.label }}</span>
+                    <small class="adm-city-option__meta">{{ city.region }}</small>
+                  </div>
+                </ng-template>
+                <ng-template pTemplate="selectedItem" let-city>
+                  @if (city) {
+                    <div class="adm-city-selected">{{ city.label }} ({{ city.region }})</div>
+                  } @else {
+                    <span class="adm-city-selected adm-city-selected--placeholder"></span>
+                  }
+                </ng-template>
               </p-dropdown>
               @if (accFieldInvalid('cityId')) {
                 <span class="adm-field-msg adm-field-msg--err" role="alert">City is required</span>

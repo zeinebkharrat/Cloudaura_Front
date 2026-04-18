@@ -21,6 +21,8 @@ public class TransportReservationRequest {
     private String travelDate;
     /** Required for TAXI pricing when using this endpoint. */
     private Double routeKm;
+    /** Optional TAXI duration in minutes; if missing server estimates from distance. */
+    private Integer routeDurationMin;
     /** CAR rental day count; optional, defaults to 1 server-side. */
     private Integer rentalDays;
 }

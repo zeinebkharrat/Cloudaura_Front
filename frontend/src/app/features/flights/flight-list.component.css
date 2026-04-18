@@ -95,12 +95,31 @@
   box-shadow: 0 0 0 1px rgba(241, 37, 69, 0.15);
 }
 
+.flight-card.cheapest {
+  border-color: rgba(245, 158, 11, 0.48);
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.2);
+}
+
 .card-top {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 0.75rem;
   margin-bottom: 1rem;
+}
+
+.cheap-badge {
+  margin-left: auto;
+  margin-right: 0.45rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #fef3c7;
+  background: rgba(245, 158, 11, 0.22);
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  white-space: nowrap;
 }
 
 .airline-block {
@@ -189,6 +208,23 @@
 .card-foot {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
   padding-top: 0.35rem;
   border-top: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+.price-chip {
+  margin-right: auto;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #f8fafc;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 999px;
+  padding: 0.25rem 0.6rem;
+}
+
+.book-btn {
+  min-width: 5.2rem;
 }

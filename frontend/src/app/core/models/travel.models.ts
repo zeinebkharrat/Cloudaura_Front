@@ -89,6 +89,7 @@ export interface TransportReservationInput {
   idempotencyKey: string;
   travelDate?: string;
   routeKm?: number;
+  routeDurationMin?: number;
   rentalDays?: number;
 }
 
@@ -97,6 +98,7 @@ export interface TransportCheckoutPayload {
   numberOfSeats: number;
   travelDate: string;
   routeKm?: number;
+  routeDurationMin?: number;
   rentalDays?: number;
   passengerFirstName: string;
   passengerLastName: string;
@@ -167,6 +169,7 @@ export interface AccommodationReservation {
   reservationRef?: string;
   checkInDate?: string;
   checkOutDate?: string;
+  guestCount?: number;
   nights?: number;
   /** Room type code when API sends it (e.g. SINGLE). */
   roomType?: string;
@@ -199,6 +202,7 @@ export interface Reservation {
   /** API body for accommodation booking (LocalDate strings). */
   checkIn?: string;
   checkOut?: string;
+  guestCount?: number;
   roomId?: number;
   userId?: number;
   transportId?: number;

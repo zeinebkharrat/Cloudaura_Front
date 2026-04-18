@@ -733,7 +733,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     const fallbackImages = ['assets/el_jem.png', 'assets/sidi_bou.png', 'assets/sahara.png'];
     const primary = `${API_BASE_URL}/api/products`;
     const fallback = `${API_FALLBACK_ORIGIN}/api/products`;
-    const canTryFallback = API_BASE_URL === '';
+    const canTryFallback = API_BASE_URL ;
 
     this.http
       .get<any>(primary)

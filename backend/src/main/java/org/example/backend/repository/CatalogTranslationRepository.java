@@ -22,8 +22,8 @@ public interface CatalogTranslationRepository extends JpaRepository<CatalogTrans
     @Modifying
     @Query(
             value =
-                    "INSERT INTO translations (translation_key, lang, value) VALUES (:k, :l, :v) "
-                            + "ON DUPLICATE KEY UPDATE value = VALUES(value)",
+                    "INSERT INTO translations (translation_key, lang, translation_text, value) VALUES (:k, :l, :v, :v) "
+                            + "ON DUPLICATE KEY UPDATE translation_text = VALUES(translation_text), value = VALUES(value)",
             nativeQuery = true)
     void upsertTranslation(@Param("k") String translationKey, @Param("l") String lang, @Param("v") String value);
 }

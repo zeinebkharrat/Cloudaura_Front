@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -52,11 +53,13 @@ public class AdminAccommodationController {
 
         Accommodation acc = Accommodation.builder()
             .name(request.name())
+            .description(request.description())
             .type(Accommodation.AccommodationType.valueOf(request.type()))
             .pricePerNight(request.pricePerNight())
             .rating(request.rating())
             .status(Accommodation.AccommodationStatus.valueOf(request.status()))
             .city(city)
+            .amenities(request.amenities() != null ? new ArrayList<>(request.amenities()) : new ArrayList<>())
             .build();
 
         acc = accommodationRepository.save(acc);
@@ -75,11 +78,13 @@ public class AdminAccommodationController {
             .orElseThrow(() -> new RuntimeException("Ville non trouvée"));
 
         acc.setName(request.name());
+        acc.setDescription(request.description());
         acc.setType(Accommodation.AccommodationType.valueOf(request.type()));
         acc.setPricePerNight(request.pricePerNight());
         acc.setRating(request.rating());
         acc.setStatus(Accommodation.AccommodationStatus.valueOf(request.status()));
         acc.setCity(city);
+        acc.setAmenities(request.amenities() != null ? new ArrayList<>(request.amenities()) : new ArrayList<>());
 
         acc = accommodationRepository.save(acc);
         return ApiResponse.success(toDTO(acc));
@@ -159,6 +164,8 @@ public class AdminAccommodationController {
         return new AccommodationDTO(
             acc.getAccommodationId(),
             acc.getName(),
+            acc.getDescription(),
+            acc.getAmenities() != null ? List.copyOf(acc.getAmenities()) : List.of(),
             acc.getType().name(),
             acc.getPricePerNight(),
             acc.getRating(),
@@ -181,6 +188,8 @@ public class AdminAccommodationController {
     public record AccommodationDTO(
         Integer accommodationId,
         String name,
+        String description,
+        List<String> amenities,
         String type,
         Double pricePerNight,
         Double rating,
@@ -194,6 +203,8 @@ public class AdminAccommodationController {
 
     public record AccommodationRequest(
         String name,
+        String description,
+        List<String> amenities,
         String type,
         Double pricePerNight,
         Double rating,

@@ -32,6 +32,7 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Stream;
 import java.util.stream.Collectors;
 
 @Service
@@ -147,7 +148,8 @@ public class AccommodationReservationService {
                 .orElseThrow(() -> new ResourceNotFoundException("reservation.error.user_not_found"));
 
         long nights = ChronoUnit.DAYS.between(req.getCheckIn(), req.getCheckOut());
-        double totalPrice = room.getPrice() * nights;
+        int guests = Math.max(1, req.getGuestCount() == null ? 1 : req.getGuestCount());
+        double totalPrice = room.getPrice() * nights * guests;
         double discount = 0;
 
         if (req.getOfferId() != null) {
@@ -163,6 +165,7 @@ public class AccommodationReservationService {
                 .checkOutDate(req.getCheckOut().atStartOfDay())
                 .status(ReservationStatus.PENDING)
                 .totalPrice(totalPrice)
+                .guestCount(guests)
                 .room(room)
                 .user(user)
                 .build();
@@ -194,13 +197,13 @@ public class AccommodationReservationService {
             throw new AccessDeniedException("reservation.error.access_not_owner");
         }
         if (res.getStatus() == ReservationStatus.CANCELLED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.already_cancelled_stay");
+            return mapToResponse(res, 0, 0);
         }
-        if (res.getStatus() == ReservationStatus.CONFIRMED) {
-            long hoursUntilCheckIn = ChronoUnit.HOURS.between(LocalDateTime.now(), res.getCheckInDate());
-            if (hoursUntilCheckIn < 24) {
-                throw new CancellationNotAllowedException("reservation.error.cancellation_window");
-            }
+
+        LocalDateTime checkInAt = res.getCheckInDate();
+        LocalDateTime cancellationDeadline = LocalDateTime.now().plusHours(24);
+        if (checkInAt != null && checkInAt.isBefore(cancellationDeadline)) {
+            throw new CancellationNotAllowedException("reservation.error.cancellation_window");
         }
 
         res.setStatus(ReservationStatus.CANCELLED);
@@ -210,9 +213,26 @@ public class AccommodationReservationService {
     @Transactional(readOnly = true)
     public List<AccommodationReservationResponse> getUserReservations(int userId) {
         return reservationRepository.findByUser_UserId(userId).stream()
-                .filter(r -> r.getStatus() != ReservationStatus.CANCELLED)
+                // Keep only accommodation stays; legacy rows can exist with transport-only payloads.
+                .filter(r -> r.getRoom() != null)
+                .filter(r -> r.getCheckInDate() != null && r.getCheckOutDate() != null)
                 .sorted((a, b) -> b.getCheckInDate().compareTo(a.getCheckInDate()))
-                .map(r -> mapToResponse(r, (int) ChronoUnit.DAYS.between(r.getCheckInDate(), r.getCheckOutDate()), 0))
+                .flatMap(r -> {
+                    try {
+                        return Stream.of(
+                                mapToResponse(
+                                        r,
+                                        (int) ChronoUnit.DAYS.between(r.getCheckInDate(), r.getCheckOutDate()),
+                                        0));
+                    } catch (Exception ex) {
+                        log.warn(
+                                "Skip malformed stay reservation id={} for userId={} while loading history: {}",
+                                r.getReservationId(),
+                                userId,
+                                ex.getMessage());
+                        return Stream.empty();
+                    }
+                })
                 .collect(Collectors.toList());
     }
 
@@ -250,7 +270,8 @@ public class AccommodationReservationService {
         }
 
         long nights = ChronoUnit.DAYS.between(req.getCheckIn(), req.getCheckOut());
-        double totalPrice = res.getRoom().getPrice() * nights;
+        int guests = Math.max(1, res.getGuestCount() == null ? 1 : res.getGuestCount());
+        double totalPrice = res.getRoom().getPrice() * nights * guests;
 
         res.setCheckInDate(ci);
         res.setCheckOutDate(co);
@@ -262,6 +283,8 @@ public class AccommodationReservationService {
 
     private AccommodationReservationResponse mapToResponse(Reservation r, int nights, double discount) {
         var room = r.getRoom();
+        var checkIn = r.getCheckInDate() != null ? r.getCheckInDate().toLocalDate() : null;
+        var checkOut = r.getCheckOutDate() != null ? r.getCheckOutDate().toLocalDate() : null;
         Integer accId = room != null && room.getAccommodation() != null
                 ? room.getAccommodation().getAccommodationId()
                 : null;
@@ -289,8 +312,9 @@ public class AccommodationReservationService {
                 .roomId(roomId)
                 .status(r.getStatus() != null ? r.getStatus().name() : ReservationStatus.PENDING.name())
                 .statusLabel(reservationLabels.statusLabel(r.getStatus()))
-                .checkIn(r.getCheckInDate().toLocalDate())
-                .checkOut(r.getCheckOutDate().toLocalDate())
+                .checkIn(checkIn)
+                .checkOut(checkOut)
+                .guestCount(r.getGuestCount() != null ? Math.max(1, r.getGuestCount()) : 1)
                 .nights(nights)
                 .totalPrice(r.getTotalPrice())
                 .discountApplied(discount)

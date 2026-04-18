@@ -5,6 +5,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
@@ -35,6 +37,21 @@ public class CatalogTranslation {
     @Column(nullable = false, length = 8)
     private String lang;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(name = "translation_text", nullable = false, columnDefinition = "TEXT")
     private String value;
+
+    /**
+     * Legacy schema compatibility: some DBs still enforce NOT NULL on `value`.
+     */
+    @Column(name = "value", nullable = false, columnDefinition = "TEXT")
+    private String legacyValue;
+
+    @PrePersist
+    @PreUpdate
+    void syncLegacyColumns() {
+        if (value == null) {
+            value = "";
+        }
+        legacyValue = value;
+    }
 }

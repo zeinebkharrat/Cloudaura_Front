@@ -30,6 +30,9 @@ public class TransportCheckoutRequest {
     /** Required when transport type is TAXI (km for pricing). */
     private Double routeKm;
 
+    /** Optional duration in minutes for TAXI pricing (falls back to km-based estimate). */
+    private Integer routeDurationMin;
+
     /** Used for CAR rentals; optional, defaults to 1. */
     private Integer rentalDays;
 

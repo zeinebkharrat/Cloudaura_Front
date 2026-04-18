@@ -6,12 +6,10 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Hébergement : clé i18n catalogue {@code accommodation.{accommodationId}.name} — pas de champ {@code description}
- * sur cette entité JPA.
- */
+/** Hébergement : contenu descriptif et amenities désormais stockés en base. */
 @Entity
 @Table(name = "accommodations")
 @Data @Builder @NoArgsConstructor @AllArgsConstructor
@@ -23,6 +21,9 @@ public class Accommodation {
 
     @Column(nullable = false, length = 255)
     private String name;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
 
     @Enumerated(EnumType.STRING)
     private AccommodationType type;
@@ -38,6 +39,16 @@ public class Accommodation {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "city_id")
     private City city;
+
+        @ElementCollection(fetch = FetchType.LAZY)
+        @CollectionTable(
+            name = "accommodation_amenities",
+            joinColumns = @JoinColumn(name = "accommodation_id")
+        )
+        @Column(name = "amenity", nullable = false, length = 120)
+        @OrderColumn(name = "sort_order")
+        @Builder.Default
+        private List<String> amenities = new ArrayList<>();
 
     @OneToMany(mappedBy = "accommodation", fetch = FetchType.LAZY)
     private List<Room> rooms;

@@ -1,10 +1,10 @@
-import { FlightDto } from './flight.models';
+import { FlightOfferDto } from './flight.models';
 
 export type StatusFilterKey = 'all' | 'on_time' | 'delayed' | 'scheduled';
 export type SortKey = 'departure' | 'airline' | 'status';
 
 /** Badge: delayed = danger (red), on time = success (green), scheduled = warn (orange) — PrimeNG 18 Tag severity. */
-export function flightBadge(f: FlightDto): { label: string; severity: 'success' | 'warn' | 'danger' | 'secondary' } {
+export function flightBadge(f: FlightOfferDto): { label: string; severity: 'success' | 'warn' | 'danger' | 'secondary' } {
   const cat = (f.statusCategory || '').toUpperCase();
   const st = (f.status || '').toLowerCase();
 
@@ -25,7 +25,7 @@ export function flightBadge(f: FlightDto): { label: string; severity: 'success' 
   return { label: f.status ? f.status : 'Unknown', severity: 'secondary' };
 }
 
-export function matchesStatusFilter(f: FlightDto, key: StatusFilterKey): boolean {
+export function matchesStatusFilter(f: FlightOfferDto, key: StatusFilterKey): boolean {
   if (key === 'all') return true;
   const b = flightBadge(f);
   if (key === 'on_time') return b.severity === 'success';
@@ -34,7 +34,7 @@ export function matchesStatusFilter(f: FlightDto, key: StatusFilterKey): boolean
   return true;
 }
 
-export function compareFlights(a: FlightDto, b: FlightDto, sort: SortKey): number {
+export function compareFlights(a: FlightOfferDto, b: FlightOfferDto, sort: SortKey): number {
   if (sort === 'airline') {
     return (a.airline || '').localeCompare(b.airline || '', undefined, { sensitivity: 'base' });
   }

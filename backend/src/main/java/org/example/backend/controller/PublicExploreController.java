@@ -104,6 +104,35 @@ public class PublicExploreController {
         return activityService.getById(activityId);
     }
 
+    @GetMapping("/accommodations/{accommodationId}/reviews")
+    public PublicReviewPageResponse listAccommodationReviews(
+        @PathVariable Integer accommodationId,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size,
+        @RequestParam(defaultValue = "createdAt,desc") String sort
+    ) {
+        Pageable pageable = buildPageable(page, size, sort);
+        return publicReviewService.listAccommodationReviews(accommodationId, pageable);
+    }
+
+    @PostMapping("/accommodations/{accommodationId}/reviews")
+    public PublicReviewResponse upsertAccommodationReview(
+        @PathVariable Integer accommodationId,
+        @Valid @RequestBody CreatePublicReviewRequest request
+    ) {
+        return publicReviewService.upsertAccommodationReview(accommodationId, request);
+    }
+
+    @DeleteMapping("/accommodations/{accommodationId}/reviews/mine")
+    public void deleteAccommodationReview(@PathVariable Integer accommodationId) {
+        publicReviewService.deleteAccommodationReview(accommodationId);
+    }
+
+    @GetMapping("/accommodations/{accommodationId}/reviews/summary")
+    public ReviewSummaryResponse accommodationReviewSummary(@PathVariable Integer accommodationId) {
+        return publicReviewService.summaryForAccommodation(accommodationId);
+    }
+
     @GetMapping("/restaurants/{restaurantId}/reviews")
     public PublicReviewPageResponse listRestaurantReviews(
         @PathVariable Integer restaurantId,

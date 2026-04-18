@@ -5,9 +5,13 @@ import org.example.backend.dto.transport.TransportReservationRequest;
 import org.example.backend.dto.transport.TransportReservationResponse;
 import org.example.backend.dto.transport.TransportReservationUpdateRequest;
 import org.example.backend.service.TransportReservationService;
+import org.example.backend.service.UserIdentityResolver;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 
 @RestController
@@ -15,15 +19,31 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TransportReservationController {
     private final TransportReservationService reservationService;
+    private final UserIdentityResolver userIdentityResolver;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<TransportReservationResponse> create(@RequestBody TransportReservationRequest request) {
-        return ApiResponse.success(reservationService.createReservation(request));
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Integer userId = userIdentityResolver.resolveUserId(authentication);
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.auth.unauthorized");
+        }
+        return ApiResponse.success(reservationService.createReservationForUser(request, userId));
     }
 
     @GetMapping("/user/{userId}")
     public ApiResponse<List<TransportReservationResponse>> getByUser(@PathVariable int userId) {
+        return ApiResponse.success(reservationService.getUserReservations(userId));
+    }
+
+    @GetMapping("/my")
+    public ApiResponse<List<TransportReservationResponse>> getMy() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Integer userId = userIdentityResolver.resolveUserId(authentication);
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.auth.unauthorized");
+        }
         return ApiResponse.success(reservationService.getUserReservations(userId));
     }
 

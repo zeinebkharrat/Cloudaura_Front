@@ -18,6 +18,7 @@ import { AuthService } from './core/auth.service';
 import { AppAlertsService } from './core/services/app-alerts.service';
 import { UserReservationsLocalStore } from './core/stores/user-reservations-local.store';
 import { NotificationService } from './core/notification.service';
+import { extractApiErrorMessage } from './api-error.util';
 import { isIsoDateOnly, wallTimeTunisiaToUtcMs } from './core/bookings-visibility-timezone';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { TrackingMapComponent } from './shared/components/tracking-map/tracking-map.component';
@@ -231,8 +232,10 @@ type ActiveTab = 'transport' | 'hebergement';
                         <i class="pi pi-pencil" aria-hidden="true"></i> {{ 'MY_BOOKINGS_PAGE.EDIT' | translate }}
                       </button>
                       <button type="button" class="mr-action-btn mr-action-danger" (click)="cancelTransport(res)"
-                              [disabled]="cancellingTransportId() === res.transportReservationId || res.status === 'CANCELLED'"
-                              [attr.title]="res.status === 'CANCELLED' ? ('MY_BOOKINGS_PAGE.TITLE_CANCEL_ALREADY' | translate) : null">
+                              [disabled]="cancellingTransportId() === res.transportReservationId || res.status === 'CANCELLED' || isTransportCancellationLocked(res)"
+                              [attr.title]="res.status === 'CANCELLED'
+                                ? ('MY_BOOKINGS_PAGE.TITLE_CANCEL_ALREADY' | translate)
+                                : (isTransportCancellationLocked(res) ? ('MY_BOOKINGS_PAGE.ALERT_CANCEL_TOO_LATE_TRANSPORT' | translate) : null)">
                         @if (cancellingTransportId() === res.transportReservationId) {
                           <span class="mr-mini-spin"></span>
                         } @else {
@@ -913,7 +916,7 @@ export class MesReservationsComponent implements OnInit {
     () => this.transportReservations().length + this.accommodationReservations().length
   );
 
-  private static readonly VISIBILITY_GRACE_MS = 60 * 60 * 1000;
+  private static readonly VISIBILITY_GRACE_MS = 24 * 60 * 60 * 1000;
 
   ngOnInit() {
     if (!this.authService.isAuthenticated()) {
@@ -962,6 +965,8 @@ export class MesReservationsComponent implements OnInit {
       accommodation: accommodation$,
     }).subscribe({
       next: ({ transport, accommodation }) => {
+        this.localStore.pruneTransport((r) => !this.isPastVisibilityCutoffTransport(r));
+        this.localStore.pruneAccommodation((r) => !this.isPastVisibilityCutoffAccommodation(r));
         this.transportSource.set(this.localStore.mergeTransport(transport));
         this.accommodationSource.set(this.localStore.mergeAccommodation(accommodation));
         this.visibilityClock.update((n) => n + 1);
@@ -980,6 +985,13 @@ export class MesReservationsComponent implements OnInit {
   }
 
   cancelTransport(res: TransportReservation) {
+    if (this.isTransportCancellationLocked(res)) {
+      void this.alerts.error(
+        this.translate.instant('MY_BOOKINGS_PAGE.ALERT_CANCEL_FAILED_TITLE'),
+        this.translate.instant('MY_BOOKINGS_PAGE.ALERT_CANCEL_TOO_LATE_TRANSPORT')
+      );
+      return;
+    }
     void this.alerts
       .confirm({
         title: this.translate.instant('MY_BOOKINGS_PAGE.CONFIRM_CANCEL_TRANSPORT_TITLE'),
@@ -1002,9 +1014,10 @@ export class MesReservationsComponent implements OnInit {
                 alreadyCancelledOnServer = true;
                 return of(undefined);
               }
+              const msg = this.resolveCancelErrorMessage(err, 'transport');
               void this.alerts.error(
                 this.translate.instant('MY_BOOKINGS_PAGE.ALERT_CANCEL_FAILED_TITLE'),
-                this.translate.instant('MY_BOOKINGS_PAGE.ALERT_CANCEL_FAILED_BODY')
+                msg
               );
               return EMPTY;
             }),
@@ -1070,11 +1083,7 @@ export class MesReservationsComponent implements OnInit {
             alreadyCancelledOnServer = true;
             return of(undefined);
           }
-          const body = err?.error;
-          const msg =
-            (typeof body?.message === 'string' && body.message.trim()) ||
-            (typeof body === 'string' ? body : null) ||
-            this.translate.instant('MY_BOOKINGS_PAGE.MSG_CANCEL_STAY_FALLBACK');
+          const msg = this.resolveCancelErrorMessage(err, 'stay');
           this.error.set(msg);
           void this.alerts.error(this.translate.instant('MY_BOOKINGS_PAGE.ALERT_CANCEL_FAILED_TITLE'), msg);
           return EMPTY;
@@ -1136,6 +1145,13 @@ export class MesReservationsComponent implements OnInit {
     return null;
   }
 
+  public isTransportCancellationLocked(res: TransportReservation): boolean {
+    if (res.status === 'CANCELLED') return true;
+    const depMs = this.transportDepartureEpochMs(res);
+    if (depMs == null) return false;
+    return depMs < Date.now() + 24 * 60 * 60 * 1000;
+  }
+
   /**
    * Masquer si l’heure actuelle dépasse la fin du séjour + 1 h.
    * Date de check-out seule (YYYY-MM-DD) → 11:00 à Africa/Tunis (check-out hôtel).
@@ -1161,13 +1177,69 @@ export class MesReservationsComponent implements OnInit {
   /** Backend returns 400 when status is already CANCELLED — treat as success and refresh. */
   private isAlreadyCancelledResponse(err: HttpErrorResponse): boolean {
     if (err.status !== 400) return false;
-    const raw = err.error;
-    const msg = (typeof raw?.message === 'string' ? raw.message : '').toLowerCase();
+    const code = this.extractErrorCode(err);
+    if (code === 'reservation.error.already_cancelled' || code === 'reservation.error.already_cancelled_stay') {
+      return true;
+    }
+    const msg = this.extractErrorMessage(err).toLowerCase();
     return (
       msg.includes('déjà') ||
       msg.includes('deja') ||
       msg.includes('already cancelled') ||
       msg.includes('already canceled')
+    );
+  }
+
+  private isCancellationWindowResponse(err: HttpErrorResponse): boolean {
+    if (err.status !== 400) return false;
+    const code = this.extractErrorCode(err);
+    if (
+      code === 'reservation.error.cancellation_window' ||
+      code === 'reservation.error.cancellation_window_transport'
+    ) {
+      return true;
+    }
+    const msg = this.extractErrorMessage(err).toLowerCase();
+    return (
+      msg.includes('less than 24 hours') ||
+      msg.includes('moins de 24 heures') ||
+      msg.includes('24h') ||
+      msg.includes('reservation.error.cancellation_window')
+    );
+  }
+
+  private extractErrorCode(err: HttpErrorResponse): string {
+    const raw = err.error as any;
+    const direct = typeof raw?.code === 'string' ? raw.code.trim() : '';
+    if (direct) return direct;
+    const nested = typeof raw?.error?.code === 'string' ? raw.error.code.trim() : '';
+    return nested || '';
+  }
+
+  private extractErrorMessage(err: HttpErrorResponse): string {
+    const raw = err.error as any;
+    if (typeof raw === 'string') return raw;
+    const direct = typeof raw?.message === 'string' ? raw.message : '';
+    if (direct) return direct;
+    const nested = typeof raw?.error?.message === 'string' ? raw.error.message : '';
+    return nested || '';
+  }
+
+  private resolveCancelErrorMessage(err: HttpErrorResponse, type: 'transport' | 'stay'): string {
+    if (this.isCancellationWindowResponse(err)) {
+      return this.translate.instant(
+        type === 'transport'
+          ? 'MY_BOOKINGS_PAGE.ALERT_CANCEL_TOO_LATE_TRANSPORT'
+          : 'MY_BOOKINGS_PAGE.ALERT_CANCEL_TOO_LATE_STAY'
+      );
+    }
+    return extractApiErrorMessage(
+      err,
+      this.translate.instant(
+        type === 'transport'
+          ? 'MY_BOOKINGS_PAGE.ALERT_CANCEL_FAILED_BODY'
+          : 'MY_BOOKINGS_PAGE.MSG_CANCEL_STAY_FALLBACK'
+      )
     );
   }
 

@@ -79,6 +79,7 @@ export class MockJsonDataSource implements DataSourceAdapter {
   createAccommodationCheckoutSession(payload: {
     roomId: number;
     userId: number;
+    guestCount: number;
     checkIn: string;
     checkOut: string;
     offerId?: number | null;

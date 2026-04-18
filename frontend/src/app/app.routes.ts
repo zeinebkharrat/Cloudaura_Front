@@ -99,6 +99,13 @@ export const routes: Routes = [
     loadChildren: () => import('./features/transport/transport.module').then(m => m.TransportModule),
   },
   {
+    path: 'flights/international',
+    loadComponent: () =>
+      import('./flights/international/international-flights.component').then(
+        (m) => m.InternationalFlightsComponent,
+      ),
+  },
+  {
     path: 'confirmation',
     loadComponent: () =>
       import('./shared/components/booking-confirmation/booking-confirmation.component').then(

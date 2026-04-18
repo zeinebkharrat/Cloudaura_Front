@@ -20,5 +20,5 @@ public class FlightSuggestionResponse {
     private String destinationAirportIata;
     private String resolvedDestinationLabel;
     private String hint;
-    private List<FlightDto> flights;
+    private List<FlightOfferDto> flights;
 }

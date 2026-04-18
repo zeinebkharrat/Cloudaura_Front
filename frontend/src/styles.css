@@ -718,8 +718,141 @@ h1, h2, h3, h4, h5, h6 {
   background: #cbd5e1;
 }
 
+/* Transport villes — panel/states align with stays picker design */
+.transport-city-dropdown-panel.p-select-overlay,
+.transport-city-dropdown-panel.p-dropdown-panel {
+  background: linear-gradient(180deg, var(--surface-1) 0%, var(--surface-2) 100%) !important;
+  border: 1px solid color-mix(in srgb, var(--tunisia-red) 22%, var(--border-soft)) !important;
+}
+
+.transport-city-dropdown-panel .p-dropdown-items-wrapper,
+.transport-city-dropdown-panel .p-dropdown-items,
+.transport-city-dropdown-panel .p-scroller-content,
+.transport-city-dropdown-panel .p-select-list-container,
+.transport-city-dropdown-panel .p-select-list {
+  background: transparent !important;
+}
+
+.transport-city-dropdown-panel .p-dropdown-items {
+  padding: 0.45rem 0.35rem !important;
+}
+
+.transport-city-dropdown-panel .p-select-list {
+  padding: 0.45rem 0.35rem !important;
+}
+
+/* Transport regions scrollbar: match stays city picker design */
+.transport-city-dropdown-panel .p-dropdown-items-wrapper,
+.transport-city-dropdown-panel .p-scroller,
+.transport-city-dropdown-panel .p-select-list-container {
+  scrollbar-width: thin;
+  scrollbar-color: var(--tunisia-red) var(--surface-2);
+}
+
+.transport-city-dropdown-panel .p-dropdown-items-wrapper::-webkit-scrollbar,
+.transport-city-dropdown-panel .p-scroller::-webkit-scrollbar,
+.transport-city-dropdown-panel .p-select-list-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.transport-city-dropdown-panel .p-dropdown-items-wrapper::-webkit-scrollbar-track,
+.transport-city-dropdown-panel .p-scroller::-webkit-scrollbar-track,
+.transport-city-dropdown-panel .p-select-list-container::-webkit-scrollbar-track {
+  background: var(--surface-2);
+  border-radius: 10px;
+  margin: 4px 0;
+}
+
+.transport-city-dropdown-panel .p-dropdown-items-wrapper::-webkit-scrollbar-thumb,
+.transport-city-dropdown-panel .p-scroller::-webkit-scrollbar-thumb,
+.transport-city-dropdown-panel .p-select-list-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--tunisia-red), color-mix(in srgb, var(--tunisia-red) 65%, #000));
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.transport-city-dropdown-panel .p-dropdown-items-wrapper::-webkit-scrollbar-thumb:hover,
+.transport-city-dropdown-panel .p-scroller::-webkit-scrollbar-thumb:hover,
+.transport-city-dropdown-panel .p-select-list-container::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tunisia-red) 90%, #fff), var(--tunisia-red));
+  background-clip: padding-box;
+}
+
+/* Ligne type carte + sélection brand (appliqué en clair et sombre) */
+.transport-city-dropdown-panel .p-dropdown-item,
+.transport-city-dropdown-panel .p-select-option {
+  margin: 0.35rem 0.45rem !important;
+  padding: 0.75rem 1rem !important;
+  border-radius: 10px !important;
+  background: color-mix(in srgb, var(--surface-2) 84%, transparent) !important;
+  color: var(--text-color) !important;
+  border: 1px solid color-mix(in srgb, var(--border-soft) 78%, transparent) !important;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease !important;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.12) !important;
+}
+.transport-city-dropdown-panel .p-dropdown-item:hover:not(.p-disabled),
+.transport-city-dropdown-panel .p-dropdown-item.p-focus:not(.p-disabled),
+.transport-city-dropdown-panel .p-select-option:hover:not(.p-disabled),
+.transport-city-dropdown-panel .p-select-option.p-focus:not(.p-disabled) {
+  background: color-mix(in srgb, var(--tunisia-red) 12%, var(--surface-2)) !important;
+  color: var(--text-color) !important;
+  border-color: color-mix(in srgb, var(--tunisia-red) 25%, var(--border-soft)) !important;
+}
+.transport-city-dropdown-panel .p-dropdown-item.p-highlight,
+.transport-city-dropdown-panel .p-select-option.p-selected {
+  background: color-mix(in srgb, var(--tunisia-red) 18%, var(--surface-1)) !important;
+  color: var(--tunisia-red) !important;
+  border-color: rgba(241, 37, 69, 0.45) !important;
+  font-weight: 600 !important;
+}
+.transport-city-dropdown-panel .p-dropdown-item.p-highlight:hover:not(.p-disabled),
+.transport-city-dropdown-panel .p-dropdown-item.p-highlight.p-focus:not(.p-disabled),
+.transport-city-dropdown-panel .p-select-option.p-selected:hover:not(.p-disabled),
+.transport-city-dropdown-panel .p-select-option.p-selected.p-focus:not(.p-disabled) {
+  background: color-mix(in srgb, var(--tunisia-red) 24%, var(--surface-1)) !important;
+  color: var(--tunisia-red) !important;
+}
+
+.transport-city-dropdown-panel .sb-dd-item,
+.transport-city-dropdown-panel .sb-dd-selected {
+  font-size: 1.05rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.01em !important;
+  line-height: 1.35 !important;
+}
+.transport-city-dropdown-panel .sb-dd-placeholder {
+  font-size: 0.95rem !important;
+  font-weight: 500 !important;
+  opacity: 0.88 !important;
+}
+html[data-theme="dark"] .transport-city-dropdown-panel .sb-dd-item,
+html[data-theme="dark"] .transport-city-dropdown-panel .sb-dd-selected {
+  color: inherit !important;
+}
+html[data-theme="dark"] .transport-city-dropdown-panel .sb-dd-placeholder {
+  color: #9ca3af !important;
+}
+
+html[data-theme="dark"] .transport-city-dropdown-panel.p-dropdown-panel {
+  background: #111827 !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+}
+html[data-theme="dark"] .transport-city-dropdown-panel .p-dropdown-header {
+  background: #0c1018 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+html[data-theme="dark"] .transport-city-dropdown-panel .p-dropdown-filter {
+  background: #1a2332 !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+}
+
 /* ---------- Calendar / Datepicker Panel ---------- */
-.p-datepicker {
+.p-datepicker-panel {
   background: #111827 !important;
   border: 1px solid rgba(255,255,255,0.12) !important;
   border-radius: 16px !important;
@@ -729,44 +862,44 @@ h1, h2, h3, h4, h5, h6 {
   color: #eef2f7 !important;
   min-width: 22.5rem !important;
 }
-.p-datepicker .p-datepicker-header {
+.p-datepicker-panel .p-datepicker-header {
   background: transparent !important;
   border-bottom: 1px solid rgba(255,255,255,0.08) !important;
   padding: 0.5rem 0 0.65rem !important;
   color: #eef2f7 !important;
 }
-.p-datepicker .p-datepicker-title .p-datepicker-month,
-.p-datepicker .p-datepicker-title .p-datepicker-year {
+.p-datepicker-panel .p-datepicker-title .p-datepicker-month,
+.p-datepicker-panel .p-datepicker-title .p-datepicker-year {
   color: #eef2f7 !important;
   font-weight: 600 !important;
 }
-.p-datepicker .p-datepicker-title .p-datepicker-month:hover,
-.p-datepicker .p-datepicker-title .p-datepicker-year:hover {
+.p-datepicker-panel .p-datepicker-title .p-datepicker-month:hover,
+.p-datepicker-panel .p-datepicker-title .p-datepicker-year:hover {
   color: #f12545 !important;
 }
-.p-datepicker .p-datepicker-prev,
-.p-datepicker .p-datepicker-next {
+.p-datepicker-panel .p-datepicker-prev,
+.p-datepicker-panel .p-datepicker-next {
   color: #a8b3c7 !important;
   width: 2rem !important;
   height: 2rem !important;
   border-radius: 8px !important;
 }
-.p-datepicker .p-datepicker-prev:hover,
-.p-datepicker .p-datepicker-next:hover {
+.p-datepicker-panel .p-datepicker-prev:hover,
+.p-datepicker-panel .p-datepicker-next:hover {
   background: rgba(241,37,69,0.08) !important;
   color: #f12545 !important;
 }
-.p-datepicker table th {
+.p-datepicker-panel table th {
   color: #94a3b8 !important;
   font-weight: 600 !important;
   font-size: 0.8rem !important;
   padding: 0.5rem 0.35rem !important;
   letter-spacing: 0.02em !important;
 }
-.p-datepicker table td {
+.p-datepicker-panel table td {
   padding: 0.3rem !important;
 }
-.p-datepicker table td > span {
+.p-datepicker-panel table td > span {
   width: 2.55rem !important;
   height: 2.55rem !important;
   border-radius: 10px !important;
@@ -775,37 +908,37 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 0.9rem !important;
   transition: background 0.18s ease, color 0.18s ease, transform 0.15s ease !important;
 }
-.p-datepicker table td > span:hover {
+.p-datepicker-panel table td > span:hover {
   background: rgba(241,37,69,0.08) !important;
   color: #eef2f7 !important;
 }
-.p-datepicker table td > span.p-highlight {
+.p-datepicker-panel table td > span.p-highlight {
   background: #f12545 !important;
   color: #fff !important;
 }
-.p-datepicker table td.p-datepicker-today > span {
+.p-datepicker-panel table td.p-datepicker-today > span {
   border: 1px solid rgba(241,37,69,0.35) !important;
   color: #f12545 !important;
 }
-.p-datepicker table td > span.p-disabled {
+.p-datepicker-panel table td > span.p-disabled {
   color: #374151 !important;
   opacity: 0.5 !important;
 }
 
 /* Month/Year picker views */
-.p-datepicker .p-monthpicker .p-monthpicker-month,
-.p-datepicker .p-yearpicker .p-yearpicker-year {
+.p-datepicker-panel .p-monthpicker .p-monthpicker-month,
+.p-datepicker-panel .p-yearpicker .p-yearpicker-year {
   color: #d1d5db !important;
   border-radius: 8px !important;
   padding: 0.5rem !important;
 }
-.p-datepicker .p-monthpicker .p-monthpicker-month:hover,
-.p-datepicker .p-yearpicker .p-yearpicker-year:hover {
+.p-datepicker-panel .p-monthpicker .p-monthpicker-month:hover,
+.p-datepicker-panel .p-yearpicker .p-yearpicker-year:hover {
   background: rgba(241,37,69,0.08) !important;
   color: #eef2f7 !important;
 }
-.p-datepicker .p-monthpicker .p-monthpicker-month.p-highlight,
-.p-datepicker .p-yearpicker .p-yearpicker-year.p-highlight {
+.p-datepicker-panel .p-monthpicker .p-monthpicker-month.p-highlight,
+.p-datepicker-panel .p-yearpicker .p-yearpicker-year.p-highlight {
   background: #f12545 !important;
   color: #fff !important;
 }
@@ -1098,54 +1231,72 @@ html[data-theme="light"] .p-dropdown-panel .p-dropdown-empty-message {
   color: #6b7280 !important;
 }
 
-html[data-theme="light"] .p-datepicker {
+html[data-theme="light"] .p-datepicker-panel {
   background: #ffffff !important;
   border: 1px solid #e5e7eb !important;
   color: #111827 !important;
   box-shadow: var(--shadow-card) !important;
   min-width: 22.5rem !important;
 }
-html[data-theme="light"] .p-datepicker .p-datepicker-header {
+html[data-theme="light"] .p-datepicker-panel .p-datepicker-header {
   border-bottom: 1px solid #e5e7eb !important;
   color: #111827 !important;
 }
-html[data-theme="light"] .p-datepicker .p-datepicker-title .p-datepicker-month,
-html[data-theme="light"] .p-datepicker .p-datepicker-title .p-datepicker-year {
+html[data-theme="light"] .p-datepicker-panel .p-datepicker-title .p-datepicker-month,
+html[data-theme="light"] .p-datepicker-panel .p-datepicker-title .p-datepicker-year {
   color: #111827 !important;
 }
-html[data-theme="light"] .p-datepicker .p-datepicker-prev,
-html[data-theme="light"] .p-datepicker .p-datepicker-next {
+html[data-theme="light"] .p-datepicker-panel .p-datepicker-prev,
+html[data-theme="light"] .p-datepicker-panel .p-datepicker-next {
   color: #6b7280 !important;
 }
-html[data-theme="light"] .p-datepicker table th {
+html[data-theme="light"] .p-datepicker-panel table th {
   color: #6b7280 !important;
 }
-html[data-theme="light"] .p-datepicker table td > span {
+html[data-theme="light"] .p-datepicker-panel table td > span {
   color: #374151 !important;
 }
-html[data-theme="light"] .p-datepicker table td > span:hover {
+html[data-theme="light"] .p-datepicker-panel table td > span:hover {
   background: #f3f4f6 !important;
   color: #111827 !important;
 }
-html[data-theme="light"] .p-datepicker table td > span.p-highlight {
+html[data-theme="light"] .p-datepicker-panel table td > span.p-highlight {
   background: #f12545 !important;
   color: #fff !important;
 }
-html[data-theme="light"] .p-datepicker table td.p-datepicker-today > span {
+html[data-theme="light"] .p-datepicker-panel table td.p-datepicker-today > span {
   border: 1px solid rgba(241, 37, 69, 0.45) !important;
   color: #f12545 !important;
 }
-html[data-theme="light"] .p-datepicker table td > span.p-disabled {
+html[data-theme="light"] .p-datepicker-panel table td > span.p-disabled {
   color: #d1d5db !important;
   opacity: 0.65 !important;
 }
-html[data-theme="light"] .p-datepicker .p-monthpicker .p-monthpicker-month,
-html[data-theme="light"] .p-datepicker .p-yearpicker .p-yearpicker-year {
+html[data-theme="light"] .p-datepicker-panel .p-monthpicker .p-monthpicker-month,
+html[data-theme="light"] .p-datepicker-panel .p-yearpicker .p-yearpicker-year {
   color: #374151 !important;
 }
-html[data-theme="light"] .p-datepicker .p-timepicker span,
-html[data-theme="light"] .p-datepicker .p-datepicker-time-picker span {
+html[data-theme="light"] .p-datepicker-panel .p-timepicker span,
+html[data-theme="light"] .p-datepicker-panel .p-datepicker-time-picker span {
   color: #111827 !important;
+}
+
+/* Transport search — calendrier : « zoom » = animation d’ouverture (scale + fade), pas de boutons */
+@keyframes transport-search-cal-open {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .transport-search-calendar-panel {
+    animation: none !important;
+  }
 }
 
 /* Transport search: overlay calendrier (appendTo body) — fond opaque, au-dessus du contenu.
@@ -1155,6 +1306,8 @@ html[data-theme="light"] .p-datepicker .p-datepicker-time-picker span {
   isolation: isolate !important;
   border-radius: 12px !important;
   box-shadow: 0 18px 50px rgba(15, 23, 42, 0.22) !important;
+  transform-origin: 50% 0 !important;
+  animation: transport-search-cal-open 0.32s cubic-bezier(0.22, 1, 0.36, 1) both !important;
 }
 
 :root[data-theme="light"] .transport-search-calendar-panel,
@@ -1293,6 +1446,218 @@ html[data-theme="light"] .p-dropdown-panel .p-scroller::-webkit-scrollbar-thumb 
 }
 html[data-theme="light"] .p-dropdown-panel .p-scroller::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
+}
+
+/*
+ * Transport city dropdown — light theme card rows (must follow generic light .p-dropdown-panel
+ * rules above so hover / highlight are not overridden).
+ */
+html[data-theme="light"] .p-dropdown-panel.transport-city-dropdown-panel.p-dropdown-panel {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+}
+html[data-theme="light"] .p-dropdown-panel.transport-city-dropdown-panel .p-dropdown-header {
+  background: #f9fafb !important;
+  border-bottom: 1px solid #e5e7eb !important;
+}
+html[data-theme="light"] .p-dropdown-panel.transport-city-dropdown-panel .p-dropdown-items-wrapper,
+html[data-theme="light"] .p-dropdown-panel.transport-city-dropdown-panel .p-dropdown-items,
+html[data-theme="light"] .p-dropdown-panel.transport-city-dropdown-panel .p-scroller-content,
+html[data-theme="light"] .transport-city-dropdown-panel .p-select-list-container,
+html[data-theme="light"] .transport-city-dropdown-panel .p-select-list {
+  background: #f3f4f6 !important;
+}
+html[data-theme="light"] .p-dropdown-panel.transport-city-dropdown-panel .p-dropdown-item {
+  margin: 0.35rem 0.45rem !important;
+  padding: 0.75rem 1rem !important;
+  border-radius: 10px !important;
+  background: #ffffff !important;
+  color: #111827 !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06) !important;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease !important;
+}
+html[data-theme="light"] .transport-city-dropdown-panel .p-select-option {
+  margin: 0.35rem 0.45rem !important;
+  padding: 0.75rem 1rem !important;
+  border-radius: 10px !important;
+  background: #ffffff !important;
+  color: #111827 !important;
+  border: 1px solid #e5e7eb !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06) !important;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease !important;
+}
+html[data-theme="light"] .p-dropdown-panel.transport-city-dropdown-panel .p-dropdown-item:hover:not(.p-disabled),
+html[data-theme="light"] .p-dropdown-panel.transport-city-dropdown-panel .p-dropdown-item.p-focus:not(.p-disabled) {
+  background: #eef0f4 !important;
+  color: #111827 !important;
+  border-color: #d1d5db !important;
+}
+html[data-theme="light"] .transport-city-dropdown-panel .p-select-option:hover:not(.p-disabled),
+html[data-theme="light"] .transport-city-dropdown-panel .p-select-option.p-focus:not(.p-disabled) {
+  background: #eef0f4 !important;
+  color: #111827 !important;
+  border-color: #d1d5db !important;
+}
+html[data-theme="light"] .p-dropdown-panel.transport-city-dropdown-panel .p-dropdown-item.p-highlight {
+  background: #fff1f2 !important;
+  color: #9f1239 !important;
+  border-color: rgba(241, 37, 69, 0.42) !important;
+  font-weight: 600 !important;
+}
+html[data-theme="light"] .transport-city-dropdown-panel .p-select-option.p-selected {
+  background: #fff1f2 !important;
+  color: #9f1239 !important;
+  border-color: rgba(241, 37, 69, 0.42) !important;
+  font-weight: 600 !important;
+}
+html[data-theme="light"] .p-dropdown-panel.transport-city-dropdown-panel .p-dropdown-item.p-highlight:hover:not(.p-disabled),
+html[data-theme="light"] .p-dropdown-panel.transport-city-dropdown-panel .p-dropdown-item.p-highlight.p-focus:not(.p-disabled) {
+  background: #ffe4e6 !important;
+  color: #881337 !important;
+  border-color: rgba(241, 37, 69, 0.5) !important;
+}
+html[data-theme="light"] .transport-city-dropdown-panel .p-select-option.p-selected:hover:not(.p-disabled),
+html[data-theme="light"] .transport-city-dropdown-panel .p-select-option.p-selected.p-focus:not(.p-disabled) {
+  background: #ffe4e6 !important;
+  color: #881337 !important;
+  border-color: rgba(241, 37, 69, 0.5) !important;
+}
+
+/* Light transport scrollbar for PrimeNG p-select list container */
+html[data-theme="light"] .transport-city-dropdown-panel .p-select-list-container {
+  scrollbar-color: var(--tunisia-red) var(--surface-2);
+}
+html[data-theme="light"] .transport-city-dropdown-panel .p-select-list-container::-webkit-scrollbar {
+  width: 8px;
+}
+html[data-theme="light"] .transport-city-dropdown-panel .p-select-list-container::-webkit-scrollbar-track {
+  background: var(--surface-2);
+  border-radius: 10px;
+  margin: 4px 0;
+}
+html[data-theme="light"] .transport-city-dropdown-panel .p-select-list-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--tunisia-red), color-mix(in srgb, var(--tunisia-red) 65%, #000));
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+html[data-theme="light"] .transport-city-dropdown-panel .p-select-list-container::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tunisia-red) 90%, #fff), var(--tunisia-red));
+  background-clip: padding-box;
+}
+html[data-theme="light"] .p-dropdown-panel.transport-city-dropdown-panel .sb-dd-item,
+html[data-theme="light"] .p-dropdown-panel.transport-city-dropdown-panel .sb-dd-selected {
+  color: inherit !important;
+}
+html[data-theme="light"] .p-dropdown-panel.transport-city-dropdown-panel .sb-dd-placeholder {
+  color: #6b7280 !important;
+}
+
+/* Transport regions: mirror stays city-picker design/colors */
+.transport-city-dropdown-panel {
+  border-radius: 12px !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+html:not([data-theme="light"]) .transport-city-dropdown-panel,
+html[data-theme="dark"] .transport-city-dropdown-panel,
+:root[data-theme="dark"] .transport-city-dropdown-panel {
+  background: linear-gradient(180deg, var(--surface-1) 0%, var(--surface-2) 100%) !important;
+  border: 1px solid color-mix(in srgb, var(--tunisia-red) 22%, var(--border-soft)) !important;
+}
+
+html[data-theme="light"] .transport-city-dropdown-panel,
+:root[data-theme="light"] .transport-city-dropdown-panel {
+  background: linear-gradient(180deg, var(--surface-1) 0%, var(--surface-2) 100%) !important;
+  border: 1px solid color-mix(in srgb, var(--tunisia-red) 22%, var(--border-soft)) !important;
+}
+
+.transport-city-dropdown-panel .p-dropdown-items-wrapper,
+.transport-city-dropdown-panel .p-select-list-container,
+.transport-city-dropdown-panel .p-dropdown-items,
+.transport-city-dropdown-panel .p-select-list,
+.transport-city-dropdown-panel .p-scroller-content {
+  background: transparent !important;
+}
+
+.transport-city-dropdown-panel .p-dropdown-items-wrapper,
+.transport-city-dropdown-panel .p-select-list-container,
+.transport-city-dropdown-panel .p-scroller {
+  scrollbar-width: thin;
+  scrollbar-color: var(--tunisia-red) var(--surface-2);
+}
+
+.transport-city-dropdown-panel .p-dropdown-items-wrapper::-webkit-scrollbar,
+.transport-city-dropdown-panel .p-select-list-container::-webkit-scrollbar,
+.transport-city-dropdown-panel .p-scroller::-webkit-scrollbar {
+  width: 8px;
+}
+
+.transport-city-dropdown-panel .p-dropdown-items-wrapper::-webkit-scrollbar-track,
+.transport-city-dropdown-panel .p-select-list-container::-webkit-scrollbar-track,
+.transport-city-dropdown-panel .p-scroller::-webkit-scrollbar-track {
+  background: var(--surface-2);
+  border-radius: 10px;
+  margin: 4px 0;
+}
+
+.transport-city-dropdown-panel .p-dropdown-items-wrapper::-webkit-scrollbar-thumb,
+.transport-city-dropdown-panel .p-select-list-container::-webkit-scrollbar-thumb,
+.transport-city-dropdown-panel .p-scroller::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--tunisia-red), color-mix(in srgb, var(--tunisia-red) 65%, #000));
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.transport-city-dropdown-panel .p-dropdown-items-wrapper::-webkit-scrollbar-thumb:hover,
+.transport-city-dropdown-panel .p-select-list-container::-webkit-scrollbar-thumb:hover,
+.transport-city-dropdown-panel .p-scroller::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tunisia-red) 90%, #fff), var(--tunisia-red));
+  background-clip: padding-box;
+}
+
+.transport-city-dropdown-panel .p-dropdown-item,
+.transport-city-dropdown-panel .p-select-option {
+  margin: 2px 0 !important;
+  padding: 10px 12px !important;
+  border: none !important;
+  border-radius: 8px !important;
+  background: transparent !important;
+  color: var(--text-color) !important;
+  font-size: 0.88rem !important;
+  font-weight: 500 !important;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.12s ease !important;
+}
+
+.transport-city-dropdown-panel .p-dropdown-item:hover:not(.p-disabled),
+.transport-city-dropdown-panel .p-dropdown-item.p-focus:not(.p-disabled),
+.transport-city-dropdown-panel .p-select-option:hover:not(.p-disabled),
+.transport-city-dropdown-panel .p-select-option.p-focus:not(.p-disabled) {
+  background: color-mix(in srgb, var(--tunisia-red) 12%, var(--surface-2)) !important;
+  color: var(--text-color) !important;
+  transform: translateX(2px);
+}
+
+.transport-city-dropdown-panel .p-dropdown-item.p-highlight,
+.transport-city-dropdown-panel .p-dropdown-item[aria-selected="true"],
+.transport-city-dropdown-panel .p-select-option.p-selected,
+.transport-city-dropdown-panel .p-select-option[aria-selected="true"] {
+  background: color-mix(in srgb, var(--tunisia-red) 18%, var(--surface-1)) !important;
+  color: var(--tunisia-red) !important;
+  font-weight: 600 !important;
 }
 
 /* RTL (Arabic): logical properties where helpful */

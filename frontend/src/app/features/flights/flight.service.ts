@@ -4,40 +4,68 @@ import { Observable } from 'rxjs';
 import {
   AirportResolveResponse,
   ApiResponse,
-  FlightDto,
+  FlightBookingRequest,
+  FlightBookingResponse,
+  FlightOfferDto,
   FlightSuggestionResponse,
 } from './flight.models';
 
-/**
- * All flight data goes through the Spring Boot proxy — never Aviationstack from the browser.
- */
+export type FlightSearchType = 'internal' | 'external';
+
+export interface FlightSearchParams {
+  dep: string;
+  arr?: string;
+  date?: string;
+  adults?: number;
+  cabinClass?: string;
+  limit?: number;
+  type: FlightSearchType;
+}
+
 @Injectable({ providedIn: 'root' })
 export class FlightService {
   private readonly http = inject(HttpClient);
   private readonly base = '/api/flights';
 
-  getAllFlights(limit?: number): Observable<ApiResponse<FlightDto[]>> {
+  getAllFlights(limit?: number): Observable<ApiResponse<FlightOfferDto[]>> {
     let params = new HttpParams();
     if (limit != null && limit > 0) {
       params = params.set('limit', String(limit));
     }
-    return this.http.get<ApiResponse<FlightDto[]>>(this.base, { params });
+    return this.http.get<ApiResponse<FlightOfferDto[]>>(this.base, { params });
   }
 
-  searchByRoute(depIata: string, arrIata: string, limit?: number): Observable<ApiResponse<FlightDto[]>> {
-    let params = new HttpParams().set('dep', depIata.trim()).set('arr', arrIata.trim());
-    if (limit != null && limit > 0) {
-      params = params.set('limit', String(limit));
+  searchFlights(search: FlightSearchParams): Observable<ApiResponse<FlightOfferDto[]>> {
+    let params = new HttpParams()
+      .set('dep', search.dep.trim().toUpperCase())
+      .set('type', search.type)
+      .set('adults', String(Math.max(1, search.adults ?? 1)))
+      .set('cabinClass', (search.cabinClass || 'economy').trim());
+
+    const arr = (search.arr || '').trim().toUpperCase();
+    if (arr) {
+      params = params.set('arr', arr);
     }
-    return this.http.get<ApiResponse<FlightDto[]>>(`${this.base}/search`, { params });
+    if (search.date) {
+      params = params.set('date', search.date);
+    }
+    if (search.limit != null && search.limit > 0) {
+      params = params.set('limit', String(search.limit));
+    }
+
+    return this.http.get<ApiResponse<FlightOfferDto[]>>(`${this.base}/search`, { params });
   }
 
-  suggestForDestination(
+  suggestFlights(
     destination: string,
-    originIata = 'TUN',
+    originIata?: string,
     limit?: number,
   ): Observable<ApiResponse<FlightSuggestionResponse>> {
-    let params = new HttpParams().set('destination', destination.trim()).set('origin', originIata.trim());
+    let params = new HttpParams().set('destination', destination.trim());
+    const origin = (originIata || '').trim();
+    if (origin) {
+      params = params.set('origin', origin);
+    }
     if (limit != null && limit > 0) {
       params = params.set('limit', String(limit));
     }
@@ -49,5 +77,45 @@ export class FlightService {
   resolveAirport(query: string): Observable<ApiResponse<AirportResolveResponse>> {
     const params = new HttpParams().set('q', query.trim());
     return this.http.get<ApiResponse<AirportResolveResponse>>(`${this.base}/resolve-airport`, { params });
+  }
+
+  getOfferById(offerId: string): Observable<ApiResponse<FlightOfferDto>> {
+    return this.http.get<ApiResponse<FlightOfferDto>>(`${this.base}/offers/${encodeURIComponent(offerId)}`);
+  }
+
+  bookFlight(payload: FlightBookingRequest): Observable<ApiResponse<FlightBookingResponse>> {
+    return this.http.post<ApiResponse<FlightBookingResponse>>(`${this.base}/book`, payload);
+  }
+
+  // Compatibility wrappers for existing call sites.
+  searchByRoute(
+    depIata: string,
+    arrIata: string,
+    departureDate?: string,
+    adults = 1,
+    cabinClass = 'economy',
+    limit?: number,
+  ): Observable<ApiResponse<FlightOfferDto[]>> {
+    return this.searchFlights({
+      dep: depIata,
+      arr: arrIata,
+      date: departureDate,
+      adults,
+      cabinClass,
+      limit,
+      type: 'internal',
+    });
+  }
+
+  suggestForDestination(
+    destination: string,
+    originIata?: string,
+    limit?: number,
+  ): Observable<ApiResponse<FlightSuggestionResponse>> {
+    return this.suggestFlights(destination, originIata, limit);
+  }
+
+  createOrder(payload: FlightBookingRequest): Observable<ApiResponse<FlightBookingResponse>> {
+    return this.bookFlight(payload);
   }
 }

@@ -74,6 +74,22 @@ export class ExploreService {
     return this.http.get<Activity>(`${this.base}/activities/${activityId}`);
   }
 
+  listAccommodationReviews(accommodationId: number, page: number, size: number): Observable<PublicReviewPageResponse> {
+    const params = new HttpParams()
+      .set('page', page)
+      .set('size', size)
+      .set('sort', 'createdAt,desc');
+    return this.http.get<PublicReviewPageResponse>(`${this.base}/accommodations/${accommodationId}/reviews`, { params });
+  }
+
+  createOrUpdateAccommodationReview(accommodationId: number, payload: CreatePublicReviewRequest): Observable<PublicReview> {
+    return this.http.post<PublicReview>(`${this.base}/accommodations/${accommodationId}/reviews`, payload);
+  }
+
+  getAccommodationReviewSummary(accommodationId: number): Observable<ReviewSummary> {
+    return this.http.get<ReviewSummary>(`${this.base}/accommodations/${accommodationId}/reviews/summary`);
+  }
+
   listRestaurantReviews(restaurantId: number, page: number, size: number): Observable<PublicReviewPageResponse> {
     const params = new HttpParams()
       .set('page', page)
@@ -174,5 +190,9 @@ export class ExploreService {
 
   deleteActivityReviewMine(activityId: number): Observable<void> {
     return this.http.delete<void>(this.base + '/activities/' + activityId + '/reviews/mine');
+  }
+
+  deleteAccommodationReviewMine(accommodationId: number): Observable<void> {
+    return this.http.delete<void>(this.base + '/accommodations/' + accommodationId + '/reviews/mine');
   }
 }

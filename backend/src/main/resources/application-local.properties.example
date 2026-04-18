@@ -1,9 +1,13 @@
 # 1. Copy this file to: application-local.properties (same folder)
-# 2. application-local.properties is gitignored — put real secrets only there.
-# 3. Run the backend with: --spring.profiles.active=local (recommended for full local overrides)
+# 2. Put secrets and machine-specific overrides only there (keep that file out of git if it contains secrets).
+# 3. Run the backend with: --spring.profiles.active=local (optional; merges on top of application.properties)
 #
-# Base defaults live in application.properties (tracked in git). Profile "local" loads this file
-# on top of those defaults. You can also override any key via environment variables.
+# Base defaults (datasource, server.port, OAuth placeholders) live in application.properties.
+
+# --- Override MySQL if needed ---
+# spring.datasource.url=jdbc:mysql://127.0.0.1:3306/yallatn?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=utf8&serverTimezone=Africa/Tunis
+# spring.datasource.username=root
+# spring.datasource.password=yourpassword
 
 # Optional: sign-in without email verification link (dev only)
 # app.auth.require-email-verified-for-signin=false

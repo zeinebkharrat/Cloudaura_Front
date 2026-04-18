@@ -10,7 +10,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import * as L from 'leaflet';
-import { FlightDto } from './flight.models';
+import { FlightOfferDto } from './flight.models';
 
 /**
  * Leaflet map: great-circle style preview between departure and arrival using backend-supplied coordinates.
@@ -65,7 +65,7 @@ import { FlightDto } from './flight.models';
 })
 export class FlightRouteMapComponent implements AfterViewInit, OnChanges, OnDestroy {
   @ViewChild('mapContainer') mapEl!: ElementRef<HTMLDivElement>;
-  @Input() flight: FlightDto | null = null;
+  @Input() flight: FlightOfferDto | null = null;
 
   hasCoords = false;
   private map?: L.Map;

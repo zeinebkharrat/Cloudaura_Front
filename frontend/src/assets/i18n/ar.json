@@ -607,6 +607,8 @@
     "CONFIRM_KEEP": "الإبقاء على الحجز",
     "ALERT_CANCEL_FAILED_TITLE": "فشل الإلغاء",
     "ALERT_CANCEL_FAILED_BODY": "تعذر إلغاء هذا الحجز. أعد المحاولة أو تواصل مع الدعم.",
+    "ALERT_CANCEL_TOO_LATE_TRANSPORT": "الإلغاء غير مسموح عندما يتبقى أقل من 24 ساعة على موعد الانطلاق.",
+    "ALERT_CANCEL_TOO_LATE_STAY": "الإلغاء غير مسموح عندما يتبقى أقل من 24 ساعة على موعد تسجيل الوصول.",
     "ALERT_ALREADY_CANCELLED_TRIP_TITLE": "ملغاة مسبقًا",
     "ALERT_ALREADY_CANCELLED_TRIP_BODY": "هذه الرحلة كانت ملغاة مسبقًا. تم تحديث القائمة.",
     "TOAST_ALREADY_CANCELLED_TRIP": "هذه الرحلة كانت ملغاة مسبقًا.",

@@ -607,6 +607,8 @@
     "CONFIRM_KEEP": "Conserver la réservation",
     "ALERT_CANCEL_FAILED_TITLE": "Échec de l’annulation",
     "ALERT_CANCEL_FAILED_BODY": "Impossible d’annuler cette réservation. Réessayez ou contactez le support.",
+    "ALERT_CANCEL_TOO_LATE_TRANSPORT": "L’annulation n’est plus possible à moins de 24 heures du départ.",
+    "ALERT_CANCEL_TOO_LATE_STAY": "L’annulation n’est plus possible à moins de 24 heures du check-in.",
     "ALERT_ALREADY_CANCELLED_TRIP_TITLE": "Déjà annulé",
     "ALERT_ALREADY_CANCELLED_TRIP_BODY": "Ce trajet était déjà annulé. La liste a été actualisée.",
     "TOAST_ALREADY_CANCELLED_TRIP": "Ce trajet était déjà annulé.",

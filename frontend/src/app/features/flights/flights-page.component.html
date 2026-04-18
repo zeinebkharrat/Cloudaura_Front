@@ -2,86 +2,53 @@
   <header class="page-hero">
     <a routerLink="/transport" class="back-link"><i class="pi pi-arrow-left"></i> Transport hub</a>
     <div class="hero-text">
-      <h1>Live flight schedules</h1>
-      <p class="sub">Search flights from any destination in real time</p>
+      <h1>Flight search</h1>
+      <p class="sub">Search internal Tunisia routes or international flights to Tunisia.</p>
     </div>
   </header>
 
-  @if (suggestionMeta?.resolvedDestinationLabel) {
-    <div class="suggest-banner" role="status">
-      <span class="banner-icon" aria-hidden="true"><i class="pi pi-send"></i></span>
-      <div class="banner-text">
-        <span class="banner-title">Route</span>
-        <span class="banner-line">
-          <strong>{{ suggestionMeta!.originAirportIata }}</strong>
-          <span class="banner-arrow">→</span>
-          <strong>{{ suggestionMeta!.resolvedDestinationLabel }}</strong>
-          @if (suggestionMeta!.destinationAirportIata) {
-            <span class="banner-iata">({{ suggestionMeta!.destinationAirportIata }})</span>
-          }
-        </span>
-      </div>
-    </div>
-  }
-
   <app-flight-search
     [loading]="loading"
-    [destinationQuery]="destinationQuery"
-    [originIata]="originIata"
-    [suggestions]="autocompleteSuggestions"
-    (destinationQueryChange)="onDestinationQueryChange($event)"
-    (originIataChange)="onOriginIataChange($event)"
-    (searchSubmit)="onSearchSubmit()"
-    (pickSuggestion)="onPickSuggestion($event)"
+    [flightType]="flightType"
+    [from]="selectedFrom"
+    [to]="selectedTo"
+    [travelDate]="selectedDate"
+    [minTravelDate]="minTravelDate"
+    [tunisianAirports]="tunisianAirportOptions"
+    [fromSuggestions]="fromSuggestions"
+    [internalSearchDisabled]="internalSearchDisabled"
+    [validationMessage]="searchValidationMessage"
+    [fromInvalid]="!!searchValidationMessage && !selectedFrom"
+    [toInvalid]="hasSameAirport"
+    [dateInvalid]="hasPastDate || (!selectedDate && !!searchValidationMessage)"
+    (fromChange)="onFromChange($event)"
+    (toChange)="onToChange($event)"
+    (travelDateChange)="onDateChange($event)"
+    (pickFromSuggestion)="onPickFromSuggestion($event)"
+    (swapRequested)="onSwapRequested()"
+    (searchSubmit)="onSearchSubmit($event)"
   />
+
+  @if (bookingMessage) {
+    <div class="booking-state booking-success" role="status">{{ bookingMessage }}</div>
+  }
+  @if (bookingError) {
+    <div class="booking-state booking-error" role="alert">{{ bookingError }}</div>
+  }
 
   @if (hasSearched && apiFlights.length > 0) {
     <section class="filters-bar" aria-label="Flight filters">
-      <div class="filter-group">
-        <span class="filter-label">Status</span>
-        <div class="chips">
-          <button type="button" class="chip" [class.active]="statusFilter === 'all'" (click)="setStatusFilter('all')">
-            All
-          </button>
-          <button
-            type="button"
-            class="chip"
-            [class.active]="statusFilter === 'on_time'"
-            (click)="setStatusFilter('on_time')"
-          >
-            On time
-          </button>
-          <button
-            type="button"
-            class="chip"
-            [class.active]="statusFilter === 'delayed'"
-            (click)="setStatusFilter('delayed')"
-          >
-            Delayed
-          </button>
-          <button
-            type="button"
-            class="chip"
-            [class.active]="statusFilter === 'scheduled'"
-            (click)="setStatusFilter('scheduled')"
-          >
-            Scheduled
-          </button>
-        </div>
-      </div>
-      <div class="filter-group filter-dd">
-        <label class="filter-label" for="airlineFilter">Airline</label>
-        <p-dropdown
-          inputId="airlineFilter"
-          [options]="airlineDropdownOptions"
-          [(ngModel)]="airlineFilter"
-          placeholder="All airlines"
-          [showClear]="true"
-          optionLabel="label"
-          optionValue="value"
-          styleClass="flights-filter-dropdown"
-          [disabled]="airlineDropdownOptions.length === 0"
-        ></p-dropdown>
+      <div class="filter-group filter-price">
+        <label class="filter-label" for="maxPrice">Max price</label>
+        <input
+          id="maxPrice"
+          type="number"
+          min="0"
+          step="1"
+          class="price-input"
+          [(ngModel)]="maxPrice"
+          placeholder="e.g. 500"
+        />
       </div>
       <div class="filter-group filter-dd">
         <label class="filter-label" for="sortKey">Sort by</label>
@@ -92,34 +59,22 @@
           optionLabel="label"
           optionValue="value"
           styleClass="flights-filter-dropdown"
+          panelStyleClass="flights-filter-panel"
         ></p-dropdown>
       </div>
-      <button pButton type="button" label="Clear filters" class="p-button-text clear-filters" (click)="clearFilters()"></button>
+      <button pButton type="button" label="Clear" class="p-button-text clear-filters" (click)="clearFiltersAndSort()"></button>
     </section>
   }
 
   <section class="results-section">
     <div class="results-toolbar">
       <h2 class="results-title">Results</h2>
-      <div class="results-actions">
-        <button
-          pButton
-          type="button"
-          icon="pi pi-refresh"
-          class="p-button-rounded p-button-text refresh-btn"
-          [disabled]="loading || lastSearchDestination.trim().length < 2"
-          (click)="refreshResults()"
-          pTooltip="Refresh results"
-          tooltipPosition="bottom"
-        ></button>
-        <div class="map-toggle">
-          <label for="showMap">Show map</label>
-          <p-inputSwitch inputId="showMap" [(ngModel)]="mapMode" (ngModelChange)="onMapToggle($event)"></p-inputSwitch>
-        </div>
-      </div>
+      @if (cheapestOfferId) {
+        <div class="cheapest-hint">Cheapest highlighted</div>
+      }
     </div>
 
-    <div class="content-split" [class.with-map]="mapMode">
+    <div class="content-split">
       <div class="list-col">
         <app-flight-list
           [flights]="displayFlights"
@@ -129,15 +84,12 @@
           [idleHint]="idleHint"
           [hasSearched]="hasSearched"
           [selected]="selected"
-          [mapMode]="mapMode"
+          [mapMode]="false"
+          [cheapestOfferId]="cheapestOfferId"
           (selectFlight)="onSelectFlight($event)"
+          (bookFlight)="onBookFlight($event)"
         />
       </div>
-      @if (mapMode) {
-        <div class="map-col">
-          <app-flight-route-map [flight]="selected" />
-        </div>
-      }
     </div>
   </section>
 </div>
