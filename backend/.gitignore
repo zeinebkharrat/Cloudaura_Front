@@ -5,7 +5,6 @@ target/
 
 # Secrets locaux (Stripe, etc.) — ne pas committer
 src/main/resources/application-local.properties
-.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
 

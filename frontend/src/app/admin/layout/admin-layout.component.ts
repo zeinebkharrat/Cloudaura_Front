@@ -27,7 +27,7 @@ export class AdminLayoutComponent implements OnInit {
   user = computed(() => this.auth.currentUser());
   adminNotifOpen = signal(false);
   adminThemeDark = signal(true);
-  readonly logoPath = 'assets/logo/yallatn-logo.png';
+  readonly logoPath = 'assets/logo/logo.png';
   readonly adminQuickNotifications = computed(() => {
     const liveMessage = this.notificationService.message();
     const items = [

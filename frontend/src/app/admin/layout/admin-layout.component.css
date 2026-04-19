@@ -55,23 +55,26 @@
 }
 
 .sb-logo-mark {
-  width: 64px;
-  height: 64px;
-  border-radius: 16px;
+  width: 880px;
+  height: 115px;
+  border-radius: 62px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(226, 232, 240, 0.95));
-  border: 1px solid rgba(148, 163, 184, 0.5);
-  box-shadow: 0 14px 26px rgba(15, 23, 42, 0.35);
+  background:
+    radial-gradient(circle at 20% 18%, rgba(255, 255, 255, 0.96), rgba(241, 245, 249, 0.96) 62%),
+    linear-gradient(145deg, rgba(224, 242, 254, 0.95), rgba(219, 234, 254, 0.95));
+  border: 1px solid rgba(56, 189, 248, 0.48);
+  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.42), 0 0 0 4px rgba(14, 165, 233, 0.18);
   overflow: hidden;
 }
 
 .sb-logo-img {
-  width: 54px;
-  height: 54px;
-  object-fit: contain;
-  filter: saturate(1.1) contrast(1.08);
+  width: 92px;
+  height: 92px;
+  object-fit: cover;
+  transform: scale(1.22);
+  filter: saturate(1.18) contrast(1.14) drop-shadow(0 4px 8px rgba(15, 23, 42, 0.24));
 }
 
 .sb-logo-text-wrap {
@@ -784,13 +787,14 @@
   }
 
   .sb-logo-mark {
-    width: 52px;
-    height: 52px;
+    width: 74px;
+    height: 74px;
   }
 
   .sb-logo-img {
-    width: 44px;
-    height: 44px;
+    width: 74px;
+    height: 74px;
+    transform: scale(1.18);
   }
 }
 

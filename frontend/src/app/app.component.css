@@ -1,6 +1,6 @@
 .navbar {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: space-between;
   gap: clamp(8px, 1.6vw, 24px);
@@ -36,11 +36,11 @@
   -webkit-backdrop-filter: blur(0);
   border-bottom-color: transparent;
   box-shadow: none;
-  opacity: 0.18;
+  opacity: 1;
 }
 
 .navbar--overlay .logo-img {
-  opacity: 0.35;
+  opacity: 1;
 }
 
 .navbar--overlay .nav-links a,
@@ -94,7 +94,12 @@
 }
 
 .nav-collapse {
-  display: contents;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .logo-link {
@@ -117,7 +122,7 @@
 }
 
 .logo-img {
-  height: 52px;
+  height: 68px;
   width: auto;
   max-width: min(300px, 70vw);
   object-fit: contain;
@@ -126,7 +131,7 @@
 
 @media (max-width: 640px) {
   .logo-img {
-    height: 44px;
+    height: 54px;
     max-width: min(260px, 68vw);
   }
 }
@@ -279,7 +284,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: center;
 }
 
@@ -945,7 +950,7 @@
 
 @media (max-width: 430px) {
   .logo-img {
-    height: 40px;
+    height: 46px;
     max-width: 210px;
   }
 
