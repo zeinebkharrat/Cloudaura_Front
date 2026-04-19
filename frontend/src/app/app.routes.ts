@@ -159,6 +159,7 @@ export const routes: Routes = [
   },
   { path: 'profile', component: ProfileComponent, canActivate: [authGuard] },
   { path: 'settings', component: SettingsComponent, canActivate: [authGuard] },
+  { path: 'digital-passport', component: DigitalPassportComponent, canActivate: [authGuard] },
   {
     path: 'mes-reservations',
     component: MesReservationsComponent,
@@ -371,6 +372,11 @@ export const routes: Routes = [
     pathMatch: 'full',
   },
   {
+    path: 'communaute/digital-passport',
+    redirectTo: 'digital-passport',
+    pathMatch: 'full',
+  },
+  {
     path: 'communaute',
     component: CommunityShellComponent,
     data: {
@@ -420,11 +426,6 @@ export const routes: Routes = [
       {
         path: 'my-posts',
         component: MyPostsComponent,
-        canActivate: [authGuard],
-      },
-      {
-        path: 'digital-passport',
-        component: DigitalPassportComponent,
         canActivate: [authGuard],
       },
       {

@@ -128,6 +128,10 @@
               <i class="pi pi-user"></i>
               <span>Settings</span>
             </a>
+            <a class="user-dd-item" routerLink="/digital-passport" (click)="closeUserMenu()">
+              <i class="pi pi-id-card"></i>
+              <span>Digital Passport</span>
+            </a>
             @if (isAdmin()) {
               <a class="user-dd-item" routerLink="/admin/dashboard" (click)="closeUserMenu()">
                 <i class="pi pi-cog"></i>

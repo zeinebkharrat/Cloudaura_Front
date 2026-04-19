@@ -86,7 +86,7 @@
   color: var(--text-color);
   text-decoration: none;
   font-weight: 600;
-  background: #fff;
+  background: var(--surface-1);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -107,6 +107,38 @@
   cursor: pointer;
   font-weight: 700;
   color: var(--text-color);
+}
+
+:root[data-theme='dark'] .community-sidebar {
+  background: color-mix(in srgb, var(--surface-2) 92%, #0b1322);
+  border-color: color-mix(in srgb, var(--glass-border) 92%, #111f35);
+}
+
+:root[data-theme='dark'] .community-user-card {
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--tunisia-red) 12%, transparent),
+    color-mix(in srgb, var(--surface-2) 90%, #101a2b)
+  );
+  border: 1px solid color-mix(in srgb, var(--glass-border) 88%, #1b2a42);
+}
+
+:root[data-theme='dark'] .community-user-avatar {
+  border-color: color-mix(in srgb, #ffffff 40%, #1c2b43);
+}
+
+:root[data-theme='dark'] .community-nav-link {
+  background: color-mix(in srgb, var(--surface-2) 90%, #0f1828);
+  border-color: color-mix(in srgb, var(--glass-border) 90%, #1a2a40);
+  color: #d5dfef;
+}
+
+:root[data-theme='dark'] .community-nav-link:hover {
+  color: #f5f8ff;
+}
+
+:root[data-theme='dark'] .community-nav-link--active {
+  color: #fff;
 }
 
 .community-shell-content {
