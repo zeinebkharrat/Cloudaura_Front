@@ -31,6 +31,8 @@ public interface ActivityReservationRepository extends JpaRepository<ActivityRes
 	);
 
 	Page<ActivityReservation> findByUserUserIdOrderByReservationDateDesc(Integer userId, Pageable pageable);
+	List<ActivityReservation> findTop5ByUserUserIdOrderByReservationDateDesc(Integer userId);
+	long countByUserUserId(Integer userId);
 
 	void deleteByActivityActivityId(Integer activityId);
 

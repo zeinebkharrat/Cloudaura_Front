@@ -40,6 +40,18 @@ export class RestaurantAdminService {
     return this.http.post<Restaurant>(`${this.base}/${id}/upload-image`, formData);
   }
 
+  uploadMenuImages(id: number, files: File[]): Observable<Restaurant> {
+    const formData = new FormData();
+    for (const file of files) {
+      formData.append('files', file, file.name);
+    }
+    return this.http.post<Restaurant>(`${this.base}/${id}/menu-images`, formData);
+  }
+
+  deleteMenuImage(restaurantId: number, menuImageId: number): Observable<Restaurant> {
+    return this.http.delete<Restaurant>(`${this.base}/${restaurantId}/menu-images/${menuImageId}`);
+  }
+
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${this.base}/${id}`);
   }

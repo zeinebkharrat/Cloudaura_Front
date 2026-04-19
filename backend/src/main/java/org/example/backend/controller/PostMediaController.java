@@ -94,7 +94,8 @@ public class PostMediaController {
             @RequestParam("file") MultipartFile file,
             @RequestParam("postId") Integer postId,
             @RequestParam("mediaType") MediaType mediaType,
-            @RequestParam(value = "orderIndex", required = false) Integer orderIndex
+            @RequestParam(value = "orderIndex", required = false) Integer orderIndex,
+            @RequestParam(value = "autoTagOnPublish", defaultValue = "false") boolean autoTagOnPublish
     ) throws IOException {
         if (file == null || file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.post_media_empty");
@@ -135,7 +136,7 @@ public class PostMediaController {
 
         PostMedia savedMedia = mediaService.addMedia(media);
 
-        if (mediaType == MediaType.IMAGE) {
+        if (mediaType == MediaType.IMAGE && autoTagOnPublish) {
             appendGeminiCategoriesToPostHashtags(post, file);
         }
 

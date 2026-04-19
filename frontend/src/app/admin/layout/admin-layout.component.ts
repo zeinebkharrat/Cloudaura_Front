@@ -1,7 +1,9 @@
-import { Component, signal, computed, OnInit } from '@angular/core';
+import { Component, signal, computed, inject } from '@angular/core';
+import { OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
+import { NotificationService } from '../../core/notification.service';
 
 /** Sidebar entry: PNG from /public/icones or PrimeIcons class (global stylesheet). */
 export interface AdminNavItem {
@@ -23,7 +25,29 @@ export class AdminLayoutComponent implements OnInit {
   sidebarVisible = signal(true);
   isDarkMode = signal(true);
   user = computed(() => this.auth.currentUser());
+  adminNotifOpen = signal(false);
+  adminThemeDark = signal(true);
   readonly logoPath = 'assets/logo/yallatn-logo.png';
+  readonly adminQuickNotifications = computed(() => {
+    const liveMessage = this.notificationService.message();
+    const items = [
+      { id: 'review', title: '3 listings pending moderation', subtitle: 'Review new submissions from partners', urgent: true },
+      { id: 'bookings', title: 'Bookings are up today', subtitle: 'Current trend is +14% compared to yesterday', urgent: false },
+      { id: 'ops', title: 'System health is stable', subtitle: 'No active incidents detected', urgent: false },
+    ];
+
+    if (liveMessage) {
+      return [{ id: 'live', title: liveMessage, subtitle: 'Live platform update', urgent: false }, ...items];
+    }
+
+    return items;
+  });
+  readonly adminUnreadCount = computed(() => this.adminQuickNotifications().filter((item) => item.urgent).length);
+  readonly currentNavItem = computed(() => {
+    const exact = this.nav.find((item) => this.router.url === item.route);
+    if (exact) return exact;
+    return this.nav.find((item) => this.router.url.startsWith(item.route));
+  });
 
   isEventsMenuOpen = false;
 
@@ -46,7 +70,11 @@ export class AdminLayoutComponent implements OnInit {
     { label: 'Settings', route: '/admin/settings', iconClass: 'pi pi-cog', section: 'security' },
   ];
 
-  constructor(public auth: AuthService, private router: Router) {}
+  private readonly notificationService = inject(NotificationService);
+
+  constructor(public auth: AuthService, private router: Router) {
+    this.adminThemeDark.set(document.documentElement.getAttribute('data-theme') !== 'light');
+  }
 
   ngOnInit(): void {
     const currentTheme = localStorage.getItem('theme') || document.documentElement.getAttribute('data-theme') || 'dark';
@@ -81,6 +109,51 @@ export class AdminLayoutComponent implements OnInit {
     this.isDarkMode.set(theme === 'dark');
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
+    this.adminThemeDark.set(theme === 'dark');
+  }
+
+  currentRouteLabel(): string {
+    return this.currentNavItem()?.label ?? 'Dashboard';
+  }
+
+  currentRouteSectionLabel(): string {
+    return this.sectionLabel(this.currentNavItem()?.section);
+  }
+
+  revealCurrentInSidebar() {
+    const item = this.currentNavItem();
+    if (!item) return;
+
+    if (!this.sidebarVisible()) {
+      this.showSidebar();
+    }
+    if (!this.open()) {
+      this.open.set(true);
+    }
+
+    const id = this.navDomId(item);
+    const target = document.getElementById(id);
+    if (!target) return;
+
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    target.classList.add('sb-item-highlight');
+    setTimeout(() => target.classList.remove('sb-item-highlight'), 900);
+  }
+
+  toggleAdminNotifications() {
+    this.adminNotifOpen.update((value) => !value);
+  }
+
+  toggleAdminTheme() {
+    const nextDark = !this.adminThemeDark();
+    document.documentElement.setAttribute('data-theme', nextDark ? 'dark' : 'light');
+    localStorage.setItem('theme', nextDark ? 'dark' : 'light');
+    this.adminThemeDark.set(nextDark);
+    this.isDarkMode.set(nextDark);
+  }
+
+  goToFrontOffice() {
+    this.router.navigateByUrl('/home');
   }
 
   toggleEventsMenu() {

@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { map } from 'rxjs';
-import { AdminUser, AdminUserUpdatePayload, CityOption } from './core/auth.types';
+import { AdminUser, AdminUserInsights, AdminUserUpdatePayload, CityOption } from './core/auth.types';
 
 @Injectable({ providedIn: 'root' })
 export class AdminUserService {
@@ -19,6 +19,10 @@ export class AdminUserService {
 
   getUser(userId: number) {
     return this.http.get<AdminUser>(`/api/admin/users/${userId}`);
+  }
+
+  getUserInsights(userId: number) {
+    return this.http.get<AdminUserInsights>(`/api/admin/users/${userId}/insights`);
   }
 
   updateUser(userId: number, payload: AdminUserUpdatePayload) {

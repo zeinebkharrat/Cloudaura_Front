@@ -16,6 +16,8 @@ public interface LikeEntityRepository extends JpaRepository<LikeEntity, Integer>
     Optional<LikeEntity> findByUserAndPost(User user, Post post);
     List<LikeEntity> findByPost(Post post);
     List<LikeEntity> findByUser(User user);
+        List<LikeEntity> findTop5ByUserUserIdOrderByCreatedAtDesc(Integer userId);
+        long countByUserUserId(Integer userId);
     void deleteByPostPostId(Integer postId);
 
     @Query("SELECT DISTINCT l FROM LikeEntity l "

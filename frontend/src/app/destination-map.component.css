@@ -1,4 +1,4 @@
-.destination-map-page {
+﻿.destination-map-page {
   width: min(1280px, calc(100% - 48px));
   margin: 110px auto 48px;
   display: grid;
@@ -87,6 +87,12 @@
   border: 1px solid rgba(14, 116, 144, 0.26);
   font-size: 1.08rem;
   box-shadow: 0 6px 12px rgba(14, 116, 144, 0.16);
+}
+
+.upload-icon svg {
+  width: 20px;
+  height: 20px;
+  color: #0c4a6e;
 }
 
 .upload-text {

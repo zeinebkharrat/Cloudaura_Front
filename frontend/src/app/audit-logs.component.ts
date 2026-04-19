@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
@@ -28,6 +28,8 @@ export class AuditLogsComponent {
   readonly totalPages = signal(0);
   readonly page = signal(0);
   readonly pageSize = signal(20);
+  readonly quickRange = signal<'none' | '24h' | '7d' | '30d'>('none');
+  readonly parsedLogs = computed(() => this.logs().map((log) => ({ ...log, detailsView: this.parseDetails(log.details) })));
 
   readonly filterForm = this.fb.nonNullable.group({
     q: [''],
@@ -76,6 +78,133 @@ export class AuditLogsComponent {
         error: () => this.actionError.set('Impossible de charger les logs d audit.'),
         complete: () => this.isLoading.set(false),
       });
+  }
+
+  clearFilters(): void {
+    this.filterForm.setValue({
+      q: '',
+      action: '',
+      from: '',
+      to: '',
+    });
+    this.quickRange.set('none');
+    this.loadLogs(0);
+  }
+
+  setQuickRange(range: '24h' | '7d' | '30d'): void {
+    const now = new Date();
+    const from = new Date(now);
+    if (range === '24h') {
+      from.setHours(now.getHours() - 24);
+    } else if (range === '7d') {
+      from.setDate(now.getDate() - 7);
+    } else {
+      from.setDate(now.getDate() - 30);
+    }
+
+    const toInputValue = this.toInputDateTimeLocal(now);
+    const fromInputValue = this.toInputDateTimeLocal(from);
+
+    this.quickRange.set(range);
+    this.filterForm.patchValue({ from: fromInputValue, to: toInputValue });
+    this.loadLogs(0);
+  }
+
+  onPageSizeChange(size: string): void {
+    const parsed = Number(size);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return;
+    }
+    this.pageSize.set(parsed);
+    this.loadLogs(0);
+  }
+
+  actionLabel(action: string): string {
+    return action
+      .toLowerCase()
+      .split('_')
+      .map((chunk) => chunk.charAt(0).toUpperCase() + chunk.slice(1))
+      .join(' ');
+  }
+
+  displayPageCount(): number {
+    const pages = this.totalPages();
+    return pages === 0 ? 1 : pages;
+  }
+
+  displayOrDash(value: string | null | undefined): string {
+    const normalized = value?.trim();
+    return normalized ? normalized : '-';
+  }
+
+  formatLogDate(value: string | Date | null | undefined): string {
+    if (!value) {
+      return '-';
+    }
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return '-';
+    }
+    const pad = (n: number) => n.toString().padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+  }
+
+  private parseDetails(details: string | null | undefined): { summary: string; pairs: Array<{ key: string; value: string }> } {
+    if (!details || !details.trim()) {
+      return { summary: 'No additional details.', pairs: [] };
+    }
+
+    const normalized = details.trim();
+    try {
+      const parsed = JSON.parse(normalized) as unknown;
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const entries = Object.entries(parsed as Record<string, unknown>).slice(0, 8);
+        const pairs = entries.map(([key, value]) => ({
+          key: this.prettifyKey(key),
+          value: this.stringifyDetailValue(value),
+        }));
+        const summary = pairs.map((item) => `${item.key}: ${item.value}`).join(' • ');
+        return { summary, pairs };
+      }
+    } catch {
+      // Keep plain-text fallback for non-JSON details.
+    }
+
+    const compact = normalized.replace(/\s+/g, ' ');
+    return {
+      summary: compact.length > 220 ? `${compact.slice(0, 220)}...` : compact,
+      pairs: [],
+    };
+  }
+
+  private stringifyDetailValue(value: unknown): string {
+    if (value == null) {
+      return 'N/A';
+    }
+    if (typeof value === 'string') {
+      return value;
+    }
+    if (typeof value === 'number' || typeof value === 'boolean') {
+      return String(value);
+    }
+    return JSON.stringify(value);
+  }
+
+  private prettifyKey(key: string): string {
+    return key
+      .replace(/_/g, ' ')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  }
+
+  private toInputDateTimeLocal(date: Date): string {
+    const pad = (value: number) => value.toString().padStart(2, '0');
+    const year = date.getFullYear();
+    const month = pad(date.getMonth() + 1);
+    const day = pad(date.getDate());
+    const hour = pad(date.getHours());
+    const minute = pad(date.getMinutes());
+    return `${year}-${month}-${day}T${hour}:${minute}`;
   }
 
   previousPage(): void {

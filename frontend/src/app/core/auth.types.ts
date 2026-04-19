@@ -14,6 +14,7 @@ export interface UserProfile {
   status: string;
   artisanRequestPending: boolean;
   profileImageUrl?: string | null;
+  coverImageUrl?: string | null;
   /** Gamification points (also returned by GET /api/profile and /api/auth/me). */
   points?: number | null;
   monthlyScore?: number | null;
@@ -92,6 +93,51 @@ export interface AdminUserUpdatePayload {
   status: string;
 }
 
+export interface AdminUserInsights {
+  user: AdminUser;
+  preferences: {
+    interests: string | null;
+    preferredRegion: string | null;
+    travelWith: string | null;
+    budgetLevel: string | null;
+    budgetMin: number | null;
+    budgetMax: number | null;
+    accommodationType: string | null;
+    transportPreference: string | null;
+    preferredCuisine: string | null;
+  };
+  community: {
+    postsCount: number;
+    commentsCount: number;
+    likesGivenCount: number;
+    recentPosts: Array<{ id: number; title: string; subtitle: string; createdAt: string | null }>;
+    recentComments: Array<{ id: number; title: string; subtitle: string; createdAt: string | null }>;
+    recentLikes: Array<{ id: number; title: string; subtitle: string; createdAt: string | null }>;
+  };
+  reservations: {
+    accommodationsCount: number;
+    activityCount: number;
+    eventCount: number;
+    transportCount: number;
+    recentActivityReservations: Array<{
+      id: number;
+      title: string;
+      status: string;
+      totalPrice: number | null;
+      reservationDate: string | null;
+      reservationDateTime: string | null;
+    }>;
+    recentEventReservations: Array<{
+      id: number;
+      title: string;
+      status: string;
+      totalPrice: number | null;
+      reservationDate: string | null;
+      reservationDateTime: string | null;
+    }>;
+  };
+}
+
 export interface SocialProviders {
   google: boolean;
   github: boolean;
@@ -105,8 +151,11 @@ export interface ProfileUpdatePayload {
   email: string;
   phone: string | null;
   nationality: string | null;
+  gender?: 'MALE' | 'FEMALE' | null;
+  dateOfBirth?: string | null;
   cityId: number | null;
   profileImageUrl: string | null;
+  coverImageUrl?: string | null;
 }
 
 export interface ChangePasswordPayload {

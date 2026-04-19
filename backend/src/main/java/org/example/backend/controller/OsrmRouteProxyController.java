@@ -68,26 +68,56 @@ public class OsrmRouteProxyController {
             HttpResponse<byte[]> res = HTTP.send(req, HttpResponse.BodyHandlers.ofByteArray());
             if (res.statusCode() < 200 || res.statusCode() >= 300) {
                 log.warn("OSRM HTTP {} for {} — returning empty routes for client-side fallback", res.statusCode(), url);
-                return fallbackOk();
+                                return ResponseEntity.ok()
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .body(buildFallbackRoute(fromLat, fromLon, toLat, toLon));
             }
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(res.body());
-        } catch (IOException e) {
-            log.warn("OSRM request failed (network) — returning empty routes: {}", e.getMessage());
-            return fallbackOk();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            log.warn("OSRM request interrupted — returning empty routes");
-            return fallbackOk();
+            log.warn("OSRM request interrupted, returning fallback route", e);
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(buildFallbackRoute(fromLat, fromLon, toLat, toLon));
+        } catch (IOException e) {
+            log.warn("OSRM request failed, returning fallback route", e);
+            return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(buildFallbackRoute(fromLat, fromLon, toLat, toLon));
+        } catch (RuntimeException e) {
+            log.warn("OSRM request failed, returning fallback route", e);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(buildFallbackRoute(fromLat, fromLon, toLat, toLon));
         }
     }
 
-    private static ResponseEntity<byte[]> fallbackOk() {
-        return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_JSON)
-                .header("X-YallaTN-Routing", "estimated")
-                .body(OSRM_FALLBACK_JSON);
+    private byte[] buildFallbackRoute(double fromLat, double fromLon, double toLat, double toLon) {
+        double distanceKm = haversineKm(fromLat, fromLon, toLat, toLon);
+        double durationSeconds = Math.max(60.0, (distanceKm / 65.0) * 3600.0);
+        String json = String.format(
+                Locale.US,
+                "{\"routes\":[{\"distance\":%.1f,\"duration\":%.0f,\"geometry\":{\"type\":\"LineString\",\"coordinates\":[[%.6f,%.6f],[%.6f,%.6f]]}}],\"code\":\"Ok\"}",
+                distanceKm * 1000.0,
+                durationSeconds,
+                fromLon,
+                fromLat,
+                toLon,
+                toLat);
+        return json.getBytes(StandardCharsets.UTF_8);
+    }
+
+    private double haversineKm(double lat1, double lon1, double lat2, double lon2) {
+        double r = 6371.0;
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return r * c;
     }
 
     private static boolean isFiniteCoordinate(double lat, double lon) {

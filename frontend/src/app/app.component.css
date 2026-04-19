@@ -1751,3 +1751,263 @@
     display: none; /* Hide in mobile nav to save space */
   }
 }
+
+/* Navbar onboarding tutorial */
+.tour-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 125000;
+  backdrop-filter: saturate(112%);
+  -webkit-backdrop-filter: saturate(112%);
+}
+
+.tour-spotlight {
+  position: fixed;
+  border-radius: 14px;
+  border: 2px solid #38bdf8;
+  box-shadow:
+    0 0 0 200vmax rgba(2, 6, 23, 0.7),
+    0 0 0 1px rgba(255, 255, 255, 0.42),
+    0 10px 30px rgba(56, 189, 248, 0.45);
+  pointer-events: none;
+  transition: top 0.22s ease, left 0.22s ease, width 0.22s ease, height 0.22s ease;
+  animation: tourGlow 1.5s ease-in-out infinite;
+}
+
+.tour-target-active {
+  position: relative;
+  z-index: 125100 !important;
+  transform-origin: center;
+  animation: tourTargetPulse 1.35s ease-in-out infinite;
+  box-shadow: 0 10px 20px rgba(56, 189, 248, 0.22);
+  border-radius: 10px;
+}
+
+.tour-coach {
+  position: fixed;
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 12px;
+  border-radius: 20px;
+  border: 1px solid color-mix(in srgb, var(--glass-border) 76%, #38bdf8 24%);
+  background:
+    radial-gradient(circle at 82% 2%, rgba(56, 189, 248, 0.2), transparent 40%),
+    radial-gradient(circle at 10% 100%, rgba(232, 0, 45, 0.16), transparent 44%),
+    color-mix(in srgb, var(--surface-1) 95%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow:
+    0 24px 48px rgba(15, 23, 42, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  padding: 14px 14px 13px;
+  animation: tourCoachIn 0.22s ease;
+}
+
+.tour-coach::before {
+  content: '';
+  position: absolute;
+  left: 26px;
+  top: -10px;
+  width: 18px;
+  height: 18px;
+  transform: rotate(45deg);
+  background: color-mix(in srgb, var(--surface-1) 92%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--glass-border) 76%, #38bdf8 24%);
+  border-top: 1px solid color-mix(in srgb, var(--glass-border) 76%, #38bdf8 24%);
+}
+
+.tour-coach--below::before {
+  top: auto;
+  bottom: -10px;
+  border-left: 0;
+  border-top: 0;
+  border-right: 1px solid color-mix(in srgb, var(--glass-border) 76%, #38bdf8 24%);
+  border-bottom: 1px solid color-mix(in srgb, var(--glass-border) 76%, #38bdf8 24%);
+}
+
+.tour-coach__media {
+  align-self: stretch;
+  display: grid;
+  place-items: center;
+}
+
+.tour-coach__media img {
+  width: 150px;
+  max-width: 100%;
+  height: 130px;
+  object-fit: cover;
+  border-radius: 14px;
+  border: 0;
+  box-shadow: 0 12px 28px rgba(2, 132, 199, 0.28);
+  background: color-mix(in srgb, var(--surface-2) 74%, transparent);
+}
+
+.tour-coach__content h3 {
+  margin: 0;
+  font-size: 1.06rem;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+}
+
+.tour-coach__content p {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.tour-coach__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--glass-border) 78%, #0284c7 22%);
+  background: color-mix(in srgb, var(--surface-2) 82%, transparent);
+  color: color-mix(in srgb, var(--text-color) 88%, #0284c7 12%);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.tour-progress-row {
+  margin-top: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.tour-progress-track {
+  margin-top: 7px;
+  width: 100%;
+  height: 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-2) 78%, transparent);
+  overflow: hidden;
+}
+
+.tour-progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(120deg, #0ea5e9, #2563eb);
+  transition: width 0.2s ease;
+}
+
+.tour-coach__actions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.tour-btn {
+  border-radius: 10px;
+  border: 1px solid transparent;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.tour-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.tour-btn:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.tour-btn--ghost {
+  border-color: var(--glass-border);
+  background: color-mix(in srgb, var(--surface-1) 90%, transparent);
+  color: var(--text-color);
+}
+
+.tour-btn--primary {
+  color: #fff;
+  background: linear-gradient(135deg, #0284c7, #1d4ed8);
+  box-shadow: 0 10px 22px rgba(2, 132, 199, 0.34);
+}
+
+@media (max-width: 640px) {
+  .tour-coach {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .tour-coach::before {
+    left: 18px;
+  }
+
+  .tour-coach__media {
+    order: 2;
+    justify-self: center;
+  }
+
+  .tour-coach__media img {
+    width: 100%;
+    height: 120px;
+  }
+
+  .tour-coach__actions {
+    justify-content: space-between;
+  }
+
+  .tour-btn {
+    flex: 1;
+    text-align: center;
+  }
+}
+
+@keyframes tourGlow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 200vmax rgba(2, 6, 23, 0.7),
+      0 0 0 1px rgba(255, 255, 255, 0.42),
+      0 10px 30px rgba(56, 189, 248, 0.45);
+  }
+  50% {
+    box-shadow:
+      0 0 0 200vmax rgba(2, 6, 23, 0.73),
+      0 0 0 1px rgba(255, 255, 255, 0.58),
+      0 14px 36px rgba(56, 189, 248, 0.58);
+  }
+}
+
+@keyframes tourCoachIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes tourTargetPulse {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+    filter: drop-shadow(0 0 0 rgba(56, 189, 248, 0));
+  }
+  50% {
+    transform: translateY(-1px) scale(1.02);
+    filter: drop-shadow(0 6px 14px rgba(56, 189, 248, 0.34));
+  }
+}
+
+@keyframes tourTargetRing {
+  0% { opacity: 1; }
+  100% { opacity: 1; }
+}

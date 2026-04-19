@@ -1,20 +1,21 @@
 import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AdminUserService } from './admin-user.service';
 import { AuthService } from './core/auth.service';
-import { AdminUser, CityOption } from './core/auth.types';
+import { AdminUser, AdminUserInsights, CityOption } from './core/auth.types';
 import { extractApiErrorMessage } from './api-error.util';
 import Swal from 'sweetalert2';
 import type { SweetAlertOptions } from 'sweetalert2';
-import { debounceTime, distinctUntilChanged } from 'rxjs';
+import { debounceTime, distinctUntilChanged, firstValueFrom } from 'rxjs';
+import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-admin-users',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterLink],
   templateUrl: './admin-users.component.html',
   styleUrl: './admin-users.component.css',
 })
@@ -25,6 +26,21 @@ export class AdminUsersComponent {
   private readonly destroyRef = inject(DestroyRef);
 
   readonly users = signal<AdminUser[]>([]);
+  readonly usersPage = signal(0);
+  readonly usersPageSize = signal(10);
+  readonly usersTotalPages = computed(() => {
+    const size = this.usersPageSize();
+    if (size <= 0) {
+      return 1;
+    }
+    return Math.max(1, Math.ceil(this.users().length / size));
+  });
+  readonly paginatedUsers = computed(() => {
+    const page = this.usersPage();
+    const size = this.usersPageSize();
+    const start = page * size;
+    return this.users().slice(start, start + size);
+  });
   readonly cities = signal<CityOption[]>([]);
   readonly isLoading = signal(false);
   readonly isSaving = signal(false);
@@ -38,6 +54,244 @@ export class AdminUsersComponent {
   private isTunisiaNationality(value: string | null | undefined): boolean {
     const normalized = (value ?? '').trim().toLowerCase();
     return normalized === 'tunisia' || normalized === 'tunisian' || normalized === 'tunisie';
+  }
+
+  async openUserDetailsPopup(user: AdminUser) {
+    if (this.isSaving()) {
+      return;
+    }
+
+    try {
+      const insights = await firstValueFrom(this.adminUserService.getUserInsights(user.id));
+      const overviewHtml = this.buildOverviewHtml(insights);
+      const preferencesHtml = this.buildPreferencesHtml(insights);
+      const logsHtml = this.buildCommunityLogsHtml(insights);
+      const reservationsHtml = this.buildReservationsHtml(insights);
+
+      await this.popup({
+        title: `${this.escapeHtml(user.username)} profile details`,
+        width: 'min(1080px, 96vw)',
+        showConfirmButton: true,
+        confirmButtonText: 'Close',
+        html: `
+          <div class="details-shell details-shell--full details-shell--tabs">
+            <div class="details-toolbar" role="tablist" aria-label="User details sections">
+              <button type="button" class="details-toggle is-active" data-target="overview">Overview</button>
+              <button type="button" class="details-toggle" data-target="preferences">Preferences</button>
+              <button type="button" class="details-toggle" data-target="logs">Logs</button>
+              <button type="button" class="details-toggle" data-target="reservations">Reservations</button>
+            </div>
+
+            <section class="details-tab-panel is-active" data-panel="overview">${overviewHtml}</section>
+            <section class="details-tab-panel" data-panel="preferences">${preferencesHtml}</section>
+            <section class="details-tab-panel" data-panel="logs">${logsHtml}</section>
+            <section class="details-tab-panel" data-panel="reservations">${reservationsHtml}</section>
+          </div>
+        `,
+        didOpen: () => this.initDetailsTabs(),
+      });
+    } catch (error) {
+      const message = extractApiErrorMessage(error as HttpErrorResponse, 'Could not load user details.');
+      void this.popup({ icon: 'error', title: 'Failed', text: message });
+    }
+  }
+
+  private buildOverviewHtml(insights: AdminUserInsights): string {
+    const profileBlock = this.buildUserProfileBlock(insights.user);
+    return `
+      <section class="details-insights">
+        ${profileBlock}
+        <div class="details-section-header">
+          <h4>Quick metrics</h4>
+          <p>Fast snapshot of community and travel behavior.</p>
+        </div>
+        <div class="insights-grid insights-grid--overview">
+          <article class="insight-card insight-card--community"><h4>Posts</h4><p>${insights.community.postsCount}</p></article>
+          <article class="insight-card insight-card--community"><h4>Comments</h4><p>${insights.community.commentsCount}</p></article>
+          <article class="insight-card insight-card--community"><h4>Likes</h4><p>${insights.community.likesGivenCount}</p></article>
+          <article class="insight-card insight-card--reservation"><h4>Stay</h4><p>${insights.reservations.accommodationsCount}</p></article>
+          <article class="insight-card insight-card--reservation"><h4>Activities</h4><p>${insights.reservations.activityCount}</p></article>
+          <article class="insight-card insight-card--reservation"><h4>Events</h4><p>${insights.reservations.eventCount}</p></article>
+          <article class="insight-card insight-card--reservation"><h4>Transport</h4><p>${insights.reservations.transportCount}</p></article>
+        </div>
+      </section>
+    `;
+  }
+
+  private buildCommunityLogsHtml(insights: AdminUserInsights): string {
+    const communityRows = [
+      ...insights.community.recentPosts.map((item) => this.toTimelineRow('Post', item.title, item.subtitle, item.createdAt)),
+      ...insights.community.recentComments.map((item) => this.toTimelineRow('Comment', item.title, item.subtitle, item.createdAt)),
+      ...insights.community.recentLikes.map((item) => this.toTimelineRow('Like', item.title, item.subtitle, item.createdAt)),
+    ];
+
+    return `
+      <section class="details-insights">
+        <div class="details-section-header">
+          <h4>Community logs</h4>
+          <p>Posts, comments, and likes in one timeline.</p>
+        </div>
+        <div class="timeline timeline--inline">
+          ${communityRows.length ? communityRows.join('') : '<p class="muted">No community action found yet.</p>'}
+        </div>
+      </section>
+    `;
+  }
+
+  private buildReservationsHtml(insights: AdminUserInsights): string {
+    const reservationRows = [
+      ...insights.reservations.recentActivityReservations.map((item) => this.toReservationRow('Activity', item)),
+      ...insights.reservations.recentEventReservations.map((item) => this.toReservationRow('Event', item)),
+    ];
+
+    return `
+      <section class="details-insights">
+        <div class="details-section-header">
+          <h4>Reservation logs</h4>
+          <p>Event and activity reservations with status and price.</p>
+        </div>
+        <div class="timeline timeline--inline">
+          ${reservationRows.length ? reservationRows.join('') : '<p class="muted">No reservation history for this user.</p>'}
+        </div>
+      </section>
+    `;
+  }
+
+  private initDetailsTabs(): void {
+    const toggles = Array.from(document.querySelectorAll<HTMLButtonElement>('.details-toggle[data-target]'));
+    const panels = Array.from(document.querySelectorAll<HTMLElement>('.details-tab-panel[data-panel]'));
+    if (!toggles.length || !panels.length) {
+      return;
+    }
+
+    const activate = (target: string) => {
+      toggles.forEach((btn) => btn.classList.toggle('is-active', btn.dataset['target'] === target));
+      panels.forEach((panel) => panel.classList.toggle('is-active', panel.dataset['panel'] === target));
+    };
+
+    toggles.forEach((btn) => {
+      btn.addEventListener('click', () => activate(btn.dataset['target'] || 'overview'));
+    });
+
+    activate('overview');
+  }
+
+  private buildUserProfileBlock(user: AdminUser): string {
+    const safeFirstName = this.escapeHtml(user.firstName || 'Unknown');
+    const safeLastName = this.escapeHtml(user.lastName || 'User');
+    const safeUsername = this.escapeHtml(user.username || 'unknown');
+    const safeEmail = this.escapeHtml(user.email || 'Email unavailable');
+    const safeNationality = this.escapeHtml(user.nationality || 'Unknown nationality');
+    const safeCity = this.escapeHtml(user.cityName || 'No city');
+    const safeRoles = this.escapeHtml((user.roles || []).join(', ') || 'No role');
+    const initials = (user.firstName?.[0] ?? user.username?.[0] ?? 'U').toUpperCase();
+    const avatar = user.profileImageUrl
+      ? `<img src="${this.escapeHtml(user.profileImageUrl)}" alt="avatar" class="details-avatar" />`
+      : `<div class="details-avatar details-avatar--placeholder">${initials}</div>`;
+
+    return `
+      <div class="details-profile">
+        ${avatar}
+        <div class="details-profile-copy">
+          <h3>${safeFirstName} ${safeLastName}</h3>
+          <p>@${safeUsername} · ${safeEmail}</p>
+          <div class="details-tags">
+            <span class="status ${user.banned ? 'banned' : 'active'}">${user.banned ? 'Banned' : 'Active'}</span>
+            <span class="role-pill">${safeRoles}</span>
+            <span class="role-pill">${safeNationality}</span>
+            <span class="role-pill">${safeCity}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  private buildPreferencesHtml(insights: AdminUserInsights): string {
+    const prefs = insights.preferences;
+    const chips = [
+      ['Interests', prefs.interests || 'Not set'],
+      ['Region', prefs.preferredRegion || 'Not set'],
+      ['Travel with', prefs.travelWith || 'Not set'],
+      ['Budget level', prefs.budgetLevel || 'Not set'],
+      ['Budget range', prefs.budgetMin != null && prefs.budgetMax != null ? `${prefs.budgetMin} - ${prefs.budgetMax}` : 'Not set'],
+      ['Accommodation', prefs.accommodationType || 'Not set'],
+      ['Transport', prefs.transportPreference || 'Not set'],
+      ['Cuisine', prefs.preferredCuisine || 'Not set'],
+    ];
+
+    return `
+      <div class="details-preferences">
+        <div class="details-section-header">
+          <h4>Saved preferences</h4>
+          <p>Model-aligned values shown with clear labels for support and moderation teams.</p>
+        </div>
+        <div class="pref-chips">
+          ${chips
+            .map(
+              ([label, value]) => `
+              <article class="pref-chip">
+                <span>${this.escapeHtml(label)}</span>
+                <strong>${this.escapeHtml(value)}</strong>
+              </article>
+            `,
+            )
+            .join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  private toTimelineRow(type: string, title: string, subtitle: string, createdAt: string | null): string {
+    return `
+      <article class="timeline-item">
+        <span class="timeline-type">${this.escapeHtml(type)}</span>
+        <div class="timeline-body">
+          <h5>${this.escapeHtml(title || type)}</h5>
+          <p>${this.escapeHtml(subtitle || '')}</p>
+          <small>${this.formatDate(createdAt)}</small>
+        </div>
+      </article>
+    `;
+  }
+
+  private toReservationRow(type: string, item: { title: string; status: string; totalPrice: number | null; reservationDate: string | null; reservationDateTime: string | null }): string {
+    const when = item.reservationDateTime || item.reservationDate;
+    const price = item.totalPrice != null ? `${item.totalPrice.toFixed(2)} TND` : 'N/A';
+    return `
+      <article class="timeline-item">
+        <span class="timeline-type">${this.escapeHtml(type)}</span>
+        <div class="timeline-body">
+          <h5>${this.escapeHtml(item.title || type)}</h5>
+          <p>Status: ${this.escapeHtml(item.status || 'UNKNOWN')} · Price: ${this.escapeHtml(price)}</p>
+          <small>${this.formatDate(when)}</small>
+        </div>
+      </article>
+    `;
+  }
+
+  private escapeHtml(value: string): string {
+    return value
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  displayOrFallback(value: string | null | undefined, fallback: string): string {
+    const normalized = value?.trim();
+    return normalized ? normalized : fallback;
+  }
+
+  private formatDate(dateValue: string | null | undefined): string {
+    if (!dateValue) {
+      return 'Date unavailable';
+    }
+    const date = new Date(dateValue);
+    if (Number.isNaN(date.getTime())) {
+      return 'Date unavailable';
+    }
+    return date.toLocaleString();
   }
 
   private isValidPhone(value: string): boolean {
@@ -55,7 +309,10 @@ export class AdminUsersComponent {
   }
 
   private popup(options: SweetAlertOptions) {
-    const darkMode = document.documentElement.getAttribute('data-theme') === 'dark';
+    const darkMode =
+      document.documentElement.getAttribute('data-theme') === 'dark' ||
+      document.documentElement.classList.contains('dark') ||
+      document.body.classList.contains('dark');
     const popupThemeClass = darkMode ? 'bo-popup bo-popup-dark' : 'bo-popup bo-popup-light';
     return Swal.fire({
       customClass: {
@@ -89,10 +346,34 @@ export class AdminUsersComponent {
       next: (users) => {
         const currentUserId = this.authService.currentUser()?.id;
         this.users.set(currentUserId ? users.filter((user) => user.id !== currentUserId) : users);
+        this.usersPage.set(0);
       },
       error: () => this.actionError.set('Could not load users.'),
       complete: () => this.isLoading.set(false),
     });
+  }
+
+  onUsersPageSizeChange(size: string): void {
+    const parsed = Number(size);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return;
+    }
+    this.usersPageSize.set(parsed);
+    this.usersPage.set(0);
+  }
+
+  previousUsersPage(): void {
+    if (this.usersPage() <= 0 || this.isLoading()) {
+      return;
+    }
+    this.usersPage.update((current) => current - 1);
+  }
+
+  nextUsersPage(): void {
+    if (this.usersPage() >= this.usersTotalPages() - 1 || this.isLoading()) {
+      return;
+    }
+    this.usersPage.update((current) => current + 1);
   }
 
   async openEditPopup(user: AdminUser) {

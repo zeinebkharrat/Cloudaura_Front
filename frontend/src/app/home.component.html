@@ -82,27 +82,6 @@
       </button>
     </div>
 
-    <div class="ai-map-matches ai-map-matches--inside" *ngIf="personalizedCityCards().length">
-      <div class="ai-map-matches__head">
-        <p class="ai-map-matches__kicker">AI Prediction</p>
-        <h3>Cities Predits Par AI</h3>
-        <p>Click a city to focus it instantly on the map and reveal your match.</p>
-      </div>
-      <div class="ai-map-matches__list">
-        <button
-          type="button"
-          *ngFor="let city of personalizedCityCards(); let i = index"
-          class="ai-map-chip"
-          [class.ai-map-chip--active]="city.route === activeAiCityRoute()"
-          (click)="focusAiCityOnMap(city)"
-          [style.animationDelay.ms]="120 * i"
-        >
-          <span class="ai-map-chip__pulse" aria-hidden="true"></span>
-          <span class="ai-map-chip__name">{{ city.title }}</span>
-          <strong class="ai-map-chip__score">{{ matchPercent(city) }}%</strong>
-        </button>
-      </div>
-    </div>
   </div>
 
   <div class="map-section-heading section-header">
@@ -121,7 +100,6 @@
     <div id="activities-slider" class="slider-track slider-track--activities" (scroll)="onActivitiesSliderScroll()">
       <a *ngFor="let item of activityCards(); let i = index" [routerLink]="item.route" class="slider-card slider-card--activity-clean card-pop-in" [style.animationDelay.ms]="70 * i">
         <div class="activity-card__media-wrap">
-          <span class="activity-ai-pill" *ngIf="activityAiMatch(item) as ai">AI {{ ai }}%</span>
           <img [src]="item.image" [alt]="item.title" />
         </div>
         <div class="activity-card__body">

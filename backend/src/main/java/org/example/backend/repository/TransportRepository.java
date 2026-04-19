@@ -1,6 +1,7 @@
 package org.example.backend.repository;
 
 import org.example.backend.model.Transport;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -15,14 +16,15 @@ import java.util.Optional;
 @Repository
 public interface TransportRepository extends JpaRepository<Transport, Integer> {
 
-    List<Transport> findByDepartureCity_CityIdAndArrivalCity_CityIdAndIsActiveTrue(int departureCityId, int arrivalCityId);
+        @EntityGraph(attributePaths = {"departureCity", "arrivalCity"})
+        List<Transport> findByDepartureCity_CityIdAndArrivalCity_CityIdAndIsActiveTrue(int departureCityId, int arrivalCityId);
 
     List<Transport> findByDepartureCity_CityIdAndArrivalCity_CityIdAndDepartureTimeBetweenAndIsActiveTrue(
             int dpId, int arId, LocalDateTime start, LocalDateTime end);
 
     List<Transport> findByTypeAndIsActiveTrue(Transport.TransportType type);
 
-        Optional<Transport> findFirstByTypeAndFlightCodeAndDepartureTimeAndArrivalTime(
+    Optional<Transport> findFirstByTypeAndFlightCodeAndDepartureTimeAndArrivalTime(
             Transport.TransportType type,
             String flightCode,
             LocalDateTime departureTime,
@@ -36,7 +38,11 @@ public interface TransportRepository extends JpaRepository<Transport, Integer> {
             Integer departureCityId,
             Integer arrivalCityId);
 
-    List<Transport> findByIsActiveTrue();
+            @EntityGraph(attributePaths = {"departureCity", "arrivalCity"})
+            List<Transport> findByIsActiveTrue();
+
+            @EntityGraph(attributePaths = {"departureCity", "arrivalCity"})
+            List<Transport> findTop5ByIsActiveTrueOrderByDepartureTimeAsc();
 
     @Query("SELECT COUNT(t) FROM Transport t WHERE t.isActive = true")
     long countActive();

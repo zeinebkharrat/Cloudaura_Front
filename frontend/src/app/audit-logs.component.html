@@ -1,25 +1,61 @@
 <section class="admin-layout">
   <header class="admin-header">
     <div>
-      <p class="admin-kicker">Conformite</p>
-      <h1>Journal d audit</h1>
-      <p>Traçabilite des actions sensibles avec export CSV et XLSX.</p>
+      <p class="admin-kicker">Security Center</p>
+      <h1>Audit logs</h1>
+      <p>Trace every sensitive action with fast filtering and exports.</p>
     </div>
   </header>
 
   <article class="users-panel glass-panel">
+    <div class="top-stats">
+      <article class="stat-card">
+        <h4>Total logs</h4>
+        <p>{{ totalElements() }}</p>
+      </article>
+      <article class="stat-card">
+        <h4>Current page</h4>
+        <p>{{ page() + 1 }} / {{ displayPageCount() }}</p>
+      </article>
+      <article class="stat-card">
+        <h4>Export</h4>
+        <p>{{ isExporting() ? 'In progress...' : 'Ready' }}</p>
+      </article>
+    </div>
+
     <form [formGroup]="filterForm" class="search-form">
       <input type="text" formControlName="q" placeholder="Search actor, target email, IP, details..." />
       <select formControlName="action">
-        <option value="">Toutes les actions</option>
+        <option value="">All actions</option>
         @for (action of actions; track action) {
-          <option [value]="action">{{ action }}</option>
+          <option [value]="action">{{ actionLabel(action) }}</option>
         }
       </select>
       <input type="datetime-local" formControlName="from" />
       <input type="datetime-local" formControlName="to" />
-      <button type="button" (click)="loadLogs(0)" [disabled]="isLoading()">Filtrer</button>
+      <button type="button" (click)="loadLogs(0)" [disabled]="isLoading()">Apply</button>
     </form>
+
+    <div class="quick-actions">
+      <div class="range-buttons">
+        <button type="button" class="secondary" [class.active]="quickRange() === '24h'" (click)="setQuickRange('24h')">Last 24h</button>
+        <button type="button" class="secondary" [class.active]="quickRange() === '7d'" (click)="setQuickRange('7d')">Last 7 days</button>
+        <button type="button" class="secondary" [class.active]="quickRange() === '30d'" (click)="setQuickRange('30d')">Last 30 days</button>
+      </div>
+      <div class="quick-controls">
+        <label>
+          Page size
+          <select [value]="pageSize()" (change)="onPageSizeChange($any($event.target).value)">
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </label>
+        <button type="button" class="secondary" (click)="clearFilters()" [disabled]="isLoading()">Reset</button>
+        <button type="button" class="secondary" (click)="loadLogs(0)" [disabled]="isLoading()">Refresh</button>
+      </div>
+    </div>
 
     <div class="toolbar">
       <p class="muted">{{ totalElements() }} log(s)</p>
@@ -56,10 +92,10 @@
             </tr>
           </thead>
           <tbody>
-            @for (log of logs(); track log.id) {
+            @for (log of parsedLogs(); track log.id) {
               <tr>
-                <td>{{ log.createdAt | date:'yyyy-MM-dd HH:mm:ss' }}</td>
-                <td><span class="role-pill">{{ log.action }}</span></td>
+                <td>{{ formatLogDate(log.createdAt) }}</td>
+                <td><span class="role-pill">{{ actionLabel(log.action) }}</span></td>
                 <td>{{ log.actor }}</td>
                 <td>
                   @if (log.targetUserEmail) {
@@ -71,9 +107,23 @@
                     <small>#{{ log.targetUserId }}</small>
                   }
                 </td>
-                <td>{{ log.ipAddress || '-' }}</td>
-                <td class="ua">{{ log.userAgent || '-' }}</td>
-                <td class="details">{{ log.details }}</td>
+                <td>{{ displayOrDash(log.ipAddress) }}</td>
+                <td class="ua">{{ displayOrDash(log.userAgent) }}</td>
+                <td class="details">
+                  <div class="details-card">
+                    @if (log.detailsView.pairs.length > 0) {
+                      <div class="details-pairs">
+                        @for (pair of log.detailsView.pairs; track pair.key) {
+                          <article class="detail-pill">
+                            <span>{{ pair.key }}</span>
+                            <strong>{{ pair.value }}</strong>
+                          </article>
+                        }
+                      </div>
+                    }
+                    <p class="detail-summary">{{ log.detailsView.summary }}</p>
+                  </div>
+                </td>
               </tr>
             }
           </tbody>
@@ -83,11 +133,11 @@
 
     <footer class="pager">
       <button type="button" class="secondary" (click)="previousPage()" [disabled]="page() === 0 || isLoading()">
-        Precedent
+        Previous
       </button>
-      <span>Page {{ page() + 1 }} / {{ totalPages() === 0 ? 1 : totalPages() }}</span>
+      <span>Page {{ page() + 1 }} / {{ displayPageCount() }}</span>
       <button type="button" (click)="nextPage()" [disabled]="page() >= totalPages() - 1 || isLoading()">
-        Suivant
+        Next
       </button>
     </footer>
   </article>

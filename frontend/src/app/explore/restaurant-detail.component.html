@@ -44,8 +44,92 @@
             <span>{{ 'EXPLORE_RESTAURANT.ADDRESS' | translate }}</span>
             <strong>{{ restaurant.address || ('EXPLORE_RESTAURANT.ADDRESS_MISSING' | translate) }}</strong>
           </article>
+          <article class="info-card phone-card">
+            <span>Phone</span>
+            @if (restaurant.phoneNumber) {
+              <strong class="phone-line">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.12.9.33 1.78.62 2.62a2 2 0 0 1-.45 2.11L8 9.91a16 16 0 0 0 6 6l1.46-1.28a2 2 0 0 1 2.11-.45c.84.29 1.72.5 2.62.62A2 2 0 0 1 22 16.92z"/>
+                </svg>
+                {{ restaurant.phoneNumber }}
+              </strong>
+            } @else {
+              <strong>Not provided</strong>
+            }
+          </article>
         </div>
       </div>
+    </article>
+
+    <article class="menu-book-card animate-in delay-2" [class.is-empty]="menuSpreads.length === 0">
+      <div class="card-head menu-book-head">
+        <h2>Digital menu book</h2>
+        <p>Flip through menu pages uploaded by this restaurant.</p>
+      </div>
+
+      @if (menuSpreads.length > 0 && currentMenuSpread) {
+        <div
+          class="menu-book-shell"
+          [class.is-flipping-forward]="menuFlipDirection === 'forward'"
+          [class.is-flipping-backward]="menuFlipDirection === 'backward'"
+          [class.is-animating]="menuFlipDirection !== null"
+        >
+          <div class="menu-book-spine" aria-hidden="true"></div>
+          @if (menuFlipDirection) {
+            <div
+              class="menu-turn-sheet"
+              [class.forward]="menuFlipDirection === 'forward'"
+              [class.backward]="menuFlipDirection === 'backward'"
+              aria-hidden="true"
+            ></div>
+          }
+
+          <section class="menu-page menu-page-left" [class.is-clickable]="canGoPrevious && !menuFlipDirection" (click)="onMenuPageClick('left')">
+            <div class="menu-page-frame">
+              @if (currentMenuSpread.left) {
+                <img [src]="currentMenuSpread.left.imageUrl" [alt]="restaurant.name + ' menu page ' + menuPageNumber('left')" />
+              } @else {
+                <div class="menu-page-empty">No image</div>
+              }
+            </div>
+            <span class="menu-page-index">Page {{ menuPageNumber('left') }}</span>
+          </section>
+
+          <section class="menu-page menu-page-right" [class.is-clickable]="canGoNext && !menuFlipDirection" (click)="onMenuPageClick('right')">
+            <div class="menu-page-frame">
+              @if (currentMenuSpread.right) {
+                <img [src]="currentMenuSpread.right.imageUrl" [alt]="restaurant.name + ' menu page ' + menuPageNumber('right')" />
+              } @else {
+                <div class="menu-page-empty">End of menu</div>
+              }
+            </div>
+            @if (currentMenuSpread.right) {
+              <span class="menu-page-index">Page {{ menuPageNumber('right') }}</span>
+            }
+          </section>
+        </div>
+
+        <div class="menu-book-controls">
+          <button class="mini-btn" type="button" (click)="previousMenuSpread()" [disabled]="menuSpreadIndex === 0 || menuFlipDirection !== null">Previous spread</button>
+          <span>Spread {{ menuSpreadIndex + 1 }} / {{ menuSpreads.length }}</span>
+          <button class="mini-btn" type="button" (click)="nextMenuSpread()" [disabled]="menuSpreadIndex + 1 >= menuSpreads.length || menuFlipDirection !== null">Next spread</button>
+        </div>
+
+        <div class="menu-book-dots">
+          @for (spread of menuSpreads; track $index) {
+            <button
+              type="button"
+              class="menu-book-dot"
+              [class.active]="$index === menuSpreadIndex"
+              (click)="goToMenuSpread($index)"
+              [disabled]="menuFlipDirection !== null"
+              [attr.aria-label]="'Go to spread ' + ($index + 1)"
+            ></button>
+          }
+        </div>
+      } @else {
+        <p class="empty">This restaurant has not added menu pages yet.</p>
+      }
     </article>
 
     <article class="map-card animate-in delay-2">

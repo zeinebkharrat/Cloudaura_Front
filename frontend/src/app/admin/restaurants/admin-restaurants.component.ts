@@ -2,10 +2,10 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { map, of, switchMap } from 'rxjs';
+import { forkJoin, map, Observable, of, switchMap } from 'rxjs';
 import * as L from 'leaflet';
 import Swal from 'sweetalert2';
-import { City, Restaurant, RestaurantRequest } from '../admin-api.models';
+import { City, Restaurant, RestaurantMenuImage, RestaurantRequest } from '../admin-api.models';
 import { CityAdminService } from '../services/city-admin.service';
 import { RestaurantAdminService } from '../services/restaurant-admin.service';
 
@@ -23,6 +23,22 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
   cities: City[] = [];
   q = '';
   cuisineFilter = '';
+  readonly cuisineOptions: string[] = [
+    'Tunisian',
+    'Mediterranean',
+    'Seafood',
+    'Street Food',
+    'Traditional',
+    'Healthy',
+    'Mixed',
+    'Italian',
+    'French',
+    'Asian',
+    'Fast Food',
+    'Cafe',
+    'Vegetarian',
+    'International',
+  ];
   sort = 'restaurantId,desc';
   page = 0;
   size = 10;
@@ -32,17 +48,21 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
   showModal = false;
   showDetailsModal = false;
   modalError = '';
-  fieldErrors: Partial<Record<'cityId' | 'name' | 'rating' | 'latitude' | 'longitude', string>> = {};
+  fieldErrors: Partial<Record<'cityId' | 'name' | 'phoneNumber' | 'rating' | 'latitude' | 'longitude', string>> = {};
   geocodeMessage = '';
   imagePreviewUrl: string | null = null;
   selectedImageFile: File | null = null;
+  selectedMenuImageFiles: File[] = [];
+  menuImagePreviewUrls: string[] = [];
   persistedImageUrl: string | null = null;
+  persistedMenuImages: RestaurantMenuImage[] = [];
   detailsRestaurant: Restaurant | null = null;
 
   editingId: number | null = null;
   form: {
     cityId: number | null;
     name: string;
+    phoneNumber: string;
     cuisineType: string;
     rating: number | null;
     description: string;
@@ -52,6 +72,7 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
   } = {
     cityId: null,
     name: '',
+    phoneNumber: '',
     cuisineType: '',
     rating: null,
     description: '',
@@ -80,6 +101,7 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
       clearTimeout(this.searchDebounceTimer);
     }
     this.revokeImagePreviewIfBlob();
+    this.revokeMenuImagePreviews();
     if (this.map) {
       this.map.remove();
       this.map = undefined;
@@ -140,6 +162,7 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
     this.form = {
       cityId: item.cityId,
       name: item.name,
+      phoneNumber: item.phoneNumber ?? '',
       cuisineType: item.cuisineType ?? '',
       rating: item.rating,
       description: item.description ?? '',
@@ -147,8 +170,10 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
       latitude: item.latitude,
       longitude: item.longitude,
     };
+    this.persistedMenuImages = [...(item.menuImages ?? [])];
     this.setImagePreview(item.imageUrl ?? null);
     this.selectedImageFile = null;
+    this.clearMenuImageSelection();
     this.geocodeMessage = '';
     this.clearValidationErrors();
     this.showModal = true;
@@ -204,6 +229,7 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
     this.form = {
       cityId: null,
       name: '',
+      phoneNumber: '',
       cuisineType: '',
       rating: null,
       description: '',
@@ -212,8 +238,10 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
       longitude: null,
     };
     this.persistedImageUrl = null;
+    this.persistedMenuImages = [];
     this.clearValidationErrors();
     this.clearImageSelection();
+    this.clearMenuImageSelection();
   }
 
   save(): void {
@@ -224,6 +252,7 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
     const payload: RestaurantRequest = {
       cityId: this.form.cityId!,
       name: this.form.name.trim(),
+      phoneNumber: this.form.phoneNumber.trim(),
       cuisineType: this.form.cuisineType.trim() || null,
       rating: this.form.rating,
       description: this.form.description.trim() || null,
@@ -240,13 +269,25 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
     request$
       .pipe(
         switchMap((savedRestaurant) => {
-          if (!this.selectedImageFile) {
+          const uploads: Observable<Restaurant>[] = [];
+
+          if (this.selectedImageFile) {
+            uploads.push(
+              this.restaurantService.uploadImage(savedRestaurant.restaurantId, this.selectedImageFile)
+            );
+          }
+
+          if (this.selectedMenuImageFiles.length > 0) {
+            uploads.push(
+              this.restaurantService.uploadMenuImages(savedRestaurant.restaurantId, this.selectedMenuImageFiles)
+            );
+          }
+
+          if (uploads.length === 0) {
             return of(savedRestaurant);
           }
 
-          return this.restaurantService
-            .uploadImage(savedRestaurant.restaurantId, this.selectedImageFile)
-            .pipe(map(() => savedRestaurant));
+          return forkJoin(uploads).pipe(map(() => savedRestaurant));
         })
       )
       .subscribe({
@@ -348,10 +389,76 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
     this.imagePreviewUrl = URL.createObjectURL(file);
   }
 
+  onMenuImagesFileChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+
+    if (!files.length) {
+      this.clearMenuImageSelection();
+      return;
+    }
+
+    const hasInvalidFile = files.some((file) => !file.type.startsWith('image/'));
+    if (hasInvalidFile) {
+      this.modalError = 'Only images are allowed for menu pages';
+      this.clearMenuImageSelection();
+      return;
+    }
+
+    this.revokeMenuImagePreviews();
+    this.selectedMenuImageFiles = files;
+    this.menuImagePreviewUrls = files.map((file) => URL.createObjectURL(file));
+  }
+
+  removeSelectedMenuImage(index: number): void {
+    if (index < 0 || index >= this.selectedMenuImageFiles.length) {
+      return;
+    }
+
+    const [previewUrl] = this.menuImagePreviewUrls.splice(index, 1);
+    this.selectedMenuImageFiles.splice(index, 1);
+
+    if (previewUrl?.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrl);
+    }
+  }
+
+  removePersistedMenuImage(menuImageId: number): void {
+    if (this.editingId == null) {
+      return;
+    }
+
+    this.restaurantService.deleteMenuImage(this.editingId, menuImageId).subscribe({
+      next: (updated) => {
+        this.persistedMenuImages = [...(updated.menuImages ?? [])];
+
+        const index = this.restaurants.findIndex(
+          (restaurant) => restaurant.restaurantId === updated.restaurantId
+        );
+        if (index >= 0) {
+          this.restaurants[index] = updated;
+        }
+
+        if (this.detailsRestaurant?.restaurantId === updated.restaurantId) {
+          this.detailsRestaurant = updated;
+        }
+      },
+      error: (err) => {
+        this.modalError = err?.error?.message ?? 'Could not delete this menu image';
+      },
+    });
+  }
+
   clearImageSelection(): void {
     this.selectedImageFile = null;
     this.revokeImagePreviewIfBlob();
     this.imagePreviewUrl = this.persistedImageUrl;
+  }
+
+  clearMenuImageSelection(): void {
+    this.selectedMenuImageFiles = [];
+    this.revokeMenuImagePreviews();
+    this.menuImagePreviewUrls = [];
   }
 
   removeCurrentImage(): void {
@@ -373,11 +480,19 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
     }
   }
 
+  private revokeMenuImagePreviews(): void {
+    for (const previewUrl of this.menuImagePreviewUrls) {
+      if (previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    }
+  }
+
   private renderMapLater(): void {
     setTimeout(() => this.initOrUpdateMap(), 0);
   }
 
-  clearFieldError(field: 'cityId' | 'name' | 'rating' | 'latitude' | 'longitude'): void {
+  clearFieldError(field: 'cityId' | 'name' | 'phoneNumber' | 'rating' | 'latitude' | 'longitude'): void {
     delete this.fieldErrors[field];
     this.modalError = '';
   }
@@ -396,6 +511,10 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
 
     if (!this.form.name.trim()) {
       this.fieldErrors.name = 'Restaurant name is required.';
+    }
+
+    if (!this.form.phoneNumber.trim()) {
+      this.fieldErrors.phoneNumber = 'Phone number is required.';
     }
 
     if (this.form.rating != null && (this.form.rating < 0 || this.form.rating > 5)) {
