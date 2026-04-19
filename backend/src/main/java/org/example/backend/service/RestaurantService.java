@@ -5,6 +5,7 @@ import org.example.backend.dto.RestaurantRequest;
 import org.example.backend.i18n.CatalogKeyUtil;
 import org.example.backend.dto.RestaurantResponse;
 import org.example.backend.exception.ResourceNotFoundException;
+import org.example.backend.model.CuisineType;
 import org.example.backend.model.Restaurant;
 import org.example.backend.repository.RestaurantRepository;
 import org.springframework.data.domain.Page;
@@ -13,6 +14,8 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -32,14 +35,17 @@ public class RestaurantService {
     }
 
     public Page<RestaurantResponse> list(String q, Integer cityId, String cuisineType, Pageable pageable) {
+        final CuisineType cuisineFilterEnum = parseCuisineOrNull(cuisineType, false);
+
         Specification<Restaurant> spec = (root, query, cb) -> {
             var predicate = cb.conjunction();
 
             if (q != null && !q.isBlank()) {
                 String like = "%" + q.trim().toLowerCase() + "%";
+                CuisineType qCuisine = parseCuisineOrNull(q, false);
                 predicate = cb.and(predicate, cb.or(
                     cb.like(cb.lower(root.get("name")), like),
-                    cb.like(cb.lower(root.get("cuisineType")), like),
+                    qCuisine != null ? cb.equal(root.get("cuisineType"), qCuisine) : cb.disjunction(),
                     cb.like(cb.lower(root.get("city").get("name")), like)
                 ));
             }
@@ -48,9 +54,8 @@ public class RestaurantService {
                 predicate = cb.and(predicate, cb.equal(root.get("city").get("cityId"), cityId));
             }
 
-            if (cuisineType != null && !cuisineType.isBlank()) {
-                String cuisineLike = "%" + cuisineType.trim().toLowerCase() + "%";
-                predicate = cb.and(predicate, cb.like(cb.lower(cb.coalesce(root.get("cuisineType"), "")), cuisineLike));
+            if (cuisineFilterEnum != null) {
+                predicate = cb.and(predicate, cb.equal(root.get("cuisineType"), cuisineFilterEnum));
             }
 
             return predicate;
@@ -103,7 +108,7 @@ public class RestaurantService {
     private void apply(Restaurant restaurant, RestaurantRequest request) {
         restaurant.setCity(cityService.findCity(request.getCityId()));
         restaurant.setName(request.getName());
-        restaurant.setCuisineType(request.getCuisineType());
+        restaurant.setCuisineType(parseCuisineOrNull(request.getCuisineType(), true));
         restaurant.setRating(request.getRating());
         restaurant.setDescription(request.getDescription());
         restaurant.setAddress(request.getAddress());
@@ -124,7 +129,7 @@ public class RestaurantService {
         String resDesc = catalogTranslationService.resolveEntityField(rid, "restaurant", "description", rawDesc);
         String descOut = CatalogKeyUtil.isBadI18nPlaceholder(rawDesc, resDesc) ? null : resDesc;
 
-        String rawCuisine = restaurant.getCuisineType();
+        String rawCuisine = cuisineLabel(restaurant.getCuisineType());
         String cuisineOut =
                 rawCuisine == null || rawCuisine.isBlank() || CatalogKeyUtil.looksLikeCatalogKey(rawCuisine)
                         ? null
@@ -149,5 +154,28 @@ public class RestaurantService {
             restaurant.getLongitude(),
             restaurant.getImageUrl()
         );
+    }
+
+    private CuisineType parseCuisineOrNull(String raw, boolean strict) {
+        if (raw == null || raw.isBlank()) {
+            return null;
+        }
+
+        try {
+            return CuisineType.fromValue(raw);
+        } catch (IllegalArgumentException ex) {
+            if (strict) {
+                throw ex;
+            }
+            return null;
+        }
+    }
+
+    private String cuisineLabel(CuisineType cuisineType) {
+        return cuisineType == null ? null : cuisineType.label();
+    }
+
+    private String normalizeCuisine(String raw) {
+        return raw.trim().toLowerCase(Locale.ROOT).replace("-", " ").replace("_", " ").replaceAll("\\s+", " ");
     }
 }

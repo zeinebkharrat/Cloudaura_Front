@@ -277,8 +277,11 @@ public class AuthService {
         user.setEmail(normalizedEmail);
         user.setPhone(request.phone() != null ? request.phone().trim() : null);
         user.setNationality(request.nationality() != null ? request.nationality().trim() : null);
+        user.setGender(request.gender() != null ? request.gender().trim().toUpperCase(Locale.ROOT) : null);
+        user.setDateOfBirth(request.dateOfBirth());
         user.setCity(resolveCityForNationality(user.getNationality(), request.cityId()));
         user.setProfileImageUrl(request.profileImageUrl() != null ? request.profileImageUrl().trim() : null);
+        user.setCoverImageUrl(request.coverImageUrl() != null ? request.coverImageUrl().trim() : null);
 
         User saved = userRepository.save(user);
         if (!normalizedEmail.equalsIgnoreCase(previousEmail)) {
@@ -752,6 +755,7 @@ public class AuthService {
                 user.getStatus(),
                 Boolean.TRUE.equals(user.getArtisanRequestPending()),
                 user.getProfileImageUrl(),
+                user.getCoverImageUrl(),
                 user.getPoints(),
                 user.getMonthlyScore(),
                 user.getLifetimeScore()

@@ -21,8 +21,6 @@ import { tunisiaGeoJson } from './tunisia-map';
 import { GOVERNORATE_LABEL_EN, GOVERNORATE_LABEL_FR } from './tunisia-governorate-labels';
 import { ExploreService } from './explore/explore.service';
 import { API_BASE_URL, API_FALLBACK_ORIGIN } from './core/api-url';
-import { AuthService } from './core/auth.service';
-import { PersonalizationService } from './core/personalization.service';
 
 interface HomeImageCard {
   title: string;
@@ -158,8 +156,6 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     private cdr: ChangeDetectorRef,
     private readonly http: HttpClient,
     private readonly exploreService: ExploreService,
-    private readonly authService: AuthService,
-    private readonly personalizationService: PersonalizationService,
     private readonly router: Router,
     private readonly route: ActivatedRoute,
     private readonly translate: TranslateService,
@@ -168,7 +164,6 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadHomeSections();
-    this.loadPersonalizedSection();
     this.langChange = this.translate.onLangChange.subscribe(() => {
       if (this.tunisiaMapChart) {
         this.applyMapTheme();
@@ -553,61 +548,6 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.loadTransportCards();
     this.loadRestaurantCards();
     this.loadArtisanCards();
-  }
-
-  private loadPersonalizedSection(): void {
-    if (!this.authService.currentUser()) {
-      this.loadingPersonalized.set(false);
-      return;
-    }
-
-    this.personalizationService
-      .getRecommendations()
-      .pipe(catchError(() => of(null)))
-      .subscribe((res) => {
-        if (!res) {
-          this.loadingPersonalized.set(false);
-          return;
-        }
-
-        const cityCards: HomeImageCard[] = (res.recommendedCities ?? []).slice(0, 5).map((item) => ({
-          title: item.name,
-          subtitle: item.description || item.region || 'City recommendation for your next stop.',
-          image: item.imageUrl || 'assets/sidi_bou.png',
-          route: `/city/${item.cityId}`,
-          badge: `Match ${(item.score * 100).toFixed(0)}%`,
-          tags: [item.region || 'Tunisia', 'City'],
-        }));
-
-        const activityCards: HomeImageCard[] = (res.recommendedActivities ?? []).slice(0, 4).map((item) => ({
-          title: item.name,
-          subtitle: item.description || item.cityName || 'Activity recommendation tuned for your profile.',
-          image: item.imageUrl || 'assets/sahara.png',
-          route: `/activities/${item.activityId}`,
-          badge: `Match ${(item.score * 100).toFixed(0)}%`,
-          tags: [item.cityName || 'Tunisia', item.type || 'Activity'],
-          priceTag: item.price != null ? `${Math.round(item.price)} TND` : undefined,
-        }));
-
-        const eventCards: HomeImageCard[] = (res.recommendedEvents ?? []).slice(0, 3).map((item) => ({
-          title: item.title,
-          subtitle: item.venue || item.cityName || 'Event recommendation curated for your interests.',
-          image: item.imageUrl || 'assets/el_jem.png',
-          route: '/evenements',
-          badge: `Match ${(item.score * 100).toFixed(0)}%`,
-          tags: [item.cityName || 'Tunisia', item.eventType || 'Event'],
-          priceTag: item.price != null ? `${Math.round(item.price)} TND` : undefined,
-        }));
-
-        this.personalizedCityCards.set(cityCards);
-        this.personalizedActivityCards.set(activityCards);
-        this.personalizedEventCards.set(eventCards);
-        this.loadingPersonalized.set(false);
-        setTimeout(() => {
-          this.recalculatePersonalizedPagination('personalized-cities-slider', this.personalizedCityPageCount, this.currentPersonalizedCityPage);
-          this.recalculatePersonalizedPagination('personalized-events-slider', this.personalizedEventPageCount, this.currentPersonalizedEventPage);
-        }, 40);
-      });
   }
 
   private loadActivityCards(): void {

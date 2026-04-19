@@ -23,6 +23,22 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
   cities: City[] = [];
   q = '';
   cuisineFilter = '';
+  readonly cuisineOptions: string[] = [
+    'Tunisian',
+    'Mediterranean',
+    'Seafood',
+    'Street Food',
+    'Traditional',
+    'Healthy',
+    'Mixed',
+    'Italian',
+    'French',
+    'Asian',
+    'Fast Food',
+    'Cafe',
+    'Vegetarian',
+    'International',
+  ];
   sort = 'restaurantId,desc';
   page = 0;
   size = 10;

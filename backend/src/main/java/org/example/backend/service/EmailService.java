@@ -4,13 +4,17 @@ import jakarta.mail.MessagingException;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.text.SimpleDateFormat;
 import java.util.List;
 import java.util.Locale;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.InputStreamSource;
 import org.springframework.mail.MailException;
 import org.springframework.mail.MailSendException;
@@ -27,6 +31,7 @@ public class EmailService {
     private final InternetAddress userFromAddress;
     private final InternetAddress shopFromAddress;
     private final String frontendBaseUrl;
+    private final String welcomeImagePath;
 
     public EmailService(
             JavaMailSender userMailSender,
@@ -35,10 +40,12 @@ public class EmailService {
             @Value("${app.mail.from.address:${spring.mail.username}}") String userFromEmail,
             @Value("${app.shop.mail.from.name:YallaTN}") String shopFromName,
             @Value("${app.shop.mail.from.address:${app.shop.mail.username}}") String shopFromEmail,
-            @Value("${app.frontend.base-url:http://localhost:4200}") String frontendBaseUrl) {
+            @Value("${app.frontend.base-url:http://localhost:4200}") String frontendBaseUrl,
+            @Value("${app.mail.welcome-image-path:C:/Users/ELYES/Desktop/Cloudaura_Front/frontend/src/assets/welcome.png}") String welcomeImagePath) {
         this.userMailSender = userMailSender;
         this.shopMailSender = shopMailSender;
         this.frontendBaseUrl = normalizeBaseUrl(frontendBaseUrl);
+        this.welcomeImagePath = welcomeImagePath;
         this.userFromAddress = buildFrom(userFromEmail, userFromName, "YallaTN+");
         this.shopFromAddress = buildFrom(shopFromEmail, shopFromName, "YallaTN");
     }
@@ -91,6 +98,12 @@ public class EmailService {
             + "Telephone : " + phoneValue + "\n"
             + "Nationalite : " + nationalityValue + "\n\n"
             + "L'equipe YallaTN+";
+
+        byte[] welcomeImageBytes = loadWelcomeImageBytes();
+        String welcomeImageSrc = (welcomeImageBytes != null && welcomeImageBytes.length > 0)
+            ? "cid:welcome-image"
+            : "";
+
         String html = buildSignupVerificationHtml(
             displayName,
             fullName,
@@ -98,9 +111,51 @@ public class EmailService {
             emailValue,
             phoneValue,
             nationalityValue,
-            gender,
+            welcomeImageSrc,
             verificationLink);
-        sendEmail(userMailSender, userFromAddress, toEmail, subject, plainText, html);
+
+        MimeMessage message = userMailSender.createMimeMessage();
+        try {
+            MimeMessageHelper helper = new MimeMessageHelper(
+                    message,
+                    MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED,
+                    "UTF-8");
+            helper.setFrom(userFromAddress);
+            helper.setTo(toEmail);
+            helper.setSubject(subject);
+            helper.setText(plainText, html);
+            if (welcomeImageBytes != null && welcomeImageBytes.length > 0) {
+                helper.addInline("welcome-image", new ByteArrayResource(welcomeImageBytes), "image/png");
+            }
+            userMailSender.send(message);
+        } catch (MessagingException ex) {
+            throw new MailSendException("Failed to build or send verification email", ex);
+        } catch (MailException ex) {
+            throw ex;
+        }
+    }
+
+    private byte[] loadWelcomeImageBytes() {
+        try {
+            ClassPathResource classPathResource = new ClassPathResource("static/assets/welcome.png");
+            if (classPathResource.exists()) {
+                try (var stream = classPathResource.getInputStream()) {
+                    return stream.readAllBytes();
+                }
+            }
+        } catch (Exception ignored) {
+            // Fall back to configured file path.
+        }
+
+        try {
+            Path imagePath = Path.of(welcomeImagePath == null ? "" : welcomeImagePath.trim());
+            if (welcomeImagePath != null && !welcomeImagePath.isBlank() && Files.exists(imagePath) && Files.isReadable(imagePath)) {
+                return Files.readAllBytes(imagePath);
+            }
+        } catch (Exception ignored) {
+            // No extra fallback.
+        }
+        return null;
     }
 
     public void sendPasswordResetEmail(String toEmail, String firstName, String resetLink) {
@@ -563,7 +618,7 @@ public class EmailService {
             String email,
             String phone,
             String nationality,
-            String gender,
+            String welcomeImageSrc,
             String verificationLink) {
         String safeFirstName = escapeHtml(firstName);
         String safeFullName = escapeHtml(fullName);
@@ -572,13 +627,10 @@ public class EmailService {
         String safePhone = escapeHtml(phone);
         String safeNationality = escapeHtml(nationality);
         String safeLink = escapeHtml(verificationLink);
-        String normalizedGender = gender == null ? "" : gender.trim().toUpperCase();
-        String characterImageUrl = "FEMALE".equals(normalizedGender)
-            ? frontendBaseUrl + "/assets/female.png"
-            : ("MALE".equals(normalizedGender)
-                ? frontendBaseUrl + "/assets/male.png"
-                : frontendBaseUrl + "/assets/guide-mascot.png");
-        String safeCharacterImageUrl = escapeHtml(characterImageUrl);
+        String safeCharacterImageUrl = escapeHtml(welcomeImageSrc);
+        String imageHtml = safeCharacterImageUrl.isBlank()
+            ? "<div style=\"display:inline-block;padding:10px 14px;border-radius:10px;background:#e2e8f0;color:#334155;font-size:13px;\">Welcome image unavailable</div>"
+            : "<img src=\"" + safeCharacterImageUrl + "\" alt=\"Voyageur\" width=\"620\" style=\"width:100%;max-width:620px;height:auto;display:block;border-radius:12px;box-shadow:0 10px 24px rgba(15,23,42,0.18);\" />";
 
         return """
                 <!doctype html>
@@ -613,7 +665,7 @@ public class EmailService {
                                             <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="border:1px solid #d7e3f4;border-radius:16px;background:linear-gradient(130deg,#f8fbff,#eef5ff);">
                                                 <tr>
                                                     <td style="padding:16px 14px 6px;text-align:center;">
-                                                        <img src="%s" alt="Voyageur" width="160" style="width:160px;height:auto;display:inline-block;" />
+                                                        %s
                                                     </td>
                                                 </tr>
                                                 <tr>
@@ -699,7 +751,7 @@ public class EmailService {
                 </body>
                 </html>
                 """.formatted(
-                safeCharacterImageUrl,
+                imageHtml,
                 safeFirstName,
                 safeFullName,
                 safeUsername,

@@ -16,7 +16,9 @@ public class Restaurant {
     @ManyToOne @JoinColumn(name="city_id")
     private City city;
     private String name;
-    private String cuisineType;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "cuisine_type")
+    private CuisineType cuisineType;
     private Double rating;
     @Lob @Column(columnDefinition="TEXT")
     private String description;

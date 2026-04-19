@@ -98,6 +98,70 @@
         <i class="pi pi-arrow-right"></i>
       </button>
     }
-    <router-outlet />
+
+    <header class="admin-topbar">
+      <div class="admin-topbar__left">
+        <p class="admin-topbar__eyebrow">Backoffice command center</p>
+        <div class="admin-topbar__title-row">
+          <h1 class="admin-topbar__title">{{ currentRouteLabel() }}</h1>
+          <span class="admin-topbar__section-pill">{{ currentRouteSectionLabel() }}</span>
+          <button type="button" class="admin-topbar__sidebar-link" (click)="revealCurrentInSidebar()">
+            <i class="pi pi-sitemap"></i>
+            In sidebar
+          </button>
+        </div>
+      </div>
+
+      <div class="admin-topbar__actions">
+        <button type="button" class="admin-action-btn" (click)="toggleAdminNotifications()" aria-label="Notifications" title="Notifications">
+          <i class="pi pi-bell"></i>
+          @if (adminUnreadCount() > 0) {
+            <span class="admin-action-badge">{{ adminUnreadCount() }}</span>
+          }
+        </button>
+
+        <button type="button" class="admin-action-btn" (click)="toggleAdminTheme()" aria-label="Toggle theme" title="Toggle theme">
+          <i class="pi" [class.pi-moon]="!adminThemeDark()" [class.pi-sun]="adminThemeDark()"></i>
+        </button>
+
+        <button type="button" class="admin-front-btn" (click)="goToFrontOffice()">
+          <i class="pi pi-external-link"></i>
+          Front office
+        </button>
+
+        <button type="button" class="admin-profile-chip" (click)="openProfile()">
+          @if (user()?.profileImageUrl) {
+            <img [src]="user()!.profileImageUrl!" alt="Admin profile" class="admin-profile-chip__avatar" />
+          } @else {
+            <span class="admin-profile-chip__avatar admin-profile-chip__avatar--fallback">{{ user()?.username?.charAt(0)?.toUpperCase() }}</span>
+          }
+          <span class="admin-profile-chip__meta">
+            <strong>{{ user()?.username || 'Admin' }}</strong>
+            <small>{{ user()?.roles?.[0] || 'ROLE_ADMIN' }}</small>
+          </span>
+        </button>
+      </div>
+
+      @if (adminNotifOpen()) {
+        <div class="admin-notif-panel">
+          <div class="admin-notif-panel__head">
+            <h3>Notifications</h3>
+            <button type="button" (click)="toggleAdminNotifications()">Close</button>
+          </div>
+          <div class="admin-notif-list">
+            @for (item of adminQuickNotifications(); track item.id) {
+              <article class="admin-notif-item" [class.admin-notif-item--urgent]="item.urgent">
+                <p>{{ item.title }}</p>
+                <small>{{ item.subtitle }}</small>
+              </article>
+            }
+          </div>
+        </div>
+      }
+    </header>
+
+    <section class="sb-content">
+      <router-outlet />
+    </section>
   </main>
 </div>

@@ -44,6 +44,11 @@
       <button type="button" class="settings-nav-btn" [class.active]="section() === 'history'" (click)="selectSection('history')">
         Reservations &amp; History
       </button>
+
+      <button type="button" class="settings-replay-btn" (click)="relaunchNavbarTutorial()">
+        <i class="pi pi-refresh"></i>
+        Replay navbar tutorial
+      </button>
     </aside>
 
     <main class="settings-main">
@@ -147,9 +152,21 @@
                       }
                     </select>
                   </label>
+                  <label class="info-card info-input info-card--third">
+                    <span class="info-label">Gender</span>
+                    <select formControlName="gender" [disabled]="!editingProfile()">
+                      <option value="">Not set</option>
+                      <option value="FEMALE">Female</option>
+                      <option value="MALE">Male</option>
+                    </select>
+                  </label>
+                  <label class="info-card info-input info-card--third">
+                    <span class="info-label">Date de naissance</span>
+                    <input type="date" formControlName="dateOfBirth" [readonly]="!editingProfile()" />
+                  </label>
                 </div>
 
-                @if (editingProfile()) {
+                @if (editingProfile() || hasPendingProfileChanges()) {
                   <div class="cta-row">
                     <button type="submit" class="cta-btn" [disabled]="profileSaveBusy() || profileForm.invalid">
                       {{ profileSaveBusy() ? 'Saving...' : 'Save changes' }}

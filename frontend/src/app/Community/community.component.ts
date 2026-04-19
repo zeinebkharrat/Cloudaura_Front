@@ -466,7 +466,7 @@ export class CommunityComponent {
           const mediaType = file.type.startsWith('video/') ? 'VIDEO' : 'IMAGE';
           try {
             const uploadedMedia = await firstValueFrom(
-              this.postMediaService.uploadMedia(file, createdPost.postId, mediaType as MediaType, i)
+              this.postMediaService.uploadMedia(file, createdPost.postId, mediaType as MediaType, i, true)
             );
             uploadedMedias.push(uploadedMedia);
           } catch (mediaErr) {

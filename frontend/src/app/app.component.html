@@ -1,5 +1,5 @@
 @if (!isAdminArea()) {
-<nav class="navbar animate-in" [class.navbar--scrolled]="isScrolled()" [class.navbar--overlay]="isHeroRoute() && !isScrolled()">
+<nav class="navbar animate-in" [class.navbar--scrolled]="isScrolled()" [class.navbar--overlay]="isHeroRoute() && !isScrolled() && !isNavbarTourActive()">
   <div class="logo">
     <a routerLink="/" class="logo-link" [attr.aria-label]="'NAV.LOGO_HOME' | translate">
       <img
@@ -20,14 +20,15 @@
   </div>
   <ul class="nav-links">
     <li>
-      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">{{ 'NAV.HOME' | translate }}</a>
+      <a data-tour-id="nav-home" routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">{{ 'NAV.HOME' | translate }}</a>
     </li>
     <li>
-      <a routerLink="/destination-map" routerLinkActive="active">{{ 'NAV.DESTINATIONS' | translate }}</a>
+      <a data-tour-id="nav-destinations" routerLink="/destination-map" routerLinkActive="active">{{ 'NAV.DESTINATIONS' | translate }}</a>
     </li>
     <li class="services-menu-wrap" (click)="$event.stopPropagation()">
       <button
         type="button"
+        data-tour-id="nav-services"
         class="services-menu-btn"
         (click)="toggleServicesMenu($event)"
         [class.active]="isServicesMenuOpen()"
@@ -40,25 +41,25 @@
       </button>
       @if (isServicesMenuOpen()) {
         <div class="services-dropdown">
-          <a class="services-dd-item" routerLink="/services/activities" routerLinkActive="active" (click)="closeServicesMenu()">Activities</a>
-          <a class="services-dd-item" routerLink="/evenements" routerLinkActive="active" (click)="closeServicesMenu()">Events</a>
-          <a class="services-dd-item" routerLink="/services/restaurants" routerLinkActive="active" (click)="closeServicesMenu()">Restaurants</a>
-          <a class="services-dd-item" routerLink="/planifier-voyage" routerLinkActive="active" (click)="closeServicesMenu()">Stays</a>
-          <a class="services-dd-item" routerLink="/transport" routerLinkActive="active" (click)="closeServicesMenu()">Transport</a>
+          <a data-tour-id="services-activities" class="services-dd-item" routerLink="/services/activities" routerLinkActive="active" (click)="closeServicesMenu()">Activities</a>
+          <a data-tour-id="services-events" class="services-dd-item" routerLink="/evenements" routerLinkActive="active" (click)="closeServicesMenu()">Events</a>
+          <a data-tour-id="services-restaurants" class="services-dd-item" routerLink="/services/restaurants" routerLinkActive="active" (click)="closeServicesMenu()">Restaurants</a>
+          <a data-tour-id="services-stays" class="services-dd-item" routerLink="/planifier-voyage" routerLinkActive="active" (click)="closeServicesMenu()">Stays</a>
+          <a data-tour-id="services-transport" class="services-dd-item" routerLink="/transport" routerLinkActive="active" (click)="closeServicesMenu()">Transport</a>
         </div>
       }
     </li>
     <li>
-      <a routerLink="/artisanat" routerLinkActive="active">Crafts</a>
+      <a data-tour-id="nav-crafts" routerLink="/artisanat" routerLinkActive="active">Crafts</a>
     </li>
     <li>
-      <a routerLink="/communaute" routerLinkActive="active">Community</a>
+      <a data-tour-id="nav-community" routerLink="/communaute" routerLinkActive="active">Community</a>
     </li>
     <li>
-      <a routerLink="/games" routerLinkActive="active">{{ 'NAV.GAMES' | translate }}</a>
+      <a data-tour-id="nav-games" routerLink="/games" routerLinkActive="active">{{ 'NAV.GAMES' | translate }}</a>
     </li>
     <li>
-      <a routerLink="/virtual-tour" routerLinkActive="active">{{ 'NAV.TOUR360' | translate }}</a>
+      <a data-tour-id="nav-tour360" routerLink="/virtual-tour" routerLinkActive="active">{{ 'NAV.TOUR360' | translate }}</a>
     </li>
   </ul>
   <div class="nav-actions">
@@ -70,7 +71,7 @@
         <a class="signup-btn" routerLink="/admin/dashboard">{{ 'NAV.BACKOFFICE' | translate }}</a>
       }
       <div class="user-menu-wrap" (click)="$event.stopPropagation()">
-        <button type="button" class="user-chip" (click)="toggleUserMenu($event)">
+        <button data-tour-id="user-menu-trigger" type="button" class="user-chip" (click)="toggleUserMenu($event)">
           @if (currentUser()?.profileImageUrl) {
             <img class="user-avatar" [src]="currentUser()!.profileImageUrl!" [attr.alt]="'NAV.PROFILE' | translate" />
           } @else {
@@ -113,7 +114,7 @@
               <i class="pi pi-heart"></i>
               <span>{{ 'NAV.FAVORITES' | translate }}</span>
             </a>
-            <a class="user-dd-item" routerLink="/settings" (click)="closeUserMenu()">
+            <a data-tour-id="user-settings" class="user-dd-item" routerLink="/settings" (click)="closeUserMenu()">
               <i class="pi pi-user"></i>
               <span>Settings</span>
             </a>
@@ -134,11 +135,11 @@
 
     @if (!isArtisan()) {
       @if (isAuthenticated()) {
-        <a routerLink="/favoris" routerLinkActive="active" class="nav-icon-btn" [attr.aria-label]="'NAV.FAVORITES_A11Y' | translate" [attr.title]="'NAV.FAVORITES' | translate">
+        <a data-tour-id="nav-favorites" routerLink="/favoris" routerLinkActive="active" class="nav-icon-btn" [attr.aria-label]="'NAV.FAVORITES_A11Y' | translate" [attr.title]="'NAV.FAVORITES' | translate">
           <i class="pi pi-heart nav-icon"></i>
         </a>
       }
-      <a routerLink="/panier" routerLinkActive="active" class="nav-cart-btn" [attr.aria-label]="'NAV.CART_A11Y' | translate" [attr.title]="'NAV.CART' | translate">
+      <a data-tour-id="nav-cart" routerLink="/panier" routerLinkActive="active" class="nav-cart-btn" [attr.aria-label]="'NAV.CART_A11Y' | translate" [attr.title]="'NAV.CART' | translate">
         <i class="pi pi-shopping-bag nav-cart-icon"></i>
         @if (shop.cartCount() > 0) {
           <span class="nav-cart-count">{{ shop.cartCount() }}</span>
@@ -148,7 +149,7 @@
 
     @if (isAuthenticated() && !isArtisan()) {
       <div class="challenges-wrap" (click)="$event.stopPropagation()">
-        <button type="button" class="nav-icon-btn challenges-btn" (click)="toggleChallengesPopup($event)" aria-label="Daily Challenges" title="Daily Challenges">
+        <button data-tour-id="nav-challenges" type="button" class="nav-icon-btn challenges-btn" (click)="toggleChallengesPopup($event)" aria-label="Daily Challenges" title="Daily Challenges">
           <i class="pi pi-bell nav-icon"></i>
           @if (challengeCount() > 0) {
             <span class="nav-badge pulse-badge">{{ challengeCount() }}</span>
@@ -205,11 +206,11 @@
       </div>
     }
 
-    <div class="nav-currency" (click)="$event.stopPropagation()">
+    <div data-tour-id="nav-currency" class="nav-currency" (click)="$event.stopPropagation()">
       <app-currency-selector />
     </div>
 
-    <button type="button" class="theme-toggle-btn" (click)="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">
+    <button data-tour-id="nav-theme" type="button" class="theme-toggle-btn" (click)="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">
       @if (isDarkMode()) {
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -226,6 +227,44 @@
     </button>
   </div>
 </nav>
+}
+
+@if (isNavbarTourActive() && navbarTourCurrentStep(); as step) {
+  <div class="tour-layer" (click)="skipNavbarTour()">
+    <div class="tour-spotlight" [ngStyle]="navbarTourSpotlightStyle()"></div>
+
+    <div
+      class="tour-coach"
+      [class.tour-coach--below]="navbarTourCoachBelow()"
+      [ngStyle]="navbarTourCoachStyle()"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="tour-coach__media">
+        <img [src]="navbarGuideImage()" [attr.alt]="navbarGuideName() + ' guide'" />
+      </div>
+      <div class="tour-coach__content">
+        <p class="tour-coach__badge">{{ navbarGuideName() }} Navigator</p>
+        <h3>{{ step.title }}</h3>
+        <p>{{ step.description }}</p>
+        <div class="tour-progress-row">
+          <span>Step {{ navbarTourIndex() + 1 }} / {{ navbarTourSteps().length }}</span>
+          <span>{{ navbarTourProgress() }}%</span>
+        </div>
+        <div class="tour-progress-track" role="presentation">
+          <span [style.width.%]="navbarTourProgress()"></span>
+        </div>
+        <div class="tour-coach__actions">
+          <button type="button" class="tour-btn tour-btn--ghost" (click)="previousNavbarTourStep()" [disabled]="navbarTourIndex() === 0">Back</button>
+          <button type="button" class="tour-btn tour-btn--ghost" (click)="skipNavbarTour()">Skip</button>
+          @if (isNavbarTourLastStep()) {
+            <button type="button" class="tour-btn tour-btn--primary" (click)="finishNavbarTour(true)">Finish</button>
+          } @else {
+            <button type="button" class="tour-btn tour-btn--primary" (click)="nextNavbarTourStep()">Next</button>
+          }
+        </div>
+      </div>
+    </div>
+  </div>
 }
 
 <!-- Global Toast Notification -->

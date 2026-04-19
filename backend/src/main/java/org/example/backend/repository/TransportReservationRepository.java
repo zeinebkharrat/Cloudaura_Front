@@ -15,9 +15,11 @@ import java.util.Optional;
 @Repository
 public interface TransportReservationRepository extends JpaRepository<TransportReservation, Integer> {
     long countByTransport_TransportId(int transportId);
+       long countByUser_UserId(Integer userId);
 
     List<TransportReservation> findByTransport_TransportId(int transportId);
     List<TransportReservation> findByUser_UserId(int userId);
+       List<TransportReservation> findTop5ByUser_UserIdOrderByCreatedAtDesc(Integer userId);
     Optional<TransportReservation> findByReservationRef(String ref);
     boolean existsByIdempotencyKey(String key);
 

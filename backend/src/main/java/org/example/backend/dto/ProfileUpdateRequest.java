@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
+import java.time.LocalDate;
+
 public record ProfileUpdateRequest(
         @NotBlank(message = "First name is required")
         @Size(min = 2, max = 50, message = "First name must be between 2 and 50 characters")
@@ -22,9 +24,14 @@ public record ProfileUpdateRequest(
         String phone,
         @Size(max = 100, message = "Nationality is too long")
         String nationality,
+        @Pattern(regexp = "^(?i)(male|female)$", message = "Gender must be male or female")
+        String gender,
+        LocalDate dateOfBirth,
         Integer cityId,
         /** URLs hébergées ou data URLs (base64) ; aligné sur MEDIUMTEXT côté base. */
         @Size(max = 16_000_000, message = "Profile image URL is too long")
-        String profileImageUrl
+        String profileImageUrl,
+        @Size(max = 16_000_000, message = "Cover image URL is too long")
+        String coverImageUrl
 ) {
 }

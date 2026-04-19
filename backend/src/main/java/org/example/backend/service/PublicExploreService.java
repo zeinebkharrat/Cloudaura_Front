@@ -180,7 +180,7 @@ public class PublicExploreService {
         if (CatalogKeyUtil.isBadI18nPlaceholder(rawDesc, descOut)) {
             descOut = null;
         }
-        String rawCuisine = restaurant.getCuisineType();
+        String rawCuisine = restaurant.getCuisineType() == null ? null : restaurant.getCuisineType().label();
         String cuisineOut =
                 rawCuisine == null || rawCuisine.isBlank() || CatalogKeyUtil.looksLikeCatalogKey(rawCuisine)
                         ? null

@@ -14,6 +14,7 @@ import java.util.Optional;
 @Repository
 public interface ReservationRepository extends JpaRepository<Reservation, Integer> {
     List<Reservation> findByUser_UserId(int userId);
+        long countByUser_UserId(Integer userId);
     List<Reservation> findByRoom_RoomIdAndStatus(int roomId, ReservationStatus status);
     List<Reservation> findByStatusAndCheckOutDateBefore(ReservationStatus status, LocalDateTime now);
     void deleteByRoom_RoomId(int roomId);

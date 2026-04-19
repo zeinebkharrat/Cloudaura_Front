@@ -13,6 +13,8 @@ import java.util.List;
 public interface PostRepository extends JpaRepository<Post,Integer> {
     List<Post> findByAuthorUserId(Integer authorId);
     List<Post> findByAuthorUserIdOrderByCreatedAtDesc(Integer authorId);
+    List<Post> findTop5ByAuthorUserIdOrderByCreatedAtDesc(Integer authorId);
+    long countByAuthorUserId(Integer authorId);
 
     @Query("SELECT DISTINCT p FROM Post p "
             + "LEFT JOIN FETCH p.author "
