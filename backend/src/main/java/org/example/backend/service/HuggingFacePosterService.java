@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.Locale;
 
 @Service
 public class HuggingFacePosterService {
@@ -38,7 +39,10 @@ public class HuggingFacePosterService {
     private static final String HF_ROUTER_BASE_URL = "https://router.huggingface.co/hf-inference/models";
     private static final String HF_DEFAULT_BASE_URL = HF_ROUTER_BASE_URL;
     private static final String DEFAULT_PRIMARY_MODEL = "black-forest-labs/FLUX.1-schnell";
-    private static final List<String> DEFAULT_FALLBACK_MODELS = List.of();
+    private static final List<String> DEFAULT_FALLBACK_MODELS = List.of(
+            "stabilityai/stable-diffusion-2-1",
+            "runwayml/stable-diffusion-v1-5"
+    );
     private static final int MAX_ATTEMPTS_PER_MODEL = 3;
 
     private final RestTemplate restTemplate;

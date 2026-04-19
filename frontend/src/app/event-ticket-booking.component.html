@@ -1,0 +1,89 @@
+<main class="booking-page">
+  <section class="booking-shell" *ngIf="!loading && event; else loadingTpl">
+    <header class="booking-head">
+      <p class="booking-kicker">Event reservation</p>
+      <h1>{{ event.title }}</h1>
+      <p class="booking-meta">{{ event.venue }} · {{ event.startDate | date:'dd/MM/yyyy HH:mm' }}</p>
+    </header>
+
+    <p class="booking-error" *ngIf="loadError">{{ loadError }}</p>
+
+    <div *ngIf="!loadError" class="booking-layout">
+      <article class="booking-card">
+        <h2>Buyer details</h2>
+        <div class="grid-two">
+          <label>
+            <span>First name</span>
+            <input type="text" [(ngModel)]="buyerFirstName" name="buyerFirstName" />
+          </label>
+          <label>
+            <span>Last name</span>
+            <input type="text" [(ngModel)]="buyerLastName" name="buyerLastName" />
+          </label>
+        </div>
+        <label>
+          <span>Phone</span>
+          <input type="text" [(ngModel)]="buyerPhone" name="buyerPhone" />
+        </label>
+
+        <label>
+          <span>Requested tickets</span>
+          <input
+            type="number"
+            min="1"
+            [max]="availableSpots()"
+            [ngModel]="requestedTickets"
+            (ngModelChange)="onRequestedTicketsChanged($event)"
+            name="requestedTickets"
+          />
+          <small class="field-hint">Available: {{ availableSpots() }}</small>
+        </label>
+
+        <h3>{{ requestedTickets }} participant{{ requestedTickets > 1 ? 's' : '' }}</h3>
+
+        <div class="participants-list">
+          <article class="participant-row" *ngFor="let p of participants; let i = index">
+            <div class="participant-badge">{{ participantLabel(i) }}</div>
+            <div class="participant-fields">
+              <label>
+                <span>First name</span>
+                <input type="text" [(ngModel)]="p.firstName" name="participantFirstName{{ i }}" />
+              </label>
+              <label>
+                <span>Last name</span>
+                <input type="text" [(ngModel)]="p.lastName" name="participantLastName{{ i }}" />
+              </label>
+            </div>
+          </article>
+        </div>
+      </article>
+
+      <aside class="summary-card">
+        <h2>Order summary</h2>
+        <div class="summary-line"><span>Ticket price</span><strong>{{ eventUnitPrice() | number:'1.2-2' }} TND</strong></div>
+        <div class="summary-line"><span>Tickets</span><strong>{{ requestedTickets }}</strong></div>
+        <div class="summary-line summary-total"><span>Total</span><strong>{{ totalAmount() | number:'1.2-2' }} TND</strong></div>
+
+        <p class="payment-mode" *ngIf="isPaidEvent(); else freeModeTpl">Payment: Online</p>
+        <ng-template #freeModeTpl>
+          <p class="payment-mode">Payment: Free entry</p>
+        </ng-template>
+
+        <p class="booking-error" *ngIf="submitError">{{ submitError }}</p>
+
+        <div class="summary-actions">
+          <a routerLink="/evenements" class="btn-secondary">Back</a>
+          <button type="button" class="btn-primary" (click)="submitReservation()" [disabled]="submitting">
+            {{ submitting ? 'Processing...' : (isPaidEvent() ? 'Pay & confirm' : 'Confirm reservation') }}
+          </button>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <ng-template #loadingTpl>
+    <section class="booking-shell">
+      <p>Loading reservation form...</p>
+    </section>
+  </ng-template>
+</main>

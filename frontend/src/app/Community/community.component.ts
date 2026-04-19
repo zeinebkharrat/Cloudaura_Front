@@ -812,10 +812,16 @@ export class CommunityComponent {
 
   // Ownership helpers
   canEditPost(post: Post): boolean {
+    if (this.isEventAnnouncementPost(post)) {
+      return false;
+    }
     return OwnershipUtil.canEditPost(post, this.authService);
   }
 
   canDeletePost(post: Post): boolean {
+    if (this.isEventAnnouncementPost(post)) {
+      return false;
+    }
     return OwnershipUtil.canDeletePost(post, this.authService);
   }
 
@@ -1369,6 +1375,11 @@ export class CommunityComponent {
   }
 
   toggleComments(postId: number): void {
+    const post = this.findPostById(postId);
+    if (post && !this.isCommentsAllowed(post)) {
+      return;
+    }
+
     const expanded = new Set(this.expandedCommentsPostIds());
     if (expanded.has(postId)) {
       expanded.delete(postId);
@@ -1463,6 +1474,17 @@ export class CommunityComponent {
 
   // Add comment with optional parent for replies
   async addComment(postId: number, parentCommentId?: number): Promise<void> {
+    const targetPost = this.findPostById(postId);
+    if (targetPost && !this.isCommentsAllowed(targetPost)) {
+      await Swal.fire({
+        icon: 'info',
+        title: 'Comments disabled',
+        text: 'This event announcement does not accept comments.',
+        ...this.swalTheme(),
+      });
+      return;
+    }
+
     if (!this.authService.isAuthenticated()) {
       this.router.navigate(['/signin']);
       return;
@@ -1976,6 +1998,27 @@ export class CommunityComponent {
 
   isRepost(post: Post): boolean {
     return !!post.repostOf;
+  }
+
+  isEventAnnouncementPost(post: Post): boolean {
+    return (post.postType ?? '').toUpperCase() === 'EVENT_ANNOUNCEMENT';
+  }
+
+  isCommentsAllowed(post: Post): boolean {
+    return post.commentsEnabled !== false;
+  }
+
+  openEventFromPost(post: Post, event?: Event): void {
+    event?.stopPropagation();
+    if (!this.isEventAnnouncementPost(post) || post.linkedEventId == null) {
+      return;
+    }
+
+    this.router.navigate(['/evenements'], {
+      queryParams: {
+        eventId: post.linkedEventId,
+      },
+    });
   }
 
   getHashtagsFromText(source?: string | null): string[] {

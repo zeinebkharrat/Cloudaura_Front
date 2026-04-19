@@ -30,10 +30,10 @@
   <div class="nav-collapse" (click)="$event.stopPropagation()">
   <ul class="nav-links">
     <li>
-      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMobileNav()">Home</a>
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMobileNav()">{{ 'NAV.HOME' | translate }}</a>
     </li>
     <li>
-      <a routerLink="/destination-map" routerLinkActive="active" (click)="closeMobileNav()">Destinations</a>
+      <a routerLink="/destination-map" routerLinkActive="active" (click)="closeMobileNav()">{{ 'NAV.DESTINATIONS' | translate }}</a>
     </li>
     <li class="services-menu-wrap" (click)="$event.stopPropagation()">
       <button
@@ -65,10 +65,10 @@
       <a routerLink="/communaute" routerLinkActive="active" (click)="closeMobileNav()">Community</a>
     </li>
     <li>
-      <a routerLink="/games" routerLinkActive="active" (click)="closeMobileNav()">Games &amp; quizzes</a>
+      <a routerLink="/games" routerLinkActive="active" (click)="closeMobileNav()">{{ 'NAV.GAMES' | translate }}</a>
     </li>
     <li>
-      <a routerLink="/virtual-tour" routerLinkActive="active" (click)="closeMobileNav()">360° Tour</a>
+      <a routerLink="/virtual-tour" routerLinkActive="active" (click)="closeMobileNav()">{{ 'NAV.TOUR360' | translate }}</a>
     </li>
   </ul>
   <div class="nav-actions">

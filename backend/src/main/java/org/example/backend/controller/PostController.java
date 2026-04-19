@@ -106,6 +106,9 @@ public class PostController {
         post.setTotalViews(existingPost.getTotalViews());
         post.setRepostCount(existingPost.getRepostCount());
         post.setPostScore(existingPost.getPostScore());
+        post.setPostType(existingPost.getPostType());
+        post.setLinkedEventId(existingPost.getLinkedEventId());
+        post.setCommentsEnabled(existingPost.getCommentsEnabled());
         post.setRepostOf(existingPost.getRepostOf());
         return postService.updatePost(post);
     }

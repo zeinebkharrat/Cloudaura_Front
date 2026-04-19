@@ -2357,3 +2357,51 @@
   font-size: 0.8rem;
   flex-shrink: 0;
 }
+
+.post-card--clickable {
+  cursor: pointer;
+}
+
+.post-card--event-announcement {
+  border: 1px solid color-mix(in srgb, #ff5d3d 35%, var(--glass-border));
+  background:
+    radial-gradient(circle at 86% 12%, rgba(255, 199, 91, 0.26), transparent 42%),
+    radial-gradient(circle at 14% 82%, rgba(255, 79, 79, 0.2), transparent 48%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.96), rgba(255, 247, 235, 0.95));
+  box-shadow: 0 18px 42px rgba(160, 46, 24, 0.16);
+}
+
+.event-announcement-panel {
+  margin: 0.4rem 0 0.85rem;
+  padding: 0.68rem 0.8rem;
+  border-radius: 0.95rem;
+  border: 1px solid rgba(255, 93, 61, 0.35);
+  background: linear-gradient(120deg, rgba(255, 111, 76, 0.12), rgba(255, 211, 126, 0.16));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+}
+
+.event-announcement-panel__badge {
+  font-size: 0.8rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #8a2a14;
+}
+
+.event-announcement-panel__cta {
+  border: none;
+  border-radius: 999px;
+  padding: 0.46rem 0.9rem;
+  background: linear-gradient(135deg, #ef4020, #f68631);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.stat-item--disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+}

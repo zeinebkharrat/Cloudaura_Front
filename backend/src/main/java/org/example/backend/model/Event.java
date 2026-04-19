@@ -36,6 +36,12 @@ public class Event {
     private String imageUrl;
     private Double price;
 
+    @Column(nullable = false)
+    private Integer totalCapacity = 0;
+
+    @Column(nullable = false)
+    private Integer reservedCount = 0;
+
     public Integer getEventId() { return eventId; }
     public void setEventId(Integer eventId) { this.eventId = eventId; }
     public City getCity() { return city; }
@@ -56,6 +62,10 @@ public class Event {
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
     public Double getPrice() { return price; }
     public void setPrice(Double price) { this.price = price; }
+    public Integer getTotalCapacity() { return totalCapacity; }
+    public void setTotalCapacity(Integer totalCapacity) { this.totalCapacity = totalCapacity; }
+    public Integer getReservedCount() { return reservedCount; }
+    public void setReservedCount(Integer reservedCount) { this.reservedCount = reservedCount; }
 
 
     public void setId(Integer eventId) {

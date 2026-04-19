@@ -299,7 +299,9 @@ div:where(.swal2-container) {
   color: color-mix(in srgb, var(--text-color) 88%, #2563eb) !important;
 }
 
-:root {
+/* Light theme (default tokens; html[data-theme="light"] matches app toggle) */
+:root,
+:root[data-theme="light"] {
   --bp-phone-sm: 480px;
   --bp-tablet: 768px;
   --bp-laptop: 1024px;
@@ -307,11 +309,11 @@ div:where(.swal2-container) {
   --page-gutter: clamp(12px, 2vw, 32px);
   --content-max: min(1260px, calc(100% - (var(--page-gutter) * 2)));
   --touch-target: 44px;
-  --bg-color: #f6f8fc;
-  --text-color: #1d2433;
-  --text-muted: #667085;
-  --glass-bg: rgba(255, 255, 255, 0.85);
-  --glass-border: rgba(15, 23, 42, 0.08);
+  --bg-color: #f9fafb;
+  --text-color: #111827;
+  --text-muted: #6b7280;
+  --glass-bg: #ffffff;
+  --glass-border: #e5e7eb;
   --surface-1: #ffffff;
   --surface-2: #f8fafc;
   --surface-3: #eef2f7;

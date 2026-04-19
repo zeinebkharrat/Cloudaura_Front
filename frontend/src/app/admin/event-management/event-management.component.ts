@@ -147,7 +147,11 @@ export class EventManagementComponent implements OnInit, OnDestroy {
  loadEvents() {
   this.eventService.getEvents().subscribe({
     next: (data) => {
-      this.events = data;
+      this.events = data.map((event) => ({
+        ...event,
+        totalCapacity: Number(event.totalCapacity ?? 0),
+        reservedCount: Number(event.reservedCount ?? 0),
+      }));
       this.applyFilters(false); // Re-apply active filters while preserving current page.
       if (this.pendingEditId != null) {
         const eventToEdit = this.events.find(e => e.eventId === this.pendingEditId);
@@ -202,8 +206,14 @@ resetFilters() {
       eventId: 0,
       title: '', eventType: 'CULTURAL', venue: '',
       startDate: '', endDate: '', status: 'UPCOMING',
-      imageUrl: '', price: 0, city: { cityId: 1, name: '' }
+      imageUrl: '', price: 0, totalCapacity: 1, reservedCount: 0, city: { cityId: 1, name: '' }
     };
+  }
+
+  availableSpots(event: Event): number {
+    const total = Number(event.totalCapacity ?? 0);
+    const reserved = Number(event.reservedCount ?? 0);
+    return Math.max(0, total - reserved);
   }
 
   openAddModal() {
@@ -775,7 +785,7 @@ resetFilters() {
     if (Number.isNaN(date.getTime())) {
       return raw;
     }
-    return date.toLocaleDateString('fr-FR', {
+    return date.toLocaleDateString('en-US', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric'
@@ -791,7 +801,7 @@ resetFilters() {
     if (Number.isNaN(date.getTime())) {
       return '';
     }
-    return date.toLocaleTimeString('fr-FR', {
+    return date.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit'
     });
@@ -863,6 +873,11 @@ resetFilters() {
   const eventToSave = JSON.parse(JSON.stringify(this.currentEvent));
   eventToSave.startDate = this.toApiDateTime(eventToSave.startDate);
   eventToSave.endDate = this.toApiDateTime(eventToSave.endDate);
+  eventToSave.totalCapacity = Math.max(0, Number(eventToSave.totalCapacity ?? 0));
+
+  if (!this.isEditMode) {
+    eventToSave.reservedCount = 0;
+  }
 
   // 2. Nettoyer l'objet City : Le backend veut juste l'ID pour le mapping Hibernate
   if (eventToSave.city && eventToSave.city.cityId) {

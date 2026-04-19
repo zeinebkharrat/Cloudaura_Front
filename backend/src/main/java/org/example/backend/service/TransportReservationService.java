@@ -54,10 +54,9 @@ public class TransportReservationService {
     private final QrCodeService qrCodeService;
     private final TransportWhatsAppMessageBuilder transportWhatsAppMessageBuilder;
     private final TwilioWhatsAppService twilioWhatsAppService;
-
+    private final UserNotificationService userNotificationService;
     private final TransportReservationMapper transportReservationMapper;
     private final ReservationTranslationHelper reservationLabels;
-    private final UserNotificationService userNotificationService;
 
     @Value("${stripe.api.key:disabled}")
     private String stripeApiKey;

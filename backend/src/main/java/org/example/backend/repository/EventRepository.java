@@ -4,6 +4,7 @@ import org.example.backend.model.Event;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import java.util.List;
 
@@ -45,4 +46,13 @@ public interface EventRepository extends JpaRepository<Event, Integer> {
                             and upper(coalesce(e.status, '')) <> 'UPCOMING'
                         """)
         int markUpcomingByDate();
+
+                @Modifying
+                @Query(value = """
+                    UPDATE events
+                    SET reserved_count = COALESCE(reserved_count, 0) + :quantity
+                    WHERE event_id = :eventId
+                      AND COALESCE(reserved_count, 0) + :quantity <= COALESCE(total_capacity, 0)
+                    """, nativeQuery = true)
+                int reserveSpotsIfAvailable(@Param("eventId") Integer eventId, @Param("quantity") int quantity);
 }

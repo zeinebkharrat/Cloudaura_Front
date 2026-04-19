@@ -205,6 +205,40 @@ td { padding: 1rem; border-bottom: 1px solid var(--border); }
 .status-label--completed { color: #94a3b8; }
 .status-label--ongoing { color: #3b82f6; }
 .status-label--upcoming { color: #10b981; }
+.soldout-label {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #fff;
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+  box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.35), 0 6px 14px rgba(185, 28, 28, 0.35);
+}
+
+.soldout-pill {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #fff;
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+  box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.35), 0 8px 16px rgba(185, 28, 28, 0.32);
+}
+
+.light-theme .soldout-label,
+.light-theme .soldout-pill {
+  box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.28), 0 6px 12px rgba(239, 68, 68, 0.22);
+}
 
 /* MODAL */
 .modal-backdrop {

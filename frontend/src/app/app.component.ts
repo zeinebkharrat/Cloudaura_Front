@@ -12,11 +12,12 @@ import { SignInComponent } from './sign-in.component';
 import { SignUpComponent } from './sign-up.component';
 import { GamificationBadgeEntry, GamificationService } from './core/gamification.service';
 import { ReservationNotificationItem, ReservationNotificationsService } from './core/reservation-notifications.service';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, ChatBubbleComponent, SignInComponent, SignUpComponent],
+  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive, ChatBubbleComponent, SignInComponent, SignUpComponent, TranslateModule],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
 })

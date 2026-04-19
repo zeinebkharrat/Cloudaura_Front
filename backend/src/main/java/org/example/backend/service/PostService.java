@@ -68,6 +68,9 @@ public class PostService implements IPostService {
         params.put("total_views", post.getTotalViews());
         params.put("repost_count", post.getRepostCount());
         params.put("post_score", post.getPostScore());
+        params.put("post_type", post.getPostType());
+        params.put("linked_event_id", post.getLinkedEventId());
+        params.put("comments_enabled", post.getCommentsEnabled());
         params.put("created_at", post.getCreatedAt());
         params.put("updated_at", post.getUpdatedAt());
 
@@ -84,6 +87,9 @@ public class PostService implements IPostService {
                 "total_views",
                 "repost_count",
                 "post_score",
+                "post_type",
+                "linked_event_id",
+                "comments_enabled",
                 "created_at",
                 "updated_at"
         );

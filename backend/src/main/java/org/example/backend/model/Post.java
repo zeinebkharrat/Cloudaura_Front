@@ -24,6 +24,9 @@ public class Post {
     private Integer totalViews;
     private Integer repostCount;
     private Double postScore;
+    private String postType;
+    private Integer linkedEventId;
+    private Boolean commentsEnabled;
     private Date createdAt;
     private Date updatedAt;
 }

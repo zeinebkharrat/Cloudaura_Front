@@ -7,8 +7,7 @@ import { forkJoin } from 'rxjs';
 import { ActivatedRoute, Data, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { extractApiErrorMessage } from './api-error.util';
+import { HttpClient } from '@angular/common/http';
 import { API_BASE_URL, API_FALLBACK_ORIGIN } from './core/api-url';
 import { AuthService } from './core/auth.service';
 import { ShopService } from './core/shop.service';
@@ -22,7 +21,6 @@ import { ButtonModule } from 'primeng/button';
 import { CarouselModule } from 'primeng/carousel';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
-import Swal from 'sweetalert2';
 
 export interface FeatureBlock {
   /** Legacy: plain title when not using i18n */
@@ -72,6 +70,22 @@ export interface CatalogProduct {
 })
 export class FeaturePageComponent implements OnInit {
   private readonly aiGeneratedImageStorageKey = 'eventManagement.aiGeneratedImages';
+  private readonly cityLabelCorrections: Record<string, string> = {
+    'beja': 'Beja',
+    'b?ja': 'Beja',
+    'b??ja': 'Beja',
+    'gabes': 'Gabes',
+    'gab?s': 'Gabes',
+    'gab??s': 'Gabes',
+    'medenine': 'Medenine',
+    'm?denine': 'Medenine',
+    'm??denine': 'Medenine',
+    'kasserine': 'Kasserine',
+    'kass?rine': 'Kasserine',
+    'kass??rine': 'Kasserine',
+    'tozeur': 'Tozeur',
+    'toz??ur': 'Tozeur'
+  };
   private route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private readonly translate = inject(TranslateService);
@@ -100,6 +114,7 @@ export class FeaturePageComponent implements OnInit {
   eventMaxPrice = 500;
   eventCityDropdownOpen = false;
   eventCitySearch = '';
+  private deepLinkedEventId: number | null = null;
   isEventFeed = false;
   isLoadingEvents = false;
   eventsLoadError: string | null = null;
@@ -367,6 +382,12 @@ export class FeaturePageComponent implements OnInit {
     });
     this.applyData(this.route.snapshot.data);
     this.route.data.subscribe((d) => this.applyData(d));
+    this.route.queryParamMap.subscribe((params) => {
+      const raw = params.get('eventId');
+      const parsed = raw == null ? Number.NaN : Number(raw);
+      this.deepLinkedEventId = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+      this.tryOpenDeepLinkedEvent();
+    });
     if (this.isArtisan()) {
       this.loadArtisanProducts();
     }
@@ -817,6 +838,7 @@ export class FeaturePageComponent implements OnInit {
         })).filter((event) => this.shouldDisplayInFrontOffice(event.status));
         this.resetEventFilters();
         this.isLoadingEvents = false;
+        this.tryOpenDeepLinkedEvent();
       },
       error: (err) => {
         console.error('Error loading events:', err);
@@ -852,7 +874,7 @@ export class FeaturePageComponent implements OnInit {
   }
 
   toEventCityLabel(event: TravelEvent): string {
-    const fromCity = event.city?.name?.trim();
+    const fromCity = this.normalizeCityLabel(event.city?.name);
     if (fromCity) {
       return fromCity;
     }
@@ -861,11 +883,36 @@ export class FeaturePageComponent implements OnInit {
       return 'Unknown';
     }
     const firstChunk = venue.split(',')[0]?.trim();
-    return firstChunk || venue;
+    return this.normalizeCityLabel(firstChunk || venue) || firstChunk || venue;
+  }
+
+  private normalizeCityLabel(raw: unknown): string {
+    const input = String(raw ?? '').trim();
+    if (!input) {
+      return '';
+    }
+
+    const directKey = input.toLowerCase();
+    const corrected = this.cityLabelCorrections[directKey];
+    if (corrected) {
+      return corrected;
+    }
+
+    const repaired = input
+      .replace(/\uFFFD+/g, 'e')
+      .replace(/\?\?/g, 'e')
+      .replace(/\?/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const repairedKey = repaired.toLowerCase();
+    return this.cityLabelCorrections[repairedKey] ?? repaired;
   }
 
   get eventCityOptions(): string[] {
-    const allCities = this.cities().map((c) => String(c?.name ?? '').trim()).filter((v) => !!v);
+    const allCities = this.cities()
+      .map((c) => this.normalizeCityLabel(c?.name))
+      .filter((v) => !!v);
     if (allCities.length > 0) {
       return [...new Set(allCities)].sort((a, b) => a.localeCompare(b));
     }
@@ -887,7 +934,7 @@ export class FeaturePageComponent implements OnInit {
   }
 
   get selectedEventCityLabel(): string {
-    return this.eventFilterCity === 'ALL' ? 'All cities' : this.eventFilterCity;
+    return this.eventFilterCity === 'ALL' ? 'All cities' : this.normalizeCityLabel(this.eventFilterCity);
   }
 
   toggleEventCityDropdown(event: MouseEvent): void {
@@ -896,7 +943,7 @@ export class FeaturePageComponent implements OnInit {
   }
 
   selectEventCity(city: string): void {
-    this.eventFilterCity = city;
+    this.eventFilterCity = city === 'ALL' ? 'ALL' : this.normalizeCityLabel(city);
     this.eventCityDropdownOpen = false;
     this.eventCitySearch = '';
   }
@@ -912,7 +959,8 @@ export class FeaturePageComponent implements OnInit {
 
   get filteredEvents(): TravelEvent[] {
     return this.events.filter((event) => {
-      const cityOk = this.eventFilterCity === 'ALL' || this.toEventCityLabel(event) === this.eventFilterCity;
+      const cityOk = this.eventFilterCity === 'ALL'
+        || this.normalizeCityLabel(this.toEventCityLabel(event)) === this.normalizeCityLabel(this.eventFilterCity);
       const typeOk = this.eventFilterType === 'ALL' || String(event.eventType ?? '').trim() === this.eventFilterType;
       const price = this.eventPriceAmount(event);
       const budgetOk = price <= this.eventMaxPrice;
@@ -957,7 +1005,7 @@ export class FeaturePageComponent implements OnInit {
     if (Number.isNaN(date.getTime())) {
       return raw;
     }
-    const dateLabel = date.toLocaleDateString('fr-FR', {
+    const dateLabel = date.toLocaleDateString('en-US', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
@@ -981,7 +1029,7 @@ export class FeaturePageComponent implements OnInit {
       return 'Time TBA';
     }
 
-    const timeLabel = date.toLocaleTimeString('fr-FR', {
+    const timeLabel = date.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,
@@ -1001,7 +1049,15 @@ export class FeaturePageComponent implements OnInit {
   }
 
   eventDetailDateTimeLabel(event: TravelEvent | null): string {
-    const raw = String(event?.startDate ?? '').trim();
+    return this.eventDetailDateTimeValue(event?.startDate);
+  }
+
+  eventDetailEndDateTimeLabel(event: TravelEvent | null): string {
+    return this.eventDetailDateTimeValue(event?.endDate);
+  }
+
+  private eventDetailDateTimeValue(value: string | undefined): string {
+    const raw = String(value ?? '').trim();
     if (!raw) {
       return 'Date TBA';
     }
@@ -1010,7 +1066,7 @@ export class FeaturePageComponent implements OnInit {
       return raw;
     }
 
-    const dateLabel = date.toLocaleDateString('fr-FR', {
+    const dateLabel = date.toLocaleDateString('en-US', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
@@ -1021,7 +1077,7 @@ export class FeaturePageComponent implements OnInit {
       return `${dateLabel} • Time TBA`;
     }
 
-    const timeLabel = date.toLocaleTimeString('fr-FR', {
+    const timeLabel = date.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,
@@ -1077,7 +1133,7 @@ export class FeaturePageComponent implements OnInit {
     if (Number.isNaN(date.getTime())) {
       return raw;
     }
-    return date.toLocaleDateString('fr-FR', {
+    return date.toLocaleDateString('en-US', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -1096,7 +1152,7 @@ export class FeaturePageComponent implements OnInit {
     if (Number.isNaN(date.getTime())) {
       return '';
     }
-    return date.toLocaleTimeString('fr-FR', {
+    return date.toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
       hour12: false,
@@ -1173,6 +1229,30 @@ export class FeaturePageComponent implements OnInit {
     document.body.classList.add('modal-open');
   }
 
+  isDeepLinkedEvent(event: TravelEvent): boolean {
+    return this.deepLinkedEventId != null && event.eventId === this.deepLinkedEventId;
+  }
+
+  private tryOpenDeepLinkedEvent(): void {
+    if (!this.isEventFeed || this.deepLinkedEventId == null || this.events.length === 0) {
+      return;
+    }
+
+    const target = this.events.find((item) => item.eventId === this.deepLinkedEventId);
+    if (!target) {
+      return;
+    }
+
+    if (!this.selectedEvent || this.selectedEvent.eventId !== target.eventId) {
+      this.selectEvent(target);
+    }
+
+    setTimeout(() => {
+      const node = document.querySelector(`[data-event-id="${this.deepLinkedEventId}"]`) as HTMLElement | null;
+      node?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+  }
+
   closeEventDetails(): void {
     this.selectedEvent = null;
     this.eventJoinError.set(null);
@@ -1208,20 +1288,6 @@ export class FeaturePageComponent implements OnInit {
     return this.isPaidEvent(event) ? 'Opening payment…' : 'Registering…';
   }
 
-  private toJoinUserMessage(err: HttpErrorResponse, fallback: string): string {
-    const raw = extractApiErrorMessage(err, fallback);
-    const lowered = raw.toLowerCase();
-    if (
-      lowered.includes('stripe is not configured') ||
-      lowered.includes('stripe.api.key') ||
-      lowered.includes('stripe_secret_key') ||
-      lowered.includes('stripe error')
-    ) {
-      return 'Online payment is temporarily unavailable. Please try again later.';
-    }
-    return raw;
-  }
-
   onJoinEvent(event: TravelEvent): void {
     this.eventJoinError.set(null);
 
@@ -1240,62 +1306,8 @@ export class FeaturePageComponent implements OnInit {
       return;
     }
 
-    const amount = this.eventPriceAmount(event);
-
-    if (amount > 0) {
-      this.eventJoinLoading.set(true);
-      this.eventService
-        .createCheckoutSession({
-          event_id: eventId,
-          amount,
-          eventName: event.title,
-          presentmentCurrency: this.currency.selectedCode(),
-        })
-        .subscribe({
-          next: (res) => {
-            this.eventJoinLoading.set(false);
-            if (res?.sessionUrl) {
-              window.location.href = res.sessionUrl;
-              return;
-            }
-            this.eventJoinError.set('Payment is temporarily unavailable. Please try again later.');
-          },
-          error: (err: HttpErrorResponse) => {
-            this.eventJoinLoading.set(false);
-            this.eventJoinError.set(this.toJoinUserMessage(err, 'Could not start payment.'));
-          },
-        });
-      return;
-    }
-
-    const reservationData = {
-      event_id: eventId,
-      total_amount: 0,
-      status: 'CONFIRMED',
-    };
-
-    this.eventJoinLoading.set(true);
-    this.eventService.createReservation(reservationData).subscribe({
-      next: (res) => {
-        this.eventJoinLoading.set(false);
-        const emailSent = res?.emailSent !== false;
-        Swal.fire({
-          icon: 'success',
-          title: "You're registered!",
-          text: emailSent
-            ? 'Thanks for joining this event. A confirmation email has been sent.'
-            : 'Thanks for joining this event. Registration is confirmed, but the email could not be sent now.',
-          confirmButtonText: 'Great'
-        });
-        this.closeEventDetails();
-      },
-      error: (err: HttpErrorResponse) => {
-        this.eventJoinLoading.set(false);
-        const apiMessage = extractApiErrorMessage(err, 'Could not complete registration.');
-        const providerError = typeof err?.error?.emailError === 'string' ? err.error.emailError.trim() : '';
-        this.eventJoinError.set(providerError ? `${apiMessage} (${providerError})` : apiMessage);
-      },
-    });
+    this.closeEventDetails();
+    this.router.navigate(['/evenements/reservation', eventId]);
   }
 
   /** ngx-translate key under FEATURE_CATALOG.STATUS_* */

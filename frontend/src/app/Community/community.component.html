@@ -275,7 +275,17 @@
 
       <ng-container *ngFor="let post of visiblePosts(); trackBy: trackByPost">
         <ng-container *ngIf="post.postId != null">
-          <article class="post-card glass-panel" [attr.data-post-id]="post.postId" [class.post-card--location-hover]="isLocationHoverVisible(post.postId!)">
+          <article
+            class="post-card glass-panel"
+            [attr.data-post-id]="post.postId"
+            [class.post-card--location-hover]="isLocationHoverVisible(post.postId!)"
+            [class.post-card--event-announcement]="isEventAnnouncementPost(post)"
+            [class.post-card--clickable]="isEventAnnouncementPost(post)"
+            [attr.role]="isEventAnnouncementPost(post) ? 'button' : null"
+            [attr.tabindex]="isEventAnnouncementPost(post) ? 0 : null"
+            (click)="isEventAnnouncementPost(post) && openEventFromPost(post, $event)"
+            (keydown.enter)="isEventAnnouncementPost(post) && openEventFromPost(post, $event)"
+          >
             <header class="post-header">
               <div class="post-author">
                 <div class="avatar">
@@ -453,6 +463,17 @@
                   <span class="hashtag-chip" *ngFor="let tag of getHashtags(post)">{{ tag }}</span>
                 </div>
 
+                <section class="event-announcement-panel" *ngIf="isEventAnnouncementPost(post)">
+                  <div class="event-announcement-panel__badge">Live Event Drop</div>
+                  <button
+                    type="button"
+                    class="event-announcement-panel__cta"
+                    (click)="openEventFromPost(post, $event)"
+                  >
+                    Open Event Card
+                  </button>
+                </section>
+
                 <p class="post-caption">{{ post.content }}</p>
 
               </ng-container>
@@ -533,9 +554,15 @@
                       (click)="$event.stopPropagation(); toggleLikersModal(post.postId!)"
                     >{{ 'COMMUNITY.LIKES_N' | translate: { n: getLikeCount(post.postId!) } }}</span>
                   </div>
-                  <button type="button" class="stat-item stat-item--clickable stat-comment-trigger" (click)="toggleComments(post.postId!)">
+                  <button
+                    type="button"
+                    class="stat-item stat-item--clickable stat-comment-trigger"
+                    (click)="toggleComments(post.postId!)"
+                    [disabled]="!isCommentsAllowed(post)"
+                    [class.stat-item--disabled]="!isCommentsAllowed(post)"
+                  >
                     <img src="icones/commenter.png" alt="" class="stat-ico stat-ico--comment" width="18" height="18" />
-                    <span>{{ 'COMMUNITY.COMMENTS_N' | translate: { n: getCommentCount(post.postId!) } }}</span>
+                    <span>{{ isCommentsAllowed(post) ? (getCommentCount(post.postId!) + ' comments') : 'Comments disabled' }}</span>
                   </button>
                   <span class="stat-item">
                     <span>{{ post.totalViews ?? 0 }} views</span>

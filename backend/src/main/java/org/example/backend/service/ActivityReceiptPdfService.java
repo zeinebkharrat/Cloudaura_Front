@@ -37,6 +37,10 @@ public class ActivityReceiptPdfService {
 
     public byte[] generateReceiptPdf(ActivityReservation reservation) {
         String qrContent = buildQrContent(reservation);
+        return generateReceiptPdf(reservation, qrContent);
+    }
+
+    public byte[] generateReceiptPdf(ActivityReservation reservation, String qrContent) {
         byte[] qrPng = qrCodeService.generateQrPng(qrContent, 200);
         String qrBase64 = Base64.getEncoder().encodeToString(qrPng);
         String html = buildHtml(reservation, qrBase64);
