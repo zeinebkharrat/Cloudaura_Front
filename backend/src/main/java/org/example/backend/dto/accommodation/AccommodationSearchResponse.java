@@ -10,6 +10,8 @@ import java.util.List;
 public class AccommodationSearchResponse {
     private int accommodationId;
     private String name;
+    private String description;
+    private List<String> amenities;
     private String type;
     private double pricePerNight;
     private double rating;

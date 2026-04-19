@@ -3,6 +3,7 @@ package org.example.backend.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.example.backend.dto.transport.TrackingPositionDto;
+import org.example.backend.exception.ResourceNotFoundException;
 import org.example.backend.model.TransportReservation;
 import org.example.backend.repository.TransportReservationRepository;
 import org.example.backend.service.TransportTrackingSseService;
@@ -47,13 +48,13 @@ public class TransportTrackingSseController {
     private void assertOwner(int reservationId, Authentication authentication) {
         Integer uid = userIdentityResolver.resolveUserId(authentication);
         if (uid == null) {
-            throw new AccessDeniedException("Authentication required");
+            throw new AccessDeniedException("api.error.unauthorized");
         }
         TransportReservation res = reservationRepository
                 .findByIdWithAssociations(reservationId)
-                .orElseThrow(() -> new org.example.backend.exception.ResourceNotFoundException("Réservation non trouvée."));
+                .orElseThrow(() -> new ResourceNotFoundException("reservation.error.reservation_not_found"));
         if (res.getUser() == null || !uid.equals(res.getUser().getUserId())) {
-            throw new AccessDeniedException("Not your reservation");
+            throw new AccessDeniedException("api.error.ticket.reservation_wrong_user");
         }
     }
 }

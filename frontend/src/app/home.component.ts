@@ -14,6 +14,7 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, forkJoin, map, of } from 'rxjs';
+import { TranslateModule } from '@ngx-translate/core';
 import * as echarts from 'echarts';
 import { tunisiaGeoJson } from './tunisia-map';
 import { GOVERNORATE_LABEL_EN, GOVERNORATE_LABEL_FR } from './tunisia-governorate-labels';
@@ -21,7 +22,6 @@ import { ExploreService } from './explore/explore.service';
 import { API_BASE_URL, API_FALLBACK_ORIGIN } from './core/api-url';
 import { AuthService } from './core/auth.service';
 import { PersonalizationService } from './core/personalization.service';
-import { TranslateModule } from '@ngx-translate/core';
 
 interface HomeImageCard {
   title: string;

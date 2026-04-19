@@ -1,4 +1,4 @@
-import { Component, ElementRef, HostListener, OnDestroy, ViewChild, inject, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, OnDestroy, TemplateRef, ViewChild, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -30,6 +30,7 @@ import { GiphyItem, GiphyMediaType, GiphyService } from './giphy.service';
 import { tunisiaGeoJson } from '../tunisia-map';
 import { GOVERNORATE_LABEL_EN, GOVERNORATE_LABEL_FR } from '../tunisia-governorate-labels';
 import { CommunityStoriesComponent } from './community-stories.component';
+import { TranslateModule } from '@ngx-translate/core';
 
 const MINI_TUNISIA_MAP_NAME = 'TunisiaMiniPreview';
 const MINI_TUNISIA_MAP_NAME_PROP = '_echartsRegionId';
@@ -86,7 +87,7 @@ function tunisiaGeoWithUniqueRegionIds(geo: any) {
 @Component({
   selector: 'app-community',
   standalone: true,
-  imports: [CommonModule, CommunityStoriesComponent],
+  imports: [CommonModule, CommunityStoriesComponent, TranslateModule],
   templateUrl: './community.component.html',
   styleUrl: './community.component.css',
 })
@@ -95,6 +96,10 @@ export class CommunityComponent {
 
   @ViewChild('locationMiniMap')
   private locationMiniMapRef?: ElementRef<HTMLDivElement>;
+
+  /** Stable TemplateRef for recursive comments (avoids NgTemplateOutlet receiving a non-TemplateRef). */
+  @ViewChild('commentTpl', { static: true })
+  commentTplRef!: TemplateRef<unknown>;
 
   private readonly postService = inject(PostService);
   private readonly commentService = inject(CommentService);

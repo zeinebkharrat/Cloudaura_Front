@@ -48,7 +48,7 @@ public class TransportPaymentController {
             @Valid @RequestBody TransportCheckoutRequest body, Authentication authentication) {
         Integer uid = userIdentityResolver.resolveUserId(authentication);
         if (uid == null) {
-            throw new AccessDeniedException("Authentication required");
+            throw new AccessDeniedException("api.error.unauthorized");
         }
 
         String normalizedKey = StripeSecretKeys.normalize(stripeApiKey);
@@ -74,7 +74,8 @@ public class TransportPaymentController {
                         HttpStatus.INTERNAL_SERVER_ERROR, "Réservation manquante pour Stripe Checkout.");
             }
             TransportPaymentStartDto start =
-                    paymentService.createTransportCheckoutSession(handoff.reservation(), handoff.totalTnd());
+                    paymentService.createTransportCheckoutSession(
+                            handoff.reservation(), handoff.totalTnd(), body.getPresentmentCurrency());
             url = start.getUrl();
             log.info("Stripe session URL: {}", url);
         } else {
@@ -83,7 +84,7 @@ public class TransportPaymentController {
         }
 
         if (url == null || url.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "No checkout URL");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "api.error.transport_payment.checkout_url_missing");
         }
         return ApiResponse.success(Map.of("url", url));
     }
@@ -93,10 +94,10 @@ public class TransportPaymentController {
             @RequestParam("session_id") String sessionId, Authentication authentication) {
         Integer uid = userIdentityResolver.resolveUserId(authentication);
         if (uid == null) {
-            throw new AccessDeniedException("Authentication required");
+            throw new AccessDeniedException("api.error.unauthorized");
         }
         if (sessionId == null || sessionId.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "session_id requis.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.transport_payment.session_required");
         }
         return ApiResponse.success(transportReservationService.confirmTransportStripeSession(sessionId.trim(), uid));
     }

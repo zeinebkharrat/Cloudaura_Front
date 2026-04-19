@@ -28,6 +28,7 @@ export interface TransportPayPalCreatePayload {
   seats: number;
   travelDate: string;
   routeKm?: number;
+  routeDurationMin?: number;
   amountTnd: number;
   passengerFirstName?: string;
   passengerLastName?: string;
@@ -57,9 +58,11 @@ export interface DataSourceAdapter {
   createAccommodationCheckoutSession(payload: {
     roomId: number;
     userId: number;
+    guestCount: number;
     checkIn: string;
     checkOut: string;
     offerId?: number | null;
+    presentmentCurrency?: string;
   }): Observable<TransportCheckoutResult>;
 
   confirmTransportStripeSession(sessionId: string): Observable<TransportReservation>;

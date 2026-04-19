@@ -5,7 +5,6 @@ import org.springframework.cache.CacheManager;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Primary;
 
 import java.time.Duration;
 
@@ -20,7 +19,6 @@ public class AviationStackCacheConfig {
     public static final String CACHE_SUGGEST = "aviationSuggest";
 
     @Bean
-    @Primary
     public CacheManager aviationCacheManager() {
         CaffeineCacheManager manager = new CaffeineCacheManager(
                 CACHE_ALL_FLIGHTS,

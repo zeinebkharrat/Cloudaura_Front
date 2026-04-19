@@ -350,7 +350,7 @@ public class ShopService {
         }
 
         if ("CARD".equals(pm)) {
-            dto.setPaymentUrl(paymentService.generatePaymentUrl(order));
+            dto.setPaymentUrl(paymentService.generatePaymentUrl(order, null));
         } else {
             dto.setPaymentUrl(null);
         }

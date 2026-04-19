@@ -30,6 +30,9 @@ public class TransportCheckoutRequest {
     /** Required when transport type is TAXI (km for pricing). */
     private Double routeKm;
 
+    /** Optional duration in minutes for TAXI pricing (falls back to km-based estimate). */
+    private Integer routeDurationMin;
+
     /** Used for CAR rentals; optional, defaults to 1. */
     private Integer rentalDays;
 
@@ -52,4 +55,7 @@ public class TransportCheckoutRequest {
     @NotBlank
     @Size(min = 8, max = 36)
     private String idempotencyKey;
+
+    /** Optional Stripe Checkout presentment: {@code tnd}, {@code eur}, or {@code usd}. */
+    private String presentmentCurrency;
 }

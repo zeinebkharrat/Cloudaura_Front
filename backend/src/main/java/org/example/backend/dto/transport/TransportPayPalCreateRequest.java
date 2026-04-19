@@ -29,6 +29,8 @@ public class TransportPayPalCreateRequest {
 
     private Double routeKm;
 
+    private Integer routeDurationMin;
+
     @NotNull
     @DecimalMin(value = "0.01", message = "amountTnd must be positive")
     private Double amountTnd;

@@ -13,10 +13,10 @@ import {
 const TRANSPORT_META: Record<string, { icon: string; color: string; bg: string }> = {
   'Taxi':                    { icon: '/icones/taxi.png',  color: '#fbbf24', bg: 'rgba(251,191,36,0.10)' },
   'Louage (Taxi Collectif)': { icon: '/icones/taxi.png',  color: '#60a5fa', bg: 'rgba(96,165,250,0.10)'  },
-  'Bus SNTRI':               { icon: '/icones/bus.png',   color: '#34d399', bg: 'rgba(52,211,153,0.10)'  },
-  'Avion (Tunisair Express)':{ icon: '/icones/plane.png', color: '#a78bfa', bg: 'rgba(167,139,250,0.10)' },
+  'Bus SNTRI':               { icon: '/icones/autobus.png', color: '#34d399', bg: 'rgba(52,211,153,0.10)'  },
+  'Avion (Tunisair Express)':{ icon: '/icones/avion.png', color: '#a78bfa', bg: 'rgba(167,139,250,0.10)' },
   'Location de Voiture':     { icon: '/icones/car.png',   color: '#fb923c', bg: 'rgba(251,146,60,0.10)'  },
-  'Train SNCFT':             { icon: '/icones/bus.png',   color: '#38bdf8', bg: 'rgba(56,189,248,0.10)'  },
+  'Train SNCFT':             { icon: '/icones/autobus.png', color: '#38bdf8', bg: 'rgba(56,189,248,0.10)'  },
 };
 
 /** English labels for engine `type` strings (icon lookup still uses the raw API key). */
@@ -147,7 +147,7 @@ const TRANSPORT_TYPE_LABEL_EN: Record<string, string> = {
       <div class="route-bar">
         <span class="rb-city">{{ rec()!.fromCity }}</span>
         <span class="rb-arrow">
-          <img src="/icones/plane.png" alt="→" style="width:1.4rem;height:1.4rem;object-fit:contain;opacity:.7;" />
+          <img src="/icones/avion.png" alt="→" style="width:1.4rem;height:1.4rem;object-fit:contain;opacity:.7;" />
         </span>
         <span class="rb-city">{{ rec()!.toCity }}</span>
         <div class="rb-pills">

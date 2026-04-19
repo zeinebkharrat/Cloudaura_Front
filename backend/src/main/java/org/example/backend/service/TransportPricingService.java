@@ -36,6 +36,18 @@ public class TransportPricingService {
         };
     }
 
+    public double computeTotalTnd(
+            Transport transport,
+            int seats,
+            Double routeKm,
+            Integer routeDurationMin,
+            Integer rentalDays,
+            java.time.LocalDateTime travelDate) {
+        // Keep compatibility with merged callers; current pricing logic depends on transport type,
+        // seats, route distance, and rental days only.
+        return computeTotalTnd(transport, seats, routeKm, rentalDays);
+    }
+
     private static double round2(double v) {
         return Math.round(v * 100.0) / 100.0;
     }

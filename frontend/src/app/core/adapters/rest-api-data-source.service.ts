@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, map } from 'rxjs';
+import { Observable, catchError, map } from 'rxjs';
 import {
   DataSourceAdapter,
   TransportCheckoutResult,
@@ -119,9 +119,11 @@ export class RestApiDataSource implements DataSourceAdapter {
   createAccommodationCheckoutSession(payload: {
     roomId: number;
     userId: number;
+    guestCount: number;
     checkIn: string;
     checkOut: string;
     offerId?: number | null;
+    presentmentCurrency?: string;
   }): Observable<TransportCheckoutResult> {
     return this.http.post<any>(`${this.BASE}/accommodation/payments/checkout-session`, payload).pipe(
       map((res) => {
@@ -178,6 +180,7 @@ export class RestApiDataSource implements DataSourceAdapter {
           totalPrice: d.totalPrice,
           checkInDate: typeof d.checkIn === 'string' ? d.checkIn.slice(0, 10) : undefined,
           checkOutDate: typeof d.checkOut === 'string' ? d.checkOut.slice(0, 10) : undefined,
+          guestCount: d.guestCount != null ? Number(d.guestCount) : undefined,
           roomId: d.roomId != null ? Number(d.roomId) : undefined,
         } as Reservation;
       })
@@ -203,8 +206,13 @@ export class RestApiDataSource implements DataSourceAdapter {
   }
 
   getMyTransportReservations(userId: number): Observable<TransportReservation[]> {
-    return this.http.get<any>(`${this.BASE}/transport-reservations/user/${userId}`).pipe(
-      map((res) => (res.data ?? []).map((x: any) => this.mapTransportReservation(x)))
+    return this.http.get<any>(`${this.BASE}/transport-reservations/my`).pipe(
+      map((res) => (res.data ?? []).map((x: any) => this.mapTransportReservation(x))),
+      catchError(() =>
+        this.http.get<any>(`${this.BASE}/transport-reservations/user/${userId}`).pipe(
+          map((res) => (res.data ?? []).map((x: any) => this.mapTransportReservation(x)))
+        )
+      )
     );
   }
 
@@ -240,8 +248,11 @@ export class RestApiDataSource implements DataSourceAdapter {
       transportId: x.transportId != null ? Number(x.transportId) : undefined,
       reservationRef: x.reservationRef ?? '',
       status: x.status,
+      statusLabel: x.statusLabel,
       paymentStatus: x.paymentStatus,
+      paymentStatusLabel: x.paymentStatusLabel,
       paymentMethod: x.paymentMethod,
+      paymentMethodLabel: x.paymentMethodLabel,
       totalPrice: Number(x.totalPrice) || 0,
       numberOfSeats: Number(x.numberOfSeats) || 0,
       travelDate: toIso(x.travelDate),
@@ -252,9 +263,14 @@ export class RestApiDataSource implements DataSourceAdapter {
       qrCodeToken: x.qrCodeToken,
       createdAt: toIso(x.createdAt),
       transportType: x.transportType,
+      type: x.type,
+      transportTypeLabel: x.transportTypeLabel,
+      typeLabel: x.typeLabel,
       departureCityName: x.departureCityName,
       arrivalCityName: x.arrivalCityName,
-      departureTime: toIso(x.travelDate) || toIso(x.departureTime),
+      departureCityLabel: x.departureCityLabel,
+      arrivalCityLabel: x.arrivalCityLabel,
+      departureTime: toIso(x.departureTime) || toIso(x.travelDate),
     };
   }
 
@@ -293,6 +309,7 @@ export class RestApiDataSource implements DataSourceAdapter {
             totalPrice: d.totalPrice,
             checkInDate: d.checkIn,
             checkOutDate: d.checkOut,
+            guestCount: d.guestCount != null ? Number(d.guestCount) : undefined,
           } as Reservation;
         })
       );
@@ -315,13 +332,20 @@ export class RestApiDataSource implements DataSourceAdapter {
       accommodationId: x.accommodationId != null ? Number(x.accommodationId) : undefined,
       roomId: x.roomId != null ? Number(x.roomId) : undefined,
       status: x.status,
+      statusLabel: x.statusLabel,
       totalPrice: x.totalPrice,
       accommodationName: x.accommodationName,
+      nameLabel: x.nameLabel,
       accommodationCity: x.cityName,
+      cityLabel: x.cityLabel,
       checkInDate: toDateStr(x.checkIn),
       checkOutDate: toDateStr(x.checkOut),
+      guestCount: x.guestCount != null ? Number(x.guestCount) : undefined,
       nights: x.nights,
       roomType: x.roomType,
+      roomTypeLabel: x.roomTypeLabel,
+      paymentMethod: x.paymentMethod,
+      paymentMethodLabel: x.paymentMethodLabel,
     };
   }
 
@@ -332,6 +356,7 @@ export class RestApiDataSource implements DataSourceAdapter {
       return this.http.post<any>(`${this.BASE}/reservations`, {
         roomId: Number(roomId),
         userId: Number(r['userId']),
+        guestCount: Number(r['guestCount'] ?? 1),
         checkIn: r['checkIn'],
         checkOut: r['checkOut'],
         offerId: r['offerId'] ?? null,
@@ -344,6 +369,7 @@ export class RestApiDataSource implements DataSourceAdapter {
             totalPrice: d.totalPrice,
             checkInDate: d.checkIn,
             checkOutDate: d.checkOut,
+            guestCount: d.guestCount != null ? Number(d.guestCount) : Number(r['guestCount'] ?? 1),
             nights: d.nights,
             roomId: Number(roomId),
             userId: Number(r['userId']),
@@ -377,11 +403,6 @@ export class RestApiDataSource implements DataSourceAdapter {
       arrivalCityId: t.arrivalCityId ?? parseInt(params.to ?? '0'),
       departureCityName: t.departureCityName,
       arrivalCityName: t.arrivalCityName,
-      vehicleBrand: t.vehicleBrand,
-      vehicleModel: t.vehicleModel,
-      vehiclePhotoUrl: t.vehiclePhotoUrl,
-      driverName: t.driverName,
-      driverRating: t.driverRating,
       description: t.description,
     };
   }

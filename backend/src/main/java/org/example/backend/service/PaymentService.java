@@ -4,11 +4,16 @@ import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.checkout.Session;
 import com.stripe.param.checkout.SessionCreateParams;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import org.example.backend.model.OrderEntity;
 import org.example.backend.model.OrderItem;
 import org.example.backend.model.OrderStatus;
+import org.example.backend.model.Product;
 import org.example.backend.dto.transport.TransportPaymentStartDto;
 import org.example.backend.model.Reservation;
 import org.example.backend.model.TransportReservation;
@@ -27,9 +32,13 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class PaymentService {
 
+    private static final Set<String> ALLOWED_PRESENTMENT = Set.of("tnd", "eur", "usd");
+
     private final OrderEntityRepository orderEntityRepository;
     private final OrderItemRepository orderItemRepository;
     private final EmailService emailService;
+    private final CatalogTranslationService catalogTranslationService;
+    private final CurrencyService currencyService;
     private final String stripeApiKey;
     private final String frontendBaseUrl;
 
@@ -47,11 +56,15 @@ public class PaymentService {
             OrderEntityRepository orderEntityRepository,
             OrderItemRepository orderItemRepository,
             EmailService emailService,
+            CatalogTranslationService catalogTranslationService,
+            CurrencyService currencyService,
             @Value("${stripe.api.key:disabled}") String stripeApiKey,
             @Value("${app.frontend.base-url:http://localhost:4200}") String frontendBaseUrl) {
         this.orderEntityRepository = orderEntityRepository;
         this.orderItemRepository = orderItemRepository;
         this.emailService = emailService;
+        this.catalogTranslationService = catalogTranslationService;
+        this.currencyService = currencyService;
         this.stripeApiKey = stripeApiKey;
         this.frontendBaseUrl = frontendBaseUrl;
     }
@@ -72,141 +85,219 @@ public class PaymentService {
         if (stripeCheckoutCurrency == null || stripeCheckoutCurrency.isBlank()) {
             return "usd";
         }
-        return stripeCheckoutCurrency.trim().toLowerCase();
+        return stripeCheckoutCurrency.trim().toLowerCase(Locale.ROOT);
     }
 
-    /** Business DB amounts are TND; Stripe minor units use the configured Checkout currency. */
-    private long minorUnitsFromTnd(double amountTnd) {
-        if ("tnd".equals(normalizedStripeCurrency())) {
+    /**
+     * Resolves Stripe Checkout presentment currency: client may pass {@code tnd}, {@code eur}, or {@code usd};
+     * otherwise falls back to {@code stripe.checkout.currency}.
+     */
+    public String resolvePresentmentCurrency(String clientPreference) {
+        if (clientPreference != null && !clientPreference.isBlank()) {
+            String n = clientPreference.trim().toLowerCase(Locale.ROOT);
+            if (ALLOWED_PRESENTMENT.contains(n)) {
+                return n;
+            }
+        }
+        return normalizedStripeCurrency();
+    }
+
+    /** TND amount → Stripe smallest unit for the resolved presentment currency. */
+    public long stripeMinorUnits(double amountTnd, String presentmentPreference) {
+        return minorUnitsFromTnd(amountTnd, resolvePresentmentCurrency(presentmentPreference));
+    }
+
+        /** Stripe presentment fallback: TND is displayed in-app but charged in EUR on Checkout. */
+        private String resolveStripeChargeCurrency(String presentmentPreference) {
+                String requested = resolvePresentmentCurrency(presentmentPreference);
+                return "tnd".equals(requested) ? "eur" : requested;
+        }
+
+    /** Business DB amounts are TND; Stripe minor units for {@code checkoutCurrencyLower} (tnd|eur|usd). */
+    private long minorUnitsFromTnd(double amountTnd, String checkoutCurrencyLower) {
+        String c =
+                checkoutCurrencyLower == null || checkoutCurrencyLower.isBlank()
+                        ? "usd"
+                        : checkoutCurrencyLower.trim().toLowerCase(Locale.ROOT);
+        if ("tnd".equals(c)) {
             return Math.round(amountTnd * 100.0);
         }
-        double presentment = amountTnd * stripeTndToPresentment;
-        return Math.round(presentment * 100.0);
+        try {
+            BigDecimal converted =
+                    currencyService.convert(c.toUpperCase(Locale.ROOT), BigDecimal.valueOf(amountTnd)).amountConverted();
+            return converted.multiply(BigDecimal.valueOf(100)).setScale(0, RoundingMode.HALF_UP).longValue();
+        } catch (Exception ex) {
+            log.warn(
+                    "FX convert failed for Stripe presentment {} amountTnd={}; using legacy stripe.transport.tnd-to-presentment",
+                    c,
+                    amountTnd,
+                    ex);
+            double presentment = amountTnd * stripeTndToPresentment;
+            return Math.round(presentment * 100.0);
+        }
     }
 
-    private String stripeLineItemNameWithTndRef(String base, double totalTnd) {
-        if ("tnd".equals(normalizedStripeCurrency())) {
-            return base;
+    private String resolveProductLineDisplayName(Product product) {
+        if (product == null) {
+            return "";
         }
-        return base + String.format(" (réf. %.2f TND)", totalTnd);
+        String fallback = product.getName() != null ? product.getName() : "";
+        Integer id = product.getProductId();
+        if (id == null) {
+            return fallback;
+        }
+        return catalogTranslationService.resolveEntityField(id, "product", "name", fallback);
     }
 
-    public String generatePaymentUrl(OrderEntity order) {
-        if (!StripeSecretKeys.isStripeSecretConfigured(StripeSecretKeys.normalize(stripeApiKey))) {
-            // Simulated local payment gateway (Konnect/Stripe mock)
-            return frontendBaseUrl + "/mock-payment?orderId=" + order.getOrderId() + "&amount=" + order.getTotalAmount();
+    public static boolean isStripePresentmentCurrencyRejected(StripeException e) {
+        if (e == null) {
+            return false;
         }
+        String msg = e.getMessage();
+        if (msg != null) {
+            String m = msg.toLowerCase(Locale.ROOT);
+            if (m.contains("invalid currency")
+                    || m.contains("unsupported currency")
+                    || m.contains("currency_not_supported")) {
+                return true;
+            }
+        }
+        if (e.getStripeError() != null) {
+            if (e.getStripeError().getParam() != null
+                    && e.getStripeError().getParam().toLowerCase(Locale.ROOT).contains("currency")) {
+                return true;
+            }
+            if (e.getStripeError().getCode() != null
+                    && e.getStripeError().getCode().toLowerCase(Locale.ROOT).contains("currency")) {
+                return true;
+            }
+        }
+        return false;
+    }
 
-        String checkoutCurrency = normalizedStripeCurrency();
+    /** Builds Stripe Checkout session params for the shop order in the given presentment ISO currency (lowercase). */
+    private SessionCreateParams buildShopCheckoutSessionParams(OrderEntity order, String checkoutCurrency) {
         List<SessionCreateParams.LineItem> stripeLines = new ArrayList<>();
         List<OrderItem> items = orderItemRepository.findByOrderIdWithProduct(order.getOrderId());
-        
+
         for (OrderItem oi : items) {
-            double price = oi.getVariant() != null && oi.getVariant().getPriceOverride() != null 
-                            ? oi.getVariant().getPriceOverride() 
-                            : oi.getProduct().getPrice();
+            double price = oi.getVariant() != null && oi.getVariant().getPriceOverride() != null
+                    ? oi.getVariant().getPriceOverride()
+                    : oi.getProduct().getPrice();
 
             stripeLines.add(
-                SessionCreateParams.LineItem.builder()
-                    .setQuantity((long) oi.getQuantity())
-                    .setPriceData(
-                        SessionCreateParams.LineItem.PriceData.builder()
-                            .setCurrency(checkoutCurrency)
-                            .setUnitAmount(minorUnitsFromTnd(price))
-                            .setProductData(
-                                SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                                    .setName(oi.getProduct().getName())
-                                    .build()
-                            )
-                            .build()
-                    )
-                    .build()
-            );
+                    SessionCreateParams.LineItem.builder()
+                            .setQuantity((long) oi.getQuantity())
+                            .setPriceData(
+                                    SessionCreateParams.LineItem.PriceData.builder()
+                                            .setCurrency(checkoutCurrency)
+                                            .setUnitAmount(minorUnitsFromTnd(price, checkoutCurrency))
+                                            .setProductData(
+                                                    SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                                            .setName(resolveProductLineDisplayName(oi.getProduct()))
+                                                            .build())
+                                            .build())
+                            .build());
         }
 
-        // Add Delivery Fee Line
         if (order.getDeliveryFee() != null && order.getDeliveryFee() > 0) {
-             stripeLines.add(
-                SessionCreateParams.LineItem.builder()
-                    .setQuantity(1L)
-                    .setPriceData(
-                        SessionCreateParams.LineItem.PriceData.builder()
-                            .setCurrency(checkoutCurrency)
-                            .setUnitAmount(minorUnitsFromTnd(order.getDeliveryFee()))
-                            .setProductData(
-                                SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                                    .setName("Frais de Livraison")
-                                    .build()
-                            )
-                            .build()
-                    )
-                    .build()
-            );
+            stripeLines.add(
+                    SessionCreateParams.LineItem.builder()
+                            .setQuantity(1L)
+                            .setPriceData(
+                                    SessionCreateParams.LineItem.PriceData.builder()
+                                            .setCurrency(checkoutCurrency)
+                                            .setUnitAmount(minorUnitsFromTnd(order.getDeliveryFee(), checkoutCurrency))
+                                            .setProductData(
+                                                    SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                                            .setName(
+                                                                    catalogTranslationService.resolveForRequest(
+                                                                            "payment.line.delivery",
+                                                                            "Frais de livraison"))
+                                                            .build())
+                                            .build())
+                            .build());
         }
 
-        // Calculate missing discount to match order.getTotalAmount() precisely (since promo applies globally)
-        long expectedTotalCents = minorUnitsFromTnd(order.getTotalAmount());
-        long currentTotalCents = stripeLines.stream().mapToLong(l -> l.getPriceData().getUnitAmount() * l.getQuantity()).sum();
+        long expectedTotalCents = minorUnitsFromTnd(order.getTotalAmount(), checkoutCurrency);
+        long currentTotalCents =
+                stripeLines.stream().mapToLong(l -> l.getPriceData().getUnitAmount() * l.getQuantity()).sum();
 
         if (currentTotalCents > expectedTotalCents) {
-           // We have a discount
-           long discount = currentTotalCents - expectedTotalCents;
-           stripeLines.add(
-                SessionCreateParams.LineItem.builder()
-                    .setQuantity(1L)
-                    .setPriceData(
-                        SessionCreateParams.LineItem.PriceData.builder()
-                            .setCurrency(checkoutCurrency)
-                            // Negative amounts not strictly supported in LineItems, so we might need a Coupon or adjust base prices.
-                            // But for simplicity in this MVP, we create an artificial discount line if possible, or just build one generic line.
-                            // To avoid Stripe errors with negative units, we will combine into one total line if discount exists
-                            .setUnitAmount(-discount) 
-                            .setProductData(
-                                SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                                    .setName("Code Promo (Réduction)")
-                                    .build()
-                            )
-                            .build()
-                    )
-                    .build()
-            );
+            long discount = currentTotalCents - expectedTotalCents;
+            stripeLines.add(
+                    SessionCreateParams.LineItem.builder()
+                            .setQuantity(1L)
+                            .setPriceData(
+                                    SessionCreateParams.LineItem.PriceData.builder()
+                                            .setCurrency(checkoutCurrency)
+                                            .setUnitAmount(-discount)
+                                            .setProductData(
+                                                    SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                                            .setName(
+                                                                    catalogTranslationService.resolveForRequest(
+                                                                            "payment.line.promo_discount",
+                                                                            "Réduction (code promo)"))
+                                                            .build())
+                                            .build())
+                            .build());
         }
 
-        try {
-            // Safe fallback if the discount logic causes Stripe rejection: create a single line item
-            if (currentTotalCents != expectedTotalCents) {
-                stripeLines.clear();
-                stripeLines.add(
+        if (currentTotalCents != expectedTotalCents) {
+            stripeLines.clear();
+            String orderLineFmt =
+                    catalogTranslationService.resolveForRequest("payment.line.order_total", "Commande n°%s");
+            stripeLines.add(
                     SessionCreateParams.LineItem.builder()
-                        .setQuantity(1L)
-                        .setPriceData(
-                            SessionCreateParams.LineItem.PriceData.builder()
-                                .setCurrency(checkoutCurrency)
-                                .setUnitAmount(expectedTotalCents)
-                                .setProductData(
-                                    SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                                        .setName("Commande #" + order.getOrderId())
-                                        .build()
-                                )
-                                .build()
-                        )
-                        .build()
-                );
-            }
+                            .setQuantity(1L)
+                            .setPriceData(
+                                    SessionCreateParams.LineItem.PriceData.builder()
+                                            .setCurrency(checkoutCurrency)
+                                            .setUnitAmount(expectedTotalCents)
+                                            .setProductData(
+                                                    SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                                            .setName(String.format(orderLineFmt, order.getOrderId()))
+                                                            .build())
+                                            .build())
+                            .build());
+        }
 
-            SessionCreateParams params = SessionCreateParams.builder()
+        return SessionCreateParams.builder()
                 .setMode(SessionCreateParams.Mode.PAYMENT)
                 .setSuccessUrl(frontendBaseUrl + "/mes-commandes?success=true")
                 .setCancelUrl(frontendBaseUrl + "/mes-commandes?canceled=true")
                 .putMetadata("orderId", String.valueOf(order.getOrderId()))
                 .addAllLineItem(stripeLines)
                 .build();
+    }
 
-            Session session = Session.create(params);
+    public String generatePaymentUrl(OrderEntity order, String presentmentCurrency) {
+        if (!StripeSecretKeys.isStripeSecretConfigured(StripeSecretKeys.normalize(stripeApiKey))) {
+            // Simulated local payment gateway (Konnect/Stripe mock)
+            return frontendBaseUrl + "/mock-payment?orderId=" + order.getOrderId() + "&amount=" + order.getTotalAmount();
+        }
+
+        String preferred = resolvePresentmentCurrency(presentmentCurrency);
+        try {
+            Session session = Session.create(buildShopCheckoutSessionParams(order, preferred));
             return session.getUrl();
         } catch (StripeException e) {
+            if ("tnd".equals(preferred) && isStripePresentmentCurrencyRejected(e)) {
+                log.warn(
+                        "Stripe shop checkout: presentment TND rejected by Stripe or account ({}). Retrying in EUR.",
+                        e.getMessage());
+                try {
+                    Session session = Session.create(buildShopCheckoutSessionParams(order, "eur"));
+                    return session.getUrl();
+                } catch (StripeException e2) {
+                    log.error("Stripe shop checkout (EUR retry) failed", e2);
+                    throw new ResponseStatusException(
+                            HttpStatus.INTERNAL_SERVER_ERROR, "reservation.payment.stripe_generic_error");
+                }
+            }
             log.error("Stripe checkout session (shop) failed", e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Erreur génération Stripe");
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR, "reservation.payment.stripe_generic_error");
         }
     }
 
@@ -214,22 +305,29 @@ public class PaymentService {
      * Stripe Checkout for a transport reservation. Stored totals are TND; Checkout uses {@code stripe.checkout.currency}
      * and {@code stripe.transport.tnd-to-presentment} when the presentment currency is not TND.
      */
-    public TransportPaymentStartDto createTransportCheckoutSession(TransportReservation reservation, double totalTnd) {
+    public TransportPaymentStartDto createTransportCheckoutSession(
+            TransportReservation reservation, double totalTnd, String presentmentCurrency) {
         String key = StripeSecretKeys.normalize(stripeApiKey);
         if (!StripeSecretKeys.isStripeSecretConfigured(key)) {
             log.warn("createTransportCheckoutSession called but stripe secret not configured after normalize");
             throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "Stripe n'est pas configuré pour ce transport.");
+                    HttpStatus.SERVICE_UNAVAILABLE, "reservation.payment.stripe_not_configured");
         }
         Stripe.apiKey = key;
 
-        String checkoutCurrency = normalizedStripeCurrency();
-        long unitAmount = totalTnd <= 0 ? 0L : minorUnitsFromTnd(totalTnd);
+        String requestedCurrency = resolvePresentmentCurrency(presentmentCurrency);
+        String checkoutCurrency = resolveStripeChargeCurrency(presentmentCurrency);
+        long unitAmount = totalTnd <= 0 ? 0L : minorUnitsFromTnd(totalTnd, checkoutCurrency);
         assertTransportStripeChargeable(unitAmount, checkoutCurrency);
 
         String ref = reservation.getReservationRef();
-        String label = "Transport — " + (ref != null && !ref.isBlank() ? ref : "#" + reservation.getTransportReservationId());
+        String transportPrefix =
+                catalogTranslationService.resolveForRequest(
+                        "reservation.payment.transport_prefix", "Transport");
+        String label =
+                transportPrefix
+                        + " — "
+                        + (ref != null && !ref.isBlank() ? ref : "#" + reservation.getTransportReservationId());
 
         List<SessionCreateParams.LineItem> stripeLines = List.of(
                 SessionCreateParams.LineItem.builder()
@@ -240,7 +338,7 @@ public class PaymentService {
                                         .setUnitAmount(unitAmount)
                                         .setProductData(
                                                 SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                                                        .setName(stripeLineItemNameWithTndRef(label, totalTnd))
+                                                        .setName(label)
                                                         .build())
                                         .build())
                         .build());
@@ -255,6 +353,8 @@ public class PaymentService {
                     .putMetadata(
                             "transportReservationId",
                             String.valueOf(reservation.getTransportReservationId()))
+                    .putMetadata("requested_currency", requestedCurrency.toUpperCase(Locale.ROOT))
+                    .putMetadata("charged_currency", checkoutCurrency.toUpperCase(Locale.ROOT))
                     .addAllLineItem(stripeLines)
                     .build();
 
@@ -267,43 +367,97 @@ public class PaymentService {
                     url != null && !url.isBlank());
             if (url == null || url.isBlank()) {
                 log.error("Stripe returned no checkout URL for transport reservation {}", reservation.getTransportReservationId());
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Stripe n'a pas renvoyé d'URL de paiement.");
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_GATEWAY, "reservation.payment.stripe_no_checkout_url");
             }
             return TransportPaymentStartDto.builder().url(url).build();
-        } catch (StripeException e) {
+                } catch (StripeException e) {
+                        if (isStripePresentmentCurrencyRejected(e) && !"eur".equals(checkoutCurrency)) {
+                log.warn(
+                                                "Stripe transport: presentment {} rejected ({}). Retrying Checkout in EUR.",
+                                                checkoutCurrency,
+                        e.getMessage());
+                long eurMinor = minorUnitsFromTnd(totalTnd, "eur");
+                assertTransportStripeChargeable(eurMinor, "eur");
+                List<SessionCreateParams.LineItem> eurLines =
+                        List.of(
+                                SessionCreateParams.LineItem.builder()
+                                        .setQuantity(1L)
+                                        .setPriceData(
+                                                SessionCreateParams.LineItem.PriceData.builder()
+                                                        .setCurrency("eur")
+                                                        .setUnitAmount(eurMinor)
+                                                        .setProductData(
+                                                                SessionCreateParams.LineItem.PriceData.ProductData
+                                                                        .builder()
+                                                                        .setName(label)
+                                                                        .build())
+                                                        .build())
+                                        .build());
+                try {
+                    SessionCreateParams paramsEur =
+                            SessionCreateParams.builder()
+                                    .setMode(SessionCreateParams.Mode.PAYMENT)
+                                    .setSuccessUrl(returnUrl)
+                                    .setCancelUrl(frontendBaseUrl + "/transport")
+                                    .putMetadata(
+                                            "transportReservationId",
+                                            String.valueOf(reservation.getTransportReservationId()))
+                                    .putMetadata("requested_currency", requestedCurrency.toUpperCase(Locale.ROOT))
+                                    .putMetadata("charged_currency", "EUR")
+                                    .addAllLineItem(eurLines)
+                                    .build();
+                    Session sessionEur = Session.create(paramsEur);
+                    String urlEur = sessionEur.getUrl();
+                    if (urlEur == null || urlEur.isBlank()) {
+                        throw new ResponseStatusException(
+                                HttpStatus.BAD_GATEWAY, "reservation.payment.stripe_no_checkout_url");
+                    }
+                    return TransportPaymentStartDto.builder().url(urlEur).build();
+                } catch (StripeException e2) {
+                    log.error("Stripe transport EUR retry failed", e2);
+                    throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "reservation.payment.stripe_unavailable");
+                }
+            }
             log.error(
                     "Stripe transport checkout failed (currency={}, unitAmount={}, reservationId={})",
                     checkoutCurrency,
                     unitAmount,
                     reservation.getTransportReservationId(),
                     e);
-            String hint = e.getMessage() != null ? e.getMessage() : "erreur inconnue";
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_GATEWAY, "Paiement Stripe indisponible : " + hint);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "reservation.payment.stripe_unavailable");
         }
     }
 
     /**
      * Stripe Checkout for an accommodation stay (TND). Metadata {@code accommodationReservationId} is used on return.
      */
-    public TransportPaymentStartDto createAccommodationCheckoutSession(Reservation reservation, double totalTnd) {
+    public TransportPaymentStartDto createAccommodationCheckoutSession(
+            Reservation reservation, double totalTnd, String presentmentCurrency) {
         if (reservation == null || reservation.getReservationId() == null) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Réservation invalide pour Stripe.");
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR, "reservation.payment.invalid_accommodation_reservation");
         }
         String key = StripeSecretKeys.normalize(stripeApiKey);
         if (!StripeSecretKeys.isStripeSecretConfigured(key)) {
             log.warn("createAccommodationCheckoutSession called but stripe secret not configured after normalize");
             throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE,
-                    "Stripe n'est pas configuré pour l'hébergement.");
+                    HttpStatus.SERVICE_UNAVAILABLE, "reservation.payment.stripe_not_configured_accommodation");
         }
         Stripe.apiKey = key;
 
-        String checkoutCurrency = normalizedStripeCurrency();
-        long unitAmount = minorUnitsFromTnd(totalTnd);
+        String requestedCurrency = resolvePresentmentCurrency(presentmentCurrency);
+        String checkoutCurrency = resolveStripeChargeCurrency(presentmentCurrency);
+        long unitAmount = minorUnitsFromTnd(totalTnd, checkoutCurrency);
         assertTransportStripeChargeable(unitAmount, checkoutCurrency);
 
-        String label = "Hébergement — réservation #" + reservation.getReservationId();
+        String hebPrefix =
+                catalogTranslationService.resolveForRequest(
+                        "reservation.payment.accommodation_prefix", "Hébergement");
+        String resWord =
+                catalogTranslationService.resolveForRequest(
+                        "reservation.payment.reservation_word", "réservation");
+        String label = hebPrefix + " — " + resWord + " #" + reservation.getReservationId();
 
         List<SessionCreateParams.LineItem> stripeLines = List.of(
                 SessionCreateParams.LineItem.builder()
@@ -314,7 +468,7 @@ public class PaymentService {
                                         .setUnitAmount(unitAmount)
                                         .setProductData(
                                                 SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                                                        .setName(stripeLineItemNameWithTndRef(label, totalTnd))
+                                                        .setName(label)
                                                         .build())
                                         .build())
                         .build());
@@ -329,6 +483,8 @@ public class PaymentService {
                     .putMetadata(
                             "accommodationReservationId",
                             String.valueOf(reservation.getReservationId()))
+                    .putMetadata("requested_currency", requestedCurrency.toUpperCase(Locale.ROOT))
+                    .putMetadata("charged_currency", checkoutCurrency.toUpperCase(Locale.ROOT))
                     .addAllLineItem(stripeLines)
                     .build();
 
@@ -342,25 +498,73 @@ public class PaymentService {
                 log.error(
                         "Stripe returned no checkout URL for accommodation reservation {}",
                         reservation.getReservationId());
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Stripe n'a pas renvoyé d'URL de paiement.");
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_GATEWAY, "reservation.payment.stripe_no_checkout_url");
             }
             return TransportPaymentStartDto.builder().url(url).build();
-        } catch (StripeException e) {
+                } catch (StripeException e) {
+                        if (isStripePresentmentCurrencyRejected(e) && !"eur".equals(checkoutCurrency)) {
+                log.warn(
+                                                "Stripe accommodation: presentment {} rejected ({}). Retrying Checkout in EUR.",
+                                                checkoutCurrency,
+                        e.getMessage());
+                long eurMinor = minorUnitsFromTnd(totalTnd, "eur");
+                assertTransportStripeChargeable(eurMinor, "eur");
+                List<SessionCreateParams.LineItem> eurLines =
+                        List.of(
+                                SessionCreateParams.LineItem.builder()
+                                        .setQuantity(1L)
+                                        .setPriceData(
+                                                SessionCreateParams.LineItem.PriceData.builder()
+                                                        .setCurrency("eur")
+                                                        .setUnitAmount(eurMinor)
+                                                        .setProductData(
+                                                                SessionCreateParams.LineItem.PriceData.ProductData
+                                                                        .builder()
+                                                                        .setName(label)
+                                                                        .build())
+                                                        .build())
+                                        .build());
+                try {
+                    SessionCreateParams paramsEur =
+                            SessionCreateParams.builder()
+                                    .setMode(SessionCreateParams.Mode.PAYMENT)
+                                    .setSuccessUrl(returnUrl)
+                                    .setCancelUrl(frontendBaseUrl + "/hebergement")
+                                    .putMetadata(
+                                            "accommodationReservationId",
+                                            String.valueOf(reservation.getReservationId()))
+                                    .putMetadata("requested_currency", requestedCurrency.toUpperCase(Locale.ROOT))
+                                    .putMetadata("charged_currency", "EUR")
+                                    .addAllLineItem(eurLines)
+                                    .build();
+                    Session sessionEur = Session.create(paramsEur);
+                    String urlEur = sessionEur.getUrl();
+                    if (urlEur == null || urlEur.isBlank()) {
+                        throw new ResponseStatusException(
+                                HttpStatus.BAD_GATEWAY, "reservation.payment.stripe_no_checkout_url");
+                    }
+                    return TransportPaymentStartDto.builder().url(urlEur).build();
+                } catch (StripeException e2) {
+                    log.error("Stripe accommodation EUR retry failed", e2);
+                    throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "reservation.payment.stripe_unavailable");
+                }
+            }
             log.error(
                     "Stripe accommodation checkout failed (currency={}, unitAmount={}, reservationId={})",
                     checkoutCurrency,
                     unitAmount,
                     reservation.getReservationId(),
                     e);
-            String hint = e.getMessage() != null ? e.getMessage() : "erreur inconnue";
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Paiement Stripe indisponible : " + hint);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "reservation.payment.stripe_unavailable");
         }
     }
 
     /** Enforces Stripe-style minimums for common two-decimal presentment currencies. */
-    private static void assertTransportStripeChargeable(long minorAmount, String currency) {
+    public void assertTransportStripeChargeable(long minorAmount, String currency) {
         if (minorAmount <= 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Montant total invalide pour le paiement.");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "reservation.payment.amount_invalid_stripe");
         }
         String c = currency == null ? "" : currency.trim().toLowerCase();
         // Stripe minimum ~0.50 for USD/EUR/AUD/CAD/CHF/GBP/SGD/NZD (minor units = cents)
@@ -374,15 +578,16 @@ public class PaymentService {
                         || "nzd".equals(c))
                 && minorAmount < 50) {
             throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST,
-                    "Montant trop faible pour Stripe dans cette devise (minimum ~0,50). Augmentez places, distance ou durée.");
+                    HttpStatus.BAD_REQUEST, "reservation.payment.amount_too_low_stripe");
         }
     }
 
     @Transactional
     public void markOrderAsPaid(Integer orderId) {
-        OrderEntity order = orderEntityRepository.findById(orderId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Commande introuvable"));
+        OrderEntity order = orderEntityRepository
+            .findById(orderId)
+            .orElseThrow(
+                    () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "payment.error.order_not_found"));
         
         if (order.getStatus() == OrderStatus.PENDING) {
             order.setStatus(OrderStatus.PROCESSING); // Indicates payment success, artisan should prepare it

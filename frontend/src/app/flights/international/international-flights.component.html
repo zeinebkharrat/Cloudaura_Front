@@ -1,0 +1,113 @@
+<section class="intl-page">
+  <div class="hero-copy">
+    <a routerLink="/" class="back-link">Back</a>
+    <h1 class="page-title">Vols internationaux vers la Tunisie</h1>
+    <p class="page-sub">Compare and book external flights to Tunisia in one search.</p>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="intl-form" [class.intl-form-loading]="loading" novalidate>
+    <div class="form-row">
+      <div class="field field-origin">
+        <label for="origin">Origin</label>
+        <input
+          id="origin"
+          type="text"
+          formControlName="origin"
+          placeholder="e.g. CDG"
+          aria-required="true"
+        />
+        @if (hasError('origin')) {
+          <p role="alert" class="error">Origin is required.</p>
+        }
+      </div>
+
+      <div class="field field-destination">
+        <label for="destination">Destination airport</label>
+        <p-select
+          inputId="destination"
+          formControlName="destination"
+          [options]="tunisianAirports"
+          optionLabel="label"
+          optionValue="value"
+          [showClear]="false"
+          appendTo="body"
+          panelStyleClass="intl-airport-panel"
+          aria-required="true"
+        ></p-select>
+        @if (hasError('destination')) {
+          <p role="alert" class="error">Destination airport is required.</p>
+        }
+      </div>
+
+      <div class="field field-date">
+        <label for="departureDate">Departure date</label>
+        <p-datepicker
+          inputId="departureDate"
+          formControlName="departureDate"
+          [minDate]="today"
+          dateFormat="yy-mm-dd"
+          [showIcon]="true"
+          [readonlyInput]="true"
+          appendTo="body"
+          aria-required="true"
+        ></p-datepicker>
+        @if (hasError('departureDate')) {
+          <p role="alert" class="error">Departure date is required.</p>
+        }
+      </div>
+
+      <div class="field field-passengers">
+        <label for="passengers">Passengers</label>
+        <p-inputNumber
+          inputId="passengers"
+          formControlName="passengers"
+          [min]="1"
+          [max]="9"
+          [showButtons]="true"
+          buttonLayout="horizontal"
+          incrementButtonIcon="pi pi-plus"
+          decrementButtonIcon="pi pi-minus"
+          aria-required="true"
+        ></p-inputNumber>
+        @if (hasError('passengers')) {
+          <p role="alert" class="error">Passengers must be between 1 and 9.</p>
+        }
+      </div>
+    </div>
+
+    <button
+      pButton
+      type="submit"
+      class="intl-submit"
+      label="Search international flights"
+      [loading]="loading"
+      [disabled]="form.invalid || loading"
+    ></button>
+  </form>
+
+  @if (submitError) {
+    <p class="error" role="alert">{{ submitError }}</p>
+  }
+
+  <section class="results-section" [class.results-active]="hasSearched || loading">
+    <div class="results-toolbar">
+      <h2 class="results-title">Results</h2>
+    </div>
+
+    <div class="content-split">
+      <div class="list-col">
+        <app-flight-list
+          [flights]="lastResults"
+          [loading]="loading"
+          [error]="submitError"
+          [emptyMessage]="listEmptyMessage"
+          [idleHint]="idleHint"
+          [hasSearched]="hasSearched"
+          [selected]="selected"
+          [mapMode]="false"
+          (selectFlight)="onSelectFlight($event)"
+        />
+      </div>
+    </div>
+  </section>
+</section>

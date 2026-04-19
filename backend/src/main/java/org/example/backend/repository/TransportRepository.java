@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface TransportRepository extends JpaRepository<Transport, Integer> {
@@ -20,6 +21,20 @@ public interface TransportRepository extends JpaRepository<Transport, Integer> {
             int dpId, int arId, LocalDateTime start, LocalDateTime end);
 
     List<Transport> findByTypeAndIsActiveTrue(Transport.TransportType type);
+
+        Optional<Transport> findFirstByTypeAndFlightCodeAndDepartureTimeAndArrivalTime(
+            Transport.TransportType type,
+            String flightCode,
+            LocalDateTime departureTime,
+            LocalDateTime arrivalTime);
+
+    Optional<Transport> findFirstByTypeAndOperatorNameAndDepartureTimeAndArrivalTimeAndDepartureCity_CityIdAndArrivalCity_CityId(
+            Transport.TransportType type,
+            String operatorName,
+            LocalDateTime departureTime,
+            LocalDateTime arrivalTime,
+            Integer departureCityId,
+            Integer arrivalCityId);
 
     List<Transport> findByIsActiveTrue();
 

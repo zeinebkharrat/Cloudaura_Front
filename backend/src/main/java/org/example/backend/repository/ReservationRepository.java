@@ -48,4 +48,9 @@ public interface ReservationRepository extends JpaRepository<Reservation, Intege
             @Param("roomId") int roomId,
             @Param("checkIn") LocalDateTime checkIn,
             @Param("checkOut") LocalDateTime checkOut);
+
+    @Query("SELECT r.reservationId FROM Reservation r "
+            + "WHERE (r.checkOutDate IS NOT NULL AND r.checkOutDate <= :cutoff) "
+            + "OR (r.checkOutDate IS NULL AND r.checkInDate IS NOT NULL AND r.checkInDate <= :cutoff)")
+    List<Integer> findIdsEligibleForAutoDelete(@Param("cutoff") LocalDateTime cutoff);
 }

@@ -79,9 +79,11 @@ export class MockJsonDataSource implements DataSourceAdapter {
   createAccommodationCheckoutSession(payload: {
     roomId: number;
     userId: number;
+    guestCount: number;
     checkIn: string;
     checkOut: string;
     offerId?: number | null;
+    presentmentCurrency?: string;
   }): Observable<TransportCheckoutResult> {
     const aid = payload.roomId;
     return of({

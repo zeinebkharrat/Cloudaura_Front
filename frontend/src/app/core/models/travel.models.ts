@@ -63,13 +63,10 @@ export interface Transport {
   capacity: number;
   availableSeats?: number;
   durationMinutes?: number;
-  vehicleBrand?: string;
-  vehicleModel?: string;
-  vehiclePhotoUrl?: string;
-  driverName?: string;
-  driverRating?: number;
   description?: string;
   isActive: boolean;
+  /** Client-only: translated type label for result lists (optional). */
+  typeLabel?: string;
 }
 
 export interface TransportTypeAvailability {
@@ -92,6 +89,7 @@ export interface TransportReservationInput {
   idempotencyKey: string;
   travelDate?: string;
   routeKm?: number;
+  routeDurationMin?: number;
   rentalDays?: number;
 }
 
@@ -100,12 +98,15 @@ export interface TransportCheckoutPayload {
   numberOfSeats: number;
   travelDate: string;
   routeKm?: number;
+  routeDurationMin?: number;
   rentalDays?: number;
   passengerFirstName: string;
   passengerLastName: string;
   passengerEmail: string;
   passengerPhone: string;
   idempotencyKey: string;
+  /** Stripe Checkout presentment: TND | EUR | USD */
+  presentmentCurrency?: string;
 }
 
 /** PATCH body for updating an existing transport booking. */
@@ -124,8 +125,12 @@ export interface TransportReservation {
   transportId?: number;
   reservationRef: string;
   status: ReservationStatus;
+  /** Localized label from API when present. */
+  statusLabel?: string;
   paymentStatus: PaymentStatus;
+  paymentStatusLabel?: string;
   paymentMethod: PaymentMethod;
+  paymentMethodLabel?: string;
   totalPrice: number;
   numberOfSeats: number;
   travelDate: string;
@@ -136,8 +141,14 @@ export interface TransportReservation {
   qrCodeToken?: string;
   createdAt: string;
   transportType?: string;
+  /** Same as transportType (machine code). */
+  type?: string;
+  transportTypeLabel?: string;
+  typeLabel?: string;
   departureCityName?: string;
   arrivalCityName?: string;
+  departureCityLabel?: string;
+  arrivalCityLabel?: string;
   departureTime?: string;
 }
 
@@ -148,15 +159,23 @@ export interface AccommodationReservation {
   accommodationId?: number;
   roomId?: number;
   status: ReservationStatus;
+  statusLabel?: string;
   totalPrice: number;
   accommodationName?: string;
+  /** Localized property name (preferred for display). */
+  nameLabel?: string;
   accommodationCity?: string;
+  cityLabel?: string;
   reservationRef?: string;
   checkInDate?: string;
   checkOutDate?: string;
+  guestCount?: number;
   nights?: number;
+  /** Room type code when API sends it (e.g. SINGLE). */
   roomType?: string;
+  roomTypeLabel?: string;
   paymentMethod?: string;
+  paymentMethodLabel?: string;
   guestFirstName?: string;
   guestLastName?: string;
   guestEmail?: string;
@@ -183,6 +202,7 @@ export interface Reservation {
   /** API body for accommodation booking (LocalDate strings). */
   checkIn?: string;
   checkOut?: string;
+  guestCount?: number;
   roomId?: number;
   userId?: number;
   transportId?: number;

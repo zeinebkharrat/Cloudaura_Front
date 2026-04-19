@@ -1,19 +1,20 @@
 package org.example.backend.service;
 
-import jakarta.transaction.Transactional;
-import org.example.backend.model.City;
-import org.example.backend.model.Event;
-import org.example.backend.repository.CityRepository;
-import org.example.backend.repository.EventRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.example.backend.i18n.CatalogKeyUtil;
+import org.example.backend.model.City;
+import org.example.backend.model.Event;
+import org.example.backend.repository.CityRepository;
+import org.example.backend.repository.EventRepository;
+import org.springframework.beans.BeanUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class EventService {
@@ -21,9 +22,11 @@ public class EventService {
     @Autowired
     private EventRepository eventRepository;
 
-    // --- ajoute ceci ---
     @Autowired
     private CityRepository cityRepository;
+
+    @Autowired
+    private CatalogTranslationService catalogTranslationService;
 
     @Transactional
     public List<Event> getAllEvents() {
@@ -45,6 +48,11 @@ public class EventService {
     }
 
     @Transactional
+    public List<Event> getAllEventsLocalized() {
+        return getAllEvents().stream().map(this::withTranslatedCopy).toList();
+    }
+
+    @Transactional
     public Optional<Event> getEventById(Integer id) {
         syncStatusesByDateInDatabase();
         Optional<Event> eventOpt = eventRepository.findById(id);
@@ -54,6 +62,11 @@ public class EventService {
             }
         });
         return eventOpt;
+    }
+
+    @Transactional
+    public Optional<Event> getEventByIdLocalized(Integer id) {
+        return getEventById(id).map(this::withTranslatedCopy);
     }
 
     @Transactional
@@ -127,5 +140,28 @@ public class EventService {
         eventRepository.markCompletedByDate();
         eventRepository.markOngoingByDate();
         eventRepository.markUpcomingByDate();
+    }
+
+    private Event withTranslatedCopy(Event e) {
+        if (e == null) {
+            return null;
+        }
+        Event out = new Event();
+        BeanUtils.copyProperties(e, out, "city", "title", "venue");
+        out.setCity(e.getCity());
+        int eventId = e.getEventId() != null ? e.getEventId() : 0;
+        String rawTitle = e.getTitle();
+        if (CatalogKeyUtil.looksLikeCatalogKey(rawTitle)) {
+            out.setTitle(null);
+        } else {
+            out.setTitle(catalogTranslationService.resolveEntityField(eventId, "event", "name", rawTitle));
+        }
+        String rawVenue = e.getVenue();
+        if (rawVenue == null || CatalogKeyUtil.looksLikeCatalogKey(rawVenue)) {
+            out.setVenue(rawVenue);
+        } else {
+            out.setVenue(catalogTranslationService.resolveEntityField(eventId, "event", "venue", rawVenue));
+        }
+        return out;
     }
 }

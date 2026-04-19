@@ -1,0 +1,303 @@
+.intl-page {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 1.4rem 1.2rem 2.8rem;
+  animation: pageFadeIn 0.35s ease-out;
+}
+
+.hero-copy {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.back-link {
+  display: inline-flex;
+  margin-bottom: 0.65rem;
+  color: #97a7c5;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.back-link:hover {
+  color: #d6e1f5;
+}
+
+.page-title {
+  margin: 0;
+  color: #f2f7ff;
+  font-size: clamp(1.8rem, 2.8vw, 2.9rem);
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.page-sub {
+  margin: 0.55rem 0 0;
+  color: #8fa6cb;
+  font-size: 1.02rem;
+}
+
+.intl-form {
+  display: grid;
+  gap: 0.9rem;
+  max-width: 1260px;
+  margin: 0 auto;
+  background: rgba(33, 47, 73, 0.9);
+  border: 1px solid rgba(130, 151, 189, 0.24);
+  border-radius: 16px;
+  padding: 0.48rem 0.55rem 0.55rem;
+  box-shadow: 0 14px 36px rgba(2, 8, 26, 0.36);
+  transition: border-color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease;
+}
+
+.intl-form:focus-within {
+  border-color: rgba(164, 187, 228, 0.46);
+  box-shadow: 0 18px 40px rgba(2, 8, 26, 0.46), 0 0 0 2px rgba(97, 128, 189, 0.16);
+}
+
+.intl-form-loading {
+  transform: translateY(-1px);
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 0.85fr;
+  align-items: stretch;
+  border-radius: 13px;
+  overflow: hidden;
+}
+
+.field {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.72rem 0.95rem;
+  min-width: 0;
+  position: relative;
+  transition: background 0.22s ease;
+}
+
+.field:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.field:not(:last-child) {
+  border-right: 1px solid rgba(130, 151, 189, 0.2);
+}
+
+label {
+  font-size: 0.68rem;
+  color: #9eb2d4;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+input {
+  border: 0;
+  background: transparent;
+  color: #f5f8ff;
+  border-radius: 0;
+  padding: 0;
+  outline: none;
+  font-weight: 700;
+  font-size: 1rem;
+  width: 100%;
+}
+
+input:focus {
+  box-shadow: none;
+}
+
+.error {
+  margin: 0;
+  color: #ffc7cf;
+  font-size: 0.74rem;
+}
+
+:host ::ng-deep .intl-submit.p-button {
+  width: 100%;
+  justify-content: center;
+  background: linear-gradient(180deg, #8c173f, #7d1238) !important;
+  border: 1px solid rgba(228, 86, 134, 0.28) !important;
+  color: #f8dce7 !important;
+  border-radius: 10px;
+  min-height: 2.15rem;
+  font-size: 1.04rem;
+  font-weight: 700;
+  box-shadow: none;
+  transition: transform 0.18s ease, filter 0.2s ease, background 0.2s ease;
+}
+
+:host ::ng-deep .intl-submit.p-button:hover:not(:disabled) {
+  background: linear-gradient(180deg, #9a1b46, #86153e) !important;
+  transform: translateY(-1px);
+}
+
+:host ::ng-deep .intl-submit.p-button:disabled {
+  opacity: 0.72;
+}
+
+.results-section {
+  margin-top: 1.05rem;
+  opacity: 0.9;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.results-section.results-active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.results-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.72rem;
+}
+
+.results-title {
+  margin: 0;
+  font-size: 1.03rem;
+  color: #f2f7ff;
+  font-weight: 800;
+}
+
+.cheapest-hint {
+  font-size: 0.8rem;
+  color: #bedcff;
+  font-weight: 700;
+}
+
+.content-split,
+.list-col {
+  min-width: 0;
+}
+
+:host ::ng-deep .p-select,
+:host ::ng-deep .p-datepicker,
+:host ::ng-deep .p-inputnumber {
+  width: 100%;
+}
+
+:host ::ng-deep .p-select,
+:host ::ng-deep .p-datepicker .p-inputtext,
+:host ::ng-deep .p-inputnumber-input {
+  background: transparent;
+  border-color: transparent;
+  color: #f3f8ff;
+  box-shadow: none;
+  padding: 0;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+:host ::ng-deep .p-select:not(.p-disabled).p-focus,
+:host ::ng-deep .p-datepicker .p-inputtext:focus,
+:host ::ng-deep .p-inputnumber-input:focus {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+:host ::ng-deep .p-inputnumber-button {
+  background: rgba(130, 17, 59, 0.85);
+  border-color: rgba(228, 86, 134, 0.25);
+  color: #ffd3e2;
+  transition: background 0.2s ease, transform 0.15s ease;
+}
+
+:host ::ng-deep .p-inputnumber-button:hover {
+  background: rgba(145, 22, 68, 0.95);
+  transform: scale(1.04);
+}
+
+:host ::ng-deep .p-select .p-select-label,
+:host ::ng-deep .p-datepicker .p-inputtext,
+:host ::ng-deep .p-inputnumber .p-inputnumber-input {
+  color: #f3f8ff;
+}
+
+:host ::ng-deep .p-select .p-select-label.p-placeholder,
+:host ::ng-deep .p-datepicker .p-inputtext::placeholder {
+  color: #8fa4c6;
+  opacity: 0.9;
+}
+
+/* Airport dropdown panel visibility */
+:host ::ng-deep .intl-airport-panel.p-select-overlay {
+  z-index: 1300 !important;
+  background: linear-gradient(180deg, rgba(14, 27, 58, 0.98), rgba(9, 20, 47, 0.98)) !important;
+  border: 1px solid rgba(130, 151, 189, 0.34) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 18px 42px rgba(1, 7, 22, 0.58) !important;
+  overflow: hidden;
+}
+
+:host ::ng-deep .intl-airport-panel .p-select-list-container {
+  max-height: 240px !important;
+}
+
+:host ::ng-deep .intl-airport-panel .p-select-option {
+  color: #f0f6ff !important;
+  font-size: 1rem;
+  font-weight: 600;
+  padding: 0.65rem 0.9rem !important;
+  background: transparent !important;
+}
+
+:host ::ng-deep .intl-airport-panel .p-select-option:hover,
+:host ::ng-deep .intl-airport-panel .p-select-option.p-focus {
+  background: rgba(84, 111, 167, 0.28) !important;
+  color: #ffffff !important;
+}
+
+:host ::ng-deep .intl-airport-panel .p-select-option.p-select-option-selected {
+  background: rgba(138, 25, 69, 0.5) !important;
+  color: #ffe5ef !important;
+}
+
+@media (max-width: 680px) {
+  .intl-page {
+    padding: 1.1rem 0.85rem 2.3rem;
+  }
+
+  .hero-copy {
+    text-align: left;
+  }
+
+  .page-title {
+    font-size: 2rem;
+  }
+
+  .intl-form {
+    padding: 0.9rem 0.85rem;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    border-radius: 10px;
+  }
+
+  .field {
+    padding: 0.5rem 0;
+  }
+
+  .field:not(:last-child) {
+    border-right: 0;
+    border-bottom: 1px solid rgba(130, 151, 189, 0.2);
+  }
+
+  label {
+    font-size: 0.76rem;
+  }
+}
+
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

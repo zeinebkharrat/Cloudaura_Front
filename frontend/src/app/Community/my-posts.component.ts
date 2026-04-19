@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
 import { Router } from '@angular/router';
 import { forkJoin, firstValueFrom, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -18,7 +19,6 @@ import { PostService } from './post.service';
 import { AuthService } from '../core/auth.service';
 import { OwnershipUtil } from './ownership.util';
 import Swal from 'sweetalert2';
-import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-my-posts',
