@@ -1,0 +1,62 @@
+<div class="assistant-root" [class.assistant-root--open]="isOpen()">
+  <button type="button" class="assistant-fab" (click)="togglePanel()" aria-label="Open Tunisia assistant">
+    <img src="assets/guide_welcome.png" alt="Tunisia assistant" />
+  </button>
+
+  @if (isOpen()) {
+    <section class="assistant-panel" aria-label="Tunisia assistant">
+      <header class="assistant-head">
+        <div class="assistant-head-left">
+          <img src="assets/guide_welcome.png" alt="Guide IA" class="assistant-head-avatar" />
+          <div>
+            <strong>Guide IA Tunisia</strong>
+            <small>En ligne</small>
+          </div>
+        </div>
+        <button type="button" class="assistant-close" (click)="togglePanel()" aria-label="Close assistant">x</button>
+      </header>
+
+      <div class="assistant-prompts">
+        @for (prompt of quickPrompts; track prompt) {
+          <button type="button" (click)="sendQuickPrompt(prompt)">{{ prompt }}</button>
+        }
+      </div>
+
+      <div class="assistant-messages">
+        @for (message of messages(); track $index) {
+          <div class="assistant-msg-row" [class.assistant-msg-row--user]="message.role === 'user'">
+            @if (message.role === 'assistant') {
+              <img src="assets/guide_welcome.png" alt="Guide" class="assistant-msg-avatar" />
+            }
+            <article class="assistant-msg" [class.assistant-msg--user]="message.role === 'user'">
+              @for (part of messageParts(message.text); track $index) {
+                @if (part.kind === 'link') {
+                  <a [href]="part.href">{{ part.value }}</a>
+                } @else {
+                  <span>{{ part.value }}</span>
+                }
+              }
+            </article>
+          </div>
+        }
+        @if (loading()) {
+          <div class="assistant-msg-row">
+            <img src="assets/guide-mascot.png" alt="Guide" class="assistant-msg-avatar" />
+            <article class="assistant-msg assistant-msg--typing">Typing...</article>
+          </div>
+        }
+      </div>
+
+      <div class="assistant-input-row">
+        <input
+          type="text"
+          [(ngModel)]="draft"
+          (keydown.enter)="sendQuestion()"
+          placeholder="Ask your question..."
+          maxlength="400"
+        />
+        <button type="button" class="assistant-send" (click)="sendQuestion()" [disabled]="loading() || !draft.trim()">Envoyer</button>
+      </div>
+    </section>
+  }
+</div>

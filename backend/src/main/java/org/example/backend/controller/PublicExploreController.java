@@ -11,6 +11,9 @@ import org.example.backend.dto.RestaurantResponse;
 import org.example.backend.dto.publicapi.ActivityAvailabilityDayResponse;
 import org.example.backend.dto.publicapi.ActivityReservationResponse;
 import org.example.backend.dto.publicapi.CityImageDetectionResponse;
+import org.example.backend.dto.publicapi.ChatbotQueryRequest;
+import org.example.backend.dto.publicapi.ChatbotQueryResponse;
+import org.example.backend.dto.publicapi.ChatbotConversationResponse;
 import org.example.backend.dto.publicapi.CityResolveResponse;
 import org.example.backend.dto.publicapi.CreateActivityReservationRequest;
 import org.example.backend.dto.publicapi.CreatePublicReviewRequest;
@@ -25,6 +28,8 @@ import org.example.backend.service.PublicExploreService;
 import org.example.backend.service.PublicReviewService;
 import org.example.backend.service.RestaurantService;
 import org.example.backend.service.CityImageDetectionService;
+import org.example.backend.service.ChatbotAssistantService;
+import org.example.backend.service.ChatbotConversationMemoryService;
 import org.example.backend.service.VoiceTranscriptionService;
 import org.springframework.http.MediaType;
 import org.springframework.data.domain.PageRequest;
@@ -51,6 +56,8 @@ public class PublicExploreController {
     private final PublicReviewService publicReviewService;
     private final VoiceTranscriptionService voiceTranscriptionService;
     private final CityImageDetectionService cityImageDetectionService;
+    private final ChatbotAssistantService chatbotAssistantService;
+    private final ChatbotConversationMemoryService chatbotConversationMemoryService;
 
     @GetMapping("/cities/resolve")
     public CityResolveResponse resolveCityByName(@RequestParam String name) {
@@ -69,6 +76,45 @@ public class PublicExploreController {
         } catch (Exception ex) {
             return new CityImageDetectionResponse(false, null, 0.0, "No corresponding city found for this image.");
         }
+    }
+
+    @PostMapping("/chatbot/query")
+    public ChatbotQueryResponse chatbotQuery(
+        @Valid @RequestBody ChatbotQueryRequest request,
+        @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+        @RequestHeader(value = "X-Chat-Session-Id", required = false) String clientSessionId
+    ) {
+        List<String> conversation = chatbotConversationMemoryService.resolveConversation(
+            authorizationHeader,
+            clientSessionId,
+            request.conversation()
+        );
+
+        ChatbotQueryResponse response = chatbotAssistantService.answer(request.question(), conversation);
+        chatbotConversationMemoryService.appendExchange(
+            authorizationHeader,
+            clientSessionId,
+            request.question(),
+            response.answer()
+        );
+        return response;
+    }
+
+    @GetMapping("/chatbot/history")
+    public ChatbotConversationResponse chatbotHistory(
+        @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+        @RequestHeader(value = "X-Chat-Session-Id", required = false) String clientSessionId
+    ) {
+        List<String> conversation = chatbotConversationMemoryService.getConversation(authorizationHeader, clientSessionId);
+        return new ChatbotConversationResponse(conversation);
+    }
+
+    @DeleteMapping("/chatbot/history")
+    public void clearChatbotHistory(
+        @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+        @RequestHeader(value = "X-Chat-Session-Id", required = false) String clientSessionId
+    ) {
+        chatbotConversationMemoryService.clearConversation(authorizationHeader, clientSessionId);
     }
 
     @GetMapping("/cities/all")

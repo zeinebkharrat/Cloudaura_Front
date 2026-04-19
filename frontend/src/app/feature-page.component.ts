@@ -105,6 +105,7 @@ export class FeaturePageComponent implements OnInit {
   isLoadingEvents = false;
   eventsLoadError: string | null = null;
   selectedEvent: TravelEvent | null = null;
+  private requestedEventIdFromQuery: number | null = null;
   readonly eventJoinLoading = signal(false);
   readonly eventJoinError = signal<string | null>(null);
 
@@ -369,10 +370,10 @@ export class FeaturePageComponent implements OnInit {
     this.applyData(this.route.snapshot.data);
     this.route.data.subscribe((d) => this.applyData(d));
     this.route.queryParamMap.subscribe((params) => {
-      const raw = params.get('eventId');
-      const parsed = raw == null ? Number.NaN : Number(raw);
-      this.deepLinkedEventId = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-      this.tryOpenDeepLinkedEvent();
+      const rawEventId = params.get('eventId');
+      const eventId = rawEventId == null ? NaN : Number(rawEventId);
+      this.requestedEventIdFromQuery = Number.isFinite(eventId) ? eventId : null;
+      this.tryOpenEventFromQuery();
     });
     if (this.isArtisan()) {
       this.loadArtisanProducts();
@@ -424,6 +425,7 @@ export class FeaturePageComponent implements OnInit {
     if (shouldLoadEvents) {
       this.loadCities();
       this.loadEvents();
+      this.tryOpenEventFromQuery();
     } else {
       this.events = [];
       this.isLoadingEvents = false;
@@ -823,8 +825,8 @@ export class FeaturePageComponent implements OnInit {
           imageUrl: this.normalizeEventImageUrl(event.imageUrl),
         })).filter((event) => this.shouldDisplayInFrontOffice(event.status));
         this.resetEventFilters();
+        this.tryOpenEventFromQuery();
         this.isLoadingEvents = false;
-        this.tryOpenDeepLinkedEvent();
       },
       error: (err) => {
         console.error('Error loading events:', err);
@@ -1210,6 +1212,27 @@ export class FeaturePageComponent implements OnInit {
     this.eventJoinError.set(null);
     this.eventJoinLoading.set(false);
     document.body.classList.remove('modal-open');
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { eventId: null, action: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+  }
+
+  private tryOpenEventFromQuery(): void {
+    if (!this.isEventFeed) {
+      return;
+    }
+    if (this.requestedEventIdFromQuery == null || this.events.length === 0) {
+      return;
+    }
+    const event = this.events.find((e) => e.eventId === this.requestedEventIdFromQuery);
+    if (!event) {
+      return;
+    }
+    this.selectEvent(event);
+    this.requestedEventIdFromQuery = null;
   }
 
   /** Normalized ticket price; Stripe checkout only runs when this is &gt; 0. */

@@ -14,6 +14,7 @@ import { DailyChallengeRow, GamificationBadgeEntry, GamificationService } from '
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { LanguageService } from './core/services/language.service';
 import { CurrencySelectorComponent } from './core/components/currency-selector/currency-selector.component';
+import { HomeAssistantWidgetComponent } from './home-assistant-widget.component';
 
 type NavbarTourMenuContext = 'services' | 'user' | null;
 
@@ -40,6 +41,7 @@ interface NavbarTourStep {
     SignInComponent,
     SignUpComponent,
     CurrencySelectorComponent,
+    HomeAssistantWidgetComponent,
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',

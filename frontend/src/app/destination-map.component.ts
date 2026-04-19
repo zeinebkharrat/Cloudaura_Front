@@ -1,8 +1,7 @@
-import {
+﻿import {
   Component,
   AfterViewInit,
   OnDestroy,
-  OnInit,
   ViewChild,
   ElementRef,
   Inject,
@@ -13,8 +12,6 @@ import {
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Subscription } from 'rxjs';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import * as echarts from 'echarts';
 import { tunisiaGeoJson } from './tunisia-map';
 import { GOVERNORATE_LABEL_EN, GOVERNORATE_LABEL_FR } from './tunisia-governorate-labels';
@@ -79,11 +76,11 @@ function normalizeRegionToken(value: unknown): string {
 @Component({
   selector: 'app-destination-map',
   standalone: true,
-  imports: [CommonModule, TranslateModule],
+  imports: [CommonModule],
   templateUrl: './destination-map.component.html',
   styleUrl: './destination-map.component.css',
 })
-export class DestinationMapComponent implements OnInit, AfterViewInit, OnDestroy {
+export class DestinationMapComponent implements AfterViewInit, OnDestroy {
   @ViewChild('mapContainer', { static: false }) mapContainer!: ElementRef;
 
   mapViewMode = signal<'local' | 'highlights'>('local');
@@ -103,7 +100,6 @@ export class DestinationMapComponent implements OnInit, AfterViewInit, OnDestroy
   private mapGeoData?: any;
   private regionIdToLabelMap?: Map<string, string>;
   private themeObserver?: MutationObserver;
-  private langChange?: Subscription;
   private readonly handleWindowResize = () => {
     this.tunisiaMapChart?.resize();
   };
@@ -114,18 +110,8 @@ export class DestinationMapComponent implements OnInit, AfterViewInit, OnDestroy
     private readonly exploreService: ExploreService,
     private readonly http: HttpClient,
     private readonly router: Router,
-    private readonly route: ActivatedRoute,
-    private readonly translate: TranslateService
+    private readonly route: ActivatedRoute
   ) {}
-
-  ngOnInit(): void {
-    this.langChange = this.translate.onLangChange.subscribe(() => {
-      if (this.tunisiaMapChart) {
-        this.applyMapTheme();
-      }
-      this.refreshResolvingMapPanel();
-    });
-  }
 
   ngAfterViewInit(): void {
     if (isPlatformBrowser(this.platformId)) {
@@ -136,20 +122,10 @@ export class DestinationMapComponent implements OnInit, AfterViewInit, OnDestroy
   }
 
   ngOnDestroy(): void {
-    this.langChange?.unsubscribe();
     if (isPlatformBrowser(this.platformId)) {
       window.removeEventListener('resize', this.handleWindowResize);
     }
     this.themeObserver?.disconnect();
-  }
-
-  private refreshResolvingMapPanel(): void {
-    this.selectedRegion.update((prev) => {
-      if (!prev?.resolving) {
-        return prev;
-      }
-      return { ...prev, description: this.translate.instant('HOME.MAP_EXPLORING', { name: prev.name }) };
-    });
   }
 
   setMapView(mode: 'local' | 'highlights'): void {
@@ -169,23 +145,22 @@ export class DestinationMapComponent implements OnInit, AfterViewInit, OnDestroy
     this.applyMapTheme();
 
     this.tunisiaMapChart.on('click', (params: any) => {
-      const displayLabel = this.mapRegionLabel(params);
-      const apiName = ((params?.data?.gouv_fr as string | undefined) ?? '').trim() || displayLabel;
+      const label = this.displayName(params);
       this.selectedRegion.set({
-        name: displayLabel,
-        description: this.translate.instant('HOME.MAP_EXPLORING', { name: displayLabel }),
+        name: label,
+        description: `Exploring ${label}...`,
         cityId: null,
         resolving: true,
         mapRegionId: params?.name ?? null,
       });
 
-      this.exploreService.resolveCityByName(apiName).subscribe({
+      this.exploreService.resolveCityByName(label).subscribe({
         next: (resolved) => {
           this.selectedRegion.set({
             name: resolved.city.name,
             description:
               resolved.city.description ||
-              this.translate.instant('HOME.MAP_CITY_FALLBACK_DESC', { name: resolved.city.name }),
+              `Discover ${resolved.city.name}, a Tunisian destination rich in experiences.`,
             cityId: resolved.city.cityId,
             resolving: false,
             mapRegionId: params?.name ?? null,
@@ -197,7 +172,8 @@ export class DestinationMapComponent implements OnInit, AfterViewInit, OnDestroy
             prev
               ? {
                   ...prev,
-                  description: this.translate.instant('HOME.MAP_NO_CITY', { name: displayLabel }),
+                  description:
+                    `No linked city found in the database for ${label}.`,
                   cityId: null,
                   resolving: false,
                   mapRegionId: params?.name ?? null,
@@ -282,18 +258,14 @@ export class DestinationMapComponent implements OnInit, AfterViewInit, OnDestroy
 
   private displayName(p: { name?: string; data?: any }): string {
     const m = this.regionIdToLabelMap!;
-    return m.get(p?.name ?? '') ?? p?.data?.gouv_fr ?? p?.name ?? '';
-  }
-
-  private mapRegionLabel(p: { name?: string; data?: any }): string {
-    return this.displayName(p);
+    return m.get(p.name ?? '') ?? p.data?.gouv_fr ?? p.name ?? '';
   }
 
   private applyMapTheme(): void {
     if (!this.tunisiaMapChart || !this.mapGeoData) return;
 
     const mapGeo = this.mapGeoData;
-    const mapLabel = (p: any) => this.mapRegionLabel(p);
+    const displayName = (p: any) => this.displayName(p);
     const mode = this.mapViewMode();
     const isLocal = mode === 'local';
     const isDark = this.isDarkTheme();
@@ -310,7 +282,7 @@ export class DestinationMapComponent implements OnInit, AfterViewInit, OnDestroy
       backgroundColor: isDark ? '#0f172a' : '#ffffff',
       tooltip: {
         trigger: 'item' as const,
-        formatter: (p: any) => mapLabel(p),
+        formatter: (p: any) => displayName(p),
         backgroundColor: isDark ? 'rgba(15,23,42,0.96)' : 'rgba(255,255,255,0.96)',
         borderColor: isDark ? '#334155' : '#b6deee',
         textStyle: { color: isDark ? '#e2e8f0' : '#0f172a' },
@@ -356,7 +328,7 @@ export class DestinationMapComponent implements OnInit, AfterViewInit, OnDestroy
               color: isDark ? '#f8fafc' : '#0f172a',
               fontSize: isLocal ? 16 : 17,
               fontWeight: 'bold' as const,
-              formatter: (p: any) => mapLabel(p),
+              formatter: (p: any) => displayName(p),
             },
             itemStyle: isLocal
               ? {
@@ -378,7 +350,7 @@ export class DestinationMapComponent implements OnInit, AfterViewInit, OnDestroy
               color: isDark ? '#f8fafc' : '#0f172a',
               fontSize: 18,
               fontWeight: 'bold' as const,
-              formatter: (p: any) => mapLabel(p),
+              formatter: (p: any) => displayName(p),
             },
             itemStyle: {
               areaColor: isDark
@@ -392,7 +364,6 @@ export class DestinationMapComponent implements OnInit, AfterViewInit, OnDestroy
             name: f.properties[TUNISIA_MAP_NAME_PROP],
             value: index % 5,
             gouv_fr: f.properties.gouv_fr,
-            gouv_id: f.properties.gouv_id,
           })),
         },
       ],
@@ -591,12 +562,10 @@ export class DestinationMapComponent implements OnInit, AfterViewInit, OnDestroy
       this.applyRegionSelection(selectedMapRegionId);
       if (selectedMapRegionId) {
         const selectedName =
-          cityLabel ??
-          this.regionIdToLabelMap?.get(selectedMapRegionId) ??
-          this.translate.instant('HOME.MAP_SELECTED_FALLBACK');
+          cityLabel ?? this.regionIdToLabelMap?.get(selectedMapRegionId) ?? 'Selected city';
         this.selectedRegion.set({
           name: selectedName,
-          description: this.translate.instant('HOME.MAP_EXPLORING', { name: selectedName }),
+          description: `Exploring ${selectedName}...`,
           cityId: cityId ?? null,
           resolving: false,
           mapRegionId: selectedMapRegionId,

@@ -37,9 +37,17 @@ export interface Restaurant {
   rating: number | null;
   description: string | null;
   address: string | null;
+  phoneNumber: string | null;
   latitude: number | null;
   longitude: number | null;
   imageUrl: string | null;
+  menuImages?: RestaurantMenuImage[];
+}
+
+export interface RestaurantMenuImage {
+  menuImageId: number;
+  imageUrl: string;
+  displayOrder: number;
 }
 
 export interface RestaurantRequest {
@@ -49,6 +57,7 @@ export interface RestaurantRequest {
   rating: number | null;
   description: string | null;
   address: string | null;
+  phoneNumber: string;
   latitude: number | null;
   longitude: number | null;
   imageUrl: string | null;

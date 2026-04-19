@@ -1,5 +1,7 @@
 package org.example.backend.dto;
 
+import java.util.List;
+
 public record RestaurantResponse(
     Integer restaurantId,
     Integer cityId,
@@ -9,8 +11,10 @@ public record RestaurantResponse(
     Double rating,
     String description,
     String address,
+    String phoneNumber,
     Double latitude,
     Double longitude,
-    String imageUrl
+    String imageUrl,
+    List<RestaurantMenuImageResponse> menuImages
 ) {
 }

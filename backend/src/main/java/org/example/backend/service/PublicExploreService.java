@@ -5,6 +5,7 @@ import org.example.backend.dto.ActivityResponse;
 import org.example.backend.dto.ActivityMediaResponse;
 import org.example.backend.dto.CityMediaResponse;
 import org.example.backend.dto.CityResponse;
+import org.example.backend.dto.RestaurantMenuImageResponse;
 import org.example.backend.dto.RestaurantResponse;
 import org.example.backend.dto.publicapi.CityResolveResponse;
 import org.example.backend.dto.publicapi.PublicCityDetailsResponse;
@@ -15,6 +16,7 @@ import org.example.backend.model.ActivityMedia;
 import org.example.backend.model.City;
 import org.example.backend.model.CityMedia;
 import org.example.backend.model.Restaurant;
+import org.example.backend.model.RestaurantMenuImage;
 import org.example.backend.repository.ActivityRepository;
 import org.example.backend.repository.ActivityMediaRepository;
 import org.example.backend.repository.CityMediaRepository;
@@ -190,6 +192,24 @@ public class PublicExploreService {
                 rawAddr == null || rawAddr.isBlank() || CatalogKeyUtil.looksLikeCatalogKey(rawAddr)
                         ? null
                         : rawAddr;
+        List<RestaurantMenuImageResponse> menuImages = restaurant.getMenuImages() == null
+            ? List.of()
+            : restaurant.getMenuImages().stream()
+                .sorted(
+                    Comparator.comparing(
+                        RestaurantMenuImage::getDisplayOrder,
+                        Comparator.nullsLast(Integer::compareTo)
+                    ).thenComparing(
+                        RestaurantMenuImage::getMenuImageId,
+                        Comparator.nullsLast(Integer::compareTo)
+                    )
+                )
+                .map(menuImage -> new RestaurantMenuImageResponse(
+                    menuImage.getMenuImageId(),
+                    menuImage.getImageUrl(),
+                    menuImage.getDisplayOrder()
+                ))
+                .toList();
         return new RestaurantResponse(
             restaurant.getRestaurantId(),
             cid,
@@ -199,9 +219,11 @@ public class PublicExploreService {
             restaurant.getRating(),
             descOut,
             addrOut,
+            restaurant.getPhoneNumber(),
             restaurant.getLatitude(),
             restaurant.getLongitude(),
-            restaurant.getImageUrl()
+            restaurant.getImageUrl(),
+            menuImages
         );
     }
 

@@ -1,11 +1,31 @@
-<section id="map-section" class="destination-map-page">
+﻿<section id="map-section" class="destination-map-page">
   <div class="map-page-header">
-    <h1>{{ 'DESTINATION_MAP.TITLE' | translate }}</h1>
-    <p>{{ 'DESTINATION_MAP.SUB' | translate }}</p>
+    <h1>Destination Map</h1>
+    <p>Explore all Tunisian regions with the same interactive map experience.</p>
+    <div class="image-detect-box">
+      <label class="image-upload-btn" [class.disabled]="isImageDetecting()">
+        <input type="file" accept="image/*" (change)="onCityImageUpload($event)" [disabled]="isImageDetecting()" />
+        <!-- <span class="upload-pill">AI Vision</span> -->
+        <span class="upload-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 7h3l1.4-2h7.2L17 7h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z" />
+            <circle cx="12" cy="13" r="3.5" />
+          </svg>
+        </span>
+        <span class="upload-text">
+          <strong>{{ isImageDetecting() ? 'Analyzing image...' : 'Search city by image' }}</strong>
+          <small>Drop or choose a photo to auto-detect the matching Tunisian city.</small>
+          <em>Smart landmark detection with instant map highlight.</em>
+        </span>
+      </label>
+      @if (imageDetectionMessage()) {
+        <p class="image-detect-msg" [class.error]="imageDetectionError()">{{ imageDetectionMessage() }}</p>
+      }
+    </div>
   </div>
 
   <div class="map-wrapper" [class.map-wrapper--zooming]="isMapNavigating()">
-    <div class="map-view-tabs" role="tablist" [attr.aria-label]="'HOME.MAP_TABS_ARIA' | translate">
+    <div class="map-view-tabs" role="tablist" aria-label="Map display mode">
       <button
         type="button"
         class="map-view-tab"
@@ -14,7 +34,7 @@
         role="tab"
         [attr.aria-selected]="mapViewMode() === 'local'"
       >
-        {{ 'HOME.MAP_TAB_LOCAL' | translate }}
+        Local View
       </button>
       <button
         type="button"
@@ -24,7 +44,7 @@
         role="tab"
         [attr.aria-selected]="mapViewMode() === 'highlights'"
       >
-        {{ 'HOME.MAP_TAB_HIGHLIGHTS' | translate }}
+        Highlights View
       </button>
     </div>
 
@@ -34,8 +54,8 @@
       <div class="region-info-panel slide-up">
         <button class="close-btn" (click)="selectedRegion.set(null)">&times;</button>
         <div class="region-badges">
-          <span class="region-chip">{{ 'HOME.CHIP_TUNISIA' | translate }}</span>
-          <span class="region-chip">{{ 'HOME.CHIP_INTERACTIVE' | translate }}</span>
+          <span class="region-chip">Tunisia</span>
+          <span class="region-chip">Interactive</span>
         </div>
         <h3>{{ selectedRegion()?.name }}</h3>
         <p>{{ selectedRegion()?.description }}</p>
@@ -45,11 +65,7 @@
           (click)="goToSelectedCity()"
           [disabled]="selectedRegion()?.resolving || !selectedRegion()?.cityId"
         >
-          {{
-            selectedRegion()?.resolving
-              ? ('HOME.MAP_LOADING' | translate)
-              : ('HOME.MAP_EXPLORE_NAME' | translate: { name: selectedRegion()?.name ?? '' })
-          }}
+          {{ selectedRegion()?.resolving ? 'Loading...' : ('Explore ' + selectedRegion()?.name) }}
         </button>
       </div>
     }
