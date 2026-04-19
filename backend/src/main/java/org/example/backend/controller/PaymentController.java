@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -48,6 +49,13 @@ public class PaymentController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Void> mockConfirmPayment(@PathVariable Integer orderId) {
         paymentService.markOrderAsPaid(orderId);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/shop/confirm-session")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> confirmShopStripeSession(@RequestParam("session_id") String sessionId) {
+        paymentService.confirmShopStripeSession(sessionId);
         return ResponseEntity.ok().build();
     }
 }

@@ -51,7 +51,6 @@ import { PuzzlePlayerComponent } from './games/puzzle-player.component';
 import { LudoPlayerComponent } from './games/ludo-player.component';
 import { ServicesRestaurantsComponent } from './explore/services-restaurants.component';
 import { ServicesActivitiesComponent } from './explore/services-activities.component';
-import { MockPaymentComponent } from './shop/mock-payment/mock-payment.component';
 import { ArtisanOrdersComponent } from './artisan/artisan-orders.component';
 import { FavoritesComponent } from './shop/favorites.component';
 import { SettingsComponent } from './settings.component';
@@ -81,7 +80,6 @@ export const routes: Routes = [
   { path: 'panier', component: CartPageComponent, canActivate: [authGuard] },
   { path: 'mes-commandes', component: MyOrdersComponent, canActivate: [authGuard] },
   { path: 'mes-ordres', component: ArtisanOrdersComponent, canActivate: [authGuard], data: { roles: ['ROLE_ARTISAN', 'ROLE_ADMIN'], title: 'My orders (sales)' } },
-  { path: 'mock-payment', component: MockPaymentComponent, canActivate: [authGuard] },
   { path: 'favoris', component: FavoritesComponent, canActivate: [authGuard] },
 
   { path: 'virtual-tour', component: VirtualTourPageComponent },
@@ -337,7 +335,7 @@ export const routes: Routes = [
       accent: 'sand',
       catalog: 'products',
       description:
-        'Spotlight artisans and their work: digital storefront, checkout with secure payment (Stripe or mock), and positive impact on the local economy.',
+        'Spotlight artisans and their work: digital storefront, checkout with secure Stripe payment, and positive impact on the local economy.',
     },
   },
   {

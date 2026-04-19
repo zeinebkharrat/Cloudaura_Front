@@ -8,7 +8,9 @@ import org.example.backend.dto.shop.MyOrderSummaryDto;
 import org.example.backend.dto.shop.ShopCartDto;
 import org.example.backend.model.OrderStatus;
 import org.example.backend.service.ShopService;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -84,6 +86,19 @@ public class ShopController {
         @PathVariable Integer orderId
     ) {
         return ResponseEntity.ok(shopService.getMyOrderDetail(requireUsername(authentication), orderId));
+    }
+
+    @GetMapping("/orders/{orderId}/receipt.pdf")
+    public ResponseEntity<byte[]> myOrderReceiptPdf(
+        Authentication authentication,
+        @PathVariable Integer orderId
+    ) {
+        byte[] pdf = shopService.generateMyOrderReceiptPdf(requireUsername(authentication), orderId);
+        String filename = "order-receipt-" + orderId + ".pdf";
+        return ResponseEntity.ok()
+            .contentType(MediaType.APPLICATION_PDF)
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+            .body(pdf);
     }
 
     @GetMapping("/artisan-orders")

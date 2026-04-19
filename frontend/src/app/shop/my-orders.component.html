@@ -1,30 +1,36 @@
 <main class="my-orders-page">
-  <a routerLink="/artisanat" class="back">{{ 'CART_PAGE.BACK_CRAFTS' | translate }}</a>
+  <a routerLink="/artisanat" class="back">← Crafts</a>
 
   <header class="page-head">
-    <h1>{{ 'MY_ORDERS.TITLE' | translate }}</h1>
-    <p class="lead">{{ 'MY_ORDERS.LEAD' | translate }}</p>
+    <h1>My orders</h1>
+    <p class="lead">Your crafts purchase history. Open a row to see details.</p>
   </header>
+
+  @if (paymentInfo()) {
+    <div class="loading glass-panel">
+      <p>{{ paymentInfo() }}</p>
+    </div>
+  }
 
   @if (loading()) {
     <div class="loading glass-panel">
       <div class="loading-spinner"></div>
-      <p>{{ 'MY_ORDERS.LOADING' | translate }}</p>
+      <p>Loading your orders…</p>
     </div>
   } @else if (error()) {
     <div class="error glass-panel">
       <div class="error-icon">⚠️</div>
       <p class="error-message">{{ error() }}</p>
-      <button type="button" class="btn ghost" (click)="loadList()">{{ 'CART_PAGE.TRY_AGAIN' | translate }}</button>
+      <button type="button" class="btn ghost" (click)="loadList()">Try again</button>
     </div>
   } @else if (orders() && orders()!.length === 0) {
     <div class="empty glass-panel">
       <div class="empty-icon">📦</div>
-      <h2 class="empty-title">{{ 'MY_ORDERS.EMPTY_TITLE' | translate }}</h2>
-      <p class="empty-description">{{ 'MY_ORDERS.EMPTY_DESC' | translate }}</p>
+      <h2 class="empty-title">You have not placed an order yet</h2>
+      <p class="empty-description">Browse Tunisian handmade products and place your first order</p>
       <div class="empty-actions">
-        <a routerLink="/artisanat" class="btn primary large">{{ 'CART_PAGE.VIEW_PRODUCTS' | translate }}</a>
-        <a routerLink="/destinations" class="btn ghost large">{{ 'CART_PAGE.EXPLORE_DESTINATIONS' | translate }}</a>
+        <a routerLink="/artisanat" class="btn primary large">View products</a>
+        <a routerLink="/destinations" class="btn ghost large">Explore destinations</a>
       </div>
     </div>
   } @else if (orders()) {
@@ -32,11 +38,11 @@
       <table class="orders-table">
         <thead>
           <tr>
-            <th>{{ 'MY_ORDERS.TH_NO' | translate }}</th>
-            <th>{{ 'CART_PAGE.DATE' | translate }}</th>
-            <th>{{ 'CART_PAGE.STATUS' | translate }}</th>
-            <th class="num">{{ 'MY_ORDERS.TH_ITEMS' | translate }}</th>
-            <th class="num">{{ 'MY_ORDERS.TH_TOTAL' | translate }}</th>
+            <th>No.</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th class="num">Items</th>
+            <th class="num">Total</th>
             <th></th>
           </tr>
         </thead>
@@ -51,7 +57,7 @@
               <td>{{ formatOrderedAt(row.orderedAt) }}</td>
               <td><span class="status-pill">{{ orderStatusLabel(row.status) }}</span></td>
               <td class="num">{{ row.itemCount }}</td>
-              <td class="num">{{ row.totalAmount | dualCurrency }}</td>
+              <td class="num">{{ formatPrice(row.totalAmount) }}</td>
               <td class="chev-cell">
                 <span class="chev" [class.chev--up]="rowExpanded(row)" aria-hidden="true">▼</span>
               </td>
@@ -60,51 +66,66 @@
               <tr class="detail-spacer-row">
                 <td colspan="6">
                   @if (detailLoading()) {
-                    <p class="detail-state">{{ 'MY_ORDERS.LOADING_DETAIL' | translate }}</p>
+                    <p class="detail-state">Loading details…</p>
                   } @else if (detailError()) {
                     <p class="detail-state err">{{ detailError() }}</p>
                   } @else if (detail()) {
-                    <section class="order-detail" aria-labelledby="order-detail-heading">
+                    <section class="order-detail order-receipt" aria-labelledby="order-detail-heading">
                       <h2 id="order-detail-heading" class="visually-hidden">
-                        {{ 'MY_ORDERS.DETAIL_HEADING' | translate: { id: detail()!.orderId } }}
+                        Order #{{ detail()!.orderId }} details
                       </h2>
+                      <div class="receipt-brand">
+                        <img src="assets/logo/yallatn-logo.png" alt="YallaTN logo" class="receipt-logo" />
+                        <div>
+                          <p class="receipt-app-name">YallaTN+</p>
+                          <p class="receipt-app-subtitle">Order receipt</p>
+                        </div>
+                      </div>
                       <div class="detail-grid">
                         <div class="detail-card">
-                          <h3>{{ 'CART_PAGE.REFERENCE' | translate }}</h3>
+                          <h3>Reference</h3>
                           <p class="detail-row">
-                            <span class="label">{{ 'CART_PAGE.STATUS' | translate }}</span>
+                            <span class="label">Order no.</span>
+                            <strong>#{{ detail()!.orderId }}</strong>
+                          </p>
+                          <p class="detail-row">
+                            <span class="label">Status</span>
                             <span class="status-pill">{{ orderStatusLabel(detail()!.status) }}</span>
                           </p>
+                          <p class="detail-row">
+                            <span class="label">Payment method</span>
+                            <span>{{ paymentMethodLabel(detail()!.paymentMethod) }}</span>
+                          </p>
                           <p class="detail-row detail-row--total">
-                            <span class="label">{{ 'CART_PAGE.TOTAL_INCL_TAX' | translate }}</span>
-                            <strong>{{ detail()!.totalAmount | dualCurrency }}</strong>
+                            <span class="label">Total (incl. tax)</span>
+                            <strong>{{ formatPrice(detail()!.totalAmount) }}</strong>
                           </p>
                         </div>
                         <div class="detail-card">
-                          <h3>{{ 'MY_ORDERS.CONTACT_CARD' | translate }}</h3>
+                          <h3>Contact</h3>
                           @if (detail()!.buyer) {
                             <p class="detail-row">
-                              <span class="label">{{ 'CART_PAGE.NAME' | translate }}</span>
+                              <span class="label">Name</span>
                               <span>{{ buyerDisplayName(detail()!.buyer) }}</span>
                             </p>
                             <p class="detail-row">
-                              <span class="label">{{ 'CART_PAGE.EMAIL' | translate }}</span>
+                              <span class="label">E-mail</span>
                               <span>{{ detail()!.buyer!.email }}</span>
                             </p>
                           } @else {
-                            <p class="muted">{{ 'COMMON.DASH' | translate }}</p>
+                            <p class="muted">—</p>
                           }
                         </div>
                       </div>
                       <div class="lines-wrap">
-                        <h3>{{ 'MY_ORDERS.LINES_TITLE' | translate }}</h3>
+                        <h3>Items</h3>
                         <table class="lines-table">
                           <thead>
                             <tr>
-                              <th>{{ 'CART_PAGE.TH_ITEM' | translate }}</th>
-                              <th class="num">{{ 'CART_PAGE.TH_QTY' | translate }}</th>
-                              <th class="num">{{ 'CART_PAGE.TH_UNIT_PRICE' | translate }}</th>
-                              <th class="num">{{ 'CART_PAGE.TH_SUBTOTAL' | translate }}</th>
+                              <th>Item</th>
+                              <th class="num">Qty</th>
+                              <th class="num">Unit price</th>
+                              <th class="num">Subtotal</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -112,12 +133,15 @@
                               <tr>
                                 <td>{{ line.name }}</td>
                                 <td class="num">{{ line.quantity }}</td>
-                                <td class="num">{{ line.unitPrice | dualCurrency }}</td>
-                                <td class="num"><strong>{{ line.lineTotal | dualCurrency }}</strong></td>
+                                <td class="num">{{ formatPrice(line.unitPrice) }}</td>
+                                <td class="num"><strong>{{ formatPrice(line.lineTotal) }}</strong></td>
                               </tr>
                             }
                           </tbody>
                         </table>
+                      </div>
+                      <div class="receipt-actions">
+                        <button type="button" class="btn ghost" (click)="downloadReceiptPdf()">Download PDF</button>
                       </div>
                     </section>
                   }

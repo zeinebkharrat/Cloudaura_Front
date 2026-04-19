@@ -93,9 +93,13 @@ export class TransportCardComponent {
     return TRANSPORT_TYPE_META[this.transport.type]?.label ?? this.transport.type;
   }
 
-  getTypeSeverity(): 'success' | 'info' | 'warning' | 'danger' | undefined {
-    const map: Record<string, 'success' | 'info' | 'warning' | 'danger'> = {
-      BUS: 'success', VAN: 'info', TAXI: 'warning', PLANE: 'danger', CAR: 'info'
+  getTypeSeverity(): 'success' | 'info' | 'warn' | 'danger' | undefined {
+    const map: Record<string, 'success' | 'info' | 'warn' | 'danger'> = {
+      BUS: 'success',
+      VAN: 'info',
+      TAXI: 'warn',
+      PLANE: 'danger',
+      CAR: 'info',
     };
     return map[this.transport.type];
   }

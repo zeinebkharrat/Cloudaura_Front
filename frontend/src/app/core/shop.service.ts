@@ -104,12 +104,22 @@ export class ShopService {
     return this.http.post<CheckoutOrder>(`${this.shopBase()}/checkout`, {}, { params }).pipe(tap(() => this.cartCount.set(0)));
   }
 
+  confirmShopStripeSession(sessionId: string): Observable<void> {
+    return this.http.post<void>(`${API_BASE_URL}/api/payment/shop/confirm-session`, null, {
+      params: { session_id: sessionId },
+    });
+  }
+
   getMyOrders(): Observable<MyOrderSummary[]> {
     return this.http.get<MyOrderSummary[]>(`${this.shopBase()}/orders`);
   }
 
   getMyOrderDetail(orderId: number): Observable<CheckoutOrder> {
     return this.http.get<CheckoutOrder>(`${this.shopBase()}/orders/${orderId}`);
+  }
+
+  downloadMyOrderReceiptPdf(orderId: number): Observable<Blob> {
+    return this.http.get(`${this.shopBase()}/orders/${orderId}/receipt.pdf`, { responseType: 'blob' });
   }
 
   getArtisanOrders(): Observable<MyOrderSummary[]> {
