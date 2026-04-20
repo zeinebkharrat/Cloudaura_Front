@@ -506,7 +506,7 @@ public class EventController {
             try {
                 session = Session.create(params);
             } catch (StripeException exCreate) {
-                if ("tnd".equals(currency) && PaymentService.isStripePresentmentCurrencyRejected(exCreate)) {
+                if ("tnd".equals(currency) && paymentService.isStripePresentmentCurrencyRejected(exCreate)) {
                     long eurUnitMinor = paymentService.stripeMinorUnits(ticketPrice, "eur");
                     long eurTotalMinor = eurUnitMinor * (long) requestedTickets;
                     paymentService.assertTransportStripeChargeable(eurTotalMinor, "eur");

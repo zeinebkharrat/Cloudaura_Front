@@ -373,6 +373,7 @@ public class ShopService {
         User u = findUser(username);
         OrderEntity order = orderEntityRepository.findById(orderId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Commande introuvable"));
+        boolean isAdmin = u.getRoles().stream().anyMatch(r -> "ROLE_ADMIN".equals(r.getName()));
             
         // Check if buyer
         boolean isBuyer = order.getUser() != null && order.getUser().getUserId().equals(u.getUserId());
@@ -383,13 +384,21 @@ public class ShopService {
             .anyMatch(oi -> oi.getProduct() != null && oi.getProduct().getUser() != null && 
                             oi.getProduct().getUser().getUserId().equals(u.getUserId()));
 
-        if (!isBuyer && !isArtisanOfOrder) {
+        if (!isBuyer && !isArtisanOfOrder && !isAdmin) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Accès refuse");
         }
         
         User buyer = order.getUser();
         List<OrderLineDto> lines = new ArrayList<>();
         for (OrderItem oi : items) {
+            if (!isBuyer && !isAdmin) {
+                Integer artisanId = (oi.getProduct() != null && oi.getProduct().getUser() != null)
+                    ? oi.getProduct().getUser().getUserId()
+                    : null;
+                if (artisanId == null || !artisanId.equals(u.getUserId())) {
+                    continue;
+                }
+            }
             Product p = oi.getProduct();
             ProductVariant v = oi.getVariant();
             int qty = oi.getQuantity() != null ? oi.getQuantity() : 0;
@@ -428,12 +437,16 @@ public class ShopService {
 
     @Transactional
     public void updateOrderItemStatus(Integer orderItemId, OrderStatus newStatus, String artisanUsername) {
-        User artisan = findUser(artisanUsername);
+        if (newStatus == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Statut requis");
+        }
+        User actor = findUser(artisanUsername);
+        boolean isAdmin = actor.getRoles().stream().anyMatch(r -> "ROLE_ADMIN".equals(r.getName()));
         OrderItem item = orderItemRepository.findById(orderItemId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ligne de commande introuvable"));
         
-        if (item.getProduct() == null || item.getProduct().getUser() == null || 
-            !item.getProduct().getUser().getUserId().equals(artisan.getUserId())) {
+        if (!isAdmin && (item.getProduct() == null || item.getProduct().getUser() == null || 
+            !item.getProduct().getUser().getUserId().equals(actor.getUserId()))) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Non autorisé à modifier cet article");
         }
         

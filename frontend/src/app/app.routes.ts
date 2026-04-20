@@ -49,6 +49,11 @@ import { QuizPlayerComponent } from './games/quiz-player.component';
 import { CrosswordPlayerComponent } from './games/crossword-player.component';
 import { PuzzlePlayerComponent } from './games/puzzle-player.component';
 import { LudoPlayerComponent } from './games/ludo-player.component';
+import { GovernorateGuessPlayerComponent } from './games/governorate-guess-player.component';
+import { ElJemQuestPlayerComponent } from './games/el-jem-quest-player.component';
+import { ChefQuestPlayerComponent } from './games/chef-quest-player.component';
+import { ChkobbaPlayerComponent } from './games/chkobba-player.component';
+import { TunisianMusicPlayerComponent } from './games/tunisian-music-player.component';
 import { ServicesRestaurantsComponent } from './explore/services-restaurants.component';
 import { ServicesActivitiesComponent } from './explore/services-activities.component';
 import { ArtisanOrdersComponent } from './artisan/artisan-orders.component';
@@ -89,6 +94,11 @@ export const routes: Routes = [
   { path: 'games/crossword/:id', component: CrosswordPlayerComponent, canActivate: [authGuard] },
   { path: 'games/puzzle/:id', component: PuzzlePlayerComponent, canActivate: [authGuard] },
   { path: 'games/ludo', component: LudoPlayerComponent, canActivate: [authGuard] },
+  { path: 'games/governorate-guess', component: GovernorateGuessPlayerComponent, canActivate: [authGuard] },
+  { path: 'games/el-jem-quest', component: ElJemQuestPlayerComponent, canActivate: [authGuard] },
+  { path: 'games/chef-quest', component: ChefQuestPlayerComponent, canActivate: [authGuard] },
+  { path: 'games/chkobba', component: ChkobbaPlayerComponent, canActivate: [authGuard] },
+  { path: 'games/music', component: TunisianMusicPlayerComponent, canActivate: [authGuard] },
   {
     path: 'hebergement',
     loadChildren: () =>

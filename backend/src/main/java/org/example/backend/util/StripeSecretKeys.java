@@ -30,4 +30,17 @@ public final class StripeSecretKeys {
         }
         return normalized.startsWith("sk_test_") || normalized.startsWith("sk_live_");
     }
+
+    /**
+     * Chooses the effective key with this priority:
+     * 1) environment variable value if it is a valid Stripe secret key,
+     * 2) configuration property value otherwise.
+     */
+    public static String resolveEffective(String configuredRaw, String envRaw) {
+        String env = normalize(envRaw);
+        if (isStripeSecretConfigured(env)) {
+            return env;
+        }
+        return normalize(configuredRaw);
+    }
 }

@@ -11,8 +11,6 @@ import org.example.backend.dto.transport.TransportReservationResponse;
 import org.example.backend.service.PaymentService;
 import org.example.backend.service.TransportReservationService;
 import org.example.backend.service.UserIdentityResolver;
-import org.example.backend.util.StripeSecretKeys;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -39,9 +37,6 @@ public class TransportPaymentController {
     private final PaymentService paymentService;
     private final UserIdentityResolver userIdentityResolver;
 
-    @Value("${stripe.api.key:disabled}")
-    private String stripeApiKey;
-
     @PostMapping("/checkout-session")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<Map<String, String>> createCheckoutSession(
@@ -51,12 +46,11 @@ public class TransportPaymentController {
             throw new AccessDeniedException("api.error.unauthorized");
         }
 
-        String normalizedKey = StripeSecretKeys.normalize(stripeApiKey);
-        boolean realStripe = StripeSecretKeys.isStripeSecretConfigured(normalizedKey);
+        boolean realStripe = paymentService.isStripeCheckoutEnabled();
         log.info(
                 "Transport checkout-session: realStripe={} (stripe.api.key normalized prefix: {})",
                 realStripe,
-                normalizedKey.length() >= 7 ? normalizedKey.substring(0, 7) + "…" : "(short/empty)");
+            paymentService.stripeKeyPrefixForLogs());
 
         var handoff = transportReservationService.prepareTransportStripeCheckoutHandoff(body, uid);
 

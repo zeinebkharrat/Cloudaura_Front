@@ -58,7 +58,7 @@ public class PaymentService {
 
     @PostConstruct
     void configureStripeApiKey() {
-        String key = StripeSecretKeys.normalize(stripeApiKey);
+        String key = resolveStripeApiKey();
         if (StripeSecretKeys.isStripeSecretConfigured(key)) {
             Stripe.apiKey = key;
             log.info("Stripe.apiKey initialized for PaymentService (transport/shop Checkout enabled)");
@@ -66,6 +66,19 @@ public class PaymentService {
             Stripe.apiKey = null;
             log.info("Stripe.apiKey not set — stripe.api.key is blank, disabled, or not sk_test_/sk_live_ after normalize");
         }
+    }
+
+    public boolean isStripeCheckoutEnabled() {
+        return StripeSecretKeys.isStripeSecretConfigured(resolveStripeApiKey());
+    }
+
+    public String stripeKeyPrefixForLogs() {
+        String key = resolveStripeApiKey();
+        return key.length() >= 7 ? key.substring(0, 7) + "…" : "(short/empty)";
+    }
+
+    private String resolveStripeApiKey() {
+        return StripeSecretKeys.resolveEffective(stripeApiKey, System.getenv("STRIPE_SECRET_KEY"));
     }
 
     private String normalizedStripeCurrency() {
@@ -107,7 +120,7 @@ public class PaymentService {
     }
 
     public String generatePaymentUrl(OrderEntity order) {
-        String key = StripeSecretKeys.normalize(stripeApiKey);
+        String key = resolveStripeApiKey();
         if (!StripeSecretKeys.isStripeSecretConfigured(key)) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Paiement Stripe indisponible.");
         }
@@ -231,7 +244,7 @@ public class PaymentService {
         if (sessionId == null || sessionId.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "session_id requis");
         }
-        String key = StripeSecretKeys.normalize(stripeApiKey);
+        String key = resolveStripeApiKey();
         if (!StripeSecretKeys.isStripeSecretConfigured(key)) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Paiement Stripe indisponible.");
         }
@@ -271,7 +284,7 @@ public class PaymentService {
     }
 
     public TransportPaymentStartDto createTransportCheckoutSession(TransportReservation reservation, double totalTnd, String preferredCurrency) {
-        String key = StripeSecretKeys.normalize(stripeApiKey);
+        String key = resolveStripeApiKey();
         if (!StripeSecretKeys.isStripeSecretConfigured(key)) {
             log.warn("createTransportCheckoutSession called but stripe secret not configured after normalize");
             throw new ResponseStatusException(
@@ -287,6 +300,71 @@ public class PaymentService {
         String ref = reservation.getReservationRef();
         String label = "Transport — " + (ref != null && !ref.isBlank() ? ref : "#" + reservation.getTransportReservationId());
 
+        String returnUrl = frontendBaseUrl + "/transport/payment/return?session_id={CHECKOUT_SESSION_ID}";
+
+        try {
+            return createTransportSessionWithCurrency(reservation, totalTnd, checkoutCurrency, unitAmount, label, returnUrl);
+        } catch (StripeException first) {
+            boolean shouldFallback = "tnd".equals(checkoutCurrency) && isStripePresentmentCurrencyRejected(first);
+            if (shouldFallback) {
+                String fallbackCurrency = "eur";
+                long fallbackAmount = minorUnitsFromTnd(totalTnd, fallbackCurrency);
+                assertTransportStripeChargeable(fallbackAmount, fallbackCurrency);
+                log.warn(
+                        "Stripe rejected transport checkout in currency={} (reservationId={}) - retrying with {}",
+                        checkoutCurrency,
+                        reservation.getTransportReservationId(),
+                        fallbackCurrency,
+                        first);
+                try {
+                    return createTransportSessionWithCurrency(
+                            reservation,
+                            totalTnd,
+                            fallbackCurrency,
+                            fallbackAmount,
+                            label,
+                            returnUrl);
+                } catch (StripeException second) {
+                    log.error(
+                            "Stripe transport checkout failed after fallback (firstCurrency={}, fallbackCurrency={}, reservationId={})",
+                            checkoutCurrency,
+                            fallbackCurrency,
+                            reservation.getTransportReservationId(),
+                            second);
+                    throw toTransportStripeResponseStatus(second);
+                }
+            }
+
+            log.error(
+                    "Stripe transport checkout failed (currency={}, unitAmount={}, reservationId={})",
+                    checkoutCurrency,
+                    unitAmount,
+                    reservation.getTransportReservationId(),
+                    first);
+            throw toTransportStripeResponseStatus(first);
+        }
+    }
+
+    private ResponseStatusException toTransportStripeResponseStatus(StripeException error) {
+        int code = error.getStatusCode();
+        String hint = error.getMessage() != null ? error.getMessage() : "erreur inconnue";
+        if (code == 400 || code == 402 || code == 404) {
+            return new ResponseStatusException(HttpStatus.BAD_REQUEST, "Paiement Stripe indisponible : " + hint);
+        }
+        if (code == 401 || code == 403) {
+            return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Configuration Stripe invalide ou refusée.");
+        }
+        return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Paiement Stripe indisponible : " + hint);
+    }
+
+    private TransportPaymentStartDto createTransportSessionWithCurrency(
+            TransportReservation reservation,
+            double totalTnd,
+            String checkoutCurrency,
+            long unitAmount,
+            String label,
+            String returnUrl)
+            throws StripeException {
         List<SessionCreateParams.LineItem> stripeLines = List.of(
                 SessionCreateParams.LineItem.builder()
                         .setQuantity(1L)
@@ -301,42 +379,32 @@ public class PaymentService {
                                         .build())
                         .build());
 
-        String returnUrl = frontendBaseUrl + "/transport/payment/return?session_id={CHECKOUT_SESSION_ID}";
+        SessionCreateParams params = SessionCreateParams.builder()
+                .setMode(SessionCreateParams.Mode.PAYMENT)
+                .setSuccessUrl(returnUrl)
+                .setCancelUrl(frontendBaseUrl + "/transport")
+                .putMetadata(
+                        "transportReservationId",
+                        String.valueOf(reservation.getTransportReservationId()))
+                .addAllLineItem(stripeLines)
+                .build();
 
-        try {
-            SessionCreateParams params = SessionCreateParams.builder()
-                    .setMode(SessionCreateParams.Mode.PAYMENT)
-                    .setSuccessUrl(returnUrl)
-                    .setCancelUrl(frontendBaseUrl + "/transport")
-                    .putMetadata(
-                            "transportReservationId",
-                            String.valueOf(reservation.getTransportReservationId()))
-                    .addAllLineItem(stripeLines)
-                    .build();
-
-            Session session = Session.create(params);
-            String url = session.getUrl();
-            log.info(
-                    "Stripe transport Checkout session created: sessionId={} transportReservationId={} urlPresent={}",
-                    session.getId(),
-                    reservation.getTransportReservationId(),
-                    url != null && !url.isBlank());
-            if (url == null || url.isBlank()) {
-                log.error("Stripe returned no checkout URL for transport reservation {}", reservation.getTransportReservationId());
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Stripe n'a pas renvoyé d'URL de paiement.");
-            }
-            return TransportPaymentStartDto.builder().url(url).build();
-        } catch (StripeException e) {
+        Session session = Session.create(params);
+        String url = session.getUrl();
+        log.info(
+                "Stripe transport Checkout session created: sessionId={} transportReservationId={} currency={} urlPresent={}",
+                session.getId(),
+                reservation.getTransportReservationId(),
+                checkoutCurrency,
+                url != null && !url.isBlank());
+        if (url == null || url.isBlank()) {
             log.error(
-                    "Stripe transport checkout failed (currency={}, unitAmount={}, reservationId={})",
-                    checkoutCurrency,
-                    unitAmount,
+                    "Stripe returned no checkout URL for transport reservation {} in currency {}",
                     reservation.getTransportReservationId(),
-                    e);
-            String hint = e.getMessage() != null ? e.getMessage() : "erreur inconnue";
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_GATEWAY, "Paiement Stripe indisponible : " + hint);
+                    checkoutCurrency);
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Stripe n'a pas renvoyé d'URL de paiement.");
         }
+        return TransportPaymentStartDto.builder().url(url).build();
     }
 
     /**
@@ -350,7 +418,7 @@ public class PaymentService {
         if (reservation == null || reservation.getReservationId() == null) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Réservation invalide pour Stripe.");
         }
-        String key = StripeSecretKeys.normalize(stripeApiKey);
+        String key = resolveStripeApiKey();
         if (!StripeSecretKeys.isStripeSecretConfigured(key)) {
             log.warn("createAccommodationCheckoutSession called but stripe secret not configured after normalize");
             throw new ResponseStatusException(

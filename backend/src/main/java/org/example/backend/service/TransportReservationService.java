@@ -424,7 +424,7 @@ public class TransportReservationService {
         if (!isStripeTransportPaymentsEnabled()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.stripe_disabled");
         }
-        Stripe.apiKey = StripeSecretKeys.normalize(stripeApiKey);
+        Stripe.apiKey = StripeSecretKeys.resolveEffective(stripeApiKey, System.getenv("STRIPE_SECRET_KEY"));
         try {
             Session session = Session.retrieve(sessionId);
             String pay = session.getPaymentStatus();
@@ -603,7 +603,8 @@ public class TransportReservationService {
      * (leading/trailing whitespace and UTF-8 BOM are stripped so valid keys are not misclassified).
      */
     public boolean isStripeTransportPaymentsEnabled() {
-        return StripeSecretKeys.isStripeSecretConfigured(StripeSecretKeys.normalize(stripeApiKey));
+        String effective = StripeSecretKeys.resolveEffective(stripeApiKey, System.getenv("STRIPE_SECRET_KEY"));
+        return StripeSecretKeys.isStripeSecretConfigured(effective);
     }
 
     public void sendTransportConfirmationWhatsApp(TransportReservation reservation) {
