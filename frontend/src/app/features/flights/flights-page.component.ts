@@ -1,6 +1,6 @@
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, Params, RouterLink } from '@angular/router';
+import { ActivatedRoute, Params, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { Subject, of } from 'rxjs';
 import {
@@ -22,6 +22,8 @@ import { FlightDto, FlightSuggestionResponse } from './flight.models';
 import { FlightSearchComponent, FlightDestinationSuggestion } from './flight-search.component';
 import { FlightListComponent } from './flight-list.component';
 import { FlightRouteMapComponent } from './flight-route-map.component';
+import { TripContextStore } from '../../core/stores/trip-context.store';
+import { Transport } from '../../core/models/travel.models';
 import {
   compareFlights,
   matchesStatusFilter,
@@ -50,6 +52,8 @@ import {
 export class FlightsPageComponent implements OnInit, OnDestroy {
   private readonly flightApi = inject(FlightService);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly tripStore = inject(TripContextStore);
   private readonly destroy$ = new Subject<void>();
   private readonly destinationInput$ = new Subject<string>();
 
@@ -65,6 +69,7 @@ export class FlightsPageComponent implements OnInit, OnDestroy {
   hasSearched = false;
   lastSearchDestination = '';
   lastSearchOrigin = 'TUN';
+  passengers = 1;
 
   autocompleteSuggestions: FlightDestinationSuggestion[] = [];
 
@@ -114,7 +119,7 @@ export class FlightsPageComponent implements OnInit, OnDestroy {
         debounceTime(400),
         distinctUntilChanged(),
         map((s) => s.trim()),
-        filter((q) => q.length >= 2),
+        filter((q) => q.length >= 3),
         takeUntil(this.destroy$),
       )
       .subscribe((q) => this.runSuggest(q, this.originIata));
@@ -122,6 +127,8 @@ export class FlightsPageComponent implements OnInit, OnDestroy {
     this.route.queryParams.pipe(take(1)).subscribe((p: Params) => {
       const dest = typeof p['destination'] === 'string' ? p['destination'].trim() : '';
       const origin = typeof p['origin'] === 'string' ? p['origin'].trim() : '';
+      const requestedPassengers = Number.parseInt(String(p['passengers'] ?? '1'), 10);
+      this.passengers = Number.isFinite(requestedPassengers) && requestedPassengers > 0 ? requestedPassengers : 1;
       if (dest.length >= 2) {
         this.destinationQuery = dest;
         this.originIata = (origin || 'TUN').toUpperCase().slice(0, 4);
@@ -184,6 +191,45 @@ export class FlightsPageComponent implements OnInit, OnDestroy {
     this.selected = f;
   }
 
+  onBookFlight(f: FlightDto): void {
+    const syntheticId = -(Math.abs(this.hashCode(`${f.flightNumber}|${f.departureTime}|${f.arrivalTime}`)) + 1);
+    const durationMinutes = this.estimateDurationMinutes(f);
+    const pricePerSeat = this.estimateFlightSeatPrice(durationMinutes);
+
+    const selectedTransport: Transport = {
+      id: syntheticId,
+      type: 'PLANE',
+      departureCityId: 0,
+      arrivalCityId: 0,
+      departureCityName: f.departureAirport || f.departureIata || this.lastSearchOrigin,
+      arrivalCityName: f.arrivalAirport || f.arrivalIata || this.lastSearchDestination,
+      departureTime: f.departureTime || new Date().toISOString(),
+      arrivalTime: f.arrivalTime || new Date(Date.now() + durationMinutes * 60_000).toISOString(),
+      price: pricePerSeat,
+      capacity: 180,
+      availableSeats: 180,
+      durationMinutes,
+      description: `${f.airline || 'Airline'} ${f.flightNumber || ''}`.trim(),
+      isActive: true,
+    };
+
+    this.tripStore.selectedTransport.set(selectedTransport);
+    this.tripStore.setPassengers(this.passengers);
+
+    const bookingDate = selectedTransport.departureTime?.slice(0, 10);
+    if (bookingDate) {
+      this.tripStore.setDates({ travelDate: bookingDate });
+    }
+
+    this.router.navigate(['/transport', selectedTransport.id, 'book'], {
+      queryParams: {
+        transportType: 'PLANE',
+        passengers: this.passengers,
+        date: bookingDate,
+      },
+    });
+  }
+
   setStatusFilter(key: StatusFilterKey): void {
     this.statusFilter = key;
   }
@@ -220,7 +266,7 @@ export class FlightsPageComponent implements OnInit, OnDestroy {
   }
 
   get idleHint(): string {
-    return 'Type at least 2 characters in Destination — results update automatically, or press Search.';
+    return 'Type at least 3 characters in Destination — results update automatically, or press Search.';
   }
 
   get listEmptyMessage(): string {
@@ -254,22 +300,150 @@ export class FlightsPageComponent implements OnInit, OnDestroy {
         this.loading = false;
         this.hasSearched = true;
         if (!res.success) {
-          this.apiFlights = [];
-          this.error = 'Unable to load flights, please try again';
+          this.useLocalFallback(d, o);
           return;
         }
         const body = res.data;
         this.suggestionMeta = body ?? null;
         this.apiFlights = body?.flights ?? [];
+        if ((this.apiFlights?.length ?? 0) === 0) {
+          this.useLocalFallback(d, o);
+          return;
+        }
         this.error = null;
       },
       error: () => {
-        this.loading = false;
-        this.hasSearched = true;
-        this.apiFlights = [];
-        this.suggestionMeta = null;
-        this.error = 'Unable to load flights, please try again';
+        this.useLocalFallback(d, o);
       },
     });
+  }
+
+  private useLocalFallback(destination: string, origin: string): void {
+    this.flightApi.resolveAirport(destination).subscribe({
+      next: (res) => {
+        const iata = (res.data?.found && res.data.iata ? res.data.iata : this.guessIata(destination)) || 'NBE';
+        const label = (res.data?.found && res.data.label ? res.data.label : `${destination} (${iata})`) || `${destination} (${iata})`;
+        this.suggestionMeta = {
+          originAirportIata: origin,
+          destinationAirportIata: iata,
+          resolvedDestinationLabel: label,
+          hint: 'Fallback data is shown while live provider is unavailable.',
+          flights: this.buildFallbackFlights(origin, iata, label),
+        };
+        this.apiFlights = this.suggestionMeta.flights;
+        this.loading = false;
+        this.hasSearched = true;
+        this.error = null;
+      },
+      error: () => {
+        const iata = this.guessIata(destination) || 'NBE';
+        const label = `${destination} (${iata})`;
+        this.suggestionMeta = {
+          originAirportIata: origin,
+          destinationAirportIata: iata,
+          resolvedDestinationLabel: label,
+          hint: 'Fallback data is shown while live provider is unavailable.',
+          flights: this.buildFallbackFlights(origin, iata, label),
+        };
+        this.apiFlights = this.suggestionMeta.flights;
+        this.loading = false;
+        this.hasSearched = true;
+        this.error = null;
+      },
+    });
+  }
+
+  private buildFallbackFlights(originIata: string, destinationIata: string, destinationLabel: string): FlightDto[] {
+    const now = new Date();
+    const mk = (hoursAhead: number, minsDuration: number, flightNumber: string, airline: string, status: string, statusCategory: string): FlightDto => {
+      const dep = new Date(now.getTime() + hoursAhead * 60 * 60 * 1000);
+      const arr = new Date(dep.getTime() + minsDuration * 60 * 1000);
+      return {
+        flightNumber,
+        airline,
+        departureAirport: originIata,
+        departureIata: originIata,
+        arrivalAirport: destinationLabel,
+        arrivalIata: destinationIata,
+        departureTime: dep.toISOString(),
+        arrivalTime: arr.toISOString(),
+        status,
+        statusCategory,
+        departureLatitude: null,
+        departureLongitude: null,
+        arrivalLatitude: null,
+        arrivalLongitude: null,
+      };
+    };
+
+    return [
+      mk(1, 55, 'YT101', 'YallaTN Air', 'scheduled', 'ON_TIME'),
+      mk(3, 50, 'YT205', 'Carthage Wings', 'active', 'ON_TIME'),
+      mk(5, 60, 'YT309', 'Sahel Connect', 'scheduled', 'DELAYED'),
+    ];
+  }
+
+  private guessIata(destination: string): string | null {
+    const raw = destination.trim();
+    if (!raw) {
+      return null;
+    }
+    if (/^[A-Za-z]{3}$/.test(raw)) {
+      return raw.toUpperCase();
+    }
+    const key = raw
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z]/g, '');
+    const map: Record<string, string> = {
+      tunis: 'TUN',
+      sousse: 'NBE',
+      hammamet: 'NBE',
+      monastir: 'MIR',
+      sfax: 'SFA',
+      djerba: 'DJE',
+      medenine: 'DJE',
+      mednine: 'DJE',
+      mednin: 'DJE',
+      zarzis: 'DJE',
+      tataouine: 'DJE',
+      tozeur: 'TOE',
+      gafsa: 'GAF',
+      gabes: 'GAE',
+      tabarka: 'TBJ',
+      bizerte: 'TUN',
+      nabeul: 'NBE',
+      paris: 'CDG',
+      london: 'LHR',
+      dubai: 'DXB',
+      doha: 'DOH',
+      istanbul: 'IST',
+      rome: 'FCO',
+      madrid: 'MAD',
+    };
+    return map[key] ?? null;
+  }
+
+  private estimateDurationMinutes(f: FlightDto): number {
+    const dep = Date.parse(f.departureTime || '');
+    const arr = Date.parse(f.arrivalTime || '');
+    if (Number.isFinite(dep) && Number.isFinite(arr) && arr > dep) {
+      return Math.max(45, Math.round((arr - dep) / 60000));
+    }
+    return 95;
+  }
+
+  private estimateFlightSeatPrice(durationMinutes: number): number {
+    const base = 48 + durationMinutes * 0.36;
+    return Math.round(Math.min(180, Math.max(58, base)) * 100) / 100;
+  }
+
+  private hashCode(input: string): number {
+    let hash = 0;
+    for (let i = 0; i < input.length; i++) {
+      hash = (Math.imul(31, hash) + input.charCodeAt(i)) | 0;
+    }
+    return hash;
   }
 }

@@ -26,6 +26,13 @@ export class TripContextStore {
   /** Driving route distance (km) for taxi pricing / Stripe checkout. */
   transportRouteKm = signal<number | null>(null);
   transportRouteDurationSec = signal<number | null>(null);
+  transportRouteDurationMin = computed(() => {
+    const sec = this.transportRouteDurationSec();
+    if (sec == null || sec <= 0) {
+      return null;
+    }
+    return Math.max(1, Math.round(sec / 60));
+  });
   /** Car rental duration in days (CAR pricing). */
   transportRentalDays = signal<number>(1);
 
@@ -48,6 +55,11 @@ export class TripContextStore {
 
   setPax(pax: { adults: number; children: number }) {
     this.pax.set(pax);
+  }
+
+  setPassengers(passengers: number) {
+    const adults = Math.max(1, Math.floor(passengers || 1));
+    this.pax.set({ adults, children: this.pax().children });
   }
 
   setAccommodationRoomQuote(category: AccommodationRoomCategory, roomId: number | null) {

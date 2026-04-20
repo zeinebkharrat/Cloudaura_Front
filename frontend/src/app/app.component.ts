@@ -16,6 +16,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { LanguageService } from './core/services/language.service';
 import { CurrencySelectorComponent } from './core/components/currency-selector/currency-selector.component';
 import { HomeAssistantWidgetComponent } from './home-assistant-widget.component';
+import { BackgroundAudioService } from './core/background-audio.service';
 
 type NavbarTourMenuContext = 'services' | 'user' | null;
 
@@ -58,6 +59,7 @@ export class AppComponent implements OnInit {
   private readonly reservationNotificationsService = inject(ReservationNotificationsService);
   readonly notifier = inject(NotificationService);
   readonly loginPrompt = inject(LoginRequiredPromptService);
+  readonly backgroundAudio = inject(BackgroundAudioService);
 
   isDarkMode = signal(true);
   isUserMenuOpen = signal(false);
@@ -138,6 +140,7 @@ export class AppComponent implements OnInit {
           cart: 'assets/zina_panier.png',
           challenges: 'assets/zina_quiz.png',
           currency: 'assets/zina_destination.png',
+          audio: 'assets/zina_destination.png',
           theme: 'assets/zina_gotit-removebg-preview.png',
         }
       : {
@@ -159,6 +162,7 @@ export class AppComponent implements OnInit {
           cart: 'assets/hamma_panier.png',
           challenges: 'assets/hamma_quiz.png',
           currency: 'assets/hamma_exchange.png',
+          audio: 'assets/hamma_exchange.png',
           theme: 'assets/hama_darkmode.png',
         };
 
@@ -270,6 +274,7 @@ export class AppComponent implements OnInit {
     }
 
     this.syncRouteState();
+    this.backgroundAudio.init();
   }
 
   private syncRouteState(): void {
@@ -307,6 +312,10 @@ export class AppComponent implements OnInit {
     const theme = this.isDarkMode() ? 'dark' : 'light';
     this.renderer.setAttribute(document.documentElement, 'data-theme', theme);
     localStorage.setItem('theme', theme);
+  }
+
+  toggleBackgroundAudio(): void {
+    this.backgroundAudio.toggleMute();
   }
 
   toggleUserMenu(event: Event) {
@@ -713,6 +722,15 @@ export class AppComponent implements OnInit {
         description: 'Switch prices to your preferred currency instantly.',
         menuContext: null,
         imageKey: 'currency',
+        pose: 'left',
+      },
+      {
+        id: 'audio',
+        selector: '[data-tour-id="nav-audio"]',
+        title: 'Background music',
+        description: 'Mute or unmute the site background music without losing your place when you browse.',
+        menuContext: null,
+        imageKey: 'audio',
         pose: 'left',
       },
       {

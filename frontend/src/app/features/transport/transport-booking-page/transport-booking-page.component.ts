@@ -26,7 +26,6 @@ import {
 import { TransportTrackingSseService } from '../transport-tracking-sse.service';
 import { CurrencyService } from '../../../core/services/currency.service';
 import { createCurrencyDisplaySyncEffect } from '../../../core/utils/currency-display-sync';
-import type { DisplayCurrency } from '../../../core/currency.types';
 
 @Component({
   selector: 'app-transport-booking-page',
@@ -106,44 +105,6 @@ import type { DisplayCurrency } from '../../../core/currency.types';
     }
 
     .step { padding: 1.5rem 0 0; }
-    .stripe-branding {
-      display: flex;
-      align-items: center;
-      gap: 0.9rem;
-      margin-bottom: 1rem;
-      padding: 0.8rem 0.95rem;
-      border-radius: 14px;
-      background: linear-gradient(
-        135deg,
-        color-mix(in srgb, var(--tunisia-red) 8%, var(--surface-1)) 0%,
-        color-mix(in srgb, var(--tunisia-red) 2%, var(--surface-1)) 100%
-      );
-      border: 1px solid color-mix(in srgb, var(--tunisia-red) 20%, var(--glass-border));
-    }
-    .stripe-branding-logo {
-      width: 44px;
-      height: 44px;
-      object-fit: contain;
-      border-radius: 10px;
-      background: #fff;
-      padding: 5px;
-      border: 1px solid var(--glass-border);
-    }
-    .stripe-branding-copy { min-width: 0; }
-    .stripe-branding-kicker {
-      margin: 0;
-      font-size: 0.7rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--tunisia-red);
-    }
-    .stripe-branding-copy h3 {
-      margin: 0.12rem 0 0;
-      font-size: 1rem;
-      font-weight: 700;
-      color: var(--text-color);
-    }
     .step-head { text-align: center; margin-bottom: 2rem; }
     .step-head h2 {
       font-family: 'Outfit', sans-serif;
@@ -250,40 +211,6 @@ import type { DisplayCurrency } from '../../../core/currency.types';
     .sum-v { font-size: 0.92rem; font-weight: 600; color: var(--text-color); }
 
     .sum-pricing { display: flex; flex-direction: column; gap: 0.4rem; }
-    .stripe-currency-box {
-      display: grid;
-      gap: 0.45rem;
-      background: var(--surface-1);
-      border: 1px solid var(--glass-border);
-      border-radius: 12px;
-      padding: 0.8rem 0.9rem;
-    }
-    .stripe-currency-box label {
-      font-size: 0.75rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: var(--text-muted);
-    }
-    .stripe-currency-select {
-      border: 1px solid var(--glass-border);
-      background: var(--input-bg);
-      color: var(--text-color);
-      border-radius: 10px;
-      padding: 0.58rem 0.75rem;
-      font-weight: 600;
-      outline: none;
-    }
-    .stripe-currency-select:focus {
-      border-color: var(--tunisia-red);
-      box-shadow: 0 0 0 3px var(--tunisia-red-glow);
-    }
-    .stripe-currency-note {
-      margin: 0;
-      font-size: 0.75rem;
-      line-height: 1.35;
-      color: var(--text-muted);
-    }
     .sum-pl { display: flex; justify-content: space-between; font-size: 0.88rem; color: var(--text-muted); }
     .sum-total { font-weight: 700; color: var(--text-color); padding-top: 0.6rem; border-top: 1px dashed var(--glass-border); font-size: 1rem; }
     .sum-total-val { font-family: 'Outfit', sans-serif; font-size: 1.3rem; font-weight: 800; color: var(--tunisia-red); }
@@ -441,7 +368,7 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
   private cdr = inject(ChangeDetectorRef);
   private readonly translate = inject(TranslateService);
   private readonly destroyRef = inject(DestroyRef);
-  readonly currency = inject(CurrencyService);
+  private readonly currency = inject(CurrencyService);
   private http = inject(HttpClient);
   authService = inject(AuthService);
   private loginPrompt = inject(LoginRequiredPromptService);
@@ -460,7 +387,6 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
   showQrDialog = false;
   paymentMethod = signal<'CASH' | 'KONNECT' | 'STRIPE' | 'PAYPAL'>('CASH');
   paymentMethodValue = 'CASH';
-  readonly stripeCurrencies: DisplayCurrency[] = ['EUR', 'USD', 'TND'];
 
   /** Re-render OnPush views when the global currency or FX snapshot changes. */
   private readonly _currencyDisplaySync = createCurrencyDisplaySyncEffect();
@@ -665,6 +591,11 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
     const t = this.transport();
     if (!t) return;
 
+    if (t.type === 'PLANE' && t.id < 0) {
+      this.confirmSyntheticFlightBooking();
+      return;
+    }
+
     const seats = this.passengerForm.get('seats')?.value ?? 1;
     const maxSeats = this.maxBookableSeats(t);
     if (seats > maxSeats) {
@@ -722,10 +653,8 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
         );
         return;
       }
-      const routeKm = t.type === 'TAXI' ? this.store.transportRouteKm() : undefined;
-      const routeDurationMin = t.type === 'TAXI'
-        ? this.routeDurationMinutesForPricing(routeKm ?? 0)
-        : undefined;
+      const routeKm = ['TAXI', 'BUS', 'CAR'].includes(t.type) ? this.store.transportRouteKm() : undefined;
+      const routeDurationMin = ['TAXI', 'BUS', 'CAR'].includes(t.type) ? this.store.transportRouteDurationMin() : undefined;
       if (t.type === 'TAXI' && (routeKm == null || routeKm <= 0)) {
         this.loading.set(false);
         void this.alerts.warning(
@@ -741,7 +670,7 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
           numberOfSeats: seats,
           travelDate,
           routeKm: routeKm ?? undefined,
-          routeDurationMin,
+          routeDurationMin: routeDurationMin ?? undefined,
           rentalDays: t.type === 'CAR' ? this.store.transportRentalDays() : undefined,
           passengerFirstName: this.passengerForm.get('firstName')?.value ?? '',
           passengerLastName: this.passengerForm.get('lastName')?.value ?? '',
@@ -780,10 +709,8 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
         );
         return;
       }
-      const routeKm = t.type === 'TAXI' ? this.store.transportRouteKm() : undefined;
-      const routeDurationMin = t.type === 'TAXI'
-        ? this.routeDurationMinutesForPricing(routeKm ?? 0)
-        : undefined;
+      const routeKm = ['TAXI', 'BUS', 'CAR'].includes(t.type) ? this.store.transportRouteKm() : undefined;
+      const routeDurationMin = ['TAXI', 'BUS', 'CAR'].includes(t.type) ? this.store.transportRouteDurationMin() : undefined;
       if (t.type === 'TAXI' && (routeKm == null || routeKm <= 0)) {
         this.loading.set(false);
         void this.alerts.warning(
@@ -799,7 +726,7 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
           seats,
           travelDate,
           routeKm: routeKm ?? undefined,
-          routeDurationMin,
+          routeDurationMin: routeDurationMin ?? undefined,
           amountTnd,
           passengerFirstName: this.passengerForm.get('firstName')?.value ?? '',
           passengerLastName: this.passengerForm.get('lastName')?.value ?? '',
@@ -840,10 +767,10 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
         paymentMethod: this.paymentMethod(),
         idempotencyKey,
         travelDate: this.buildTravelDateTimeIso() ?? undefined,
-        routeKm:
-          t.type === 'TAXI' ? (this.store.transportRouteKm() ?? undefined) : undefined,
-        routeDurationMin:
-          t.type === 'TAXI' ? this.routeDurationMinutesForPricing(this.store.transportRouteKm() ?? 0) : undefined,
+        routeKm: ['TAXI', 'BUS', 'CAR'].includes(t.type) ? (this.store.transportRouteKm() ?? undefined) : undefined,
+        routeDurationMin: ['TAXI', 'BUS', 'CAR'].includes(t.type)
+          ? (this.store.transportRouteDurationMin() ?? undefined)
+          : undefined,
         rentalDays: t.type === 'CAR' ? this.store.transportRentalDays() : undefined,
       })
       .subscribe({
@@ -869,7 +796,7 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
   }
 
   confirmButtonLabel(): string {
-    const money = this.displaySummaryAmount(this.calculateTotal());
+    const money = this.currency.formatDual(this.calculateTotal());
     if (this.editingReservationId() != null) {
       return this.translate.instant('TRANSPORT_BOOKING.BTN_UPDATE', { money });
     }
@@ -877,65 +804,6 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
       return this.translate.instant('TRANSPORT_BOOKING.BTN_PAY', { money });
     }
     return this.translate.instant('TRANSPORT_BOOKING.BTN_CONFIRM', { money });
-  }
-
-  onStripeCurrencyChange(value: string): void {
-    if (value === 'EUR' || value === 'USD' || value === 'TND') {
-      this.currency.setDisplayCurrency(value);
-      this.cdr.markForCheck();
-    }
-  }
-
-  displaySummaryAmount(amountTnd: number): string {
-    if (this.paymentMethod() === 'STRIPE') {
-      return this.formatMoney(amountTnd, this.stripeCheckoutCurrencyCode());
-    }
-    if (this.paymentMethod() === 'PAYPAL') {
-      return this.formatMoney(this.paypalUsdFromTnd(), 'USD');
-    }
-    return this.currency.formatDual(amountTnd);
-  }
-
-  isStripeTndSelected(): boolean {
-    return this.paymentMethod() === 'STRIPE' && this.currency.selectedCode() === 'TND';
-  }
-
-  stripeCheckoutCurrencyCode(): DisplayCurrency {
-    const selected = this.currency.selectedCode();
-    return selected === 'TND' ? 'EUR' : selected;
-  }
-
-  private amountInCurrency(amountTnd: number, currencyCode: DisplayCurrency): number {
-    if (currencyCode === 'TND') {
-      return amountTnd;
-    }
-    const rate = this.currency.rateFor(currencyCode);
-    if (rate != null && rate > 0) {
-      return amountTnd * rate;
-    }
-    return currencyCode === 'EUR' ? amountTnd * 0.30 : amountTnd * 0.32;
-  }
-
-  private formatMoney(amount: number, currencyCode: DisplayCurrency): string {
-    const rounded = Math.round(amount * 100) / 100;
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency: currencyCode,
-      minimumFractionDigits: currencyCode === 'TND' ? 3 : 2,
-      maximumFractionDigits: currencyCode === 'TND' ? 3 : 2,
-    }).format(rounded);
-  }
-
-  stripeUnitPriceDisplay(): string {
-    const code = this.stripeCheckoutCurrencyCode();
-    const amount = this.amountInCurrency(this.unitPriceForDisplay(), code);
-    return this.formatMoney(amount, code);
-  }
-
-  stripeTotalDisplay(): string {
-    const code = this.stripeCheckoutCurrencyCode();
-    const amount = this.amountInCurrency(this.calculateTotal(), code);
-    return this.formatMoney(amount, code);
   }
 
   /** Status chip on confirmation — brand palette only (no PrimeNG info blue). */
@@ -989,62 +857,56 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
     if (!t) {
       return 0;
     }
+
+    const km = this.store.transportRouteKm() ?? 0;
+    const durationMin = this.routeDurationMinutesForPricing(km, t.durationMinutes ?? 0);
+
     if (t.type === 'TAXI') {
-      const km = Math.max(0, this.store.transportRouteKm() ?? 0);
-      const durationMin = this.routeDurationMinutesForPricing(km);
-      const base = 0.9;
-      const perKm = 0.6;
-      const perMin = 0.15;
-      const isNight = this.isNightTripForPricing();
-      let fare = base + (km * perKm) + (durationMin * perMin);
-      if (isNight) {
-        fare *= 1.5;
+      let fare = 2 + km * 0.30 + durationMin * 0.05;
+      if (this.isNightTravel()) {
+        fare *= 1.1;
       }
-      return Math.round(Math.max(2.0, fare) * 100) / 100;
+      return Math.round(Math.max(3.5, fare) * 100) / 100;
+    }
+    if (t.type === 'BUS') {
+      const perSeat = Math.max(1.5, 1.2 + km * 0.028 + durationMin * 0.0065);
+      return Math.round(perSeat * Math.max(1, seats) * 100) / 100;
     }
     if (t.type === 'CAR') {
       const days = this.store.transportRentalDays() ?? 1;
-      return Math.round(t.price * Math.max(1, days) * 100) / 100;
+      const safeDays = Math.max(1, days);
+      const daily = Math.max(35, (t.price || 52) * 0.5);
+      const extraKm = Math.max(0, km - safeDays * 160);
+      return Math.round((daily * safeDays + extraKm * 0.07) * 100) / 100;
     }
     return Math.round(seats * t.price * 100) / 100;
   }
 
-  unitPriceForDisplay(): number {
-    const t = this.transport();
-    if (!t) {
+  private routeDurationMinutesForPricing(routeKm: number, fallbackDurationMin: number): number {
+    const fromStore = this.store.transportRouteDurationMin();
+    if (fromStore != null && fromStore > 0) {
+      return fromStore;
+    }
+    if (fallbackDurationMin > 0) {
+      return fallbackDurationMin;
+    }
+    if (routeKm <= 0) {
       return 0;
     }
-    const seats = Math.max(1, this.passengerForm.get('seats')?.value ?? 1);
-    if (t.type === 'TAXI') {
-      return Math.round((this.calculateTotal() / seats) * 100) / 100;
-    }
-    return t.price ?? 0;
+    return Math.round((routeKm / 60) * 60);
   }
 
-  private routeDurationMinutesForPricing(routeKm: number): number {
-    const sec = this.store.transportRouteDurationSec();
-    if (sec != null && sec > 0) {
-      return Math.max(0, Math.round(sec / 60));
-    }
-    const km = Math.max(0, routeKm);
-    if (km <= 0) {
-      return 0;
-    }
-    // Fallback estimate when map duration is unavailable.
-    return Math.round((km / 28) * 60);
-  }
-
-  private isNightTripForPricing(): boolean {
-    const raw = this.buildTravelDateTimeIso();
-    if (!raw) {
+  private isNightTravel(): boolean {
+    const travelDate = this.store.dates().travelDate;
+    if (!travelDate) {
       return false;
     }
-    const dt = new Date(raw);
-    if (Number.isNaN(dt.getTime())) {
+    const d = new Date(travelDate);
+    if (Number.isNaN(d.getTime())) {
       return false;
     }
-    const h = dt.getHours();
-    return h >= 21 || h < 5;
+    const hour = d.getHours();
+    return hour >= 22 || hour < 6;
   }
 
   private buildTravelDateTimeIso(): string | null {
@@ -1053,26 +915,53 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
     if (!dateStr || !t?.departureTime) {
       return null;
     }
-    let ymd = dateStr;
     if (dateStr.includes('T')) {
-      const parsed = new Date(dateStr);
-      if (Number.isNaN(parsed.getTime())) {
+      const user = new Date(dateStr);
+      if (Number.isNaN(user.getTime())) {
         return null;
       }
-      const y = parsed.getFullYear();
-      const mo = String(parsed.getMonth() + 1).padStart(2, '0');
-      const day = String(parsed.getDate()).padStart(2, '0');
-      ymd = `${y}-${mo}-${day}`;
+      const y = user.getFullYear();
+      const mo = String(user.getMonth() + 1).padStart(2, '0');
+      const day = String(user.getDate()).padStart(2, '0');
+      const h = String(user.getHours()).padStart(2, '0');
+      const m = String(user.getMinutes()).padStart(2, '0');
+      const s = String(user.getSeconds()).padStart(2, '0');
+      return `${y}-${mo}-${day}T${h}:${m}:${s}`;
     }
-
     const dep = new Date(t.departureTime);
-    if (Number.isNaN(dep.getTime())) {
-      return null;
-    }
     const h = String(dep.getHours()).padStart(2, '0');
     const m = String(dep.getMinutes()).padStart(2, '0');
     const s = String(dep.getSeconds()).padStart(2, '0');
-    return `${ymd}T${h}:${m}:${s}`;
+    return `${dateStr}T${h}:${m}:${s}`;
+  }
+
+  private confirmSyntheticFlightBooking(): void {
+    const seats = this.passengerForm.get('seats')?.value ?? 1;
+    const totalPrice = this.calculateTotal();
+    const travelDate = this.buildTravelDateTimeIso() ?? new Date().toISOString();
+    const reservationRef = `FLT-${Date.now().toString(36).toUpperCase()}`;
+    this.reservation.set({
+      transportReservationId: Date.now(),
+      transportId: this.transport()?.id,
+      reservationRef,
+      status: 'CONFIRMED',
+      paymentStatus: this.paymentMethod() === 'CASH' ? 'PENDING' : 'PAID',
+      paymentMethod: this.paymentMethod(),
+      totalPrice,
+      numberOfSeats: seats,
+      travelDate,
+      passengerFirstName: this.passengerForm.get('firstName')?.value ?? '',
+      passengerLastName: this.passengerForm.get('lastName')?.value ?? '',
+      passengerEmail: this.passengerForm.get('email')?.value ?? '',
+      passengerPhone: '+216 ' + (this.passengerForm.get('phone')?.value ?? ''),
+      createdAt: new Date().toISOString(),
+      transportType: 'PLANE',
+      type: 'PLANE',
+      departureCityName: this.transport()?.departureCityName,
+      arrivalCityName: this.transport()?.arrivalCityName,
+      departureTime: this.transport()?.departureTime,
+    });
+    this.activeStep.set(2);
   }
 
   goBack() { this.router.navigate(['/transport/results'], { queryParams: this.route.snapshot.queryParams }); }

@@ -100,7 +100,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly heroVideoSrc = '/assets/video.mp4';
   readonly heroVideoPoster = 'assets/sidi_bou.png';
   readonly heroVideoError = signal(false);
-  readonly videoMuted = signal(false);
+  readonly videoMuted = signal(true);
   readonly skeletonCards = Array.from({ length: 4 }, (_, i) => i);
 
   readonly activityCards = signal<HomeImageCard[]>([]);
@@ -316,15 +316,8 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    const nextMuted = !video.muted;
-    video.muted = nextMuted;
-    this.videoMuted.set(nextMuted);
-
-    if (video.paused) {
-      void video.play().catch(() => {
-        this.heroVideoError.set(true);
-      });
-    }
+    video.muted = true;
+    this.videoMuted.set(true);
   }
 
   ngAfterViewInit(): void {
@@ -516,19 +509,13 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
 
-      video.defaultMuted = false;
-      video.muted = false;
-      video.volume = 1;
-      this.videoMuted.set(false);
+      video.defaultMuted = true;
+      video.muted = true;
+      video.volume = 0;
+      this.videoMuted.set(true);
 
       void video.play().catch(() => {
-        // Autoplay with sound can be blocked by browsers; fallback to muted autoplay.
-        video.defaultMuted = true;
-        video.muted = true;
-        this.videoMuted.set(true);
-        void video.play().catch(() => {
-          this.heroVideoError.set(true);
-        });
+        this.heroVideoError.set(true);
       });
     }, 0);
   }

@@ -3,6 +3,7 @@
     #heroVideoRef
     class="hero-cinematic__video"
     autoplay
+    muted
     loop
     playsinline
     preload="auto"
@@ -13,14 +14,6 @@
   </video>
   <div *ngIf="heroVideoError()" class="hero-cinematic__fallback"></div>
   <div class="hero-cinematic__overlay"></div>
-  <button
-    type="button"
-    class="hero-cinematic__mute-btn"
-    (click)="toggleHeroVideoMute()"
-    [attr.aria-label]="videoMuted() ? 'Unmute video' : 'Mute video'"
-  >
-    {{ videoMuted() ? 'Unmute' : 'Mute' }}
-  </button>
   <div class="hero-cinematic__content animate-in">
     <span class="hero-cinematic__kicker">Tunisia, curated beautifully</span>
     <h1>Discover Tunisia through one elegant travel platform</h1>

@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.text.Normalizer;
 
 /**
  * Resolves a user-typed city or region to a main airport IATA (demo rules for PFE).
@@ -39,10 +40,22 @@ public class DestinationAirportResolver {
         put("sfax", "SFA", "Sfax (SFA)");
         put("sousse", "NBE", "Enfidha / Monastir area (NBE)");
         put("djerba", "DJE", "Djerba (DJE)");
+        put("medenine", "DJE", "Medenine area — Djerba (DJE)");
+        put("mednin", "DJE", "Medenine area — Djerba (DJE)");
+        put("mednine", "DJE", "Medenine area — Djerba (DJE)");
+        put("midoun", "DJE", "Midoun — Djerba (DJE)");
+        put("zarzis", "DJE", "Zarzis area — Djerba (DJE)");
+        put("tataouine", "DJE", "Tataouine area — Djerba (DJE)");
+        put("kebili", "TOE", "Kebili area — Tozeur (TOE)");
+        put("douz", "TOE", "Douz area — Tozeur (TOE)");
+        put("mahdia", "MIR", "Mahdia area — Monastir (MIR)");
+        put("kairouan", "NBE", "Kairouan area — Enfidha (NBE)");
+        put("bizerte", "TUN", "Bizerte area — Tunis (TUN)");
+        put("nabeul", "NBE", "Nabeul area — Enfidha (NBE)");
     }
 
     private void put(String key, String iata, String label) {
-        normalizedToIata.put(key, iata + "|" + label);
+        normalizedToIata.put(normalize(key), iata + "|" + label);
     }
 
     public Optional<ResolvedAirport> resolve(String query) {
@@ -54,7 +67,7 @@ public class DestinationAirportResolver {
             String iata = q.toUpperCase(Locale.ROOT);
             return Optional.of(new ResolvedAirport(iata, iata + " airport"));
         }
-        String norm = q.toLowerCase(Locale.ROOT).replace('-', ' ');
+        String norm = normalize(q);
         String entry = normalizedToIata.get(norm);
         if (entry != null) {
             String[] parts = entry.split("\\|", 2);
@@ -67,6 +80,17 @@ public class DestinationAirportResolver {
             }
         }
         return Optional.empty();
+    }
+
+    private static String normalize(String value) {
+        String nfd = Normalizer.normalize(value, Normalizer.Form.NFD);
+        String noAccents = nfd.replaceAll("\\p{M}", "");
+        return noAccents
+                .toLowerCase(Locale.ROOT)
+                .replace('-', ' ')
+                .replaceAll("[^a-z\\s]", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
     }
 
     public record ResolvedAirport(String iata, String label) {

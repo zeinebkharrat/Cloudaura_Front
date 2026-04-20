@@ -23,6 +23,7 @@ export class FlightListComponent {
   @Input() selected: FlightDto | null = null;
   @Input() mapMode = false;
   @Output() selectFlight = new EventEmitter<FlightDto>();
+  @Output() bookFlight = new EventEmitter<FlightDto>();
 
   readonly skeletonPlaceholders = [1, 2, 3, 4, 5, 6];
 

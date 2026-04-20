@@ -227,6 +227,17 @@
       <app-currency-selector />
     </div>
 
+    <button
+      data-tour-id="nav-audio"
+      type="button"
+      class="theme-toggle-btn nav-audio-btn"
+      (click)="toggleBackgroundAudio()"
+      [attr.aria-label]="backgroundAudio.muted() ? 'Unmute background music' : 'Mute background music'"
+      [attr.title]="backgroundAudio.muted() ? 'Play background music' : 'Mute background music'"
+    >
+      <i class="pi" [class.pi-volume-off]="backgroundAudio.muted()" [class.pi-volume-up]="!backgroundAudio.muted()"></i>
+    </button>
+
     <button data-tour-id="nav-theme" type="button" class="theme-toggle-btn" (click)="toggleTheme()" aria-label="Toggle theme" title="Toggle theme">
       @if (isDarkMode()) {
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"

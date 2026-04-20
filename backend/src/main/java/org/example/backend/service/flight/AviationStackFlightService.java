@@ -16,6 +16,8 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import org.springframework.web.util.UriBuilder;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,14 +38,15 @@ public class AviationStackFlightService {
     private final ObjectMapper objectMapper;
     private final DestinationAirportResolver destinationAirportResolver;
 
-    @Cacheable(cacheNames = AviationStackCacheConfig.CACHE_ALL_FLIGHTS,
+        @Cacheable(cacheNames = AviationStackCacheConfig.CACHE_ALL_FLIGHTS,
+            cacheManager = "aviationCacheManager",
             key = "'l:' + #limit + ':' + T(java.time.LocalDate).now(T(java.time.ZoneOffset).UTC)")
     public List<FlightDto> getAllFlights(int limit) {
+        int lim = clampLimit(limit);
         if (!properties.hasAccessKey()) {
             log.warn("Aviationstack: missing access key (set AVIATIONSTACK_ACCESS_KEY)");
-            return Collections.emptyList();
+            return fallbackAllFlights(lim);
         }
-        int lim = clampLimit(limit);
         String flightDate = LocalDate.now(ZoneOffset.UTC).toString();
         try {
             String body = aviationStackWebClient.get()
@@ -54,26 +57,27 @@ public class AviationStackFlightService {
             return parseAndMap(body);
         } catch (WebClientResponseException e) {
             log.error("Aviationstack HTTP {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
-            throw new AviationStackUpstreamException("Flight data provider returned an error.", e.getStatusCode().value());
+            return fallbackAllFlights(lim);
         } catch (Exception e) {
             log.error("Aviationstack getAllFlights failed", e);
-            throw new AviationStackUpstreamException("Could not reach flight data provider.", HttpStatus.BAD_GATEWAY.value());
+            return fallbackAllFlights(lim);
         }
     }
 
-    @Cacheable(cacheNames = AviationStackCacheConfig.CACHE_ROUTE_FLIGHTS,
+        @Cacheable(cacheNames = AviationStackCacheConfig.CACHE_ROUTE_FLIGHTS,
+            cacheManager = "aviationCacheManager",
             key = "#dep.toUpperCase() + ':' + #arr.toUpperCase() + ':' + #limit")
     public List<FlightDto> getFlightsByRoute(String dep, String arr, int limit) {
-        if (!properties.hasAccessKey()) {
-            log.warn("Aviationstack: missing access key");
-            return Collections.emptyList();
-        }
         if (dep == null || dep.isBlank() || arr == null || arr.isBlank()) {
             return Collections.emptyList();
         }
         int lim = clampLimit(limit);
         String depIata = dep.trim().toUpperCase();
         String arrIata = arr.trim().toUpperCase();
+        if (!properties.hasAccessKey()) {
+            log.warn("Aviationstack: missing access key, using fallback flights for route {} -> {}", depIata, arrIata);
+            return fallbackFlightsByRoute(depIata, arrIata, lim);
+        }
         try {
             String body = aviationStackWebClient.get()
                     .uri(uriBuilder -> flightsUri(uriBuilder, null, depIata, arrIata, lim))
@@ -83,14 +87,15 @@ public class AviationStackFlightService {
             return parseAndMap(body);
         } catch (WebClientResponseException e) {
             log.error("Aviationstack route HTTP {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
-            throw new AviationStackUpstreamException("Flight data provider returned an error.", e.getStatusCode().value());
+            return fallbackFlightsByRoute(depIata, arrIata, lim);
         } catch (Exception e) {
             log.error("Aviationstack getFlightsByRoute failed", e);
-            throw new AviationStackUpstreamException("Could not reach flight data provider.", HttpStatus.BAD_GATEWAY.value());
+            return fallbackFlightsByRoute(depIata, arrIata, lim);
         }
     }
 
-    @Cacheable(cacheNames = AviationStackCacheConfig.CACHE_SUGGEST,
+        @Cacheable(cacheNames = AviationStackCacheConfig.CACHE_SUGGEST,
+            cacheManager = "aviationCacheManager",
             key = "#originIata.toUpperCase() + ':' + #destinationQuery.trim().toLowerCase() + ':' + #limit")
     public FlightSuggestionResponse suggestForDestination(String originIata, String destinationQuery, int limit) {
         String origin = originIata == null || originIata.isBlank() ? "TUN" : originIata.trim().toUpperCase();
@@ -288,5 +293,72 @@ public class AviationStackFlightService {
         }
         String s = n.asText(null);
         return s != null && !s.isBlank() ? s : null;
+    }
+
+    private List<FlightDto> fallbackAllFlights(int limit) {
+        List<FlightDto> out = new ArrayList<>();
+        out.addAll(fallbackFlightsByRoute("TUN", "NBE", limit));
+        out.addAll(fallbackFlightsByRoute("NBE", "TUN", limit));
+        return out.size() > limit ? out.subList(0, limit) : out;
+    }
+
+    private List<FlightDto> fallbackFlightsByRoute(String depIata, String arrIata, int limit) {
+        String dep = depIata == null ? "TUN" : depIata.trim().toUpperCase();
+        String arr = arrIata == null ? "NBE" : arrIata.trim().toUpperCase();
+        String depName = airportNameFromIata(dep);
+        String arrName = airportNameFromIata(arr);
+        LocalDateTime base = LocalDateTime.of(LocalDate.now(ZoneOffset.UTC), LocalTime.of(8, 0));
+
+        List<FlightDto> rows = new ArrayList<>();
+        rows.add(fallbackFlight(dep, arr, depName, arrName, base.plusHours(1), base.plusHours(1).plusMinutes(50), "YT101", "YallaTN Air", "scheduled", "ON_TIME"));
+        rows.add(fallbackFlight(dep, arr, depName, arrName, base.plusHours(4), base.plusHours(4).plusMinutes(45), "YT205", "Carthage Wings", "active", "ON_TIME"));
+        rows.add(fallbackFlight(dep, arr, depName, arrName, base.plusHours(7), base.plusHours(7).plusMinutes(55), "YT309", "Sahel Connect", "scheduled", "DELAYED"));
+
+        if (limit > 0 && rows.size() > limit) {
+            return rows.subList(0, limit);
+        }
+        return rows;
+    }
+
+    private FlightDto fallbackFlight(
+            String depIata,
+            String arrIata,
+            String depName,
+            String arrName,
+            LocalDateTime departure,
+            LocalDateTime arrival,
+            String flightNumber,
+            String airline,
+            String status,
+            String statusCategory) {
+        double[] depCoord = AirportIataCoordinates.getOrNull(depIata);
+        double[] arrCoord = AirportIataCoordinates.getOrNull(arrIata);
+        return FlightDto.builder()
+                .flightNumber(flightNumber)
+                .airline(airline)
+                .departureAirport(depName)
+                .departureIata(depIata)
+                .arrivalAirport(arrName)
+                .arrivalIata(arrIata)
+                .departureTime(departure.atOffset(ZoneOffset.UTC).toString())
+                .arrivalTime(arrival.atOffset(ZoneOffset.UTC).toString())
+                .status(status)
+                .statusCategory(statusCategory)
+                .departureLatitude(depCoord != null ? depCoord[0] : null)
+                .departureLongitude(depCoord != null ? depCoord[1] : null)
+                .arrivalLatitude(arrCoord != null ? arrCoord[0] : null)
+                .arrivalLongitude(arrCoord != null ? arrCoord[1] : null)
+                .build();
+    }
+
+    private String airportNameFromIata(String iata) {
+        return switch (iata) {
+            case "TUN" -> "Tunis-Carthage International Airport";
+            case "NBE" -> "Enfidha-Hammamet International Airport";
+            case "MIR" -> "Monastir Habib Bourguiba International Airport";
+            case "SFA" -> "Sfax-Thyna International Airport";
+            case "DJE" -> "Djerba-Zarzis International Airport";
+            default -> iata + " Airport";
+        };
     }
 }

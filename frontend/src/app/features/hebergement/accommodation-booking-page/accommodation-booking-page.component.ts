@@ -137,6 +137,10 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
                   <strong>{{ nightCount() }} {{ 'ACCOMM.NIGHTS_UNIT' | translate }}</strong>
                 </div>
                 <div class="summary-row">
+                  <span>{{ 'ACCOMM.SUM_GUESTS' | translate }}</span>
+                  <strong>{{ store.pax().adults }} {{ 'ACCOMM.GUESTS_UNIT' | translate }}</strong>
+                </div>
+                <div class="summary-row">
                   <span>{{ 'ACCOMM.SUM_ROOM' | translate }}</span>
                   <strong>{{ selectedRoomLabel() }}</strong>
                 </div>
@@ -206,7 +210,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
               <p class="conf-email">{{ 'ACCOMM.CONF_EMAIL_SENT' | translate: { email: guestForm.value.email ?? '' } }}</p>
               <div class="conf-actions">
                 <button class="btn-ghost" (click)="router.navigate(['/'])"><img src="icones/home.png" alt="" class="btn-ico" width="18" height="18" /> {{ 'ACCOMM.BTN_HOME' | translate }}</button>
-                <button class="btn-primary" (click)="router.navigate(['/transport'])"><img src="icones/autobus.png" alt="" class="btn-ico" width="18" height="18" /> {{ 'ACCOMM.BTN_TRANSPORT' | translate }}</button>
+                <button class="btn-primary" (click)="router.navigate(['/transport'])"><img src="icones/bus.png" alt="" class="btn-ico" width="18" height="18" /> {{ 'ACCOMM.BTN_TRANSPORT' | translate }}</button>
               </div>
             </div>
           }
@@ -542,13 +546,14 @@ export class AccommodationBookingPageComponent implements OnInit {
       return { id: locked };
     }
     const quoted = this.store.accommodationQuoteRoomId();
-    if (quoted != null && (!acc.rooms || acc.rooms.length === 0)) {
-      return { id: quoted };
-    }
+    const guests = this.store.pax().adults;
     if (quoted != null && acc.rooms?.some((r) => r.id === quoted && r.available !== false)) {
-      return { id: quoted };
+      const r = acc.rooms!.find((x) => x.id === quoted)!;
+      if ((r.capacity ?? 0) >= guests) {
+        return { id: quoted };
+      }
     }
-    return this.pickRoom(acc);
+    return this.pickRoom(acc, guests);
   }
 
   nextStep() {
@@ -614,6 +619,15 @@ export class AccommodationBookingPageComponent implements OnInit {
       return;
     }
 
+    const guests = this.store.pax().adults;
+    if (guests < 1 || guests > 20) {
+      void this.alerts.warning(
+        this.translate.instant('ACCOMM.WARN_GUESTS_COUNT_TITLE'),
+        this.translate.instant('ACCOMM.WARN_GUESTS_COUNT_TEXT')
+      );
+      return;
+    }
+
     const editId = this.editingReservationId();
     if (editId != null) {
       this.loading.set(true);
@@ -664,7 +678,7 @@ export class AccommodationBookingPageComponent implements OnInit {
       .createAccommodationCheckoutSession({
         roomId: roomPick.id,
         userId: user.id,
-        guestCount: 1,
+        guestCount: guests,
         checkIn: ci.slice(0, 10),
         checkOut: co.slice(0, 10),
         offerId: null,
@@ -722,10 +736,11 @@ export class AccommodationBookingPageComponent implements OnInit {
   }
 
   /** Picks a bookable room for the API (requires real roomId from backend). */
-  private pickRoom(acc: Accommodation): { id: number } | null {
+  private pickRoom(acc: Accommodation, guestCount: number): { id: number } | null {
     const rooms = acc.rooms ?? [];
     if (rooms.length === 0) return null;
-    const pool = rooms.filter((r) => r.available !== false);
+    const fits = rooms.filter((r) => r.available !== false && (r.capacity ?? 0) >= guestCount);
+    const pool = fits.length > 0 ? fits : rooms.filter((r) => r.available !== false);
     const candidates = pool.length > 0 ? pool : rooms;
     const sorted = [...candidates].sort((a, b) => (a.price ?? acc.pricePerNight) - (b.price ?? acc.pricePerNight));
     const chosen = sorted[0];

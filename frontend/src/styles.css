@@ -1,6 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&family=Inter:wght@300;400;500;600;700&display=swap');
 @import 'sweetalert2/dist/sweetalert2.min.css';
 @import 'leaflet/dist/leaflet.css';
+@import './app/admin/admin-modal-tokens.css';
 .swal2-container,
 div:where(.swal2-container) {
   z-index: 30000 !important;
@@ -579,7 +580,7 @@ h1, h2, h3, h4, h5, h6 {
   border: 1px solid rgba(255,255,255,0.12) !important;
   border-radius: 12px !important;
   box-shadow: 0 12px 40px rgba(0,0,0,0.5) !important;
-  z-index: 10000 !important;
+  z-index: 2147482000 !important;
   overflow: hidden;
 }
 .p-dropdown-panel .p-dropdown-header {
@@ -648,7 +649,7 @@ h1, h2, h3, h4, h5, h6 {
   border: 1px solid rgba(255,255,255,0.12) !important;
   border-radius: 14px !important;
   box-shadow: 0 12px 40px rgba(0,0,0,0.5) !important;
-  z-index: 10000 !important;
+  z-index: 2147482001 !important;
   padding: 0.75rem !important;
   color: #eef2f7 !important;
 }
@@ -728,6 +729,74 @@ h1, h2, h3, h4, h5, h6 {
 .p-datepicker .p-yearpicker .p-yearpicker-year.p-highlight {
   background: #f12545 !important;
   color: #fff !important;
+}
+
+/* Keep all PrimeNG overlays above admin/backoffice panels. */
+.p-dialog-mask,
+.p-component-overlay {
+  z-index: 2147481500 !important;
+}
+
+.p-dialog {
+  z-index: 2147481600 !important;
+}
+
+.p-dropdown-panel,
+.p-select-overlay,
+.p-datepicker,
+.p-datepicker-panel,
+.p-overlaypanel,
+.p-menu-overlay {
+  z-index: 2147482000 !important;
+}
+
+/* ---------- Light theme guard: keep overlays light (transport/stays/admin) ---------- */
+:root[data-theme='light'] .p-dropdown-panel,
+:root[data-theme='light'] .p-select-overlay,
+:root[data-theme='light'] .p-datepicker,
+:root[data-theme='light'] .p-dialog,
+:root[data-theme='light'] .swal2-popup {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12) !important;
+}
+
+:root[data-theme='light'] .p-dropdown-panel .p-dropdown-header,
+:root[data-theme='light'] .p-select-overlay .p-select-header,
+:root[data-theme='light'] .p-datepicker .p-datepicker-header {
+  background: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+:root[data-theme='light'] .p-dropdown-panel .p-dropdown-item,
+:root[data-theme='light'] .p-select-overlay .p-select-option,
+:root[data-theme='light'] .p-datepicker table td > span,
+:root[data-theme='light'] .p-datepicker table th {
+  color: #334155 !important;
+}
+
+:root[data-theme='light'] .p-dropdown-panel .p-dropdown-item:hover,
+:root[data-theme='light'] .p-select-overlay .p-select-option:hover,
+:root[data-theme='light'] .p-datepicker table td > span:hover {
+  background: rgba(241, 37, 69, 0.08) !important;
+  color: #111827 !important;
+}
+
+:root[data-theme='light'] .p-dropdown-panel .p-dropdown-item.p-highlight,
+:root[data-theme='light'] .p-select-overlay .p-select-option.p-selected,
+:root[data-theme='light'] .p-datepicker table td > span.p-highlight {
+  background: #f12545 !important;
+  color: #ffffff !important;
+}
+
+:root[data-theme='light'] .p-dropdown-panel .p-dropdown-filter,
+:root[data-theme='light'] .p-select-overlay .p-select-filter,
+:root[data-theme='light'] .p-datepicker .p-inputtext {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
 }
 
 /* ---------- Tooltip ---------- */

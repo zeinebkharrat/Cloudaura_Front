@@ -1,4 +1,4 @@
-/* Shared admin modal UI — uses global --adm-* tokens (light/dark in styles.css). */
+/* Shared admin modal UI — --adm-* tokens loaded globally (styles.css). */
 
 .adm-sr-only {
   position: absolute;

@@ -9,7 +9,6 @@ import { InputTextModule } from 'primeng/inputtext';
 import { DropdownModule } from 'primeng/dropdown';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { SliderModule } from 'primeng/slider';
-import { DatePickerModule } from 'primeng/datepicker';
 import { AppAlertsService } from '../../../core/services/app-alerts.service';
 
 interface AdminApiEnvelope<T> {
@@ -42,7 +41,6 @@ interface City {
   cityId: number;
   name: string;
   region: string;
-  description?: string;
   hasAirport?: boolean;
   hasBusStation?: boolean;
 }
@@ -76,7 +74,7 @@ interface TransportReservation {
   imports: [
     CommonModule, FormsModule, ReactiveFormsModule,
     DialogModule, ButtonModule, InputTextModule,
-    DropdownModule, InputNumberModule, SliderModule, DatePickerModule,
+    DropdownModule, InputNumberModule, SliderModule,
   ],
   templateUrl: './transports-admin.component.html',
   styleUrl: './transports-admin.component.css'
@@ -90,7 +88,6 @@ export class TransportsAdminComponent {
 
   transports = signal<Transport[]>([]);
   cities     = signal<City[]>([]);
-  cityOptions = computed(() => this.cities().filter((c) => !this.isAirportLikeCity(c)));
   reservations = signal<TransportReservation[]>([]);
   stats = signal<TransportStats | null>(null);
 
@@ -121,14 +118,7 @@ export class TransportsAdminComponent {
     { label: 'Taxi', value: 'TAXI', icon: 'pi pi-map-marker' },
   ];
 
-  readonly transportCapacityMaxByType: Record<string, number> = {
-    BUS: 45,
-    TAXI: 4,
-    CAR: 4,
-    PLANE: 100,
-  };
-  readonly defaultCapacityMax = 500;
-  capacitySliderMax = this.transportCapacityMaxByType['PLANE'];
+  readonly capacitySliderMax = 500;
 
   airlines = [
     { label: 'Tunisair',        value: 'Tunisair' },
@@ -175,8 +165,8 @@ export class TransportsAdminComponent {
       type:            ['PLANE', Validators.required],
       departureCityId: [null, Validators.required],
       arrivalCityId:   [null, Validators.required],
-      departureTime:   [null, Validators.required],
-      arrivalTime:     [null, Validators.required],
+      departureTime:   ['', Validators.required],
+      arrivalTime:     ['', Validators.required],
       capacity:        [null, [Validators.required, Validators.min(1)]],
       price:           [0, [Validators.required, Validators.min(0)]],
       description:     [''],
@@ -184,9 +174,6 @@ export class TransportsAdminComponent {
       flightCode:      [null],
       isActive:        [true],
     });
-
-    this.transportForm.get('departureTime')?.valueChanges.subscribe(() => this.onTimeChange());
-    this.transportForm.get('arrivalTime')?.valueChanges.subscribe(() => this.onTimeChange());
 
     this.loadAll();
   }
@@ -259,29 +246,20 @@ export class TransportsAdminComponent {
 
     const cap = this.transportForm.get('capacity')!;
     const op = this.transportForm.get('operatorName')!;
-    const capacityMax = this.getCapacityMaxForType(type);
-
-    this.capacitySliderMax = capacityMax;
-    cap.setValidators([Validators.required, Validators.min(1), Validators.max(capacityMax)]);
-
-    const currentCapacity = Number(cap.value);
-    if (!Number.isFinite(currentCapacity) || currentCapacity < 1) {
-      cap.setValue(1);
-    } else if (currentCapacity > capacityMax) {
-      cap.setValue(capacityMax);
-    }
 
     if (type === 'PLANE') {
       if (clearIncompatibleFields) {
         op.reset();
       }
       op.setValidators([Validators.required]);
+      cap.setValidators([Validators.required, Validators.min(1)]);
     } else {
       if (clearIncompatibleFields) {
         this.transportForm.get('operatorName')!.reset();
         this.transportForm.get('flightCode')!.reset();
       }
       op.clearValidators();
+      cap.setValidators([Validators.required, Validators.min(1)]);
     }
     op.updateValueAndValidity();
     cap.updateValueAndValidity();
@@ -374,8 +352,8 @@ export class TransportsAdminComponent {
 
       this.transportForm.patchValue({
         ...transport,
-        departureTime: this.toDateObject(transport.departureTime),
-        arrivalTime:   this.toDateObject(transport.arrivalTime),
+        departureTime: this.toDateTimeLocal(transport.departureTime),
+        arrivalTime:   this.toDateTimeLocal(transport.arrivalTime),
       });
       this.applyTransportTypeValidators(type, false);
     } else {
@@ -592,37 +570,16 @@ export class TransportsAdminComponent {
     return legacy[type] ?? type;
   }
 
-  private getCapacityMaxForType(type: string): number {
-    return this.transportCapacityMaxByType[type] ?? this.defaultCapacityMax;
-  }
-
-  private isAirportLikeCity(city: City): boolean {
-    const name = (city.name ?? '').toLowerCase();
-    const region = (city.region ?? '').toLowerCase();
-    const description = (city.description ?? '').toLowerCase();
-    return region === 'airport'
-      || name.includes('airport')
-      || description.includes('airport')
-      || description.includes('virtual airport city for flight booking flow');
-  }
-
-  private toDateObject(dt: string): Date | null {
-    if (!dt) return null;
+  private toDateTimeLocal(dt: string): string {
+    if (!dt) return '';
     const d = new Date(dt);
-    if (Number.isNaN(d.getTime())) return null;
-    return d;
+    if (Number.isNaN(d.getTime())) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   }
 
-  private toBackendLocalDateTime(value: Date | string | null | undefined): string | null {
+  private toBackendLocalDateTime(value: string | null | undefined): string | null {
     if (value == null || value === '') return null;
-
-    if (value instanceof Date) {
-      const d = value;
-      if (Number.isNaN(d.getTime())) return null;
-      const pad = (n: number) => String(n).padStart(2, '0');
-      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
-    }
-
     const v = String(value).trim();
     if (!v) return null;
     if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v)) return `${v}:00`;

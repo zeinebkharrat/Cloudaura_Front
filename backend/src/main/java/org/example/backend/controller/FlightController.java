@@ -1,7 +1,6 @@
 package org.example.backend.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.example.backend.config.AviationStackProperties;
 import org.example.backend.dto.ApiResponse;
 import org.example.backend.dto.flight.AirportResolveResponse;
 import org.example.backend.dto.flight.FlightDto;
@@ -13,7 +12,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -25,7 +23,6 @@ import java.util.List;
 public class FlightController {
 
     private final AviationStackFlightService flightService;
-    private final AviationStackProperties aviationStackProperties;
 
     /**
      * Sample of flights for the current UTC date (provider-dependent; cached briefly).
@@ -33,11 +30,6 @@ public class FlightController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<FlightDto>>> getAll(
             @RequestParam(name = "limit", required = false) Integer limit) {
-        if (!aviationStackProperties.hasAccessKey()) {
-            return ResponseEntity.ok(ApiResponse.success(
-                    Collections.emptyList(),
-                    "Configure environment variable AVIATIONSTACK_ACCESS_KEY to enable Aviationstack data."));
-        }
         int lim = limit == null ? 0 : limit;
         List<FlightDto> data = flightService.getAllFlights(lim);
         return ResponseEntity.ok(ApiResponse.success(data));
@@ -51,11 +43,6 @@ public class FlightController {
             @RequestParam("dep") String depIata,
             @RequestParam("arr") String arrIata,
             @RequestParam(name = "limit", required = false) Integer limit) {
-        if (!aviationStackProperties.hasAccessKey()) {
-            return ResponseEntity.ok(ApiResponse.success(
-                    Collections.emptyList(),
-                    "Configure AVIATIONSTACK_ACCESS_KEY to search live flights."));
-        }
         int lim = limit == null ? 0 : limit;
         List<FlightDto> data = flightService.getFlightsByRoute(depIata, arrIata, lim);
         return ResponseEntity.ok(ApiResponse.success(data));
@@ -69,14 +56,6 @@ public class FlightController {
             @RequestParam("destination") String destination,
             @RequestParam(name = "origin", required = false, defaultValue = "TUN") String originIata,
             @RequestParam(name = "limit", required = false) Integer limit) {
-        if (!aviationStackProperties.hasAccessKey()) {
-            return ResponseEntity.ok(ApiResponse.success(
-                    FlightSuggestionResponse.builder()
-                            .originAirportIata(originIata)
-                            .flights(Collections.emptyList())
-                            .hint("Set AVIATIONSTACK_ACCESS_KEY to load suggestions.")
-                            .build()));
-        }
         int lim = limit == null ? 0 : limit;
         FlightSuggestionResponse data = flightService.suggestForDestination(originIata, destination, lim);
         return ResponseEntity.ok(ApiResponse.success(data));

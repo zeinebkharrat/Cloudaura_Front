@@ -58,6 +58,13 @@
             </div>
           </div>
           <footer class="card-foot">
+            <button
+              pButton
+              type="button"
+              label="Book this flight"
+              class="p-button-sm"
+              (click)="bookFlight.emit(f)"
+            ></button>
             @if (mapMode) {
               <button
                 pButton
