@@ -1377,6 +1377,7 @@
     "STATUS": "Statut",
     "STATUS_PENDING": "En attente",
     "STATUS_CONFIRMED": "Confirmée",
+    "STATUS_PROCESSING": "En cours",
     "STATUS_SHIPPED": "Expédiée",
     "STATUS_DELIVERED": "Livrée",
     "STATUS_CANCELLED": "Annulée",

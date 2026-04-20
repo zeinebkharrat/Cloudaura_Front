@@ -1365,6 +1365,7 @@
     "STATUS": "الحالة",
     "STATUS_PENDING": "قيد الانتظار",
     "STATUS_CONFIRMED": "مؤكد",
+    "STATUS_PROCESSING": "قيد المعالجة",
     "STATUS_SHIPPED": "تم الشحن",
     "STATUS_DELIVERED": "تم التسليم",
     "STATUS_CANCELLED": "ملغى",

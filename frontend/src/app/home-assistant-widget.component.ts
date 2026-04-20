@@ -76,7 +76,7 @@ export class HomeAssistantWidgetComponent {
       this.rotateClientSessionId();
       this.messages.set([this.buildWelcomeMessage()]);
       this.loadConversationHistory();
-    });
+    }, { allowSignalWrites: true });
   }
 
   togglePanel(): void {
