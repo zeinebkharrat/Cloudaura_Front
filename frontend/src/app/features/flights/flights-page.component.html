@@ -1,0 +1,81 @@
+<div class="flights-page">
+  <header class="page-hero">
+    <a routerLink="/transport" class="back-link"><i class="pi pi-arrow-left"></i> Transport hub</a>
+    <div class="hero-text">
+      <h1>Live flight schedules</h1>
+      <p class="sub">Search flights from any destination in real time</p>
+    </div>
+  </header>
+
+  @if (suggestionMeta?.resolvedDestinationLabel) {
+    <div class="suggest-banner" role="status">
+      <span class="banner-icon" aria-hidden="true"><i class="pi pi-send"></i></span>
+      <div class="banner-text">
+        <span class="banner-title">Route</span>
+        <span class="banner-line">
+          <strong>{{ suggestionMeta!.originAirportIata }}</strong>
+          <span class="banner-arrow">→</span>
+          <strong>{{ suggestionMeta!.resolvedDestinationLabel }}</strong>
+          @if (suggestionMeta!.destinationAirportIata) {
+            <span class="banner-iata">({{ suggestionMeta!.destinationAirportIata }})</span>
+          }
+        </span>
+      </div>
+    </div>
+  }
+
+  <app-flight-search
+    [loading]="loading"
+    [destinationQuery]="destinationQuery"
+    [originIata]="originIata"
+    [suggestions]="autocompleteSuggestions"
+    (destinationQueryChange)="onDestinationQueryChange($event)"
+    (originIataChange)="onOriginIataChange($event)"
+    (searchSubmit)="onSearchSubmit()"
+    (pickSuggestion)="onPickSuggestion($event)"
+  />
+
+  <section class="results-section">
+    <div class="results-toolbar">
+      <h2 class="results-title">Results</h2>
+      <div class="results-actions">
+        <button
+          pButton
+          type="button"
+          icon="pi pi-refresh"
+          class="p-button-rounded p-button-text refresh-btn"
+          [disabled]="loading || lastSearchDestination.trim().length < 2"
+          (click)="refreshResults()"
+          pTooltip="Refresh results"
+          tooltipPosition="bottom"
+        ></button>
+        <div class="map-toggle">
+          <label for="showMap">Show map</label>
+          <p-inputSwitch inputId="showMap" [(ngModel)]="mapMode" (ngModelChange)="onMapToggle($event)"></p-inputSwitch>
+        </div>
+      </div>
+    </div>
+
+    <div class="content-split" [class.with-map]="mapMode">
+      <div class="list-col">
+        <app-flight-list
+          [flights]="displayFlights"
+          [loading]="loading"
+          [error]="error"
+          [emptyMessage]="listEmptyMessage"
+          [idleHint]="idleHint"
+          [hasSearched]="hasSearched"
+          [selected]="selected"
+          [mapMode]="mapMode"
+          (selectFlight)="onSelectFlight($event)"
+          (bookFlight)="onBookFlight($event)"
+        />
+      </div>
+      @if (mapMode) {
+        <div class="map-col">
+          <app-flight-route-map [flight]="selected" />
+        </div>
+      }
+    </div>
+  </section>
+</div>

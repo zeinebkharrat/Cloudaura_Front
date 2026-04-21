@@ -55,6 +55,53 @@
   border-color: #cbd5e1;
 }
 
+.auth-page.auth-page--embedded {
+  min-height: auto;
+  padding: 0;
+}
+
+.auth-page.auth-page--embedded .auth-bg-orb {
+  display: none;
+}
+
+.auth-page.auth-page--embedded .auth-card {
+  width: min(860px, 100%);
+  margin: 0;
+}
+
+.auth-page.auth-page--embedded .auth-card {
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.22);
+}
+
+:root[data-theme='light'] .auth-page.auth-page--embedded .auth-card {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(148, 163, 184, 0.42);
+}
+
+:root[data-theme='light'] .auth-page.auth-page--embedded .auth-kicker,
+:root[data-theme='light'] .auth-page.auth-page--embedded .auth-subtitle,
+:root[data-theme='light'] .auth-page.auth-page--embedded .upload-state {
+  color: #64748b;
+}
+
+:root[data-theme='light'] .auth-page.auth-page--embedded label {
+  color: #334155;
+}
+
+:root[data-theme='light'] .auth-page.auth-page--embedded input,
+:root[data-theme='light'] .auth-page.auth-page--embedded select {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .auth-page.auth-page--embedded .artisan-box,
+:root[data-theme='light'] .auth-page.auth-page--embedded .upload-block,
+:root[data-theme='light'] .auth-page.auth-page--embedded .recaptcha-panel {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
 .auth-bg-orb {
   display: none;
 }
@@ -895,6 +942,52 @@ select option {
   .auth-hero-frame {
     width: 142px;
     height: 142px;
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-page {
+    padding: 112px 12px 30px;
+  }
+
+  .auth-card {
+    border-radius: 22px;
+    padding: 18px;
+  }
+
+  .auth-hero-visual {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .auth-hero-frame {
+    width: 120px;
+    height: 120px;
+  }
+
+  .upload-top-layout {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .upload-preview-shell {
+    width: 92px;
+    height: 92px;
+  }
+
+  .upload-actions {
+    width: 100%;
+    padding: 10px;
+  }
+
+  .gender-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .gender-card img {
+    width: 76px;
+    height: 92px;
   }
 }
 

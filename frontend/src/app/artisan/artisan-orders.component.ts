@@ -10,11 +10,13 @@ import {
 import { AuthService } from '../core/auth.service';
 import { FormsModule } from '@angular/forms';
 import { NotificationService } from '../core/notification.service';
+import { TranslateModule } from '@ngx-translate/core';
+import { DualCurrencyPipe } from '../core/pipes/dual-currency.pipe';
 
 @Component({
   selector: 'app-artisan-orders',
   standalone: true,
-  imports: [CommonModule,  FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink, TranslateModule, DualCurrencyPipe],
   templateUrl: './artisan-orders.component.html',
   styleUrl: './artisan-orders.component.css',
 })
@@ -43,28 +45,17 @@ export class ArtisanOrdersComponent implements OnInit {
   readonly expandedOrderId = signal<number | null>(null);
   readonly detail = signal<CheckoutOrder | null>(null);
   readonly detailLoading = signal(false);
-
+  /** Must match backend {@link OrderStatus}: PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED */
   readonly statusOptions = [
     { value: 'PENDING', label: 'Pending' },
-    { value: 'CONFIRMED', label: 'Confirmed' },
+    { value: 'PROCESSING', label: 'Processing' },    
     { value: 'SHIPPED', label: 'Shipped' },
     { value: 'DELIVERED', label: 'Delivered' },
     { value: 'CANCELLED', label: 'Cancelled' },
   ] as const;
+  readonly statusOptionValues = this.statusOptions.map((option) => option.value);
 
   readonly updatingItems = signal<Set<number>>(new Set());
-
-  orderStatusLabel(status: string | undefined | null): string {
-    const map: Record<string, string> = {
-      PENDING: 'Pending',
-      CONFIRMED: 'Confirmed',
-      SHIPPED: 'Shipped',
-      DELIVERED: 'Delivered',
-      CANCELLED: 'Cancelled',
-    };
-    if (status == null) return '—';
-    return map[status] ?? status;
-  }
 
   ngOnInit(): void {
     if (!this.auth.isArtisan() && !this.auth.isAdmin()) {
@@ -119,6 +110,20 @@ export class ArtisanOrdersComponent implements OnInit {
       next: () => {
         this.updatingItems.update(s => { s.delete(orderItemId); return new Set(s); });
         this.notifier.show('Status updated.', 'success');
+        this.loadList();
+        const openId = this.expandedOrderId();
+        if (openId != null) {
+          this.detailLoading.set(true);
+          this.shop.getMyOrderDetail(openId).subscribe({
+            next: (o) => {
+              if (this.expandedOrderId() === openId) {
+                this.detail.set(o);
+              }
+              this.detailLoading.set(false);
+            },
+            error: () => this.detailLoading.set(false),
+          });
+        }
       },
       error: () => {
         this.updatingItems.update(s => { s.delete(orderItemId); return new Set(s); });

@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Optional;
 
 public interface EventReservationItemRepository extends JpaRepository<EventReservationItem, Integer> {
+
+	void deleteByEventReservation_Event_EventId(Integer eventId);
 	Optional<EventReservationItem> findByQrCodeToken(String qrCodeToken);
 
 	@EntityGraph(attributePaths = {"eventReservation", "eventReservation.user", "eventReservation.event", "ticketType"})

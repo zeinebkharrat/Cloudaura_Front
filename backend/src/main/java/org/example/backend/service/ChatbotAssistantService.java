@@ -140,7 +140,7 @@ public class ChatbotAssistantService {
 
         Intent intent = detectIntent(normalizedQuestion);
 
-        List<City> allCities = cityRepository.findAll();
+        List<City> allCities = citiesForNlpMatching();
         Optional<City> city = findMentionedCity(normalizedQuestion, allCities);
         List<City> mentionedCities = findMentionedCitiesInQuestionOrder(normalizedQuestion, allCities);
 
@@ -459,7 +459,7 @@ public class ChatbotAssistantService {
             Map<Integer, Double> avgRatingByRestaurant = buildRestaurantAverageRatingMap();
             Map<Integer, Long> reviewCountByRestaurant = buildRestaurantReviewCountMap();
             String details = r.getName()
-                + optionalText(r.getCuisineType(), " - ")
+                + optionalText(cuisineText(r.getCuisineType()), " - ")
                 + optionalText(formatRestaurantRatingText(r.getRestaurantId(), avgRatingByRestaurant, reviewCountByRestaurant), " - ")
                 + optionalText(r.getAddress(), " - ")
                 + optionalText(r.getDescription(), " - ");
@@ -607,22 +607,22 @@ public class ChatbotAssistantService {
         String answer = t(language,
             "Le restaurant le moins bien noté à " + city.getName() + " est " + worst.getName()
                 + " (note " + ratingText + ")"
-                + optionalText(worst.getCuisineType(), ", cuisine: ")
+                + optionalText(cuisineText(worst.getCuisineType()), ", cuisine: ")
                 + optionalText(worst.getAddress(), ", adresse: ")
                 + ".",
             "The lowest-rated restaurant in " + city.getName() + " is " + worst.getName()
                 + " (rating " + ratingText + ")"
-                + optionalText(worst.getCuisineType(), ", cuisine: ")
+                + optionalText(cuisineText(worst.getCuisineType()), ", cuisine: ")
                 + optionalText(worst.getAddress(), ", address: ")
                 + ".",
             "أقل مطعم تقييما في " + city.getName() + " هو " + worst.getName()
                 + " (التقييم " + ratingText + ")"
-                + optionalText(worst.getCuisineType(), "، النوع: ")
+                + optionalText(cuisineText(worst.getCuisineType()), "، النوع: ")
                 + optionalText(worst.getAddress(), "، العنوان: ")
                 + ".");
 
         String facts = "City=" + city.getName() + "; WorstRestaurant=" + worst.getName() + "; Rating=" + ratingText
-            + optionalText(worst.getCuisineType(), "; Cuisine=")
+            + optionalText(cuisineText(worst.getCuisineType()), "; Cuisine=")
             + optionalText(worst.getAddress(), "; Address=");
         return new IntentAnswer(answer, facts, List.of("restaurants", "cities"), 0.93);
     }
@@ -775,22 +775,22 @@ public class ChatbotAssistantService {
         String answer = t(language,
             "Le meilleur choix restaurant à " + city.getName() + " est " + best.getName()
                 + " (note " + ratingText + ")"
-                + optionalText(best.getCuisineType(), ", cuisine: ")
+                + optionalText(cuisineText(best.getCuisineType()), ", cuisine: ")
                 + optionalText(best.getAddress(), ", adresse: ")
                 + ".",
             "A top restaurant choice in " + city.getName() + " is " + best.getName()
                 + " (rating " + ratingText + ")"
-                + optionalText(best.getCuisineType(), ", cuisine: ")
+                + optionalText(cuisineText(best.getCuisineType()), ", cuisine: ")
                 + optionalText(best.getAddress(), ", address: ")
                 + ".",
             "أفضل خيار مطعم في " + city.getName() + " هو " + best.getName()
                 + " (التقييم " + ratingText + ")"
-                + optionalText(best.getCuisineType(), "، النوع: ")
+                + optionalText(cuisineText(best.getCuisineType()), "، النوع: ")
                 + optionalText(best.getAddress(), "، العنوان: ")
                 + ".");
 
         String facts = "City=" + city.getName() + "; BestRestaurant=" + best.getName() + "; Rating=" + ratingText
-            + optionalText(best.getCuisineType(), "; Cuisine=")
+            + optionalText(cuisineText(best.getCuisineType()), "; Cuisine=")
             + optionalText(best.getAddress(), "; Address=");
 
         return new IntentAnswer(answer, facts, List.of("restaurants", "cities"), 0.94);
@@ -949,7 +949,7 @@ public class ChatbotAssistantService {
                 Restaurant r = matched.get();
                 String ratingText = formatRestaurantRatingText(r.getRestaurantId(), avgRatingByRestaurant, reviewCountByRestaurant);
                 String details = r.getName()
-                    + optionalText(r.getCuisineType(), " - ")
+                    + optionalText(cuisineText(r.getCuisineType()), " - ")
                     + optionalText(ratingText, " - ")
                     + optionalText(r.getAddress(), " - ")
                     + optionalText(r.getDescription(), " - ");
@@ -1485,7 +1485,7 @@ public class ChatbotAssistantService {
             .map(e -> "• " + e.getTitle() + optionalText(formatEventDate(e.getStartDate()), " - "))
             .collect(Collectors.joining("\n"));
         String restaurantBlock = restaurants.stream()
-            .map(r -> "• " + r.getName() + optionalText(r.getCuisineType(), " - "))
+            .map(r -> "• " + r.getName() + optionalText(cuisineText(r.getCuisineType()), " - "))
             .collect(Collectors.joining("\n"));
         String stayBlock = accommodations.stream()
             .map(a -> "• " + a.getName() + optionalText(a.getPricePerNight() == null ? null : String.format(Locale.ROOT, "%.0f DT/night", a.getPricePerNight()), " - "))
@@ -2115,7 +2115,7 @@ public class ChatbotAssistantService {
         }
 
         int resultLimit = (asksCheapest(normalizedQuestion) || asksMostExpensive(normalizedQuestion)) ? 1 : 6;
-        boolean questionMentionsCity = findMentionedCity(normalizedQuestion, cityRepository.findAll()).isPresent();
+        boolean questionMentionsCity = findMentionedCity(normalizedQuestion, citiesForNlpMatching()).isPresent();
 
         List<Event> events = baseEvents
             .stream()
@@ -2391,7 +2391,7 @@ public class ChatbotAssistantService {
         boolean asksOnlyCheapest = asksCheapest(normalizedQuestion) || containsAny(normalizedQuestion, "moins cher", "low cost");
         boolean asksOnlyMostExpensive = asksMostExpensive(normalizedQuestion) || containsAny(normalizedQuestion, "cher", "plus cher", "premium");
         boolean genericProductAvailabilityQuery = isGenericProductAvailabilityQuery(normalizedQuestion);
-        boolean questionMentionsCity = findMentionedCity(normalizedQuestion, cityRepository.findAll()).isPresent();
+        boolean questionMentionsCity = findMentionedCity(normalizedQuestion, citiesForNlpMatching()).isPresent();
         Optional<Product> matchedProduct = findBestMatchingProduct(normalizedQuestion, cityOpt);
         boolean asksProductPurchaseAction = asksProductPurchaseAction(normalizedQuestion);
 
@@ -3170,6 +3170,12 @@ public class ChatbotAssistantService {
         }
 
         return text.toString().trim();
+    }
+
+    private List<City> citiesForNlpMatching() {
+        return cityRepository.findAll().stream()
+                .filter(c -> !c.isVirtualFlightEndpointCity())
+                .collect(Collectors.toList());
     }
 
     private Optional<City> findMentionedCity(String normalizedQuestion, List<City> cities) {
@@ -4299,7 +4305,7 @@ public class ChatbotAssistantService {
         if (restaurant == null) {
             return false;
         }
-        String normalizedCuisine = normalizeCuisineValue(restaurant.getCuisineType());
+        String normalizedCuisine = normalizeCuisineValue(cuisineText(restaurant.getCuisineType()));
         String requestedCuisine = extractCuisinePreference(normalizedQuestion);
 
         if (requestedCuisine != null && !requestedCuisine.isBlank()) {
@@ -5311,6 +5317,10 @@ public class ChatbotAssistantService {
         v = v.replace("italienne", "italian").replace("italien", "italian");
         v = v.replace("mediterraneenne", "mediterranean").replace("mediterraneen", "mediterranean");
         return v;
+    }
+
+    private String cuisineText(org.example.backend.model.CuisineType cuisineType) {
+        return cuisineType == null ? null : cuisineType.label();
     }
 
     private String extractEventTypePreference(String normalizedQuestion) {

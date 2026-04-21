@@ -18,6 +18,12 @@ export function extractApiErrorMessage(error: HttpErrorResponse, fallback: strin
     return Object.values(payload.fieldErrors).join(' | ');
   }
 
+  // Spring {@code ApiResponse.error(...)} body: { success: false, message, code, status }
+  const apiLike = error.error as { success?: boolean; message?: string; errorCode?: string; code?: string } | undefined;
+  if (apiLike?.success === false && apiLike.message && apiLike.message.trim().length > 0) {
+    return apiLike.message.trim();
+  }
+
   if (payload?.message && payload.message.trim().length > 0) {
     return payload.message;
   }

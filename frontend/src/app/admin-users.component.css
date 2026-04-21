@@ -45,6 +45,30 @@
   margin-bottom: 14px;
 }
 
+.users-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.users-page-size {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+}
+
+.users-page-size select {
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-color);
+  padding: 6px 8px;
+}
+
 input {
   width: 100%;
   border-radius: 12px;
@@ -211,10 +235,20 @@ input {
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
 }
 
+.action-btn.view {
+  animation: shimmerPulse 2.8s ease-in-out infinite;
+}
+
 .action-btn.edit {
   border-color: rgba(56, 189, 248, 0.45);
   color: #38bdf8;
   background: rgba(56, 189, 248, 0.12);
+}
+
+.action-btn.view {
+  border-color: rgba(59, 130, 246, 0.5);
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.12);
 }
 
 .action-btn.artisan {
@@ -280,6 +314,9 @@ input {
 
 ::ng-deep .bo-content {
   color: #c9d3e1;
+  max-height: min(72vh, 760px);
+  overflow: auto;
+  padding-right: 4px;
 }
 
 ::ng-deep .bo-popup-light .bo-content {
@@ -499,6 +536,366 @@ input {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
+::ng-deep .details-shell {
+  display: grid;
+  gap: 16px;
+  text-align: left;
+}
+
+::ng-deep .details-shell--full {
+  gap: 14px;
+}
+
+::ng-deep .details-shell--tabs {
+  position: relative;
+}
+
+::ng-deep .details-toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  padding: 2px 0 10px;
+  background: linear-gradient(to bottom, rgba(17, 22, 29, 0.96), rgba(17, 22, 29, 0.72), transparent);
+  backdrop-filter: blur(2px);
+}
+
+::ng-deep .bo-popup-light .details-toolbar {
+  background: linear-gradient(to bottom, rgba(248, 251, 255, 0.98), rgba(248, 251, 255, 0.76), transparent);
+}
+
+::ng-deep .details-toggle {
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.1);
+  color: #c9d3e1;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 8px 13px;
+  cursor: pointer;
+  transition: transform 0.16s ease, border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+
+::ng-deep .details-toggle:hover {
+  transform: translateY(-1px);
+}
+
+::ng-deep .details-toggle.is-active {
+  border-color: rgba(59, 130, 246, 0.6);
+  color: #dbeafe;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.24), rgba(59, 130, 246, 0.12));
+}
+
+::ng-deep .bo-popup-light .details-toggle {
+  border-color: rgba(16, 36, 63, 0.2);
+  color: #3d5875;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+::ng-deep .bo-popup-light .details-toggle.is-active {
+  border-color: rgba(29, 78, 216, 0.5);
+  color: #1d4ed8;
+  background: rgba(191, 219, 254, 0.56);
+}
+
+::ng-deep .details-tab-panel {
+  display: none;
+}
+
+::ng-deep .details-tab-panel.is-active {
+  display: block;
+  animation: tabFadeIn 220ms ease;
+}
+
+::ng-deep .details-section-header {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+::ng-deep .details-section-header h4 {
+  margin: 0;
+  font-size: 0.92rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9fb0c4;
+}
+
+::ng-deep .details-section-header p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #9fb0c4;
+}
+
+::ng-deep .details-profile {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(148, 163, 184, 0.08);
+}
+
+::ng-deep .details-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
+::ng-deep .details-avatar--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #ef4444, #fb7185);
+  color: #fff;
+  font-weight: 700;
+}
+
+::ng-deep .details-profile-copy h3 {
+  margin: 0 0 2px;
+}
+
+::ng-deep .details-profile-copy p {
+  margin: 0;
+  color: #9fb0c4;
+}
+
+::ng-deep .details-tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+::ng-deep .details-preferences {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(148, 163, 184, 0.06);
+}
+
+::ng-deep .pref-chips {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+::ng-deep .pref-chip {
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(148, 163, 184, 0.08);
+  display: grid;
+  gap: 3px;
+}
+
+::ng-deep .pref-chip span {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9fb0c4;
+}
+
+::ng-deep .pref-chip strong {
+  font-size: 0.9rem;
+  color: #e8edf3;
+  word-break: break-word;
+}
+
+::ng-deep .details-insights {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(148, 163, 184, 0.06);
+  animation: cardRise 260ms ease;
+}
+
+::ng-deep .insights-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+::ng-deep .insights-grid--all {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+::ng-deep .insights-grid--overview {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+::ng-deep .insights-grid--reservations {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+::ng-deep .insight-card {
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+  background: rgba(148, 163, 184, 0.08);
+}
+
+::ng-deep .insight-card h4 {
+  margin: 0;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9fb0c4;
+}
+
+::ng-deep .insight-card p {
+  margin: 8px 0 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+::ng-deep .insight-card--community {
+  border-color: rgba(59, 130, 246, 0.4);
+  background: rgba(59, 130, 246, 0.11);
+}
+
+::ng-deep .insight-card--reservation {
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+::ng-deep .details-panels {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+::ng-deep .details-panel {
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(148, 163, 184, 0.07);
+  min-height: 260px;
+}
+
+::ng-deep .details-panel h5 {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9fb0c4;
+}
+
+::ng-deep .timeline {
+  display: grid;
+  gap: 8px;
+  max-height: 360px;
+  overflow: auto;
+}
+
+::ng-deep .timeline-item {
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 12px;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: start;
+  background: rgba(148, 163, 184, 0.07);
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+::ng-deep .timeline-item:hover {
+  transform: translateY(-1px);
+  border-color: rgba(96, 165, 250, 0.45);
+  background: rgba(96, 165, 250, 0.08);
+}
+
+::ng-deep .timeline-type {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border: 1px solid rgba(96, 165, 250, 0.4);
+  color: #93c5fd;
+  border-radius: 999px;
+  padding: 4px 8px;
+}
+
+::ng-deep .timeline-body h5 {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+::ng-deep .timeline-body p {
+  margin: 4px 0;
+  color: #c4d0de;
+}
+
+::ng-deep .timeline-body small {
+  color: #9fb0c4;
+}
+
+::ng-deep .timeline--inline {
+  max-height: 320px;
+}
+
+::ng-deep .details-tab-panel .timeline--inline {
+  max-height: min(56vh, 520px);
+}
+
+::ng-deep .bo-popup-light .details-section-header h4,
+::ng-deep .bo-popup-light .details-section-header p,
+::ng-deep .bo-popup-light .details-profile-copy p,
+::ng-deep .bo-popup-light .pref-chip span,
+::ng-deep .bo-popup-light .details-panel h5 {
+  color: #5f748f;
+}
+
+::ng-deep .bo-popup-light .details-profile,
+::ng-deep .bo-popup-light .details-preferences,
+::ng-deep .bo-popup-light .details-insights {
+  border-color: rgba(16, 36, 63, 0.16);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+::ng-deep .bo-popup-light .pref-chip,
+::ng-deep .bo-popup-light .details-panel,
+::ng-deep .bo-popup-light .timeline-item,
+::ng-deep .bo-popup-light .insight-card {
+  border-color: rgba(16, 36, 63, 0.14);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+::ng-deep .bo-popup-light .pref-chip strong {
+  color: #10243f;
+}
+
+::ng-deep .bo-popup-light .timeline-body p {
+  color: #5f748f;
+}
+
+::ng-deep .bo-popup-light .timeline-body small {
+  color: #7387a0;
+}
+
+::ng-deep .bo-popup-light .insight-card p {
+  color: #10243f;
+}
+
+::ng-deep .bo-popup-light .insight-card--community {
+  border-color: rgba(29, 78, 216, 0.28);
+  background: rgba(191, 219, 254, 0.44);
+}
+
+::ng-deep .bo-popup-light .insight-card--reservation {
+  border-color: rgba(217, 119, 6, 0.25);
+  background: rgba(254, 215, 170, 0.4);
+}
+
 ::ng-deep .sw-upload-btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 12px 30px rgba(239, 68, 68, 0.34);
@@ -532,7 +929,113 @@ input {
 }
 
 @media (max-width: 1100px) {
+  .users-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   ::ng-deep .sw-grid {
     grid-template-columns: 1fr;
+  }
+
+  ::ng-deep .insights-grid--all {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  ::ng-deep .insights-grid--overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  ::ng-deep .pref-chips {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  ::ng-deep .details-panels {
+    grid-template-columns: 1fr;
+  }
+
+  ::ng-deep .details-panel {
+    min-height: unset;
+  }
+}
+
+@media (max-width: 640px) {
+  ::ng-deep .details-profile {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  ::ng-deep .pref-chips,
+  ::ng-deep .insights-grid--all,
+  ::ng-deep .insights-grid--overview {
+    grid-template-columns: 1fr;
+  }
+
+  ::ng-deep .details-toolbar {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 12px;
+  }
+
+  ::ng-deep .details-toggle {
+    white-space: nowrap;
+  }
+
+  ::ng-deep .timeline-item {
+    grid-template-columns: 1fr;
+  }
+
+  ::ng-deep .timeline-type {
+    width: fit-content;
+  }
+}
+
+.users-pager {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.users-pager .secondary {
+  border: 1px solid var(--glass-border);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-color);
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+
+@keyframes tabFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes cardRise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shimmerPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.18);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
   }
 }

@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../core/auth.service';
 import { FollowService, FollowUserSummary } from './follow.service';
@@ -8,7 +9,7 @@ import { FollowService, FollowUserSummary } from './follow.service';
 @Component({
   selector: 'app-follow-list',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslateModule],
   templateUrl: './follow-list.component.html',
   styleUrl: './follow-list.component.css',
 })
@@ -16,6 +17,7 @@ export class FollowListComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly followService = inject(FollowService);
+  private readonly translate = inject(TranslateService);
   readonly authService = inject(AuthService);
 
   readonly userId = signal<number | null>(null);
@@ -29,7 +31,7 @@ export class FollowListComponent {
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('userId'));
     if (!Number.isFinite(id) || id <= 0) {
-      this.error.set('Profil introuvable');
+      this.error.set(this.translate.instant('COMMUNITY.FOLLOW_PROFILE_NOT_FOUND'));
       this.loading.set(false);
       return;
     }
@@ -57,7 +59,7 @@ export class FollowListComponent {
       this.following.set(followingResponse?.users || []);
     } catch (err) {
       console.error('Failed to load follow lists', err);
-      this.error.set('Impossible de charger les followers/following.');
+      this.error.set(this.translate.instant('COMMUNITY.FOLLOW_LIST_LOAD_ERR'));
     } finally {
       this.loading.set(false);
     }

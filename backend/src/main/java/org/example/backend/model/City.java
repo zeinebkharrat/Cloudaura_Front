@@ -48,4 +48,12 @@ public class City {
     public void setHasTrainStation(Boolean hasTrainStation) { this.hasTrainStation = hasTrainStation; }
     public Boolean getHasPort() { return hasPort; }
     public void setHasPort(Boolean hasPort) { this.hasPort = hasPort; }
+
+    /**
+     * Synthetic rows created only for flight IATA endpoints ({@code region = "Airport"}, see flight booking services).
+     * These must not appear in public city pickers or admin city catalogs.
+     */
+    public boolean isVirtualFlightEndpointCity() {
+        return region != null && "airport".equalsIgnoreCase(region.trim());
+    }
 }

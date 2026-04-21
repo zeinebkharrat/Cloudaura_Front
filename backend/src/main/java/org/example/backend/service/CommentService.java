@@ -44,6 +44,12 @@ public class CommentService implements ICommentService {
     JdbcTemplate jdbcTemplate;
 
     @Autowired
+    PostScoreService postScoreService;
+
+    @Autowired
+    MediaScoreService mediaScoreService;
+
+    @Autowired
     SightengineCommentModerationService moderationService;
 
     @Autowired
@@ -54,6 +60,9 @@ public class CommentService implements ICommentService {
 
     @Autowired
     EmailService emailService;
+
+    @Autowired
+    UserNotificationService userNotificationService;
 
     @Override
     @Transactional(readOnly = true)
@@ -66,6 +75,7 @@ public class CommentService implements ICommentService {
     public Comment addComment(Comment comment) {
         User author = requireAuthor(comment);
         ensureUserCanComment(author);
+        ensurePostAllowsComments(comment);
         CommentModerationResult moderation = applyModeration(comment);
         applyEscalationPolicy(author, moderation.abuseCategories());
 
@@ -107,6 +117,7 @@ public class CommentService implements ICommentService {
             Integer id = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Integer.class);
             if (postId != null) {
                 refreshPostCommentsCount(postId);
+                notifyPostCommentAuthor(postId, author);
             }
             return commentRepo.findById(id).orElse(null);
         } catch (Exception e) {
@@ -118,6 +129,7 @@ public class CommentService implements ICommentService {
             Integer id = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Integer.class);
             if (postId != null) {
                 refreshPostCommentsCount(postId);
+                notifyPostCommentAuthor(postId, author);
             }
             return commentRepo.findById(id).orElse(null);
         }
@@ -128,6 +140,7 @@ public class CommentService implements ICommentService {
     public Comment updateComment(Comment comment) {
         User author = requireAuthor(comment);
         ensureUserCanComment(author);
+        ensurePostAllowsComments(comment);
         CommentModerationResult moderation = applyModeration(comment);
         applyEscalationPolicy(author, moderation.abuseCategories());
         return commentRepo.save(comment);
@@ -177,6 +190,9 @@ public class CommentService implements ICommentService {
                 count != null ? count : 0,
                 postId
         );
+
+            postScoreService.recomputePostScore(postId);
+            mediaScoreService.recomputeAuthorMonthlyScoreFromPost(postId);
     }
 
     private List<Integer> collectDescendantCommentIds(Integer rootCommentId) {
@@ -201,6 +217,19 @@ public class CommentService implements ICommentService {
         return List.copyOf(visited);
     }
 
+    private void notifyPostCommentAuthor(Integer postId, User commentAuthor) {
+        Post targetPost = postRepo.findById(postId).orElse(null);
+        if (targetPost == null || targetPost.getAuthor() == null) {
+            return;
+        }
+        userNotificationService.notifyPostInteraction(
+                targetPost.getAuthor().getUserId(),
+                postId,
+                "POST_COMMENT",
+                commentAuthor
+        );
+    }
+
     private CommentModerationResult applyModeration(Comment comment) {
         String incoming = comment.getContent();
         CommentModerationResult moderation = moderationService.moderateComment(incoming);
@@ -222,6 +251,20 @@ public class CommentService implements ICommentService {
         Integer userId = comment.getAuthor().getUserId();
         return userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+    }
+
+    private void ensurePostAllowsComments(Comment comment) {
+        Integer postId = comment != null && comment.getPost() != null ? comment.getPost().getPostId() : null;
+        if (postId == null) {
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "Post is required");
+        }
+
+        Post post = postRepo.findById(postId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found"));
+
+        if (Boolean.FALSE.equals(post.getCommentsEnabled())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Comments are disabled for this post");
+        }
     }
 
     private void ensureUserCanComment(User user) {

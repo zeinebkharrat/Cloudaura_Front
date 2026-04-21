@@ -5,6 +5,7 @@ import {
   TransportRecommendation, TransportRecommendationRequest,
   TransportReservationInput, TransportReservation, TransportReservationUpdatePayload,
   TransportCheckoutPayload,
+  TransportPayPalCreatePayload,
   AccommodationReservation,
   EngineRecommendationRequest, EngineRecommendationResponse
 } from '../models/travel.models';
@@ -20,19 +21,6 @@ export interface TransportSearchParams {
 /** POST /api/transport/payments/checkout-session — absolute Stripe URL or in-app path starting with `/`. */
 export interface TransportCheckoutResult {
   url: string;
-}
-
-/** POST /api/transport/payments/paypal/create */
-export interface TransportPayPalCreatePayload {
-  transportId: number;
-  seats: number;
-  travelDate: string;
-  routeKm?: number;
-  amountTnd: number;
-  passengerFirstName?: string;
-  passengerLastName?: string;
-  passengerEmail?: string;
-  passengerPhone?: string;
 }
 
 export interface DataSourceAdapter {
@@ -57,9 +45,11 @@ export interface DataSourceAdapter {
   createAccommodationCheckoutSession(payload: {
     roomId: number;
     userId: number;
+    guestCount: number;
     checkIn: string;
     checkOut: string;
     offerId?: number | null;
+    presentmentCurrency?: string;
   }): Observable<TransportCheckoutResult>;
 
   confirmTransportStripeSession(sessionId: string): Observable<TransportReservation>;

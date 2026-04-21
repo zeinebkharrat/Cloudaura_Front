@@ -4,6 +4,7 @@ import org.example.backend.model.Post;
 import org.example.backend.model.User;
 import org.example.backend.service.CustomUserDetailsService;
 import org.example.backend.service.IPostService;
+import org.example.backend.service.PostViewService;
 import org.example.backend.service.SightengineCommentModerationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -28,6 +29,9 @@ public class PostController {
     @Autowired
     SightengineCommentModerationService moderationService;
 
+    @Autowired
+    PostViewService postViewService;
+
     @GetMapping("/allPosts")
     public List<Post> getAllPosts() {
         return postService.retrievePosts();
@@ -47,7 +51,7 @@ public class PostController {
         }
 
         if (post.getLocation() == null || post.getLocation().trim().isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "City is required");
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "api.error.post_city_required");
         }
 
         Date now = new Date();
@@ -60,6 +64,15 @@ public class PostController {
         if (post.getCommentsCount() == null) {
             post.setCommentsCount(0);
         }
+        if (post.getTotalViews() == null) {
+            post.setTotalViews(0);
+        }
+        if (post.getRepostCount() == null) {
+            post.setRepostCount(0);
+        }
+        if (post.getPostScore() == null) {
+            post.setPostScore(1.0);
+        }
 
         return postService.addPost(post);
     }
@@ -70,16 +83,16 @@ public class PostController {
         Post existingPost = postService.retrievePost(id);
         
         if (existingPost == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.post_not_found");
         }
         
         // Only allow users to update their own posts
         if (!existingPost.getAuthor().getUserId().equals(currentUser.getUserId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only edit your own posts");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "api.error.post_edit_forbidden");
         }
 
         if (post.getLocation() == null || post.getLocation().trim().isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "City is required");
+            throw new ResponseStatusException(HttpStatus.UNPROCESSABLE_ENTITY, "api.error.post_city_required");
         }
         
         // Preserve author + immutable create date, refresh update date, and keep server counters authoritative.
@@ -90,8 +103,21 @@ public class PostController {
         post.setHashtags(buildHashtagString(post.getHashtags(), post.getLocation()));
         post.setLikesCount(existingPost.getLikesCount());
         post.setCommentsCount(existingPost.getCommentsCount());
+        post.setTotalViews(existingPost.getTotalViews());
+        post.setRepostCount(existingPost.getRepostCount());
+        post.setPostScore(existingPost.getPostScore());
+        post.setPostType(existingPost.getPostType());
+        post.setLinkedEventId(existingPost.getLinkedEventId());
+        post.setCommentsEnabled(existingPost.getCommentsEnabled());
         post.setRepostOf(existingPost.getRepostOf());
         return postService.updatePost(post);
+    }
+
+    @PostMapping("/recordView/{id}")
+    public ResponseEntity<Map<String, Object>> recordView(@PathVariable Integer id) {
+        User currentUser = getCurrentUser();
+        boolean counted = postViewService.recordMonthlyView(id, currentUser.getUserId());
+        return ResponseEntity.ok(Map.of("counted", counted));
     }
 
     @PostMapping("/repost/{id}")
@@ -111,12 +137,12 @@ public class PostController {
         Post existingPost = postService.retrievePost(id);
         
         if (existingPost == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Post not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.post_not_found");
         }
         
         // Only allow users to delete their own posts
         if (!existingPost.getAuthor().getUserId().equals(currentUser.getUserId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only delete your own posts");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "api.error.post_delete_forbidden");
         }
         
         postService.removePost(id);
@@ -161,7 +187,7 @@ public class PostController {
     private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.unauthorized");
         }
         
         // Extract User entity from CustomUserDetails
@@ -170,7 +196,7 @@ public class PostController {
             return ((CustomUserDetailsService.CustomUserDetails) principal).getUser();
         }
         
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid authentication principal");
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.invalid_principal");
     }
 }
 

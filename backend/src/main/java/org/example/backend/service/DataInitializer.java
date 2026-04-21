@@ -2,6 +2,7 @@ package org.example.backend.service;
 
 import org.example.backend.model.*;
 import org.example.backend.repository.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,10 +11,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Configuration
 public class DataInitializer {
+
+    @Value("${app.translation.enabled:true}")
+    private boolean translationEnabled;
 
     @Bean
     ApplicationRunner userSeeder(UserRepository userRepository, RoleRepository roleRepository, PasswordEncoder passwordEncoder) {
@@ -72,15 +77,45 @@ public class DataInitializer {
         };
     }
 
+    /**
+     * Arabic display names for governorate labels (catalog keys {@code city.{id}.name}, lang {@code ar}).
+     * Keys must match {@link #createCity} {@code name} arguments exactly.
+     */
+    private static final Map<String, String> CITY_NAME_AR = Map.ofEntries(
+            Map.entry("Tunis", "تونس"),
+            Map.entry("Ariana", "أريانة"),
+            Map.entry("Ben Arous", "بن عروس"),
+            Map.entry("Manouba", "منوبة"),
+            Map.entry("Nabeul", "نابل"),
+            Map.entry("Zaghouan", "زغوان"),
+            Map.entry("Bizerte", "بنزرت"),
+            Map.entry("Béja", "باجة"),
+            Map.entry("Jendouba", "جندوبة"),
+            Map.entry("Le Kef", "الكاف"),
+            Map.entry("Siliana", "سليانة"),
+            Map.entry("Kairouan", "القيروان"),
+            Map.entry("Kasserine", "القصرين"),
+            Map.entry("Sidi Bouzid", "سيدي بوزيد"),
+            Map.entry("Sousse", "سوسة"),
+            Map.entry("Monastir", "المنستير"),
+            Map.entry("Mahdia", "المهدية"),
+            Map.entry("Sfax", "صفاقس"),
+            Map.entry("Gafsa", "قفصة"),
+            Map.entry("Tozeur", "توزر"),
+            Map.entry("Kebili", "قبلي"),
+            Map.entry("Gabès", "قابس"),
+            Map.entry("Médenine", "مدنين"),
+            Map.entry("Tataouine", "تطاوين")
+    );
+
     @Bean
     ApplicationRunner travelDataSeeder(
             CityRepository cityRepository,
             LevelRepository levelRepository,
             AccommodationRepository accommodationRepository,
             RoomRepository roomRepository,
-            VehicleRepository vehicleRepository,
-            DriverRepository driverRepository,
-            TransportRepository transportRepository) {
+            TransportRepository transportRepository,
+            CatalogTranslationRepository catalogTranslationRepository) {
         return args -> {
             // Seed Levels if empty
             if (levelRepository.count() == 0) {
@@ -293,37 +328,19 @@ public class DataInitializer {
             }
 
 
-            // Seed Drivers & Vehicles if empty
-            if (driverRepository.count() == 0) {
-                Driver d1 = Driver.builder().firstName("Ahmed").lastName("Ben Salem").phone("98765432").licenseNumber("LIC001").isActive(true).build();
-                Driver d2 = Driver.builder().firstName("Mourad").lastName("Trabelsi").phone("55443322").licenseNumber("LIC002").isActive(true).build();
-                driverRepository.saveAll(List.of(d1, d2));
-            }
-            if (vehicleRepository.count() == 0) {
-                Vehicle v1 = Vehicle.builder().brand("Mercedes").model("Vito").type(Vehicle.VehicleType.VAN).capacity(8).plateNumber("123 TUN 456").isActive(true).pricePerTrip(15.0).build();
-                Vehicle v2 = Vehicle.builder().brand("Toyota").model("Coaster").type(Vehicle.VehicleType.BUS).capacity(22).plateNumber("789 TUN 012").isActive(true).pricePerTrip(25.0).build();
-                vehicleRepository.saveAll(List.of(v1, v2));
-                System.out.println("Seeded Drivers and Vehicles.");
-            }
-
             // Seed Transports (including Sousse -> Hammamet)
             if (transportRepository.count() == 0) {
                 City tunis = cityRepository.findByName("Tunis").orElse(null);
                 City sousse = cityRepository.findByName("Sousse").orElse(null);
                 City hammamet = cityRepository.findByName("Hammamet").orElse(null);
-                
-                List<Vehicle> vehicles = vehicleRepository.findAll();
-                List<Driver> drivers = driverRepository.findAll();
 
-                if (sousse != null && hammamet != null && !vehicles.isEmpty() && !drivers.isEmpty()) {
+                if (sousse != null && hammamet != null) {
                     Transport t1 = Transport.builder()
                             .departureCity(sousse)
                             .arrivalCity(hammamet)
                             .departureTime(LocalDateTime.now().plusHours(1))
                             .arrivalTime(LocalDateTime.now().plusHours(2).plusMinutes(15))
                             .type(Transport.TransportType.VAN)
-                            .vehicle(vehicles.get(0))
-                            .driver(drivers.get(0))
                             .price(15.0)
                             .capacity(15)
                             .isActive(true)
@@ -337,8 +354,6 @@ public class DataInitializer {
                                 .departureTime(LocalDateTime.now().plusHours(3))
                                 .arrivalTime(LocalDateTime.now().plusHours(5))
                                 .type(Transport.TransportType.VAN)
-                                .vehicle(vehicles.get(0))
-                                .driver(drivers.get(0))
                                 .price(25.0)
                                 .capacity(8)
                                 .isActive(true)
@@ -348,7 +363,35 @@ public class DataInitializer {
                 }
                 System.out.println("Seeded Transports (including Sousse -> Hammamet).");
             }
+
+            if (translationEnabled) {
+                ensureArabicCityNameTranslations(cityRepository, catalogTranslationRepository);
+            }
         };
+    }
+
+    /**
+     * Ensures {@code /api/cities?lang=ar} returns Arabic labels via {@link CatalogTranslationService}.
+     * Idempotent: skips rows that already exist.
+     */
+    private void ensureArabicCityNameTranslations(
+            CityRepository cityRepository,
+            CatalogTranslationRepository catalogTranslationRepository) {
+        for (City c : cityRepository.findAll()) {
+            String key = "city." + c.getCityId() + ".name";
+            if (catalogTranslationRepository.findByTranslationKeyAndLang(key, "ar").isPresent()) {
+                continue;
+            }
+            String ar = CITY_NAME_AR.get(c.getName());
+            if (ar == null || ar.isBlank()) {
+                continue;
+            }
+            catalogTranslationRepository.save(CatalogTranslation.builder()
+                    .translationKey(key)
+                    .lang("ar")
+                    .value(ar)
+                    .build());
+        }
     }
 
     private void seedRooms(RoomRepository roomRepo, Accommodation acc) {

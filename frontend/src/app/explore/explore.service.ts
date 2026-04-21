@@ -53,10 +53,7 @@ export class ExploreService {
     size: number;
     sort: string;
   }): Observable<PageResponse<Restaurant>> {
-    let params = new HttpParams()
-      .set('page', filters.page)
-      .set('size', filters.size)
-      .set('sort', filters.sort);
+    let params = new HttpParams().set('page', filters.page).set('size', filters.size).set('sort', filters.sort);
 
     if (filters.q?.trim()) {
       params = params.set('q', filters.q.trim());
@@ -75,6 +72,22 @@ export class ExploreService {
 
   getActivityDetails(activityId: number): Observable<Activity> {
     return this.http.get<Activity>(`${this.base}/activities/${activityId}`);
+  }
+
+  listAccommodationReviews(accommodationId: number, page: number, size: number): Observable<PublicReviewPageResponse> {
+    const params = new HttpParams()
+      .set('page', page)
+      .set('size', size)
+      .set('sort', 'createdAt,desc');
+    return this.http.get<PublicReviewPageResponse>(`${this.base}/accommodations/${accommodationId}/reviews`, { params });
+  }
+
+  createOrUpdateAccommodationReview(accommodationId: number, payload: CreatePublicReviewRequest): Observable<PublicReview> {
+    return this.http.post<PublicReview>(`${this.base}/accommodations/${accommodationId}/reviews`, payload);
+  }
+
+  getAccommodationReviewSummary(accommodationId: number): Observable<ReviewSummary> {
+    return this.http.get<ReviewSummary>(`${this.base}/accommodations/${accommodationId}/reviews/summary`);
   }
 
   listRestaurantReviews(restaurantId: number, page: number, size: number): Observable<PublicReviewPageResponse> {
@@ -104,10 +117,7 @@ export class ExploreService {
     size: number;
     sort: string;
   }): Observable<PageResponse<Activity>> {
-    let params = new HttpParams()
-      .set('page', filters.page)
-      .set('size', filters.size)
-      .set('sort', filters.sort);
+    let params = new HttpParams().set('page', filters.page).set('size', filters.size).set('sort', filters.sort);
 
     if (filters.q?.trim()) {
       params = params.set('q', filters.q.trim());
@@ -162,10 +172,7 @@ export class ExploreService {
     days: number,
     participants: number
   ): Observable<ActivityAvailabilityDay[]> {
-    const params = new HttpParams()
-      .set('from', from)
-      .set('days', days)
-      .set('participants', participants);
+    const params = new HttpParams().set('from', from).set('days', days).set('participants', participants);
     return this.http.get<ActivityAvailabilityDay[]>(`${this.base}/activities/${activityId}/availability`, { params });
   }
 
@@ -183,5 +190,9 @@ export class ExploreService {
 
   deleteActivityReviewMine(activityId: number): Observable<void> {
     return this.http.delete<void>(this.base + '/activities/' + activityId + '/reviews/mine');
+  }
+
+  deleteAccommodationReviewMine(accommodationId: number): Observable<void> {
+    return this.http.delete<void>(this.base + '/accommodations/' + accommodationId + '/reviews/mine');
   }
 }

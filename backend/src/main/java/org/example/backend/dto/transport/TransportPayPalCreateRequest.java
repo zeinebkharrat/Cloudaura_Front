@@ -1,5 +1,6 @@
 package org.example.backend.dto.transport;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Min;
@@ -17,6 +18,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class TransportPayPalCreateRequest {
 
+    /** Negative when booking from flight search — requires {@link #syntheticFlightOffer}. */
     @NotNull
     private Integer transportId;
 
@@ -28,6 +30,8 @@ public class TransportPayPalCreateRequest {
     private String travelDate;
 
     private Double routeKm;
+
+    private Integer routeDurationMin;
 
     @NotNull
     @DecimalMin(value = "0.01", message = "amountTnd must be positive")
@@ -46,4 +50,7 @@ public class TransportPayPalCreateRequest {
 
     @Size(max = 40)
     private String passengerPhone;
+
+    @Valid
+    private SyntheticFlightOfferDto syntheticFlightOffer;
 }

@@ -8,11 +8,12 @@ import { ExploreService } from './explore.service';
 import { PublicReview, Restaurant, RestaurantMenuImage, ReviewSummary } from './explore.models';
 import { AuthService } from '../core/auth.service';
 import Swal from 'sweetalert2';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-restaurant-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, TranslateModule],
   templateUrl: './restaurant-detail.component.html',
   styleUrl: './restaurant-detail.component.css',
 })
@@ -21,6 +22,7 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
   private readonly exploreService = inject(ExploreService);
   private readonly authService = inject(AuthService);
   private readonly location = inject(Location);
+  private readonly translate = inject(TranslateService);
 
   restaurant?: Restaurant;
   loading = true;
@@ -53,7 +55,7 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
     const id = Number(this.route.snapshot.paramMap.get('restaurantId'));
     if (!id) {
       this.loading = false;
-      this.error = 'Restaurant not found.';
+      this.error = this.translate.instant('EXPLORE_RESTAURANT.ERR_NOT_FOUND');
       return;
     }
 
@@ -72,7 +74,8 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
       },
       error: (err: HttpErrorResponse) => {
         this.loading = false;
-        this.error = err?.error?.message || 'Unable to load this restaurant.';
+        this.error =
+          err?.error?.message || this.translate.instant('EXPLORE_RESTAURANT.ERR_LOAD');
       },
     });
   }
@@ -351,8 +354,8 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
         if (err?.status === 401) {
           Swal.fire({
             icon: 'warning',
-            title: 'Sign in required',
-            text: 'Please sign in to post a comment.',
+            title: this.translate.instant('EXPLORE_RESTAURANT.SWAL_SIGNIN_POST_TITLE'),
+            text: this.translate.instant('EXPLORE_RESTAURANT.SWAL_SIGNIN_POST_TEXT'),
             confirmButtonColor: '#e63946',
           });
           return;

@@ -39,16 +39,6 @@ import { Transport, TransportType, TRANSPORT_TYPE_META } from '../../../core/mod
         </div>
       </div>
 
-      @if (transport.vehicleBrand) {
-        <div class="vehicle-row">
-          <i class="pi pi-car"></i>
-          <span>{{ transport.vehicleBrand }} {{ transport.vehicleModel }}</span>
-          @if (transport.driverRating) {
-            <span class="rating"><i class="pi pi-star-fill"></i> {{ transport.driverRating }}</span>
-          }
-        </div>
-      }
-
       <div class="card-footer">
         <span class="seats"><i class="pi pi-users"></i> {{ transport.availableSeats ?? transport.capacity }} dispo.</span>
         <div class="price-area">
@@ -85,12 +75,6 @@ import { Transport, TransportType, TRANSPORT_TYPE_META } from '../../../core/mod
       font-size: 0.65rem; color: var(--text-color); opacity: 0.4; white-space: nowrap;
     }
 
-    .vehicle-row {
-      display: flex; align-items: center; gap: 0.4rem;
-      font-size: 0.8rem; color: var(--text-color); opacity: 0.5; margin-bottom: 1rem;
-    }
-    .rating { margin-left: auto; color: var(--yellow-400); font-weight: 600; display: flex; align-items: center; gap: 3px; }
-
     .card-footer {
       display: flex; justify-content: space-between; align-items: center;
       padding-top: 0.75rem; border-top: 1px solid var(--surface-border);
@@ -109,9 +93,13 @@ export class TransportCardComponent {
     return TRANSPORT_TYPE_META[this.transport.type]?.label ?? this.transport.type;
   }
 
-  getTypeSeverity(): 'success' | 'info' | 'warning' | 'danger' | undefined {
-    const map: Record<string, 'success' | 'info' | 'warning' | 'danger'> = {
-      BUS: 'success', VAN: 'info', TAXI: 'warning', PLANE: 'danger', CAR: 'info'
+  getTypeSeverity(): 'success' | 'info' | 'warn' | 'danger' | undefined {
+    const map: Record<string, 'success' | 'info' | 'warn' | 'danger'> = {
+      BUS: 'success',
+      VAN: 'info',
+      TAXI: 'warn',
+      PLANE: 'danger',
+      CAR: 'info',
     };
     return map[this.transport.type];
   }

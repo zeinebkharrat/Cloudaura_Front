@@ -4,16 +4,16 @@
     <!-- Header -->
     <div class="chat-header">
       <div class="header-left">
-        <button class="icon-btn back-btn" *ngIf="activeChatRoomId()" (click)="backToList()" aria-label="Back">
+        <button class="icon-btn back-btn" *ngIf="activeChatRoomId()" (click)="backToList()" [attr.aria-label]="'COMMON.BACK' | translate">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
         </button>
-        <h3>{{ activeChatRoomId() ? activeConversation()?.otherUsername : 'Discussions' }}</h3>
+        <h3>{{ activeChatRoomId() ? activeConversation()?.otherUsername : ('COMMUNITY.CHAT_DISCUSSIONS_TITLE' | translate) }}</h3>
       </div>
       <div class="header-right">
-        <button class="icon-btn expand-btn" (click)="openFullChat()" aria-label="Ouvrir dans une nouvelle page" title="Ouvrir">
+        <button class="icon-btn expand-btn" (click)="openFullChat()" [attr.aria-label]="'COMMUNITY.CHAT_OPEN_FULL_A11Y' | translate" [attr.title]="'COMMUNITY.CHAT_OPEN_FULL_A11Y' | translate">
           <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
@@ -21,7 +21,7 @@
             <line x1="10" y1="14" x2="21" y2="3"></line>
           </svg>
         </button>
-        <button class="icon-btn close-btn" (click)="toggleBubble()" aria-label="Fermer" title="Fermer">
+        <button class="icon-btn close-btn" (click)="toggleBubble()" [attr.aria-label]="'COMMUNITY.CHAT_CLOSE_A11Y' | translate" [attr.title]="'COMMUNITY.CHAT_CLOSE_A11Y' | translate">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -35,8 +35,8 @@
     <div class="chat-body" *ngIf="!activeChatRoomId()">
       <div class="empty-state" *ngIf="conversations().length === 0">
         <div class="empty-icon">💬</div>
-        <p>Aucune discussion pour l'instant.</p>
-        <button class="start-chat-btn" (click)="openFullChat()">Nouvelle discussion</button>
+        <p>{{ 'COMMUNITY.CHAT_NO_CONVS_TITLE' | translate }}</p>
+        <button class="start-chat-btn" (click)="openFullChat()">{{ 'COMMUNITY.CHAT_START_CONV' | translate }}</button>
       </div>
 
       <div class="conversations-list">
@@ -70,7 +70,7 @@
         </div>
         
         <div class="empty-state" *ngIf="messages().length === 0 && !messagesLoading()">
-          Dites bonjour ! 👋
+          {{ 'COMMUNITY.CHAT_FIRST_MSG' | translate }}
         </div>
 
         <div class="message-wrapper" *ngFor="let msg of messages()" [class.own]="isOwnMessage(msg)">

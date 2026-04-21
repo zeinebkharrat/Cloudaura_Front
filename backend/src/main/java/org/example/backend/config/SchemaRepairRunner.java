@@ -30,6 +30,8 @@ public class SchemaRepairRunner implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        ensureMediaScoreSchema();
+        ensureUserNotificationsTable();
         fixStatusColumn("orders");
         fixStatusColumn("order_items");
         ensureTicketTypeColumns();
@@ -40,6 +42,72 @@ public class SchemaRepairRunner implements CommandLineRunner {
         ensureUserE2eeColumns();
         fixTransportReservationEnumColumn("payment_method", 20);
         fixTransportReservationEnumColumn("payment_status", 20);
+    }
+
+    private void ensureMediaScoreSchema() {
+        ensureColumnExists("posts", "total_views", "INT NOT NULL DEFAULT 0");
+        ensureColumnExists("posts", "repost_count", "INT NOT NULL DEFAULT 0");
+        ensureColumnExists("posts", "post_score", "DOUBLE NOT NULL DEFAULT 0");
+
+        ensureColumnExists("users", "monthly_score", "DOUBLE NOT NULL DEFAULT 0");
+        ensureColumnExists("users", "lifetime_score", "DOUBLE NOT NULL DEFAULT 0");
+        ensureColumnExists("users", "last_reset_date", "DATETIME NULL");
+
+        ensurePostViewsTable();
+    }
+
+    private void ensurePostViewsTable() {
+        try {
+            jdbcTemplate.execute(
+                    "CREATE TABLE IF NOT EXISTS post_views ("
+                            + "view_id INT AUTO_INCREMENT PRIMARY KEY,"
+                            + "user_id INT NOT NULL,"
+                            + "post_id INT NOT NULL,"
+                            + "month_key VARCHAR(7) NOT NULL,"
+                            + "created_at DATETIME NOT NULL,"
+                            + "CONSTRAINT fk_post_views_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,"
+                            + "CONSTRAINT fk_post_views_post FOREIGN KEY (post_id) REFERENCES posts(post_id) ON DELETE CASCADE,"
+                            + "UNIQUE KEY uk_post_views_user_post_month (user_id, post_id, month_key),"
+                            + "INDEX idx_post_views_post_month (post_id, month_key)"
+                            + ")"
+            );
+        } catch (Exception e) {
+            log.error("SchemaRepairRunner: failed to ensure post_views table - {}", e.getMessage());
+        }
+    }
+
+    private void ensureUserNotificationsTable() {
+        try {
+            jdbcTemplate.execute(
+                    "CREATE TABLE IF NOT EXISTS user_notifications ("
+                            + "notification_id INT AUTO_INCREMENT PRIMARY KEY,"
+                            + "user_id INT NOT NULL,"
+                            + "type VARCHAR(40) NOT NULL,"
+                            + "title VARCHAR(180) NOT NULL,"
+                            + "message VARCHAR(500) NOT NULL,"
+                            + "route VARCHAR(255) NULL,"
+                            + "reservation_type VARCHAR(40) NULL,"
+                            + "reservation_id INT NULL,"
+                            + "interaction_count INT NULL,"
+                            + "last_actor_user_id INT NULL,"
+                            + "last_actor_name VARCHAR(120) NULL,"
+                            + "last_actor_avatar_url VARCHAR(500) NULL,"
+                            + "is_read TINYINT(1) NOT NULL DEFAULT 0,"
+                            + "created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,"
+                            + "INDEX idx_user_notifications_user_created (user_id, created_at),"
+                            + "INDEX idx_user_notifications_user_read (user_id, is_read),"
+                            + "CONSTRAINT fk_user_notifications_user "
+                            + "FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE"
+                            + ")"
+            );
+        } catch (Exception e) {
+            log.error("SchemaRepairRunner: failed to ensure user_notifications table - {}", e.getMessage());
+        }
+
+        ensureColumnExists("user_notifications", "interaction_count", "INT NULL");
+        ensureColumnExists("user_notifications", "last_actor_user_id", "INT NULL");
+        ensureColumnExists("user_notifications", "last_actor_name", "VARCHAR(120) NULL");
+        ensureColumnExists("user_notifications", "last_actor_avatar_url", "VARCHAR(500) NULL");
     }
 
     private void ensureMessageVoiceColumns() {

@@ -6,7 +6,11 @@ import {
   OnDestroy,
   ChangeDetectionStrategy,
   ChangeDetectorRef,
+  DestroyRef,
+  effect,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { TranslateService } from '@ngx-translate/core';
 import { HttpClient } from '@angular/common/http';
 import { FormBuilder, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
@@ -15,8 +19,15 @@ import { AppAlertsService } from '../../../core/services/app-alerts.service';
 import { DATA_SOURCE_TOKEN } from '../../../core/adapters/data-source.adapter';
 import { AuthService } from '../../../core/auth.service';
 import { LoginRequiredPromptService } from '../../../core/login-required-prompt.service';
-import { Transport, TransportReservation, TRANSPORT_TYPE_META, TransportType } from '../../../core/models/travel.models';
+import {
+  Transport,
+  TransportReservation,
+  ReservationStatus,
+  SyntheticFlightOfferPayload,
+} from '../../../core/models/travel.models';
 import { TransportTrackingSseService } from '../transport-tracking-sse.service';
+import { CurrencyService } from '../../../core/services/currency.service';
+import { createCurrencyDisplaySyncEffect } from '../../../core/utils/currency-display-sync';
 
 @Component({
   selector: 'app-transport-booking-page',
@@ -24,44 +35,75 @@ import { TransportTrackingSseService } from '../transport-tracking-sse.service';
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './transport-booking-page.component.html',
   styles: [`
-    .bp { min-height: 100vh; padding: 1rem 1rem 4rem; }
+    .bp { min-height: 100vh; padding: 1rem 1rem 4rem; background: var(--bg-color); }
     .bp-wrap { max-width: 740px; margin: 0 auto; }
     .bp-edit-banner {
       display: flex; align-items: flex-start; gap: 0.6rem;
       padding: 0.85rem 1rem; margin-bottom: 1rem; border-radius: 14px;
-      background: rgba(0, 119, 182, 0.12); border: 1px solid rgba(0, 119, 182, 0.28);
-      font-size: 0.88rem; color: var(--text-color, #e5e7eb); line-height: 1.45;
+      background: color-mix(in srgb, var(--tunisia-red) 7%, var(--surface-1));
+      border: 1px solid color-mix(in srgb, var(--tunisia-red) 22%, var(--glass-border));
+      font-size: 0.88rem; color: var(--text-color); line-height: 1.45;
     }
-    .bp-edit-banner .pi { color: #38bdf8; margin-top: 2px; }
+    .bp-edit-banner .pi { color: var(--tunisia-red); margin-top: 2px; }
 
     .trip-inline {
       display: flex; align-items: center; gap: 0.85rem;
-      background: rgba(241,37,69,0.04);
-      border: 1px solid rgba(241,37,69,0.1);
+      background: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--tunisia-red) 8%, var(--surface-1)) 0%,
+        color-mix(in srgb, var(--tunisia-red) 3%, var(--surface-1)) 100%
+      );
+      border: 1px solid color-mix(in srgb, var(--tunisia-red) 16%, var(--glass-border));
       border-radius: 14px; padding: 0.9rem 1.25rem;
       margin-bottom: 1.75rem;
     }
     .trip-emoji { font-size: 1.6rem; flex-shrink: 0; }
     .trip-detail { display: flex; flex-direction: column; flex: 1; min-width: 0; }
     .trip-route { font-weight: 700; font-size: 0.95rem; color: var(--text-color); }
-    .trip-meta { font-size: 0.78rem; color: var(--text-muted, #a8b3c7); margin-top: 1px; }
+    .trip-meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 1px; }
     .trip-price {
       font-family: 'Outfit', sans-serif; font-size: 1.35rem;
-      font-weight: 800; color: #f12545; white-space: nowrap; flex-shrink: 0;
+      font-weight: 800; color: var(--tunisia-red); white-space: nowrap; flex-shrink: 0;
     }
-    .trip-price small { font-size: 0.7rem; font-weight: 500; opacity: 0.6; }
+    .trip-price small { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); }
 
     .stepper-wrap {
-      background: var(--surface-1, #111827);
-      border: 1px solid var(--glass-border, rgba(255,255,255,0.08));
+      background: var(--surface-1);
+      border: 1px solid var(--glass-border);
       border-radius: 20px; padding: 2rem 2.25rem;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+      box-shadow: var(--shadow-card);
     }
 
     :host ::ng-deep {
-      .p-stepper .p-stepper-header .p-stepper-number { width: 2.2rem; height: 2.2rem; font-weight: 700; font-size: 0.85rem; }
-      .p-stepper .p-stepper-panels { padding: 0; }
-      .p-inputtext { width: 100%; }
+      .manual-steps {
+        display: flex; gap: 0.45rem; flex-wrap: wrap; margin-bottom: 1.35rem;
+        font-size: 0.76rem; font-weight: 600; color: var(--text-muted);
+      }
+      .manual-steps span {
+        padding: 0.32rem 0.7rem; border-radius: 999px;
+        border: 1px solid var(--glass-border); background: var(--surface-2);
+      }
+      .manual-steps span.active {
+        border-color: var(--tunisia-red);
+        color: var(--tunisia-red);
+        background: color-mix(in srgb, var(--tunisia-red) 8%, var(--surface-1));
+      }
+      .bp .p-inputtext {
+        width: 100%;
+        background: var(--input-bg) !important;
+        color: var(--text-color) !important;
+        border: none !important;
+        box-shadow: none !important;
+      }
+      .bp .p-inputtext::placeholder {
+        color: var(--text-muted) !important;
+        opacity: 0.55 !important;
+      }
+      .bp .p-inputtext:enabled:focus {
+        outline: none !important;
+        box-shadow: none !important;
+        border: none !important;
+      }
     }
 
     .step { padding: 1.5rem 0 0; }
@@ -70,7 +112,7 @@ import { TransportTrackingSseService } from '../transport-tracking-sse.service';
       font-family: 'Outfit', sans-serif;
       font-size: 1.4rem; font-weight: 700; margin: 0 0 0.3rem; color: var(--text-color);
     }
-    .step-head p { font-size: 0.88rem; color: var(--text-muted, #a8b3c7); margin: 0; }
+    .step-head p { font-size: 0.88rem; color: var(--text-muted); margin: 0; }
 
     .f { display: flex; flex-direction: column; gap: 1.4rem; }
     .f-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.1rem; }
@@ -78,20 +120,20 @@ import { TransportTrackingSseService } from '../transport-tracking-sse.service';
 
     .f-label {
       font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.4px; color: var(--text-muted, #a8b3c7);
+      letter-spacing: 0.4px; color: var(--text-muted);
       display: flex; align-items: center; gap: 0.35rem;
     }
-    .f-label i { font-size: 0.8rem; color: #f12545; }
+    .f-label i { font-size: 0.8rem; color: var(--tunisia-red); }
 
     .f-input-wrap {
-      border: 1.5px solid var(--glass-border, rgba(255,255,255,0.1));
+      border: 1.5px solid var(--glass-border);
       border-radius: 12px; overflow: hidden;
       transition: border-color 0.2s, box-shadow 0.2s;
-      background: rgba(255,255,255,0.02);
+      background: var(--input-bg);
     }
     .f-input-wrap:focus-within {
-      border-color: #f12545;
-      box-shadow: 0 0 0 3px rgba(241,37,69,0.1);
+      border-color: var(--tunisia-red);
+      box-shadow: 0 0 0 3px var(--tunisia-red-glow);
     }
     .f-input-wrap.f-error { border-color: #f87171; }
     .f-input-wrap.f-error:focus-within { box-shadow: 0 0 0 3px rgba(248,113,113,0.12); }
@@ -106,17 +148,20 @@ import { TransportTrackingSseService } from '../transport-tracking-sse.service';
 
     .f-phone {
       display: flex; align-items: stretch;
-      border: 1.5px solid var(--glass-border, rgba(255,255,255,0.1));
+      border: 1.5px solid var(--glass-border);
       border-radius: 12px; overflow: hidden;
       transition: border-color 0.2s, box-shadow 0.2s;
-      background: rgba(255,255,255,0.02);
+      background: var(--input-bg);
     }
-    .f-phone:focus-within { border-color: #f12545; box-shadow: 0 0 0 3px rgba(241,37,69,0.1); }
+    .f-phone:focus-within {
+      border-color: var(--tunisia-red);
+      box-shadow: 0 0 0 3px var(--tunisia-red-glow);
+    }
     .f-phone.f-error { border-color: #f87171; }
     .f-prefix {
       display: flex; align-items: center; padding: 0 0.85rem;
-      font-weight: 700; font-size: 0.88rem; color: #f12545;
-      background: rgba(241,37,69,0.05);
+      font-weight: 700; font-size: 0.88rem; color: var(--tunisia-red);
+      background: color-mix(in srgb, var(--tunisia-red) 6%, var(--surface-1));
       border-right: 1px solid var(--glass-border);
     }
 
@@ -124,13 +169,13 @@ import { TransportTrackingSseService } from '../transport-tracking-sse.service';
 
     .f-seats {
       display: flex; align-items: center; gap: 0.85rem;
-      background: rgba(241,37,69,0.05);
-      border: 1.5px solid rgba(241,37,69,0.12);
+      background: color-mix(in srgb, var(--tunisia-red) 6%, var(--surface-1));
+      border: 1.5px solid color-mix(in srgb, var(--tunisia-red) 18%, var(--glass-border));
       border-radius: 12px; padding: 0.75rem 1.1rem;
     }
     .f-seats-badge {
       width: 38px; height: 38px; border-radius: 10px;
-      background: #f12545; color: #fff;
+      background: var(--tunisia-red); color: #fff;
       display: flex; align-items: center; justify-content: center;
       font-size: 1.1rem; font-weight: 800; flex-shrink: 0;
     }
@@ -139,7 +184,7 @@ import { TransportTrackingSseService } from '../transport-tracking-sse.service';
     .step-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 2.5rem; }
 
     .sum {
-      background: rgba(255,255,255,0.02);
+      background: var(--surface-2);
       border: 1px solid var(--glass-border);
       border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem;
     }
@@ -149,8 +194,14 @@ import { TransportTrackingSseService } from '../transport-tracking-sse.service';
     .sum-city { font-family: 'Outfit', sans-serif; font-size: 1.15rem; font-weight: 700; color: var(--text-color); }
     .sum-time { font-size: 0.8rem; color: var(--text-muted); }
     .sum-track { flex: 1; display: flex; align-items: center; gap: 0; margin: 0 1rem; }
-    .sum-dot { width: 8px; height: 8px; border-radius: 50%; background: #f12545; flex-shrink: 0; box-shadow: 0 0 0 3px rgba(241,37,69,0.12); }
-    .sum-line { flex: 1; height: 2px; background: rgba(241,37,69,0.12); }
+    .sum-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: var(--tunisia-red); flex-shrink: 0;
+      box-shadow: 0 0 0 3px var(--tunisia-red-glow);
+    }
+    .sum-line {
+      flex: 1; height: 2px;
+      background: color-mix(in srgb, var(--tunisia-red) 18%, var(--surface-3));
+    }
     .sum-emoji { font-size: 1rem; margin: 0 0.3rem; }
 
     .sum-divider { height: 1px; background: var(--glass-border); margin: 1.1rem 0; }
@@ -158,13 +209,13 @@ import { TransportTrackingSseService } from '../transport-tracking-sse.service';
     .sum-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; }
     .sum-item { display: flex; flex-direction: column; gap: 2px; }
     .sum-k { font-size: 0.72rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.3rem; text-transform: uppercase; letter-spacing: 0.3px; font-weight: 600; }
-    .sum-k i { font-size: 0.75rem; color: #f12545; }
+    .sum-k i { font-size: 0.75rem; color: var(--tunisia-red); }
     .sum-v { font-size: 0.92rem; font-weight: 600; color: var(--text-color); }
 
     .sum-pricing { display: flex; flex-direction: column; gap: 0.4rem; }
     .sum-pl { display: flex; justify-content: space-between; font-size: 0.88rem; color: var(--text-muted); }
     .sum-total { font-weight: 700; color: var(--text-color); padding-top: 0.6rem; border-top: 1px dashed var(--glass-border); font-size: 1rem; }
-    .sum-total-val { font-family: 'Outfit', sans-serif; font-size: 1.3rem; font-weight: 800; color: #f12545; }
+    .sum-total-val { font-family: 'Outfit', sans-serif; font-size: 1.3rem; font-weight: 800; color: var(--tunisia-red); }
 
     .pay { margin-bottom: 0.5rem; }
     .pay-title { font-size: 0.92rem; font-weight: 700; color: var(--text-color); margin: 0 0 0.85rem; }
@@ -172,45 +223,85 @@ import { TransportTrackingSseService } from '../transport-tracking-sse.service';
     .pay-opt {
       display: flex; align-items: center; gap: 0.75rem;
       padding: 1rem 1.1rem; border-radius: 14px; cursor: pointer;
-      background: rgba(255,255,255,0.02);
+      background: var(--surface-2);
       border: 1.5px solid var(--glass-border);
       transition: all 0.25s;
     }
-    .pay-opt:hover { border-color: rgba(241,37,69,0.25); }
-    .pay-active { border-color: #f12545 !important; background: rgba(241,37,69,0.05) !important; }
+    .pay-opt:hover { border-color: color-mix(in srgb, var(--tunisia-red) 35%, var(--glass-border)); }
+    .pay-active {
+      border-color: var(--tunisia-red) !important;
+      background: color-mix(in srgb, var(--tunisia-red) 7%, var(--surface-2)) !important;
+    }
 
     .pay-radio {
       width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0;
       border: 2px solid var(--glass-border); transition: all 0.2s;
       position: relative;
     }
-    .pay-checked { border-color: #f12545; }
+    .pay-checked { border-color: var(--tunisia-red); }
     .pay-checked::after {
       content: ''; position: absolute; top: 3px; left: 3px;
       width: 10px; height: 10px; border-radius: 50%;
-      background: #f12545;
+      background: var(--tunisia-red);
     }
 
-    .pay-icon { font-size: 1.2rem; color: #f12545; }
+    .pay-icon { font-size: 1.2rem; color: var(--tunisia-red); }
     .pay-txt { display: flex; flex-direction: column; }
     .pay-name { font-weight: 700; font-size: 0.88rem; color: var(--text-color); }
     .pay-desc { font-size: 0.72rem; color: var(--text-muted); }
     .pay-paypal.pay-active {
-      border-color: #003087 !important;
-      background: rgba(0, 48, 135, 0.1) !important;
+      border-color: var(--tunisia-red) !important;
+      background: color-mix(in srgb, var(--tunisia-red) 8%, var(--surface-2)) !important;
     }
     .paypal-mark {
       font-weight: 800;
       font-size: 1.05rem;
-      color: #003087;
+      color: var(--text-color);
       letter-spacing: 0.02em;
     }
     .paypal-note {
       font-size: 0.72rem;
-      color: #1D9E75;
+      color: var(--text-muted);
       font-weight: 600;
       margin-top: 0.4rem;
       line-height: 1.35;
+    }
+
+    .conf-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.7rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      border: 1px solid var(--glass-border);
+      background: var(--surface-2);
+      color: var(--text-color);
+    }
+    .conf-pill--pay {
+      text-transform: none;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      background: color-mix(in srgb, var(--tunisia-red) 6%, var(--surface-1));
+      border-color: color-mix(in srgb, var(--tunisia-red) 18%, var(--glass-border));
+      color: var(--text-color);
+    }
+    .conf-pill--ok {
+      background: color-mix(in srgb, var(--tunisia-red) 10%, var(--surface-1));
+      border-color: color-mix(in srgb, var(--tunisia-red) 28%, var(--glass-border));
+      color: var(--tunisia-red);
+    }
+    .conf-pill--pending {
+      background: color-mix(in srgb, var(--tunisia-red) 5%, var(--surface-2));
+      border-color: color-mix(in srgb, #f59e0b 35%, var(--glass-border));
+      color: #b45309;
+    }
+    .conf-pill--cancelled {
+      background: color-mix(in srgb, #f87171 8%, var(--surface-1));
+      border-color: rgba(248,113,113,0.35);
+      color: #b91c1c;
     }
 
     .conf { text-align: center; padding-top: 2rem !important; }
@@ -218,8 +309,8 @@ import { TransportTrackingSseService } from '../transport-tracking-sse.service';
     .conf-circle {
       width: 72px; height: 72px; border-radius: 50%; margin: 0 auto;
       display: flex; align-items: center; justify-content: center;
-      background: linear-gradient(135deg, #f12545, #ff6b6b);
-      box-shadow: 0 8px 30px rgba(241,37,69,0.3);
+      background: linear-gradient(135deg, var(--tunisia-red), #ff6b6b);
+      box-shadow: 0 8px 30px var(--tunisia-red-glow);
       animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     .conf-circle i { font-size: 2rem; color: #fff; }
@@ -228,21 +319,22 @@ import { TransportTrackingSseService } from '../transport-tracking-sse.service';
     .conf-title { font-family: 'Outfit', sans-serif; font-size: 1.5rem; font-weight: 700; margin: 0 0 0.75rem; color: var(--text-color); }
     .conf-welcome-msg {
       display: inline-flex; align-items: center; gap: 0.5rem;
-      background: rgba(241,37,69,0.07); border: 1px solid rgba(241,37,69,0.15);
+      background: color-mix(in srgb, var(--tunisia-red) 8%, var(--surface-1));
+      border: 1px solid color-mix(in srgb, var(--tunisia-red) 22%, var(--glass-border));
       border-radius: 50px; padding: 0.5rem 1.1rem; margin-bottom: 1.75rem;
-      font-size: 0.9rem; color: rgba(255,255,255,0.75);
+      font-size: 0.9rem; color: var(--text-muted);
     }
-    .conf-welcome-msg strong { color: #fff; }
+    .conf-welcome-msg strong { color: var(--text-color); }
 
     .conf-card {
-      background: rgba(255,255,255,0.02);
+      background: var(--surface-2);
       border: 1px solid var(--glass-border);
       border-radius: 16px; padding: 1.5rem;
       text-align: left; max-width: 420px; margin: 0 auto 2rem;
     }
     .conf-ref { text-align: center; }
     .conf-ref-label { display: block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
-    .conf-ref-val { display: block; font-family: 'Outfit', sans-serif; font-size: 1.3rem; font-weight: 800; color: #f12545; letter-spacing: 1px; margin-top: 0.2rem; }
+    .conf-ref-val { display: block; font-family: 'Outfit', sans-serif; font-size: 1.3rem; font-weight: 800; color: var(--tunisia-red); letter-spacing: 1px; margin-top: 0.2rem; }
     .conf-divider { height: 1px; background: var(--glass-border); margin: 1rem 0; }
     .conf-rows { display: flex; flex-direction: column; gap: 0.6rem; }
     .conf-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.88rem; color: var(--text-muted); }
@@ -252,7 +344,8 @@ import { TransportTrackingSseService } from '../transport-tracking-sse.service';
     .conf-qr p { font-size: 0.8rem; color: var(--text-muted); margin: 0 0 0.75rem; }
     .conf-qr-box {
       display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
-      padding: 1.25rem; background: rgba(255,255,255,0.03); border-radius: 12px;
+      padding: 1.25rem; background: var(--surface-2); border-radius: 12px;
+      border: 1px solid var(--glass-border);
     }
     .conf-qr-box i { font-size: 3.5rem; color: var(--text-muted); opacity: 0.3; }
     .conf-qr-img { display: block; border-radius: 8px; background: #fff; padding: 8px; }
@@ -275,6 +368,9 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private alerts = inject(AppAlertsService);
   private cdr = inject(ChangeDetectorRef);
+  private readonly translate = inject(TranslateService);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly currency = inject(CurrencyService);
   private http = inject(HttpClient);
   authService = inject(AuthService);
   private loginPrompt = inject(LoginRequiredPromptService);
@@ -294,6 +390,12 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
   paymentMethod = signal<'CASH' | 'KONNECT' | 'STRIPE' | 'PAYPAL'>('CASH');
   paymentMethodValue = 'CASH';
 
+  /** Re-render OnPush views when the global currency or FX snapshot changes. */
+  private readonly _currencyDisplaySync = createCurrencyDisplaySyncEffect();
+
+  /** Avoid refilling passenger fields when the same profile was already applied. */
+  private syncedPassengerProfileUserId: number | null = null;
+
   passengerForm = this.fb.group({
     firstName: ['', [Validators.required, Validators.minLength(2)]],
     lastName: ['', [Validators.required, Validators.minLength(2)]],
@@ -302,23 +404,48 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
     seats: [1, [Validators.required, Validators.min(1)]],
   });
 
+  constructor() {
+    this.translate.onLangChange.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.cdr.markForCheck());
+
+    effect(() => {
+      const user = this.authService.currentUser();
+      if (!user) {
+        this.syncedPassengerProfileUserId = null;
+        return;
+      }
+      if (this.route.snapshot.queryParamMap.get('edit')) {
+        return;
+      }
+      if (this.editingReservationId() != null) {
+        return;
+      }
+      if (this.syncedPassengerProfileUserId === user.id) {
+        return;
+      }
+      this.syncedPassengerProfileUserId = user.id;
+      const digits = (user.phone?.replace(/\+216\s*/, '').replace(/\D/g, '') ?? '').slice(-8);
+      this.passengerForm.patchValue(
+        {
+          firstName: user.firstName ?? '',
+          lastName: user.lastName ?? '',
+          email: user.email ?? '',
+          phone: digits,
+        },
+        { emitEvent: false },
+      );
+      this.cdr.markForCheck();
+    });
+  }
+
   ngOnInit() {
     const qpDate = this.route.snapshot.queryParamMap.get('date');
     if (qpDate) {
       this.store.setDates({ travelDate: qpDate });
     }
 
-    const user = this.authService.currentUser();
-    if (user) {
-      this.passengerForm.patchValue({
-        firstName: user.firstName ?? '',
-        lastName: user.lastName ?? '',
-        email: user.email ?? '',
-        phone: user.phone?.replace(/\+216\s*/, '').replace(/\D/g, '') ?? '',
-      });
-    }
-
     this.passengerForm.patchValue({ seats: this.store.pax().adults || 1 });
+
+    const user = this.authService.currentUser();
 
     const routeId = this.route.snapshot.paramMap.get('id');
     const editParam = this.route.snapshot.queryParamMap.get('edit');
@@ -336,7 +463,10 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
           this.cdr.markForCheck();
         },
         error: () => {
-          void this.alerts.error('Trip not found', 'We could not load this trip. Returning to search.');
+          void this.alerts.error(
+            this.translate.instant('TRANSPORT_BOOKING.ALERT_TRIP_NOT_FOUND'),
+            this.translate.instant('TRANSPORT_BOOKING.ALERT_TRIP_NOT_FOUND_BODY'),
+          );
           this.router.navigate(['/transport']);
         },
       });
@@ -364,7 +494,10 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
             this.cdr.markForCheck();
           },
           error: () => {
-            void this.alerts.error('Booking', 'Could not load paid reservation.');
+            void this.alerts.error(
+              this.translate.instant('TRANSPORT_BOOKING.ALERT_PAID_LOAD'),
+              this.translate.instant('TRANSPORT_BOOKING.ALERT_PAID_LOAD_BODY'),
+            );
           },
         });
       }
@@ -376,7 +509,10 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
         this.dataSource.getTransportReservation(rid, (user as { id: number }).id).subscribe({
           next: (existing) => {
             if (Number.isFinite(transportIdNum) && existing.transportId != null && existing.transportId !== transportIdNum) {
-              void this.alerts.warning('Different trip', 'This booking belongs to another trip. Opening your bookings.');
+              void this.alerts.warning(
+                this.translate.instant('TRANSPORT_BOOKING.ALERT_DIFF_TRIP'),
+                this.translate.instant('TRANSPORT_BOOKING.ALERT_DIFF_TRIP_BODY'),
+              );
               void this.router.navigate(['/mes-reservations'], { queryParams: { tab: 'transport' } });
               return;
             }
@@ -403,7 +539,10 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
             this.cdr.markForCheck();
           },
           error: () => {
-            void this.alerts.error('Booking not found', 'We could not load this reservation. Try again from My bookings.');
+            void this.alerts.error(
+              this.translate.instant('TRANSPORT_BOOKING.ALERT_BOOKING_NOT_FOUND'),
+              this.translate.instant('TRANSPORT_BOOKING.ALERT_BOOKING_NOT_FOUND_BODY'),
+            );
             void this.router.navigate(['/mes-reservations'], { queryParams: { tab: 'transport' } });
           },
         });
@@ -437,12 +576,15 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  goToStep2() {
+  goToStep2(): void {
     if (this.passengerForm.valid) {
       this.activeStep.set(1);
     } else {
       this.passengerForm.markAllAsTouched();
-      void this.alerts.warning('Check passenger details', 'Please correct the highlighted fields before continuing.');
+      void this.alerts.warning(
+        this.translate.instant('TRANSPORT_BOOKING.ALERT_CHECK_PASS'),
+        this.translate.instant('TRANSPORT_BOOKING.ALERT_CHECK_PASS_BODY'),
+      );
     }
   }
 
@@ -452,18 +594,21 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
   private redirectToCheckoutUrl(url: string): void {
     const trimmed = (url ?? '').trim();
     if (!trimmed) {
-      void this.alerts.error('Checkout', 'Invalid payment response from server.');
+      void this.alerts.error(
+        this.translate.instant('TRANSPORT_BOOKING.ALERT_CHECKOUT'),
+        this.translate.instant('TRANSPORT_BOOKING.ALERT_CHECKOUT_INVALID'),
+      );
       return;
     }
     window.location.href = new URL(trimmed, window.location.origin).href;
   }
 
-  confirmBooking() {
+  confirmBooking(): void {
     const user = this.authService.currentUser();
     if (!user) {
       this.loginPrompt.show({
-        title: 'Sign in to reserve transport',
-        message: 'Please sign in or create an account to confirm this transport booking.',
+        title: this.translate.instant('TRANSPORT_BOOKING.LOGIN_TITLE'),
+        message: this.translate.instant('TRANSPORT_BOOKING.LOGIN_MSG'),
         returnUrl: this.router.url,
       });
       return;
@@ -472,12 +617,21 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
     const t = this.transport();
     if (!t) return;
 
+    const syntheticOffer = this.buildSyntheticFlightOfferPayload(t);
+    if (t.id < 0 && !syntheticOffer) {
+      void this.alerts.warning(
+        this.translate.instant('TRANSPORT_BOOKING.ALERT_SYNTHETIC_FLIGHT_TITLE'),
+        this.translate.instant('TRANSPORT_BOOKING.ALERT_SYNTHETIC_FLIGHT_BODY'),
+      );
+      return;
+    }
+
     const seats = this.passengerForm.get('seats')?.value ?? 1;
     const maxSeats = this.maxBookableSeats(t);
     if (seats > maxSeats) {
       void this.alerts.warning(
-        'Not enough seats',
-        `This trip only has ${maxSeats} seat(s) available. Reduce the number of seats and try again.`
+        this.translate.instant('TRANSPORT_BOOKING.ALERT_NOT_ENOUGH_SEATS'),
+        this.translate.instant('TRANSPORT_BOOKING.ALERT_NOT_ENOUGH_SEATS_BODY', { n: maxSeats }),
       );
       return;
     }
@@ -509,8 +663,10 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
           error: (err) => {
             this.loading.set(false);
             void this.alerts.error(
-              'Update failed',
-              err.error?.message ?? 'We could not update this booking. Try again.'
+              this.translate.instant('TRANSPORT_BOOKING.ALERT_UPDATE_FAIL'),
+              typeof err?.error?.message === 'string' && err.error.message
+                ? err.error.message
+                : this.translate.instant('TRANSPORT_BOOKING.ALERT_UPDATE_FAIL_BODY'),
             );
           },
         });
@@ -521,15 +677,19 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
       const travelDate = this.buildTravelDateTimeIso();
       if (!travelDate) {
         this.loading.set(false);
-        void this.alerts.warning('Date', 'Select a travel date from search before paying.');
+        void this.alerts.warning(
+          this.translate.instant('TRANSPORT_BOOKING.ALERT_DATE'),
+          this.translate.instant('TRANSPORT_BOOKING.ALERT_DATE_BODY'),
+        );
         return;
       }
-      const routeKm = t.type === 'TAXI' ? this.store.transportRouteKm() : undefined;
+      const routeKm = ['TAXI', 'BUS', 'CAR'].includes(t.type) ? this.store.transportRouteKm() : undefined;
+      const routeDurationMin = ['TAXI', 'BUS', 'CAR'].includes(t.type) ? this.store.transportRouteDurationMin() : undefined;
       if (t.type === 'TAXI' && (routeKm == null || routeKm <= 0)) {
         this.loading.set(false);
         void this.alerts.warning(
-          'Route',
-          'Taxi pricing needs a driving route. Run a search with cities so the map can estimate distance.'
+          this.translate.instant('TRANSPORT_BOOKING.ALERT_ROUTE_TITLE'),
+          this.translate.instant('TRANSPORT_BOOKING.ALERT_TAXI_ROUTE_BODY'),
         );
         return;
       }
@@ -540,12 +700,15 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
           numberOfSeats: seats,
           travelDate,
           routeKm: routeKm ?? undefined,
+          routeDurationMin: routeDurationMin ?? undefined,
           rentalDays: t.type === 'CAR' ? this.store.transportRentalDays() : undefined,
           passengerFirstName: this.passengerForm.get('firstName')?.value ?? '',
           passengerLastName: this.passengerForm.get('lastName')?.value ?? '',
           passengerEmail: this.passengerForm.get('email')?.value ?? '',
           passengerPhone: '+216 ' + (this.passengerForm.get('phone')?.value ?? ''),
           idempotencyKey,
+          presentmentCurrency: this.currency.selectedCode(),
+          ...(syntheticOffer ? { syntheticFlightOffer: syntheticOffer } : {}),
         })
         .subscribe({
           next: (checkout) => {
@@ -560,8 +723,8 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
                 ? String((body as { message?: string }).message)
                 : typeof body === 'string'
                   ? body
-                  : 'Could not start Stripe checkout.';
-            void this.alerts.error('Checkout', msg);
+                  : this.translate.instant('TRANSPORT_BOOKING.STRIPE_CHECKOUT_FAIL');
+            void this.alerts.error(this.translate.instant('TRANSPORT_BOOKING.ALERT_STRIPE_FAIL'), msg);
           },
         });
       return;
@@ -571,15 +734,19 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
       const travelDate = this.buildTravelDateTimeIso();
       if (!travelDate) {
         this.loading.set(false);
-        void this.alerts.warning('Date', 'Select a travel date from search before paying.');
+        void this.alerts.warning(
+          this.translate.instant('TRANSPORT_BOOKING.ALERT_DATE'),
+          this.translate.instant('TRANSPORT_BOOKING.ALERT_DATE_BODY'),
+        );
         return;
       }
-      const routeKm = t.type === 'TAXI' ? this.store.transportRouteKm() : undefined;
+      const routeKm = ['TAXI', 'BUS', 'CAR'].includes(t.type) ? this.store.transportRouteKm() : undefined;
+      const routeDurationMin = ['TAXI', 'BUS', 'CAR'].includes(t.type) ? this.store.transportRouteDurationMin() : undefined;
       if (t.type === 'TAXI' && (routeKm == null || routeKm <= 0)) {
         this.loading.set(false);
         void this.alerts.warning(
-          'Route',
-          'Taxi pricing needs a driving route. Run a search with cities so the map can estimate distance.'
+          this.translate.instant('TRANSPORT_BOOKING.ALERT_ROUTE_TITLE'),
+          this.translate.instant('TRANSPORT_BOOKING.ALERT_TAXI_ROUTE_BODY'),
         );
         return;
       }
@@ -590,11 +757,13 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
           seats,
           travelDate,
           routeKm: routeKm ?? undefined,
+          routeDurationMin: routeDurationMin ?? undefined,
           amountTnd,
           passengerFirstName: this.passengerForm.get('firstName')?.value ?? '',
           passengerLastName: this.passengerForm.get('lastName')?.value ?? '',
           passengerEmail: this.passengerForm.get('email')?.value ?? '',
           passengerPhone: '+216 ' + (this.passengerForm.get('phone')?.value ?? ''),
+          ...(syntheticOffer ? { syntheticFlightOffer: syntheticOffer } : {}),
         })
         .subscribe({
           next: (checkout) => {
@@ -609,8 +778,8 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
                 ? String((body as { message?: string }).message)
                 : typeof body === 'string'
                   ? body
-                  : 'Could not start PayPal checkout.';
-            void this.alerts.error('PayPal', msg);
+                  : this.translate.instant('TRANSPORT_BOOKING.PAYPAL_CHECKOUT_FAIL');
+            void this.alerts.error(this.translate.instant('TRANSPORT_BOOKING.ALERT_PAYPAL_FAIL'), msg);
           },
         });
       return;
@@ -630,9 +799,12 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
         paymentMethod: this.paymentMethod(),
         idempotencyKey,
         travelDate: this.buildTravelDateTimeIso() ?? undefined,
-        routeKm:
-          t.type === 'TAXI' ? (this.store.transportRouteKm() ?? undefined) : undefined,
+        routeKm: ['TAXI', 'BUS', 'CAR'].includes(t.type) ? (this.store.transportRouteKm() ?? undefined) : undefined,
+        routeDurationMin: ['TAXI', 'BUS', 'CAR'].includes(t.type)
+          ? (this.store.transportRouteDurationMin() ?? undefined)
+          : undefined,
         rentalDays: t.type === 'CAR' ? this.store.transportRentalDays() : undefined,
+        ...(syntheticOffer ? { syntheticFlightOffer: syntheticOffer } : {}),
       })
       .subscribe({
         next: (res) => {
@@ -647,22 +819,33 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
         error: (err) => {
           this.loading.set(false);
           void this.alerts.error(
-            'Booking failed',
-            err.error?.message ?? 'We could not complete the reservation. Please try again.'
+            this.translate.instant('TRANSPORT_BOOKING.ALERT_BOOKING_FAIL'),
+            typeof err?.error?.message === 'string' && err.error.message
+              ? err.error.message
+              : this.translate.instant('TRANSPORT_BOOKING.ALERT_BOOKING_FAIL_BODY'),
           );
         },
       });
   }
 
   confirmButtonLabel(): string {
-    const total = this.calculateTotal();
+    const money = this.currency.formatDual(this.calculateTotal());
     if (this.editingReservationId() != null) {
-      return `Update booking · ${total} TND`;
+      return this.translate.instant('TRANSPORT_BOOKING.BTN_UPDATE', { money });
     }
     if (this.paymentMethod() === 'STRIPE' || this.paymentMethod() === 'PAYPAL') {
-      return `Pay & confirm · ${total} TND`;
+      return this.translate.instant('TRANSPORT_BOOKING.BTN_PAY', { money });
     }
-    return `Confirm · ${total} TND`;
+    return this.translate.instant('TRANSPORT_BOOKING.BTN_CONFIRM', { money });
+  }
+
+  /** Status chip on confirmation — brand palette only (no PrimeNG info blue). */
+  statusPillClass(status: ReservationStatus): Record<string, boolean> {
+    return {
+      'conf-pill--ok': status === 'CONFIRMED',
+      'conf-pill--pending': status === 'PENDING',
+      'conf-pill--cancelled': status === 'CANCELLED',
+    };
   }
 
   private maxBookableSeats(t: Transport): number {
@@ -682,9 +865,23 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
     ctrl.updateValueAndValidity({ emitEvent: false });
   }
 
-  /** PayPal charges in USD; shown for transparency (TND × 0.32). */
+  /** PayPal charges in USD; estimate from cached FX when available. */
   paypalUsdFromTnd(): number {
-    return Math.round(this.calculateTotal() * 0.32 * 100) / 100;
+    const total = this.calculateTotal();
+    const usd = this.currency.rateFor('USD');
+    if (usd != null && usd > 0) {
+      return Math.round(total * usd * 100) / 100;
+    }
+    return Math.round(total * 0.32 * 100) / 100;
+  }
+
+  /** Approximate USD per 1 TND for the PayPal note (live snapshot or legacy 0.32). */
+  paypalUsdPerTndDisplay(): string {
+    const usd = this.currency.rateFor('USD');
+    if (usd != null && usd > 0) {
+      return usd.toFixed(4);
+    }
+    return '0.32';
   }
 
   calculateTotal(): number {
@@ -693,15 +890,56 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
     if (!t) {
       return 0;
     }
+
+    const km = this.store.transportRouteKm() ?? 0;
+    const durationMin = this.routeDurationMinutesForPricing(km, t.durationMinutes ?? 0);
+
     if (t.type === 'TAXI') {
-      const km = this.store.transportRouteKm() ?? 0;
-      return Math.round(0.8 * km * seats * 100) / 100;
+      let fare = 2 + km * 0.30 + durationMin * 0.05;
+      if (this.isNightTravel()) {
+        fare *= 1.1;
+      }
+      return Math.round(Math.max(3.5, fare) * 100) / 100;
+    }
+    if (t.type === 'BUS') {
+      const perSeat = Math.max(1.5, 1.2 + km * 0.028 + durationMin * 0.0065);
+      return Math.round(perSeat * Math.max(1, seats) * 100) / 100;
     }
     if (t.type === 'CAR') {
       const days = this.store.transportRentalDays() ?? 1;
-      return Math.round(t.price * Math.max(1, days) * 100) / 100;
+      const safeDays = Math.max(1, days);
+      const daily = Math.max(35, (t.price || 52) * 0.5);
+      const extraKm = Math.max(0, km - safeDays * 160);
+      return Math.round((daily * safeDays + extraKm * 0.07) * 100) / 100;
     }
     return Math.round(seats * t.price * 100) / 100;
+  }
+
+  private routeDurationMinutesForPricing(routeKm: number, fallbackDurationMin: number): number {
+    const fromStore = this.store.transportRouteDurationMin();
+    if (fromStore != null && fromStore > 0) {
+      return fromStore;
+    }
+    if (fallbackDurationMin > 0) {
+      return fallbackDurationMin;
+    }
+    if (routeKm <= 0) {
+      return 0;
+    }
+    return Math.round((routeKm / 60) * 60);
+  }
+
+  private isNightTravel(): boolean {
+    const travelDate = this.store.dates().travelDate;
+    if (!travelDate) {
+      return false;
+    }
+    const d = new Date(travelDate);
+    if (Number.isNaN(d.getTime())) {
+      return false;
+    }
+    const hour = d.getHours();
+    return hour >= 22 || hour < 6;
   }
 
   private buildTravelDateTimeIso(): string | null {
@@ -730,6 +968,27 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
     return `${dateStr}T${h}:${m}:${s}`;
   }
 
+  /** Payload for API when booking a flight-search row (negative transport id). */
+  private buildSyntheticFlightOfferPayload(t: Transport): SyntheticFlightOfferPayload | null {
+    if (t.id >= 0) {
+      return null;
+    }
+    const o = t.syntheticFlightOffer;
+    if (!o) {
+      return null;
+    }
+    return {
+      operatorName: (o.operatorName ?? 'Airline').trim() || 'Airline',
+      flightCode: o.flightCode,
+      departureIata: o.departureIata,
+      arrivalIata: o.arrivalIata,
+      pricePerSeatTnd: t.price,
+      departureTimeIso: o.departureTimeIso ?? t.departureTime,
+      arrivalTimeIso: o.arrivalTimeIso ?? t.arrivalTime,
+      description: (o.description ?? t.description)?.trim(),
+    };
+  }
+
   goBack() { this.router.navigate(['/transport/results'], { queryParams: this.route.snapshot.queryParams }); }
 
   formatTime(dateStr: string): string {
@@ -747,8 +1006,9 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  getTypeLabel(type: string): string {
-    return TRANSPORT_TYPE_META[type as TransportType]?.label ?? type;
+  transportTypeLabelKey(raw: string | undefined): string {
+    const u = (raw ?? 'BUS').toString().toUpperCase();
+    return `TRANSPORT.TYPE.${u}`;
   }
 
   getTypeEmoji(type: string): string {

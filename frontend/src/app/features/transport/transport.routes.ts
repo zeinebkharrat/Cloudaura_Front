@@ -13,6 +13,11 @@ export const TRANSPORT_ROUTES: Routes = [
     component: TransportSearchPageComponent,
   },
   {
+    path: 'flights',
+    loadComponent: () =>
+      import('../flights/flights-page.component').then((m) => m.FlightsPageComponent),
+  },
+  {
     path: 'results',
     component: TransportResultsPageComponent,
   },

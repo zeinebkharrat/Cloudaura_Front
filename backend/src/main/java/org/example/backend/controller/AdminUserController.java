@@ -3,6 +3,7 @@ package org.example.backend.controller;
 import jakarta.validation.Valid;
 import org.example.backend.dto.AdminUserResponse;
 import org.example.backend.dto.AdminUserRoleUpdateRequest;
+import org.example.backend.dto.AdminUserInsightsResponse;
 import org.example.backend.dto.AdminUserUpdateRequest;
 import org.example.backend.dto.ArtisanDecisionRequest;
 import org.example.backend.dto.BanUserRequest;
@@ -41,6 +42,11 @@ public class AdminUserController {
     @GetMapping("/{userId}")
     public AdminUserResponse getUser(@PathVariable Integer userId) {
         return adminUserService.getUser(userId);
+    }
+
+    @GetMapping("/{userId}/insights")
+    public AdminUserInsightsResponse getUserInsights(@PathVariable Integer userId) {
+        return adminUserService.getUserInsights(userId);
     }
 
     @PutMapping("/{userId}")

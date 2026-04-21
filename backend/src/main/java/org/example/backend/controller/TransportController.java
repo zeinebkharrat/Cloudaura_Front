@@ -25,8 +25,9 @@ public class TransportController {
             @RequestParam int arrivalCityId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate travelDate,
             @RequestParam(required = false) String type,
-            @RequestParam(defaultValue = "1") int numberOfPassengers) {
-        
+            @RequestParam(defaultValue = "1") int numberOfPassengers,
+            @RequestParam(defaultValue = "fr") String lang) {
+
         TransportSearchRequest request = TransportSearchRequest.builder()
                 .departureCityId(departureCityId)
                 .arrivalCityId(arrivalCityId)
@@ -34,13 +35,15 @@ public class TransportController {
                 .type(type)
                 .numberOfPassengers(numberOfPassengers)
                 .build();
-        
-        return ApiResponse.success(transportService.searchTransports(request));
+
+        return ApiResponse.success(transportService.searchTransports(request, lang));
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<TransportSearchResponse> getById(@PathVariable int id) {
-        return ApiResponse.success(transportService.getTransportById(id));
+    public ApiResponse<TransportSearchResponse> getById(
+            @PathVariable int id,
+            @RequestParam(defaultValue = "fr") String lang) {
+        return ApiResponse.success(transportService.getTransportById(id, lang));
     }
 
     @GetMapping("/types")

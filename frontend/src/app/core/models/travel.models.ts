@@ -50,6 +50,18 @@ export interface Room {
   available: boolean;
 }
 
+/** Sent with transport checkout when {@link Transport.id} is negative (flight search offer). */
+export interface SyntheticFlightOfferPayload {
+  operatorName: string;
+  flightCode?: string;
+  departureIata: string;
+  arrivalIata: string;
+  pricePerSeatTnd: number;
+  departureTimeIso?: string;
+  arrivalTimeIso?: string;
+  description?: string;
+}
+
 export interface Transport {
   id: number;
   type: TransportType;
@@ -63,13 +75,12 @@ export interface Transport {
   capacity: number;
   availableSeats?: number;
   durationMinutes?: number;
-  vehicleBrand?: string;
-  vehicleModel?: string;
-  vehiclePhotoUrl?: string;
-  driverName?: string;
-  driverRating?: number;
   description?: string;
   isActive: boolean;
+  /** Client-only: translated type label for result lists (optional). */
+  typeLabel?: string;
+  /** Flight-search row: server materializes a {@code Transport} when paying. */
+  syntheticFlightOffer?: SyntheticFlightOfferPayload;
 }
 
 export interface TransportTypeAvailability {
@@ -92,7 +103,10 @@ export interface TransportReservationInput {
   idempotencyKey: string;
   travelDate?: string;
   routeKm?: number;
+  routeDurationMin?: number;
   rentalDays?: number;
+  /** Required when {@link TransportReservationInput.transportId} is negative. */
+  syntheticFlightOffer?: SyntheticFlightOfferPayload;
 }
 
 export interface TransportCheckoutPayload {
@@ -100,12 +114,32 @@ export interface TransportCheckoutPayload {
   numberOfSeats: number;
   travelDate: string;
   routeKm?: number;
+  routeDurationMin?: number;
   rentalDays?: number;
   passengerFirstName: string;
   passengerLastName: string;
   passengerEmail: string;
   passengerPhone: string;
   idempotencyKey: string;
+  /** Stripe Checkout presentment: TND | EUR | USD */
+  presentmentCurrency?: string;
+  /** Required when {@code transportId < 0}. */
+  syntheticFlightOffer?: SyntheticFlightOfferPayload;
+}
+
+/** POST /api/transport/payments/paypal/create */
+export interface TransportPayPalCreatePayload {
+  transportId: number;
+  seats: number;
+  travelDate: string;
+  routeKm?: number;
+  routeDurationMin?: number;
+  amountTnd: number;
+  passengerFirstName?: string;
+  passengerLastName?: string;
+  passengerEmail?: string;
+  passengerPhone?: string;
+  syntheticFlightOffer?: SyntheticFlightOfferPayload;
 }
 
 /** PATCH body for updating an existing transport booking. */
@@ -124,8 +158,12 @@ export interface TransportReservation {
   transportId?: number;
   reservationRef: string;
   status: ReservationStatus;
+  /** Localized label from API when present. */
+  statusLabel?: string;
   paymentStatus: PaymentStatus;
+  paymentStatusLabel?: string;
   paymentMethod: PaymentMethod;
+  paymentMethodLabel?: string;
   totalPrice: number;
   numberOfSeats: number;
   travelDate: string;
@@ -136,8 +174,14 @@ export interface TransportReservation {
   qrCodeToken?: string;
   createdAt: string;
   transportType?: string;
+  /** Same as transportType (machine code). */
+  type?: string;
+  transportTypeLabel?: string;
+  typeLabel?: string;
   departureCityName?: string;
   arrivalCityName?: string;
+  departureCityLabel?: string;
+  arrivalCityLabel?: string;
   departureTime?: string;
 }
 
@@ -148,15 +192,23 @@ export interface AccommodationReservation {
   accommodationId?: number;
   roomId?: number;
   status: ReservationStatus;
+  statusLabel?: string;
   totalPrice: number;
   accommodationName?: string;
+  /** Localized property name (preferred for display). */
+  nameLabel?: string;
   accommodationCity?: string;
+  cityLabel?: string;
   reservationRef?: string;
   checkInDate?: string;
   checkOutDate?: string;
+  guestCount?: number;
   nights?: number;
+  /** Room type code when API sends it (e.g. SINGLE). */
   roomType?: string;
+  roomTypeLabel?: string;
   paymentMethod?: string;
+  paymentMethodLabel?: string;
   guestFirstName?: string;
   guestLastName?: string;
   guestEmail?: string;
@@ -183,6 +235,7 @@ export interface Reservation {
   /** API body for accommodation booking (LocalDate strings). */
   checkIn?: string;
   checkOut?: string;
+  guestCount?: number;
   roomId?: number;
   userId?: number;
   transportId?: number;

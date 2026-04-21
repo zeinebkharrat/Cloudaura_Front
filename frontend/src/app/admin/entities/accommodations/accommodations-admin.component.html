@@ -225,123 +225,397 @@
     }
   </div>
 
-  <!-- Accommodation Form Modal -->
-  <div *ngIf="showForm()" class="modal-overlay" (click)="closeForm()">
-    <div class="modal-content" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h2>{{ selectedAccommodation() ? 'Edit' : 'New' }} accommodation</h2>
-        <button type="button" class="btn-close" (click)="closeForm()">×</button>
+  <!-- Accommodation form (shared admin modal design system) -->
+  <p-dialog
+    [visible]="showForm()"
+    (visibleChange)="onAccommodationDialogVisible($event)"
+    [modal]="true"
+    [closable]="true"
+    appendTo="body"
+    [draggable]="false"
+    [resizable]="false"
+    [style]="{ width: 'min(92vw, 640px)', maxWidth: '100%' }"
+    styleClass="adm-modal-dialog"
+    [focusOnShow]="true"
+    [attr.aria-label]="selectedAccommodation() ? 'Edit accommodation' : 'New accommodation'"
+  >
+    <ng-template pTemplate="header">
+      <div class="adm-dlg-head">
+        <div class="adm-dlg-head-accent" aria-hidden="true"></div>
+        <div class="adm-dlg-head-main">
+          <span class="adm-dlg-icon-wrap" aria-hidden="true"><i class="pi pi-building"></i></span>
+          <div>
+            <h2 class="adm-dlg-title" id="acc-dialog-title">
+              {{ selectedAccommodation() ? 'Edit property' : 'New accommodation' }}
+            </h2>
+            <p class="adm-dlg-subtitle">Set type, location, nightly rate, rating, and listing status.</p>
+          </div>
+        </div>
       </div>
+    </ng-template>
 
-      <form [formGroup]="accommodationForm" (ngSubmit)="saveAccommodation()">
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Name *</label>
-            <input type="text" formControlName="name" placeholder="Property name" />
-            <div *ngIf="accommodationForm.get('name')?.invalid && accommodationForm.get('name')?.touched" class="error">
-              Name is required (min. 2 characters)
+    <form [formGroup]="accommodationForm" (ngSubmit)="saveAccommodation()" aria-labelledby="acc-dialog-title">
+      <div class="adm-dlg-body">
+        <section class="adm-section adm-animate" aria-labelledby="acc-sec-basics">
+          <div class="adm-section-head">
+            <span class="adm-section-icon" aria-hidden="true"><i class="pi pi-home"></i></span>
+            <div>
+              <h3 class="adm-section-title" id="acc-sec-basics">Property details</h3>
+              <p class="adm-section-hint">Name and accommodation category.</p>
             </div>
           </div>
-
-          <div class="form-group">
-            <label>Type *</label>
-            <select formControlName="type">
-              <option *ngFor="let type of accommodationTypes" [value]="type">{{ getTypeLabel(type) }}</option>
-            </select>
+          <div class="adm-form-grid-2">
+            <div
+              class="adm-field adm-span-2"
+              [class.adm-field--error]="accFieldInvalid('name')"
+              [class.adm-field--ok]="accFieldValid('name')"
+            >
+              <label class="adm-label" for="acc-name">
+                <i class="pi pi-pencil adm-label-ico" aria-hidden="true"></i>
+                Property name *
+              </label>
+              <input
+                pInputText
+                id="acc-name"
+                type="text"
+                formControlName="name"
+                class="adm-input"
+                placeholder="e.g. Dar Médina Suites"
+                autocomplete="off"
+              />
+              @if (accFieldInvalid('name')) {
+                <span class="adm-field-msg adm-field-msg--err" role="alert">Name is required (min. 2 characters)</span>
+              }
+            </div>
+            <div
+              class="adm-field adm-span-2"
+              [class.adm-field--error]="accFieldInvalid('type')"
+              [class.adm-field--ok]="accFieldValid('type')"
+            >
+              <label class="adm-label" for="acc-type">
+                <i class="pi pi-th-large adm-label-ico" aria-hidden="true"></i>
+                Type *
+              </label>
+              <p-dropdown
+                inputId="acc-type"
+                formControlName="type"
+                [options]="accTypeOptions"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Select type"
+                [filter]="true"
+                filterPlaceholder="Search type…"
+                styleClass="adm-p-dropdown w-full"
+                appendTo="body"
+              >
+              </p-dropdown>
+            </div>
           </div>
+        </section>
 
-          <div class="form-group">
-            <label>City *</label>
-            <select formControlName="cityId">
-              <option [ngValue]="null">Select a city</option>
-              <option *ngFor="let city of cities()" [ngValue]="city.cityId">{{ city.name }} ({{ city.region }})</option>
-            </select>
-            <div *ngIf="accommodationForm.get('cityId')?.invalid && accommodationForm.get('cityId')?.touched" class="error">City is required</div>
+        <section class="adm-section adm-animate adm-animate-delay-1" aria-labelledby="acc-sec-loc">
+          <div class="adm-section-head">
+            <span class="adm-section-icon" aria-hidden="true"><i class="pi pi-map-marker"></i></span>
+            <div>
+              <h3 class="adm-section-title" id="acc-sec-loc">Location &amp; status</h3>
+              <p class="adm-section-hint">City and whether the listing is bookable.</p>
+            </div>
           </div>
-
-          <div class="form-group">
-            <label>Price per night (TND) *</label>
-            <input type="number" formControlName="pricePerNight" min="0" step="0.01" />
-          </div>
-
-          <div class="form-group">
-            <label>Rating (0–5)</label>
-            <input type="number" formControlName="rating" min="0" max="5" step="0.1" />
-          </div>
-
-          <div class="form-group">
-            <label>Status *</label>
-            <select formControlName="status">
-              <option value="AVAILABLE">Available</option>
-              <option value="UNAVAILABLE">Unavailable</option>
-            </select>
-          </div>
-        </div>
-
-        <div *ngIf="selectedAccommodation()" class="rooms-section acc-rooms-section">
-          <div class="section-header">
-            <h3>Room management</h3>
-            <button type="button" class="btn btn-sm btn-primary" (click)="openRoomForm()">+ Add room</button>
-          </div>
-
-          <div *ngIf="selectedAccommodation()?.rooms?.length === 0" class="no-rooms">No rooms configured</div>
-
-          <div *ngIf="selectedAccommodation()?.rooms && selectedAccommodation()!.rooms!.length > 0" class="rooms-list">
-            <div *ngFor="let room of selectedAccommodation()?.rooms" class="room-item">
-              <div class="room-info">
-                <span class="room-type">{{ room.roomType }}</span>
-                <span class="room-capacity">{{ room.capacity }} guests</span>
-                <span class="room-price">{{ room.price | currency: 'TND' : 'symbol' : '1.2-2' }}</span>
-              </div>
-              <div class="room-actions">
-                <button type="button" class="btn btn-xs" (click)="openRoomForm(room)">✏️</button>
-                <button type="button" class="btn btn-xs btn-danger" (click)="deleteRoom(room)">🗑️</button>
+          <div class="adm-form-grid-2">
+            <div
+              class="adm-field"
+              [class.adm-field--error]="accFieldInvalid('cityId')"
+              [class.adm-field--ok]="accFieldValid('cityId')"
+            >
+              <label class="adm-label" for="acc-city">
+                <i class="pi pi-compass adm-label-ico" aria-hidden="true"></i>
+                City *
+              </label>
+              <p-dropdown
+                inputId="acc-city"
+                formControlName="cityId"
+                [options]="cityDropdownOptions()"
+                optionLabel="label"
+                optionValue="value"
+                placeholder="Search city…"
+                [filter]="true"
+                filterPlaceholder="Tunis, Sousse, Hammamet…"
+                [showClear]="true"
+                styleClass="adm-p-dropdown w-full"
+                panelStyleClass="admin-city-dropdown-panel"
+                scrollHeight="220px"
+                [appendTo]="'body'"
+              >
+              </p-dropdown>
+              @if (accFieldInvalid('cityId')) {
+                <span class="adm-field-msg adm-field-msg--err" role="alert">City is required</span>
+              }
+            </div>
+            <div
+              class="adm-field"
+              [class.adm-field--error]="accFieldInvalid('status')"
+              [class.adm-field--ok]="accFieldValid('status')"
+            >
+              <label class="adm-label" for="acc-status">
+                <i class="pi pi-bolt adm-label-ico" aria-hidden="true"></i>
+                Listing status *
+              </label>
+              <div class="adm-status-row">
+                <p-dropdown
+                  inputId="acc-status"
+                  formControlName="status"
+                  [options]="accStatusOptions"
+                  optionLabel="label"
+                  optionValue="value"
+                  placeholder="Status"
+                  [filter]="true"
+                  filterPlaceholder="Search…"
+                  styleClass="adm-p-dropdown w-full"
+                  appendTo="body"
+                >
+                </p-dropdown>
+                <span
+                  class="adm-form-badge"
+                  [class.adm-form-badge--available]="accommodationForm.get('status')?.value === 'AVAILABLE'"
+                  [class.adm-form-badge--unavailable]="accommodationForm.get('status')?.value === 'UNAVAILABLE'"
+                >
+                  {{ accommodationForm.get('status')?.value === 'AVAILABLE' ? 'Live' : 'Paused' }}
+                </span>
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" (click)="closeForm()">Cancel</button>
-          <button type="submit" class="btn btn-primary" [disabled]="accommodationForm.invalid">
-            {{ selectedAccommodation() ? 'Update' : 'Create' }}
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
+        <section class="adm-section adm-animate adm-animate-delay-2" aria-labelledby="acc-sec-price">
+          <div class="adm-section-head">
+            <span class="adm-section-icon" aria-hidden="true"><i class="pi pi-wallet"></i></span>
+            <div>
+              <h3 class="adm-section-title" id="acc-sec-price">Nightly rate</h3>
+              <p class="adm-section-hint">Displayed price per night in TND.</p>
+            </div>
+          </div>
+          <div
+            class="adm-price-card"
+            [class.adm-field--error]="accFieldInvalid('pricePerNight')"
+            [class.adm-field--ok]="accFieldValid('pricePerNight')"
+          >
+            <div class="adm-price-card-inner">
+              <span class="adm-price-currency">TND</span>
+              <p-inputNumber
+                inputId="acc-price"
+                formControlName="pricePerNight"
+                [min]="0"
+                [minFractionDigits]="2"
+                mode="decimal"
+                styleClass="adm-price-input-wrap"
+              >
+              </p-inputNumber>
+            </div>
+            @if (accFieldInvalid('pricePerNight')) {
+              <span class="adm-field-msg adm-field-msg--err adm-field-msg--block" role="alert">Enter a valid price</span>
+            }
+          </div>
+        </section>
 
-  <!-- Room Form Modal -->
-  <div *ngIf="showRoomForm()" class="modal-overlay" (click)="closeRoomForm()">
-    <div class="modal-content modal-sm" (click)="$event.stopPropagation()">
-      <div class="modal-header">
-        <h3>{{ editingRoom() ? 'Edit' : 'New' }} room</h3>
-        <button type="button" class="btn-close" (click)="closeRoomForm()">×</button>
+        <section class="adm-section adm-animate adm-animate-delay-3" aria-labelledby="acc-sec-rating">
+          <div class="adm-section-head">
+            <span class="adm-section-icon" aria-hidden="true"><i class="pi pi-star-fill"></i></span>
+            <div>
+              <h3 class="adm-section-title" id="acc-sec-rating">Guest rating</h3>
+              <p class="adm-section-hint">Optional score from 0 to 5.</p>
+            </div>
+          </div>
+          <div class="adm-rating-row">
+            <span class="adm-label adm-label--inline">
+              <i class="pi pi-chart-line adm-label-ico" aria-hidden="true"></i>
+              Rating
+            </span>
+            <span class="adm-rating-value">{{ (accommodationForm.get('rating')?.value ?? 0) | number: '1.1-1' }} / 5</span>
+          </div>
+          <p-slider
+            formControlName="rating"
+            [min]="0"
+            [max]="5"
+            [step]="0.1"
+            styleClass="adm-rating-slider"
+            [attr.aria-valuetext]="(accommodationForm.get('rating')?.value ?? 0) + ' out of 5'"
+          >
+          </p-slider>
+        </section>
+
+        @if (selectedAccommodation()) {
+          <section class="adm-section adm-animate adm-animate-delay-4 acc-rooms-section" aria-labelledby="acc-sec-rooms">
+            <div class="adm-section-head">
+              <span class="adm-section-icon" aria-hidden="true"><i class="pi pi-table"></i></span>
+              <div class="adm-room-section-head">
+                <div>
+                  <h3 class="adm-section-title" id="acc-sec-rooms">Room management</h3>
+                  <p class="adm-section-hint">Configure room types for this property.</p>
+                </div>
+                <button type="button" class="adm-btn adm-btn--primary adm-btn--compact" (click)="openRoomForm()">
+                  <i class="pi pi-plus" aria-hidden="true"></i>
+                  Add room
+                </button>
+              </div>
+            </div>
+
+            @if (selectedAccommodation()?.rooms?.length === 0) {
+              <p class="adm-no-rooms">No rooms configured yet.</p>
+            }
+
+            @if (selectedAccommodation()?.rooms && selectedAccommodation()!.rooms!.length > 0) {
+              <div class="adm-room-list">
+                @for (room of selectedAccommodation()?.rooms; track room.roomId) {
+                  <div class="adm-room-item">
+                    <div class="adm-room-meta">
+                      <span class="adm-room-type">{{ room.roomType }}</span>
+                      <span class="adm-room-cap"><i class="pi pi-users" aria-hidden="true"></i>{{ room.capacity }} guests</span>
+                      <span class="adm-room-price">{{ room.price | currency: 'TND' : 'symbol' : '1.2-2' }}</span>
+                    </div>
+                    <div class="adm-room-actions">
+                      <button type="button" class="adm-icon-btn" title="Edit room" (click)="openRoomForm(room)">
+                        <i class="pi pi-pencil"></i>
+                      </button>
+                      <button type="button" class="adm-icon-btn adm-icon-btn--danger" title="Delete room" (click)="deleteRoom(room)">
+                        <i class="pi pi-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </section>
+        }
       </div>
+    </form>
 
-      <form [formGroup]="roomForm" (ngSubmit)="saveRoom()">
-        <div class="form-group">
-          <label>Room type *</label>
-          <select formControlName="roomType">
-            <option *ngFor="let type of roomTypes" [value]="type">{{ type }}</option>
-          </select>
-        </div>
+    <ng-template pTemplate="footer">
+      <div class="adm-dlg-footer">
+        <button type="button" class="adm-btn adm-btn--secondary" (click)="closeForm()">
+          <i class="pi pi-times" aria-hidden="true"></i>
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="adm-btn adm-btn--primary"
+          [disabled]="accommodationForm.invalid"
+          (click)="saveAccommodation()"
+        >
+          <i class="pi pi-check" aria-hidden="true"></i>
+          {{ selectedAccommodation() ? 'Save changes' : 'Create listing' }}
+        </button>
+      </div>
+    </ng-template>
+  </p-dialog>
 
-        <div class="form-group">
-          <label>Capacity (guests) *</label>
-          <input type="number" formControlName="capacity" min="1" />
+  <p-dialog
+    [visible]="showRoomForm()"
+    (visibleChange)="onRoomDialogVisible($event)"
+    [modal]="true"
+    [closable]="true"
+    appendTo="body"
+    [draggable]="false"
+    [resizable]="false"
+    [style]="{ width: 'min(92vw, 440px)', maxWidth: '100%' }"
+    styleClass="adm-modal-dialog adm-modal-dialog--sm"
+    [focusOnShow]="true"
+    [attr.aria-label]="editingRoom() ? 'Edit room' : 'New room'"
+  >
+    <ng-template pTemplate="header">
+      <div class="adm-dlg-head">
+        <div class="adm-dlg-head-accent" aria-hidden="true"></div>
+        <div class="adm-dlg-head-main">
+          <span class="adm-dlg-icon-wrap" aria-hidden="true"><i class="pi pi-table"></i></span>
+          <div>
+            <h2 class="adm-dlg-title" id="acc-room-dialog-title">{{ editingRoom() ? 'Edit room' : 'New room' }}</h2>
+            <p class="adm-dlg-subtitle">Capacity and nightly price for this room type.</p>
+          </div>
         </div>
+      </div>
+    </ng-template>
 
-        <div class="form-group">
-          <label>Price (TND) *</label>
-          <input type="number" formControlName="price" min="0" step="0.01" />
-        </div>
+    <form [formGroup]="roomForm" (ngSubmit)="saveRoom()" aria-labelledby="acc-room-dialog-title">
+      <div class="adm-dlg-body">
+        <section class="adm-section adm-animate">
+          <div
+            class="adm-field"
+            [class.adm-field--error]="roomForm.get('roomType')?.invalid && roomForm.get('roomType')?.touched"
+          >
+            <label class="adm-label" for="acc-room-type">
+              <i class="pi pi-th-large adm-label-ico" aria-hidden="true"></i>
+              Room type *
+            </label>
+            <p-dropdown
+              inputId="acc-room-type"
+              formControlName="roomType"
+              [options]="roomTypeOptions"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Select room type"
+              [filter]="true"
+              filterPlaceholder="Search…"
+              styleClass="adm-p-dropdown w-full"
+              appendTo="body"
+            >
+            </p-dropdown>
+          </div>
+          <div class="adm-schedule-grid adm-mt-2">
+            <div
+              class="adm-field"
+              [class.adm-field--error]="roomForm.get('capacity')?.invalid && roomForm.get('capacity')?.touched"
+            >
+              <label class="adm-label" for="acc-room-cap">
+                <i class="pi pi-users adm-label-ico" aria-hidden="true"></i>
+                Guests *
+              </label>
+              <p-inputNumber
+                inputId="acc-room-cap"
+                formControlName="capacity"
+                [min]="1"
+                [showButtons]="true"
+                styleClass="w-full"
+              >
+              </p-inputNumber>
+            </div>
+            <div
+              class="adm-field"
+              [class.adm-field--error]="roomForm.get('price')?.invalid && roomForm.get('price')?.touched"
+            >
+              <label class="adm-label" for="acc-room-price">
+                <i class="pi pi-wallet adm-label-ico" aria-hidden="true"></i>
+                Price (TND) *
+              </label>
+              <p-inputNumber
+                inputId="acc-room-price"
+                formControlName="price"
+                [min]="0"
+                [minFractionDigits]="2"
+                mode="decimal"
+                styleClass="w-full"
+              >
+              </p-inputNumber>
+            </div>
+          </div>
+        </section>
+      </div>
+    </form>
 
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" (click)="closeRoomForm()">Cancel</button>
-          <button type="submit" class="btn btn-primary" [disabled]="roomForm.invalid">{{ editingRoom() ? 'Update' : 'Add' }}</button>
-        </div>
-      </form>
-    </div>
-  </div>
+    <ng-template pTemplate="footer">
+      <div class="adm-dlg-footer">
+        <button type="button" class="adm-btn adm-btn--secondary" (click)="closeRoomForm()">
+          <i class="pi pi-times" aria-hidden="true"></i>
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="adm-btn adm-btn--primary"
+          [disabled]="roomForm.invalid"
+          (click)="saveRoom()"
+        >
+          <i class="pi pi-check" aria-hidden="true"></i>
+          {{ editingRoom() ? 'Update room' : 'Add room' }}
+        </button>
+      </div>
+    </ng-template>
+  </p-dialog>
 </div>

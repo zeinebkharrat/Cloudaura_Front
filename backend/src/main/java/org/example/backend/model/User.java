@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Set;
@@ -32,6 +33,9 @@ public class User {
     @Column(name = "phone", length = 20)
     private String phone;
     private Integer points;
+    private Double monthlyScore;
+    private Double lifetimeScore;
+    private LocalDateTime lastResetDate;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "level_id")
@@ -45,6 +49,9 @@ public class User {
     /** MEDIUMTEXT (≈16 Mo) — URLs longues ou data URLs base64 pour la photo de profil. */
     @Column(columnDefinition = "MEDIUMTEXT")
     private String profileImageUrl;
+    /** Optional cover image shown in profile settings header. */
+    @Column(columnDefinition = "MEDIUMTEXT")
+    private String coverImageUrl;
     private String nationality;
     private String gender;
     private LocalDate dateOfBirth;
@@ -143,6 +150,30 @@ public class User {
         this.points = points;
     }
 
+    public Double getMonthlyScore() {
+        return monthlyScore;
+    }
+
+    public void setMonthlyScore(Double monthlyScore) {
+        this.monthlyScore = monthlyScore;
+    }
+
+    public Double getLifetimeScore() {
+        return lifetimeScore;
+    }
+
+    public void setLifetimeScore(Double lifetimeScore) {
+        this.lifetimeScore = lifetimeScore;
+    }
+
+    public LocalDateTime getLastResetDate() {
+        return lastResetDate;
+    }
+
+    public void setLastResetDate(LocalDateTime lastResetDate) {
+        this.lastResetDate = lastResetDate;
+    }
+
     @JsonIgnore
     public Level getLevel() {
         return level;
@@ -198,6 +229,14 @@ public class User {
 
     public void setProfileImageUrl(String profileImageUrl) {
         this.profileImageUrl = profileImageUrl;
+    }
+
+    public String getCoverImageUrl() {
+        return coverImageUrl;
+    }
+
+    public void setCoverImageUrl(String coverImageUrl) {
+        this.coverImageUrl = coverImageUrl;
     }
 
     public String getNationality() {

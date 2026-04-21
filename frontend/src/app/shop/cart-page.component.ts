@@ -110,6 +110,22 @@ export class CartPageComponent implements OnInit {
     this.router.navigate(['/mes-commandes']);
   }
 
+  downloadReceiptPdf(): void {
+    const order = this.orderDone();
+    if (!order?.orderId) return;
+    this.shop.downloadMyOrderReceiptPdf(order.orderId).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `order-receipt-${order.orderId}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => this.error.set('Could not download receipt PDF.'),
+    });
+  }
+
   checkout(): void {
     this.checkoutLoading.set(true);
     this.error.set(null);
@@ -149,7 +165,7 @@ export class CartPageComponent implements OnInit {
   orderStatusLabel(status: string | null | undefined): string {
     const s = (status ?? '').toUpperCase();
     if (s === 'PENDING') return 'Pending';
-    if (s === 'CONFIRMED' || s === 'CONFIRMÉE') return 'Confirmed';
+    if (s === 'PROCESSING') return 'Processing';
     if (s === 'SHIPPED') return 'Shipped';
     if (s === 'DELIVERED') return 'Delivered';
     if (s === 'CANCELLED') return 'Cancelled';
@@ -173,5 +189,12 @@ export class CartPageComponent implements OnInit {
     const full = `${fn} ${ln}`.trim();
     if (full) return full;
     return b.username ?? '—';
+  }
+
+  paymentMethodLabel(method: string | null | undefined): string {
+    const m = (method ?? '').toUpperCase();
+    if (m === 'CARD') return 'Card payment';
+    if (m === 'COD') return 'Cash on delivery';
+    return method ?? '—';
   }
 }

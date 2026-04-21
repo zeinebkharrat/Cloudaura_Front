@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.backend.dto.publicapi.ChatbotQueryResponse;
 import org.example.backend.model.Activity;
 import org.example.backend.model.City;
+import org.example.backend.model.CuisineType;
 import org.example.backend.model.Event;
 import org.example.backend.model.Product;
 import org.example.backend.model.ProductCategory;
@@ -192,7 +193,7 @@ class ChatbotAssistantServiceWorkflowTest {
         darElJeld.setRestaurantId(1);
         darElJeld.setCity(tunis);
         darElJeld.setName("Dar El Jeld");
-        darElJeld.setCuisineType("tunisienne");
+        darElJeld.setCuisineType(CuisineType.TUNISIAN);
 
         when(cityRepository.findAll()).thenReturn(List.of(tunis));
         when(activityRepository.findByCityCityIdOrderByActivityIdDesc(tunis.getCityId())).thenReturn(List.of(karting));

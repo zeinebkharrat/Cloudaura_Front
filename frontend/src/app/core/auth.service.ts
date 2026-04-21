@@ -43,7 +43,7 @@ export class AuthService {
   readonly isArtisan = computed(() => this.hasRole('ROLE_ARTISAN'));
 
   signin(payload: SignInPayload) {
-    return this.http.post<AuthResponse>(`${this.apiBase}/auth/signin`, payload).pipe(
+    return this.http.post<AuthResponse>(`${OAUTH_BACKEND_ORIGIN}${this.apiBase}/auth/signin`, payload).pipe(
       tap((response) => this.storeSession(response)),
       map((response) => response.user)
     );

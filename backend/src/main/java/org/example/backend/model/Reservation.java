@@ -30,6 +30,9 @@ public class Reservation {
     @Column(name = "total_price")
     private Double totalPrice;
 
+    @Column(name = "guest_count")
+    private Integer guestCount;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "room_id", nullable = true)
     private Room room;

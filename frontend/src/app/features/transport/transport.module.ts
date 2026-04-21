@@ -3,13 +3,12 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MessageService } from 'primeng/api';
-import { DropdownModule } from 'primeng/dropdown';
-import { CalendarModule } from 'primeng/calendar';
+import { SelectModule } from 'primeng/select';
+import { DatePickerModule } from 'primeng/datepicker';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { ButtonModule } from 'primeng/button';
 import { RippleModule } from 'primeng/ripple';
 import { TooltipModule } from 'primeng/tooltip';
-import { StepperModule } from 'primeng/stepper';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputMaskModule } from 'primeng/inputmask';
 import { RadioButtonModule } from 'primeng/radiobutton';
@@ -28,20 +27,23 @@ import { TransportPaymentCancelComponent } from './transport-payment-cancel/tran
 import { TransportRouteMapComponent } from './transport-route-map/transport-route-map.component';
 import { TunisiaCityMatchService } from './tunisia-city-match.service';
 import { TransportTrackingSseService } from './transport-tracking-sse.service';
+import { DualCurrencyPipe } from '../../core/pipes/dual-currency.pipe';
+import { TranslateModule } from '@ngx-translate/core';
 
 @NgModule({
   imports: [
     CommonModule,
+    TranslateModule,
+    DualCurrencyPipe,
     FormsModule,
     ReactiveFormsModule,
     RouterModule.forChild(TRANSPORT_ROUTES),
-    DropdownModule,
-    CalendarModule,
+    SelectModule,
+    DatePickerModule,
     InputNumberModule,
     ButtonModule,
     RippleModule,
     TooltipModule,
-    StepperModule,
     InputTextModule,
     InputMaskModule,
     RadioButtonModule,

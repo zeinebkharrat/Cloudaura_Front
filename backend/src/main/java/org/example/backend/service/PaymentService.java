@@ -58,7 +58,7 @@ public class PaymentService {
 
     @PostConstruct
     void configureStripeApiKey() {
-        String key = StripeSecretKeys.normalize(stripeApiKey);
+        String key = resolveStripeApiKey();
         if (StripeSecretKeys.isStripeSecretConfigured(key)) {
             Stripe.apiKey = key;
             log.info("Stripe.apiKey initialized for PaymentService (transport/shop Checkout enabled)");
@@ -68,6 +68,19 @@ public class PaymentService {
         }
     }
 
+    public boolean isStripeCheckoutEnabled() {
+        return StripeSecretKeys.isStripeSecretConfigured(resolveStripeApiKey());
+    }
+
+    public String stripeKeyPrefixForLogs() {
+        String key = resolveStripeApiKey();
+        return key.length() >= 7 ? key.substring(0, 7) + "…" : "(short/empty)";
+    }
+
+    private String resolveStripeApiKey() {
+        return StripeSecretKeys.resolveEffective(stripeApiKey, System.getenv("STRIPE_SECRET_KEY"));
+    }
+
     private String normalizedStripeCurrency() {
         if (stripeCheckoutCurrency == null || stripeCheckoutCurrency.isBlank()) {
             return "usd";
@@ -75,9 +88,24 @@ public class PaymentService {
         return stripeCheckoutCurrency.trim().toLowerCase();
     }
 
+    private String normalizedStripeCurrency(String preferredCurrency) {
+        if (preferredCurrency == null || preferredCurrency.isBlank()) {
+            return normalizedStripeCurrency();
+        }
+        return preferredCurrency.trim().toLowerCase();
+    }
+
     /** Business DB amounts are TND; Stripe minor units use the configured Checkout currency. */
     private long minorUnitsFromTnd(double amountTnd) {
         if ("tnd".equals(normalizedStripeCurrency())) {
+            return Math.round(amountTnd * 100.0);
+        }
+        double presentment = amountTnd * stripeTndToPresentment;
+        return Math.round(presentment * 100.0);
+    }
+
+    private long minorUnitsFromTnd(double amountTnd, String checkoutCurrency) {
+        if ("tnd".equals(normalizedStripeCurrency(checkoutCurrency))) {
             return Math.round(amountTnd * 100.0);
         }
         double presentment = amountTnd * stripeTndToPresentment;
@@ -92,10 +120,11 @@ public class PaymentService {
     }
 
     public String generatePaymentUrl(OrderEntity order) {
-        if (!StripeSecretKeys.isStripeSecretConfigured(StripeSecretKeys.normalize(stripeApiKey))) {
-            // Simulated local payment gateway (Konnect/Stripe mock)
-            return frontendBaseUrl + "/mock-payment?orderId=" + order.getOrderId() + "&amount=" + order.getTotalAmount();
+        String key = resolveStripeApiKey();
+        if (!StripeSecretKeys.isStripeSecretConfigured(key)) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Paiement Stripe indisponible.");
         }
+        Stripe.apiKey = key;
 
         String checkoutCurrency = normalizedStripeCurrency();
         List<SessionCreateParams.LineItem> stripeLines = new ArrayList<>();
@@ -196,7 +225,7 @@ public class PaymentService {
 
             SessionCreateParams params = SessionCreateParams.builder()
                 .setMode(SessionCreateParams.Mode.PAYMENT)
-                .setSuccessUrl(frontendBaseUrl + "/mes-commandes?success=true")
+                .setSuccessUrl(frontendBaseUrl + "/mes-commandes?success=true&session_id={CHECKOUT_SESSION_ID}")
                 .setCancelUrl(frontendBaseUrl + "/mes-commandes?canceled=true")
                 .putMetadata("orderId", String.valueOf(order.getOrderId()))
                 .addAllLineItem(stripeLines)
@@ -206,7 +235,43 @@ public class PaymentService {
             return session.getUrl();
         } catch (StripeException e) {
             log.error("Stripe checkout session (shop) failed", e);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Erreur génération Stripe");
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Erreur Stripe lors de la creation du paiement.");
+        }
+    }
+
+    @Transactional
+    public void confirmShopStripeSession(String sessionId) {
+        if (sessionId == null || sessionId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "session_id requis");
+        }
+        String key = resolveStripeApiKey();
+        if (!StripeSecretKeys.isStripeSecretConfigured(key)) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Paiement Stripe indisponible.");
+        }
+        Stripe.apiKey = key;
+        try {
+            Session session = Session.retrieve(sessionId.trim());
+            if (session == null) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Session Stripe introuvable.");
+            }
+            String orderIdRaw = session.getMetadata() != null ? session.getMetadata().get("orderId") : null;
+            if (orderIdRaw == null || orderIdRaw.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Session Stripe invalide (orderId manquant).");
+            }
+            Integer orderId;
+            try {
+                orderId = Integer.valueOf(orderIdRaw.trim());
+            } catch (NumberFormatException ex) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Session Stripe invalide (orderId incorrect).");
+            }
+
+            boolean paid = "paid".equalsIgnoreCase(session.getPaymentStatus());
+            if (paid) {
+                markOrderAsPaid(orderId);
+            }
+        } catch (StripeException e) {
+            log.error("Stripe shop confirm-session failed for sessionId={}", sessionId, e);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Impossible de verifier la session Stripe.");
         }
     }
 
@@ -215,7 +280,11 @@ public class PaymentService {
      * and {@code stripe.transport.tnd-to-presentment} when the presentment currency is not TND.
      */
     public TransportPaymentStartDto createTransportCheckoutSession(TransportReservation reservation, double totalTnd) {
-        String key = StripeSecretKeys.normalize(stripeApiKey);
+        return createTransportCheckoutSession(reservation, totalTnd, null);
+    }
+
+    public TransportPaymentStartDto createTransportCheckoutSession(TransportReservation reservation, double totalTnd, String preferredCurrency) {
+        String key = resolveStripeApiKey();
         if (!StripeSecretKeys.isStripeSecretConfigured(key)) {
             log.warn("createTransportCheckoutSession called but stripe secret not configured after normalize");
             throw new ResponseStatusException(
@@ -224,13 +293,78 @@ public class PaymentService {
         }
         Stripe.apiKey = key;
 
-        String checkoutCurrency = normalizedStripeCurrency();
-        long unitAmount = totalTnd <= 0 ? 0L : minorUnitsFromTnd(totalTnd);
+        String checkoutCurrency = normalizedStripeCurrency(preferredCurrency);
+        long unitAmount = totalTnd <= 0 ? 0L : minorUnitsFromTnd(totalTnd, checkoutCurrency);
         assertTransportStripeChargeable(unitAmount, checkoutCurrency);
 
         String ref = reservation.getReservationRef();
         String label = "Transport — " + (ref != null && !ref.isBlank() ? ref : "#" + reservation.getTransportReservationId());
 
+        String returnUrl = frontendBaseUrl + "/transport/payment/return?session_id={CHECKOUT_SESSION_ID}";
+
+        try {
+            return createTransportSessionWithCurrency(reservation, totalTnd, checkoutCurrency, unitAmount, label, returnUrl);
+        } catch (StripeException first) {
+            boolean shouldFallback = "tnd".equals(checkoutCurrency) && isStripePresentmentCurrencyRejected(first);
+            if (shouldFallback) {
+                String fallbackCurrency = "eur";
+                long fallbackAmount = minorUnitsFromTnd(totalTnd, fallbackCurrency);
+                assertTransportStripeChargeable(fallbackAmount, fallbackCurrency);
+                log.warn(
+                        "Stripe rejected transport checkout in currency={} (reservationId={}) - retrying with {}",
+                        checkoutCurrency,
+                        reservation.getTransportReservationId(),
+                        fallbackCurrency,
+                        first);
+                try {
+                    return createTransportSessionWithCurrency(
+                            reservation,
+                            totalTnd,
+                            fallbackCurrency,
+                            fallbackAmount,
+                            label,
+                            returnUrl);
+                } catch (StripeException second) {
+                    log.error(
+                            "Stripe transport checkout failed after fallback (firstCurrency={}, fallbackCurrency={}, reservationId={})",
+                            checkoutCurrency,
+                            fallbackCurrency,
+                            reservation.getTransportReservationId(),
+                            second);
+                    throw toTransportStripeResponseStatus(second);
+                }
+            }
+
+            log.error(
+                    "Stripe transport checkout failed (currency={}, unitAmount={}, reservationId={})",
+                    checkoutCurrency,
+                    unitAmount,
+                    reservation.getTransportReservationId(),
+                    first);
+            throw toTransportStripeResponseStatus(first);
+        }
+    }
+
+    private ResponseStatusException toTransportStripeResponseStatus(StripeException error) {
+        int code = error.getStatusCode();
+        String hint = error.getMessage() != null ? error.getMessage() : "erreur inconnue";
+        if (code == 400 || code == 402 || code == 404) {
+            return new ResponseStatusException(HttpStatus.BAD_REQUEST, "Paiement Stripe indisponible : " + hint);
+        }
+        if (code == 401 || code == 403) {
+            return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Configuration Stripe invalide ou refusée.");
+        }
+        return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Paiement Stripe indisponible : " + hint);
+    }
+
+    private TransportPaymentStartDto createTransportSessionWithCurrency(
+            TransportReservation reservation,
+            double totalTnd,
+            String checkoutCurrency,
+            long unitAmount,
+            String label,
+            String returnUrl)
+            throws StripeException {
         List<SessionCreateParams.LineItem> stripeLines = List.of(
                 SessionCreateParams.LineItem.builder()
                         .setQuantity(1L)
@@ -245,52 +379,46 @@ public class PaymentService {
                                         .build())
                         .build());
 
-        String returnUrl = frontendBaseUrl + "/transport/payment/return?session_id={CHECKOUT_SESSION_ID}";
+        SessionCreateParams params = SessionCreateParams.builder()
+                .setMode(SessionCreateParams.Mode.PAYMENT)
+                .setSuccessUrl(returnUrl)
+                .setCancelUrl(frontendBaseUrl + "/transport")
+                .putMetadata(
+                        "transportReservationId",
+                        String.valueOf(reservation.getTransportReservationId()))
+                .addAllLineItem(stripeLines)
+                .build();
 
-        try {
-            SessionCreateParams params = SessionCreateParams.builder()
-                    .setMode(SessionCreateParams.Mode.PAYMENT)
-                    .setSuccessUrl(returnUrl)
-                    .setCancelUrl(frontendBaseUrl + "/transport")
-                    .putMetadata(
-                            "transportReservationId",
-                            String.valueOf(reservation.getTransportReservationId()))
-                    .addAllLineItem(stripeLines)
-                    .build();
-
-            Session session = Session.create(params);
-            String url = session.getUrl();
-            log.info(
-                    "Stripe transport Checkout session created: sessionId={} transportReservationId={} urlPresent={}",
-                    session.getId(),
-                    reservation.getTransportReservationId(),
-                    url != null && !url.isBlank());
-            if (url == null || url.isBlank()) {
-                log.error("Stripe returned no checkout URL for transport reservation {}", reservation.getTransportReservationId());
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Stripe n'a pas renvoyé d'URL de paiement.");
-            }
-            return TransportPaymentStartDto.builder().url(url).build();
-        } catch (StripeException e) {
+        Session session = Session.create(params);
+        String url = session.getUrl();
+        log.info(
+                "Stripe transport Checkout session created: sessionId={} transportReservationId={} currency={} urlPresent={}",
+                session.getId(),
+                reservation.getTransportReservationId(),
+                checkoutCurrency,
+                url != null && !url.isBlank());
+        if (url == null || url.isBlank()) {
             log.error(
-                    "Stripe transport checkout failed (currency={}, unitAmount={}, reservationId={})",
-                    checkoutCurrency,
-                    unitAmount,
+                    "Stripe returned no checkout URL for transport reservation {} in currency {}",
                     reservation.getTransportReservationId(),
-                    e);
-            String hint = e.getMessage() != null ? e.getMessage() : "erreur inconnue";
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_GATEWAY, "Paiement Stripe indisponible : " + hint);
+                    checkoutCurrency);
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Stripe n'a pas renvoyé d'URL de paiement.");
         }
+        return TransportPaymentStartDto.builder().url(url).build();
     }
 
     /**
      * Stripe Checkout for an accommodation stay (TND). Metadata {@code accommodationReservationId} is used on return.
      */
     public TransportPaymentStartDto createAccommodationCheckoutSession(Reservation reservation, double totalTnd) {
+        return createAccommodationCheckoutSession(reservation, totalTnd, null);
+    }
+
+    public TransportPaymentStartDto createAccommodationCheckoutSession(Reservation reservation, double totalTnd, String preferredCurrency) {
         if (reservation == null || reservation.getReservationId() == null) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Réservation invalide pour Stripe.");
         }
-        String key = StripeSecretKeys.normalize(stripeApiKey);
+        String key = resolveStripeApiKey();
         if (!StripeSecretKeys.isStripeSecretConfigured(key)) {
             log.warn("createAccommodationCheckoutSession called but stripe secret not configured after normalize");
             throw new ResponseStatusException(
@@ -299,8 +427,8 @@ public class PaymentService {
         }
         Stripe.apiKey = key;
 
-        String checkoutCurrency = normalizedStripeCurrency();
-        long unitAmount = minorUnitsFromTnd(totalTnd);
+        String checkoutCurrency = normalizedStripeCurrency(preferredCurrency);
+        long unitAmount = minorUnitsFromTnd(totalTnd, checkoutCurrency);
         assertTransportStripeChargeable(unitAmount, checkoutCurrency);
 
         String label = "Hébergement — réservation #" + reservation.getReservationId();
@@ -322,43 +450,118 @@ public class PaymentService {
         String returnUrl = frontendBaseUrl + "/hebergement/payment/return?session_id={CHECKOUT_SESSION_ID}";
 
         try {
-            SessionCreateParams params = SessionCreateParams.builder()
-                    .setMode(SessionCreateParams.Mode.PAYMENT)
-                    .setSuccessUrl(returnUrl)
-                    .setCancelUrl(frontendBaseUrl + "/hebergement")
-                    .putMetadata(
-                            "accommodationReservationId",
-                            String.valueOf(reservation.getReservationId()))
-                    .addAllLineItem(stripeLines)
-                    .build();
-
-            log.info(
-                    "Creating Stripe Checkout Session for accommodation reservationId={}",
-                    reservation.getReservationId());
-            Session session = Session.create(params);
-
-            String url = session.getUrl();
-            if (url == null || url.isBlank()) {
+            return createAccommodationSessionWithCurrency(
+                reservation,
+                totalTnd,
+                checkoutCurrency,
+                unitAmount,
+                stripeLines,
+                returnUrl);
+        } catch (StripeException first) {
+            boolean shouldFallback = "tnd".equals(checkoutCurrency) && isStripePresentmentCurrencyRejected(first);
+            if (shouldFallback) {
+            String fallbackCurrency = "eur";
+            long fallbackAmount = minorUnitsFromTnd(totalTnd, fallbackCurrency);
+            assertTransportStripeChargeable(fallbackAmount, fallbackCurrency);
+            List<SessionCreateParams.LineItem> fallbackLines = List.of(
+                SessionCreateParams.LineItem.builder()
+                    .setQuantity(1L)
+                    .setPriceData(
+                        SessionCreateParams.LineItem.PriceData.builder()
+                            .setCurrency(fallbackCurrency)
+                            .setUnitAmount(fallbackAmount)
+                            .setProductData(
+                                SessionCreateParams.LineItem.PriceData.ProductData.builder()
+                                    .setName(stripeLineItemNameWithTndRef(label, totalTnd))
+                                    .build())
+                            .build())
+                    .build());
+            log.warn(
+                "Stripe rejected accommodation checkout in currency={} (reservationId={}) - retrying with {}",
+                checkoutCurrency,
+                reservation.getReservationId(),
+                fallbackCurrency,
+                first);
+            try {
+                return createAccommodationSessionWithCurrency(
+                    reservation,
+                    totalTnd,
+                    fallbackCurrency,
+                    fallbackAmount,
+                    fallbackLines,
+                    returnUrl);
+            } catch (StripeException second) {
                 log.error(
-                        "Stripe returned no checkout URL for accommodation reservation {}",
-                        reservation.getReservationId());
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Stripe n'a pas renvoyé d'URL de paiement.");
+                    "Stripe accommodation checkout failed after fallback (firstCurrency={}, fallbackCurrency={}, reservationId={})",
+                    checkoutCurrency,
+                    fallbackCurrency,
+                    reservation.getReservationId(),
+                    second);
+                throw toAccommodationStripeResponseStatus(second);
             }
-            return TransportPaymentStartDto.builder().url(url).build();
-        } catch (StripeException e) {
+            }
+
             log.error(
                     "Stripe accommodation checkout failed (currency={}, unitAmount={}, reservationId={})",
                     checkoutCurrency,
                     unitAmount,
                     reservation.getReservationId(),
-                    e);
-            String hint = e.getMessage() != null ? e.getMessage() : "erreur inconnue";
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Paiement Stripe indisponible : " + hint);
+                first);
+            throw toAccommodationStripeResponseStatus(first);
         }
     }
 
+        private ResponseStatusException toAccommodationStripeResponseStatus(StripeException error) {
+        int code = error.getStatusCode();
+        String hint = error.getMessage() != null ? error.getMessage() : "erreur inconnue";
+        if (code == 400 || code == 402 || code == 404) {
+            return new ResponseStatusException(HttpStatus.BAD_REQUEST, "Paiement Stripe indisponible : " + hint);
+        }
+        if (code == 401 || code == 403) {
+            return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Configuration Stripe invalide ou refusée.");
+        }
+        return new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Paiement Stripe indisponible : " + hint);
+        }
+
+        private TransportPaymentStartDto createAccommodationSessionWithCurrency(
+            Reservation reservation,
+            double totalTnd,
+            String checkoutCurrency,
+            long unitAmount,
+            List<SessionCreateParams.LineItem> stripeLines,
+            String returnUrl)
+            throws StripeException {
+        SessionCreateParams params = SessionCreateParams.builder()
+            .setMode(SessionCreateParams.Mode.PAYMENT)
+            .setSuccessUrl(returnUrl)
+            .setCancelUrl(frontendBaseUrl + "/hebergement")
+            .putMetadata(
+                "accommodationReservationId",
+                String.valueOf(reservation.getReservationId()))
+            .addAllLineItem(stripeLines)
+            .build();
+
+        log.info(
+            "Creating Stripe Checkout Session for accommodation reservationId={} currency={} amountMinor={} (refTnd={})",
+            reservation.getReservationId(),
+            checkoutCurrency,
+            unitAmount,
+            totalTnd);
+        Session session = Session.create(params);
+
+        String url = session.getUrl();
+        if (url == null || url.isBlank()) {
+            log.error(
+                "Stripe returned no checkout URL for accommodation reservation {} in currency {}",
+                reservation.getReservationId(),
+                checkoutCurrency);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Stripe n'a pas renvoyé d'URL de paiement.");
+        }
+        return TransportPaymentStartDto.builder().url(url).build();
+        }
+
     /** Enforces Stripe-style minimums for common two-decimal presentment currencies. */
-    private static void assertTransportStripeChargeable(long minorAmount, String currency) {
+    public void assertTransportStripeChargeable(long minorAmount, String currency) {
         if (minorAmount <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Montant total invalide pour le paiement.");
         }
@@ -377,6 +580,23 @@ public class PaymentService {
                     HttpStatus.BAD_REQUEST,
                     "Montant trop faible pour Stripe dans cette devise (minimum ~0,50). Augmentez places, distance ou durée.");
         }
+    }
+
+    public boolean isStripePresentmentCurrencyRejected(StripeException e) {
+        if (e == null || e.getMessage() == null) {
+            return false;
+        }
+        String msg = e.getMessage().toLowerCase();
+        return msg.contains("currency")
+                || msg.contains("presentment")
+                || msg.contains("not supported")
+                || msg.contains("invalid integer")
+                || msg.contains("minimum");
+    }
+
+    public long stripeMinorUnits(Double amountTnd, String preferredCurrency) {
+        double safeAmount = amountTnd == null ? 0d : amountTnd;
+        return minorUnitsFromTnd(safeAmount, preferredCurrency);
     }
 
     @Transactional

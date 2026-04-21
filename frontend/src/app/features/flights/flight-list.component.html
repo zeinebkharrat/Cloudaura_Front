@@ -1,0 +1,88 @@
+<div class="flight-list-wrap">
+  @if (loading) {
+    <div class="skeleton-grid" aria-busy="true">
+      @for (i of skeletonPlaceholders; track i) {
+        <div class="skeleton-card">
+          <div class="sk-row">
+            <p-skeleton width="45%" height="1rem" styleClass="sk" />
+            <p-skeleton width="22%" height="1.5rem" borderRadius="8px" styleClass="sk" />
+          </div>
+          <div class="sk-route">
+            <p-skeleton width="100%" height="3.5rem" borderRadius="12px" styleClass="sk" />
+          </div>
+          <p-skeleton width="35%" height="0.65rem" styleClass="sk" />
+        </div>
+      }
+    </div>
+  }
+
+  @if (!loading && error) {
+    <div class="state-error" role="alert">
+      <i class="pi pi-exclamation-triangle"></i>
+      <span>{{ error }}</span>
+    </div>
+  }
+
+  @if (!loading && !error && !hasSearched) {
+    <div class="state-idle">{{ idleHint }}</div>
+  }
+
+  @if (!loading && !error && hasSearched && flights.length === 0) {
+    <div class="state-empty">{{ emptyMessage || 'No results.' }}</div>
+  }
+
+  @if (!loading && !error && flights.length > 0) {
+    <div class="cards-grid">
+      @for (f of flights; track trackByFn($index, f)) {
+        <article class="flight-card" [class.selected]="mapMode && isSelected(f)" [class.best-price]="isBestPrice(f)">
+          <header class="card-top">
+            <div class="airline-block">
+              <span class="airline">{{ f.airline }}</span>
+              <span class="flight-no">{{ f.flightNumber }}</span>
+            </div>
+            <div class="card-top-meta">
+              @if (isBestPrice(f)) {
+                <span class="best-price-pill">Best price</span>
+              }
+              <span class="flight-price" [attr.title]="priceLine(f)">{{ priceLine(f) }}</span>
+              <p-tag [value]="badge(f).label" [severity]="badge(f).severity"></p-tag>
+            </div>
+          </header>
+          <div class="route-visual">
+            <div class="endpoint dep">
+              <span class="code">{{ f.departureIata || '—' }}</span>
+              <span class="name">{{ f.departureAirport }}</span>
+              <time>{{ formatTime(f.departureTime) }}</time>
+            </div>
+            <div class="route-line" aria-hidden="true">
+              <span class="plane"><i class="pi pi-send"></i></span>
+            </div>
+            <div class="endpoint arr">
+              <span class="code">{{ f.arrivalIata || '—' }}</span>
+              <span class="name">{{ f.arrivalAirport }}</span>
+              <time>{{ formatTime(f.arrivalTime) }}</time>
+            </div>
+          </div>
+          <footer class="card-foot">
+            <button
+              pButton
+              type="button"
+              label="Book this flight"
+              class="p-button-sm"
+              (click)="bookFlight.emit(f)"
+            ></button>
+            @if (mapMode) {
+              <button
+                pButton
+                type="button"
+                label="Show on map"
+                class="p-button-sm p-button-text"
+                (click)="selectFlight.emit(f)"
+              ></button>
+            }
+          </footer>
+        </article>
+      }
+    </div>
+  }
+</div>

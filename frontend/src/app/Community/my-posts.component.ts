@@ -1,5 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { TranslateModule } from '@ngx-translate/core';
 import { Router } from '@angular/router';
 import { forkJoin, firstValueFrom, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -22,7 +23,7 @@ import Swal from 'sweetalert2';
 @Component({
   selector: 'app-my-posts',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslateModule],
   templateUrl: './my-posts.component.html',
   styleUrl: './my-posts.component.css',
 })

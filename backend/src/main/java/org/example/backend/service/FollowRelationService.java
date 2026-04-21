@@ -19,29 +19,32 @@ public class FollowRelationService {
 
     private final FollowRelationRepository followRepo;
     private final UserRepository userRepo;
+    private final MediaScoreService mediaScoreService;
 
-    public FollowRelationService(FollowRelationRepository followRepo, UserRepository userRepo) {
+    public FollowRelationService(FollowRelationRepository followRepo, UserRepository userRepo, MediaScoreService mediaScoreService) {
         this.followRepo = followRepo;
         this.userRepo = userRepo;
+        this.mediaScoreService = mediaScoreService;
     }
 
     @Transactional
     public Map<String, Object> toggleFollow(Integer followerId, Integer followedId) {
         if (followerId == null || followedId == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid user id");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.follow_invalid_user");
         }
         if (Objects.equals(followerId, followedId)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "You cannot follow yourself");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.follow_self");
         }
 
         User follower = userRepo.findById(followerId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Follower user not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.follow_follower_not_found"));
         User followed = userRepo.findById(followedId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Target user not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.follow_target_not_found"));
 
         return followRepo.findByFollowerUserIdAndFollowedUserId(followerId, followedId)
                 .map(existing -> {
                     followRepo.delete(existing);
+                    mediaScoreService.recomputeUserMonthlyScore(followedId);
                 return Map.<String, Object>of(
                             "following", false,
                             "followersCount", followRepo.countByFollowedUserId(followedId),
@@ -54,6 +57,7 @@ public class FollowRelationService {
                     relation.setFollowed(followed);
                     relation.setCreatedAt(new Date());
                     followRepo.save(relation);
+                    mediaScoreService.recomputeUserMonthlyScore(followedId);
                 return Map.<String, Object>of(
                             "following", true,
                             "followersCount", followRepo.countByFollowedUserId(followedId),

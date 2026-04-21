@@ -18,7 +18,9 @@ import { AuthService } from './core/auth.service';
 import { AppAlertsService } from './core/services/app-alerts.service';
 import { UserReservationsLocalStore } from './core/stores/user-reservations-local.store';
 import { NotificationService } from './core/notification.service';
+import { extractApiErrorMessage } from './api-error.util';
 import { isIsoDateOnly, wallTimeTunisiaToUtcMs } from './core/bookings-visibility-timezone';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { TrackingMapComponent } from './shared/components/tracking-map/tracking-map.component';
 import { TransportReservation, AccommodationReservation } from './core/models/travel.models';
 
@@ -28,7 +30,7 @@ type ActiveTab = 'transport' | 'hebergement';
   selector: 'app-mes-reservations',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, TrackingMapComponent],
+  imports: [CommonModule, TrackingMapComponent, TranslateModule],
   template: `
     <div class="mr-page">
       <div class="mr-bg-orb mr-bg-orb-left"></div>
@@ -39,26 +41,30 @@ type ActiveTab = 'transport' | 'hebergement';
         <!-- Header -->
         <div class="mr-header-card">
         <div class="mr-header">
-          <button type="button" class="mr-back-btn" (click)="goHome()" title="Back to home" aria-label="Back to home">
+          <button type="button" class="mr-back-btn" (click)="goHome()"
+                  [attr.title]="'MY_BOOKINGS_PAGE.A11Y_HOME' | translate"
+                  [attr.aria-label]="'MY_BOOKINGS_PAGE.A11Y_HOME' | translate">
             <i class="pi pi-home"></i>
           </button>
           <div class="mr-header-text">
-            <p class="mr-kicker">YallaTN</p>
+            <p class="mr-kicker">{{ 'MY_BOOKINGS_PAGE.KICKER' | translate }}</p>
             <h1 class="mr-title">
-              <span class="mr-title-plain">My</span>
-              <span class="mr-title-accent"> bookings</span>
+              <span class="mr-title-plain">{{ 'MY_BOOKINGS_PAGE.TITLE_PLAIN' | translate }}</span>
+              <span class="mr-title-accent">{{ 'MY_BOOKINGS_PAGE.TITLE_ACCENT' | translate }}</span>
             </h1>
-            <p class="mr-subtitle">Transport tickets &amp; accommodation — pay, download, or track in one place</p>
+            <p class="mr-subtitle">{{ 'MY_BOOKINGS_PAGE.SUBTITLE' | translate }}</p>
           </div>
           <div class="mr-header-actions">
-            <button type="button" class="mr-refresh-btn" (click)="loadReservations()" [disabled]="loading()" title="Refresh">
+            <button type="button" class="mr-refresh-btn" (click)="loadReservations()" [disabled]="loading()"
+                    [attr.title]="'MY_BOOKINGS_PAGE.A11Y_REFRESH' | translate"
+                    [attr.aria-label]="'MY_BOOKINGS_PAGE.A11Y_REFRESH' | translate">
               <i class="pi pi-refresh" [class.mr-spin]="loading()"></i>
             </button>
             <button type="button" class="mr-new-btn" (click)="router.navigate(['/hebergement'])">
-              <i class="pi pi-plus"></i> Accommodation
+              <i class="pi pi-plus"></i> {{ 'MY_BOOKINGS_PAGE.BTN_ACCOMMODATION' | translate }}
             </button>
             <button type="button" class="mr-new-btn mr-new-btn-red" (click)="router.navigate(['/transport'])">
-              <i class="pi pi-plus"></i> Transport
+              <i class="pi pi-plus"></i> {{ 'MY_BOOKINGS_PAGE.BTN_TRANSPORT' | translate }}
             </button>
           </div>
         </div>
@@ -68,17 +74,17 @@ type ActiveTab = 'transport' | 'hebergement';
         <div class="mr-stats">
           <div class="mr-stat">
             <span class="mr-stat-num">{{ transportReservations().length }}</span>
-            <span class="mr-stat-label">Transports</span>
+            <span class="mr-stat-label">{{ 'MY_BOOKINGS_PAGE.STAT_TRANSPORTS' | translate }}</span>
           </div>
           <div class="mr-stat-divider"></div>
           <div class="mr-stat">
             <span class="mr-stat-num">{{ accommodationReservations().length }}</span>
-            <span class="mr-stat-label">Stays</span>
+            <span class="mr-stat-label">{{ 'MY_BOOKINGS_PAGE.STAT_STAYS' | translate }}</span>
           </div>
           <div class="mr-stat-divider"></div>
           <div class="mr-stat">
             <span class="mr-stat-num">{{ totalReservations() }}</span>
-            <span class="mr-stat-label">Total</span>
+            <span class="mr-stat-label">{{ 'MY_BOOKINGS_PAGE.STAT_TOTAL' | translate }}</span>
           </div>
         </div>
 
@@ -87,7 +93,7 @@ type ActiveTab = 'transport' | 'hebergement';
           <button type="button" class="mr-tab" [class.mr-tab-active]="activeTab() === 'transport'"
                   (click)="activeTab.set('transport')">
             <i class="pi pi-car mr-tab-pi"></i>
-            Transport
+            {{ 'MY_BOOKINGS_PAGE.TAB_TRANSPORT' | translate }}
             @if (transportReservations().length > 0) {
               <span class="mr-tab-badge">{{ transportReservations().length }}</span>
             }
@@ -95,7 +101,7 @@ type ActiveTab = 'transport' | 'hebergement';
           <button type="button" class="mr-tab" [class.mr-tab-active]="activeTab() === 'hebergement'"
                   (click)="activeTab.set('hebergement')">
             <i class="pi pi-building mr-tab-pi"></i>
-            Accommodation
+            {{ 'MY_BOOKINGS_PAGE.TAB_STAYS' | translate }}
             @if (accommodationReservations().length > 0) {
               <span class="mr-tab-badge">{{ accommodationReservations().length }}</span>
             }
@@ -106,7 +112,7 @@ type ActiveTab = 'transport' | 'hebergement';
         @if (loading()) {
           <div class="mr-loading">
             <div class="mr-spinner"></div>
-            <p>Loading your bookings…</p>
+            <p>{{ 'MY_BOOKINGS_PAGE.LOADING' | translate }}</p>
           </div>
         }
 
@@ -119,8 +125,7 @@ type ActiveTab = 'transport' | 'hebergement';
         }
 
         <p class="mr-sync-hint">
-          Bookings created on this device are kept here even when the server is unavailable (local list).
-          Same-day cutoffs for hiding past trips/stays use <strong>{{ bookingsTimeZoneLabel }}</strong> (not your PC clock).
+          {{ 'MY_BOOKINGS_PAGE.SYNC_HINT_A' | translate }}<strong>{{ 'MY_BOOKINGS_PAGE.TZ_LABEL' | translate }}</strong>{{ 'MY_BOOKINGS_PAGE.SYNC_HINT_B' | translate }}
         </p>
 
         <!-- Transport Tab -->
@@ -128,10 +133,10 @@ type ActiveTab = 'transport' | 'hebergement';
           @if (transportReservations().length === 0) {
             <div class="mr-empty">
               <i class="pi pi-car mr-empty-pi"></i>
-              <h3>No transport bookings</h3>
-              <p>You have not booked transport yet.</p>
+              <h3>{{ 'MY_BOOKINGS_PAGE.EMPTY_TRANSPORT_TITLE' | translate }}</h3>
+              <p>{{ 'MY_BOOKINGS_PAGE.EMPTY_TRANSPORT_DESC' | translate }}</p>
               <button class="mr-cta-btn" (click)="router.navigate(['/transport'])">
-                Search transport
+                {{ 'MY_BOOKINGS_PAGE.CTA_SEARCH_TRANSPORT' | translate }}
               </button>
             </div>
           } @else {
@@ -142,20 +147,20 @@ type ActiveTab = 'transport' | 'hebergement';
                   <div class="mr-card-body">
                     <div class="mr-card-top">
                       <div class="mr-route">
-                        <span class="mr-city">{{ res.departureCityName || '—' }}</span>
+                        <span class="mr-city">{{ res.departureCityLabel || res.departureCityName || '—' }}</span>
                         <div class="mr-track">
                           <span class="mr-dot"></span>
                           <span class="mr-line"></span>
-                          <span class="mr-transport-type">{{ getTransportTypeLabel(res.transportType) }}</span>
+                          <span class="mr-transport-type">{{ getTransportTypeLabel(res) }}</span>
                           <span class="mr-line"></span>
                           <span class="mr-dot"></span>
                         </div>
-                        <span class="mr-city mr-city-end">{{ res.arrivalCityName || '—' }}</span>
+                        <span class="mr-city mr-city-end">{{ res.arrivalCityLabel || res.arrivalCityName || '—' }}</span>
                       </div>
                       <div class="mr-card-right">
                         <span class="mr-amount">{{ res.totalPrice }} <small>TND</small></span>
                         <span class="mr-badge" [class]="'mr-badge-' + (res.status | lowercase)">
-                          {{ res.status }}
+                          {{ res.statusLabel || res.status }}
                         </span>
                       </div>
                     </div>
@@ -181,11 +186,11 @@ type ActiveTab = 'transport' | 'hebergement';
                       }
                       <div class="mr-detail">
                         <i class="pi pi-users"></i>
-                        <span>{{ res.numberOfSeats }} seat(s)</span>
+                        <span>{{ 'MY_BOOKINGS_PAGE.SEATS' | translate: { count: res.numberOfSeats } }}</span>
                       </div>
                       <div class="mr-detail">
                         <i class="pi pi-wallet"></i>
-                        <span>{{ res.paymentMethod }}</span>
+                        <span>{{ res.paymentMethodLabel || res.paymentMethod }}</span>
                       </div>
                     </div>
 
@@ -198,12 +203,12 @@ type ActiveTab = 'transport' | 'hebergement';
                     <div class="mr-card-actions">
                       @if (isTodayTrip(res.travelDate) && res.status === 'CONFIRMED') {
                         <button type="button" class="mr-action-btn mr-action-track" (click)="openTracking(res)">
-                          <i class="pi pi-map"></i> Live tracking
+                          <i class="pi pi-map"></i> {{ 'MY_BOOKINGS_PAGE.LIVE_TRACKING' | translate }}
                         </button>
                       }
                       <button type="button" class="mr-action-btn mr-action-qr" (click)="openQrLightbox(res)"
                               [disabled]="isTicketBusy(res, 'qr') || cancellingTransportId() === res.transportReservationId"
-                              title="View and save boarding QR">
+                              [attr.title]="'MY_BOOKINGS_PAGE.A11Y_QR' | translate">
                         @if (isTicketBusy(res, 'qr')) {
                           <span class="mr-mini-spin" aria-hidden="true"></span>
                         } @else {
@@ -213,7 +218,7 @@ type ActiveTab = 'transport' | 'hebergement';
                       </button>
                       <button type="button" class="mr-action-btn mr-action-pdf" (click)="downloadPdfTicket(res)"
                               [disabled]="isTicketBusy(res, 'pdf') || cancellingTransportId() === res.transportReservationId"
-                              title="Open or download PDF ticket">
+                              [attr.title]="'MY_BOOKINGS_PAGE.A11Y_PDF' | translate">
                         @if (isTicketBusy(res, 'pdf')) {
                           <span class="mr-mini-spin" aria-hidden="true"></span>
                         } @else {
@@ -223,18 +228,20 @@ type ActiveTab = 'transport' | 'hebergement';
                       </button>
                       <button type="button" class="mr-action-btn mr-action-outline" (click)="goModifyTransport(res)"
                               [disabled]="cancellingTransportId() === res.transportReservationId || res.status === 'CANCELLED'"
-                              [attr.title]="res.status === 'CANCELLED' ? 'Cancelled — book a new trip from Transport' : 'Open this trip to adjust seats or details'">
-                        <i class="pi pi-pencil" aria-hidden="true"></i> Edit
+                              [attr.title]="res.status === 'CANCELLED' ? ('MY_BOOKINGS_PAGE.TITLE_EDIT_TRANSPORT_CANCELLED' | translate) : ('MY_BOOKINGS_PAGE.TITLE_EDIT_TRANSPORT_ACTIVE' | translate)">
+                        <i class="pi pi-pencil" aria-hidden="true"></i> {{ 'MY_BOOKINGS_PAGE.EDIT' | translate }}
                       </button>
                       <button type="button" class="mr-action-btn mr-action-danger" (click)="cancelTransport(res)"
-                              [disabled]="cancellingTransportId() === res.transportReservationId || res.status === 'CANCELLED'"
-                              [attr.title]="res.status === 'CANCELLED' ? 'Already cancelled' : null">
+                              [disabled]="cancellingTransportId() === res.transportReservationId || res.status === 'CANCELLED' || isTransportCancellationLocked(res)"
+                              [attr.title]="res.status === 'CANCELLED'
+                                ? ('MY_BOOKINGS_PAGE.TITLE_CANCEL_ALREADY' | translate)
+                                : (isTransportCancellationLocked(res) ? ('MY_BOOKINGS_PAGE.ALERT_CANCEL_TOO_LATE_TRANSPORT' | translate) : null)">
                         @if (cancellingTransportId() === res.transportReservationId) {
                           <span class="mr-mini-spin"></span>
                         } @else {
                           <i class="pi pi-times"></i>
                         }
-                        Cancel
+                        {{ 'MY_BOOKINGS_PAGE.CANCEL' | translate }}
                       </button>
                     </div>
                   </div>
@@ -249,10 +256,10 @@ type ActiveTab = 'transport' | 'hebergement';
           @if (accommodationReservations().length === 0) {
             <div class="mr-empty">
               <i class="pi pi-building mr-empty-pi"></i>
-              <h3>No accommodation bookings</h3>
-              <p>You have not booked accommodation yet.</p>
+              <h3>{{ 'MY_BOOKINGS_PAGE.EMPTY_STAY_TITLE' | translate }}</h3>
+              <p>{{ 'MY_BOOKINGS_PAGE.EMPTY_STAY_DESC' | translate }}</p>
               <button class="mr-cta-btn" (click)="router.navigate(['/hebergement'])">
-                Find accommodation
+                {{ 'MY_BOOKINGS_PAGE.CTA_FIND_STAY' | translate }}
               </button>
             </div>
           } @else {
@@ -263,15 +270,15 @@ type ActiveTab = 'transport' | 'hebergement';
                   <div class="mr-card-body">
                     <div class="mr-card-top">
                       <div class="mr-heb-info">
-                        <span class="mr-heb-name">{{ res.accommodationName || 'Accommodation' }}</span>
-                        @if (res.accommodationCity) {
-                          <span class="mr-heb-city"><i class="pi pi-map-marker"></i> {{ res.accommodationCity }}</span>
+                        <span class="mr-heb-name">{{ res.nameLabel || res.accommodationName || ('MY_BOOKINGS_PAGE.DEFAULT_STAY_NAME' | translate) }}</span>
+                        @if (res.cityLabel || res.accommodationCity) {
+                          <span class="mr-heb-city"><i class="pi pi-map-marker"></i> {{ res.cityLabel || res.accommodationCity }}</span>
                         }
                       </div>
                       <div class="mr-card-right">
                         <span class="mr-amount">{{ res.totalPrice }} <small>TND</small></span>
                         <span class="mr-badge" [class]="'mr-badge-' + (res.status | lowercase)">
-                          {{ res.status }}
+                          {{ res.statusLabel || res.status }}
                         </span>
                       </div>
                     </div>
@@ -288,31 +295,31 @@ type ActiveTab = 'transport' | 'hebergement';
                       @if (res.checkInDate) {
                         <div class="mr-detail">
                           <i class="pi pi-sign-in"></i>
-                          <span>Check-in: {{ formatDate(res.checkInDate) }}</span>
+                          <span>{{ 'MY_BOOKINGS_PAGE.CHECKIN' | translate: { date: formatDate(res.checkInDate) } }}</span>
                         </div>
                       }
                       @if (res.checkOutDate) {
                         <div class="mr-detail">
                           <i class="pi pi-sign-out"></i>
-                          <span>Check-out: {{ formatDate(res.checkOutDate) }}</span>
+                          <span>{{ 'MY_BOOKINGS_PAGE.CHECKOUT' | translate: { date: formatDate(res.checkOutDate) } }}</span>
                         </div>
                       }
                       @if (res.nights) {
                         <div class="mr-detail">
                           <i class="pi pi-moon"></i>
-                          <span>{{ res.nights }} night(s)</span>
+                          <span>{{ 'MY_BOOKINGS_PAGE.NIGHTS' | translate: { count: res.nights } }}</span>
                         </div>
                       }
-                      @if (res.roomType) {
+                      @if (res.roomTypeLabel || res.roomType) {
                         <div class="mr-detail">
                           <i class="pi pi-home"></i>
-                          <span>{{ res.roomType }}</span>
+                          <span>{{ res.roomTypeLabel || res.roomType }}</span>
                         </div>
                       }
                       @if (res.paymentMethod) {
                         <div class="mr-detail">
                           <i class="pi pi-wallet"></i>
-                          <span>{{ res.paymentMethod }}</span>
+                          <span>{{ res.paymentMethodLabel || res.paymentMethod }}</span>
                         </div>
                       }
                     </div>
@@ -340,7 +347,7 @@ type ActiveTab = 'transport' | 'hebergement';
                         } @else {
                           <i class="pi pi-times"></i>
                         }
-                        Cancel
+                        {{ 'MY_BOOKINGS_PAGE.CANCEL' | translate }}
                       </button>
                     </div>
                   </div>
@@ -357,21 +364,22 @@ type ActiveTab = 'transport' | 'hebergement';
         <div class="mr-qr-overlay" (click)="closeQrLightbox()" role="dialog" aria-modal="true" aria-labelledby="mr-qr-title">
           <div class="mr-qr-dialog" (click)="$event.stopPropagation()">
             <div class="mr-qr-dialog-head">
-              <h3 id="mr-qr-title"><i class="pi pi-qrcode" aria-hidden="true"></i> Boarding QR</h3>
-              <button type="button" class="mr-qr-close" (click)="closeQrLightbox()" aria-label="Close">
+              <h3 id="mr-qr-title"><i class="pi pi-qrcode" aria-hidden="true"></i> {{ 'MY_BOOKINGS_PAGE.QR_MODAL_TITLE' | translate }}</h3>
+              <button type="button" class="mr-qr-close" (click)="closeQrLightbox()"
+                      [attr.aria-label]="'MY_BOOKINGS_PAGE.A11Y_CLOSE_DIALOG' | translate">
                 <i class="pi pi-times"></i>
               </button>
             </div>
             <p class="mr-qr-ref"><i class="pi pi-hashtag" aria-hidden="true"></i> {{ ql.ref }}</p>
             <div class="mr-qr-img-wrap">
-              <img [src]="ql.blobUrl" width="280" height="280" alt="QR code for ticket {{ ql.ref }}" />
+              <img [src]="ql.blobUrl" width="280" height="280" [attr.alt]="'MY_BOOKINGS_PAGE.QR_ALT' | translate: { ref: ql.ref }" />
             </div>
-            <p class="mr-qr-hint">Show this code at boarding. You can save the image to your phone.</p>
+            <p class="mr-qr-hint">{{ 'MY_BOOKINGS_PAGE.QR_HINT' | translate }}</p>
             <div class="mr-qr-dialog-actions">
               <button type="button" class="mr-qr-btn-primary" (click)="downloadCurrentQr()">
-                <i class="pi pi-download" aria-hidden="true"></i> Save PNG
+                <i class="pi pi-download" aria-hidden="true"></i> {{ 'MY_BOOKINGS_PAGE.SAVE_PNG' | translate }}
               </button>
-              <button type="button" class="mr-qr-btn-ghost" (click)="closeQrLightbox()">Close</button>
+              <button type="button" class="mr-qr-btn-ghost" (click)="closeQrLightbox()">{{ 'MY_BOOKINGS_PAGE.CLOSE' | translate }}</button>
             </div>
           </div>
         </div>
@@ -384,7 +392,7 @@ type ActiveTab = 'transport' | 'hebergement';
             <div class="tracking-dialog-header">
               <h3>
                 <i class="pi pi-map"></i>
-                Live tracking: {{ trackingReservation()!.departureCityName }} → {{ trackingReservation()!.arrivalCityName }}
+                {{ 'MY_BOOKINGS_PAGE.TRACKING_TITLE' | translate: { from: trackingReservation()!.departureCityName, to: trackingReservation()!.arrivalCityName } }}
               </h3>
               <button class="tracking-close" (click)="closeTracking()">
                 <i class="pi pi-times"></i>
@@ -848,6 +856,88 @@ type ActiveTab = 'transport' | 'hebergement';
     }
     .tracking-close:hover { background: rgba(241,37,69,0.1); color: #f12545; }
 
+    /* ── Light theme: align header & panels with page (no dark slab + invisible title) ── */
+    :host-context([data-theme='light']) .mr-header-card {
+      background: linear-gradient(
+        145deg,
+        var(--surface-1) 0%,
+        color-mix(in srgb, var(--mediterranean-blue) 8%, var(--surface-1)) 55%,
+        color-mix(in srgb, var(--tunisia-red) 5%, var(--surface-1)) 100%
+      );
+      border: 1px solid var(--border-soft);
+      box-shadow: var(--shadow-card);
+    }
+    :host-context([data-theme='light']) .mr-title-plain {
+      color: var(--text-color);
+    }
+    :host-context([data-theme='light']) .mr-subtitle {
+      color: var(--text-muted);
+    }
+    :host-context([data-theme='light']) .mr-back-btn,
+    :host-context([data-theme='light']) .mr-refresh-btn {
+      background: var(--surface-2);
+      border-color: var(--border-soft);
+      color: var(--text-color);
+    }
+    :host-context([data-theme='light']) .mr-back-btn:hover,
+    :host-context([data-theme='light']) .mr-refresh-btn:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--tunisia-red) 10%, var(--surface-2));
+      border-color: color-mix(in srgb, var(--tunisia-red) 35%, var(--border-soft));
+    }
+    :host-context([data-theme='light']) .mr-new-btn:not(.mr-new-btn-red) {
+      background: var(--surface-1);
+      border: 1px solid var(--btn-outline-border);
+      color: var(--text-color);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+    }
+    :host-context([data-theme='light']) .mr-new-btn:not(.mr-new-btn-red):hover {
+      background: var(--surface-2);
+      border-color: color-mix(in srgb, var(--tunisia-red) 40%, var(--border-soft));
+    }
+    :host-context([data-theme='light']) .mr-stats {
+      background: var(--surface-1);
+      border: 1px solid var(--border-soft);
+      box-shadow: var(--shadow-soft);
+    }
+    :host-context([data-theme='light']) .mr-tabs {
+      background: var(--surface-2);
+      border: 1px solid var(--border-soft);
+    }
+    :host-context([data-theme='light']) .mr-tab-active {
+      background: color-mix(in srgb, var(--tunisia-red) 12%, var(--surface-1));
+      border: 1px solid color-mix(in srgb, var(--tunisia-red) 28%, var(--border-soft));
+    }
+    :host-context([data-theme='light']) .mr-sync-hint {
+      background: color-mix(in srgb, var(--mediterranean-blue) 8%, var(--surface-1));
+      border: 1px solid var(--border-soft);
+      color: var(--text-muted);
+    }
+    :host-context([data-theme='light']) .mr-empty {
+      background: var(--surface-1);
+      border: 1px dashed color-mix(in srgb, var(--text-muted) 35%, var(--border-soft));
+    }
+    :host-context([data-theme='light']) .mr-card {
+      background: var(--surface-1);
+      border: 1px solid var(--border-soft);
+      box-shadow: var(--shadow-soft);
+    }
+    :host-context([data-theme='light']) .mr-card:hover {
+      box-shadow: var(--shadow-card);
+    }
+    :host-context([data-theme='light']) .mr-line {
+      background: color-mix(in srgb, var(--tunisia-red) 22%, var(--border-soft));
+    }
+    :host-context([data-theme='light']) .mr-card-divider {
+      background: var(--border-soft);
+    }
+    :host-context([data-theme='light']) .mr-action-outline {
+      background: var(--surface-2);
+      border-color: var(--border-soft);
+    }
+    :host-context([data-theme='light']) .mr-bg-orb {
+      opacity: 0.12;
+    }
+
     @media (max-width: 600px) {
       .mr-stats { flex-direction: column; gap: 0.75rem; }
       .mr-stat-divider { display: none; }
@@ -868,6 +958,7 @@ export class MesReservationsComponent implements OnInit {
   private localStore = inject(UserReservationsLocalStore);
   private notifier = inject(NotificationService);
   private destroyRef = inject(DestroyRef);
+  private translate = inject(TranslateService);
 
   /** Incrémenté chaque minute pour recalculer le filtre « départ + 1 h » sans recharger la page. */
   private visibilityClock = signal(0);
@@ -907,10 +998,7 @@ export class MesReservationsComponent implements OnInit {
     () => this.transportReservations().length + this.accommodationReservations().length
   );
 
-  private static readonly VISIBILITY_GRACE_MS = 60 * 60 * 1000;
-
-  /** Affiché dans l’info-bulle : dates « jour seul » = Tunisie. */
-  readonly bookingsTimeZoneLabel = 'Tunisia time (Africa/Tunis)';
+  private static readonly VISIBILITY_GRACE_MS = 24 * 60 * 60 * 1000;
 
   ngOnInit() {
     if (!this.authService.isAuthenticated()) {
@@ -959,13 +1047,15 @@ export class MesReservationsComponent implements OnInit {
       accommodation: accommodation$,
     }).subscribe({
       next: ({ transport, accommodation }) => {
+        this.localStore.pruneTransport((r) => !this.isPastVisibilityCutoffTransport(r));
+        this.localStore.pruneAccommodation((r) => !this.isPastVisibilityCutoffAccommodation(r));
         this.transportSource.set(this.localStore.mergeTransport(transport));
         this.accommodationSource.set(this.localStore.mergeAccommodation(accommodation));
         this.visibilityClock.update((n) => n + 1);
         this.loading.set(false);
       },
       error: () => {
-        this.error.set('Could not load your bookings.');
+        this.error.set(this.translate.instant('MY_BOOKINGS_PAGE.MSG_LOAD_FAIL'));
         this.loading.set(false);
       }
     });
@@ -977,12 +1067,19 @@ export class MesReservationsComponent implements OnInit {
   }
 
   cancelTransport(res: TransportReservation) {
+    if (this.isTransportCancellationLocked(res)) {
+      void this.alerts.error(
+        this.translate.instant('MY_BOOKINGS_PAGE.ALERT_CANCEL_FAILED_TITLE'),
+        this.translate.instant('MY_BOOKINGS_PAGE.ALERT_CANCEL_TOO_LATE_TRANSPORT')
+      );
+      return;
+    }
     void this.alerts
       .confirm({
-        title: 'Cancel this transport booking?',
-        text: `Reference ${res.reservationRef}. You may not be able to undo this close to departure.`,
-        confirmText: 'Yes, cancel',
-        cancelText: 'Keep booking',
+        title: this.translate.instant('MY_BOOKINGS_PAGE.CONFIRM_CANCEL_TRANSPORT_TITLE'),
+        text: this.translate.instant('MY_BOOKINGS_PAGE.CONFIRM_CANCEL_TRANSPORT_TEXT', { ref: res.reservationRef }),
+        confirmText: this.translate.instant('MY_BOOKINGS_PAGE.CONFIRM_YES'),
+        cancelText: this.translate.instant('MY_BOOKINGS_PAGE.CONFIRM_KEEP'),
         icon: 'warning',
       })
       .then((choice) => {
@@ -999,9 +1096,10 @@ export class MesReservationsComponent implements OnInit {
                 alreadyCancelledOnServer = true;
                 return of(undefined);
               }
+              const msg = this.resolveCancelErrorMessage(err, 'transport');
               void this.alerts.error(
-                'Cancellation failed',
-                'We could not cancel this booking. Try again or contact support.'
+                this.translate.instant('MY_BOOKINGS_PAGE.ALERT_CANCEL_FAILED_TITLE'),
+                msg
               );
               return EMPTY;
             }),
@@ -1010,11 +1108,17 @@ export class MesReservationsComponent implements OnInit {
           .subscribe(() => {
             this.localStore.removeTransport(res.transportReservationId);
             if (alreadyCancelledOnServer) {
-              void this.alerts.info('Already cancelled', 'This trip was already cancelled. Your list is refreshed.');
-              this.notifier.show('This trip was already cancelled.', 'info', 4500);
+              void this.alerts.info(
+                this.translate.instant('MY_BOOKINGS_PAGE.ALERT_ALREADY_CANCELLED_TRIP_TITLE'),
+                this.translate.instant('MY_BOOKINGS_PAGE.ALERT_ALREADY_CANCELLED_TRIP_BODY')
+              );
+              this.notifier.show(this.translate.instant('MY_BOOKINGS_PAGE.TOAST_ALREADY_CANCELLED_TRIP'), 'info', 4500);
             } else {
-              void this.alerts.success('Booking cancelled', 'The list has been updated.');
-              this.notifier.show('Transport booking cancelled — list updated.', 'success', 4500);
+              void this.alerts.success(
+                this.translate.instant('MY_BOOKINGS_PAGE.ALERT_SUCCESS_CANCEL_TITLE'),
+                this.translate.instant('MY_BOOKINGS_PAGE.ALERT_SUCCESS_CANCEL_BODY')
+              );
+              this.notifier.show(this.translate.instant('MY_BOOKINGS_PAGE.TOAST_TRANSPORT_CANCELLED'), 'success', 4500);
             }
             this.loadReservations();
           });
@@ -1024,12 +1128,12 @@ export class MesReservationsComponent implements OnInit {
   cancelHebergement(res: AccommodationReservation) {
     void this.alerts
       .confirm({
-        title: 'Cancel this stay?',
+        title: this.translate.instant('MY_BOOKINGS_PAGE.CONFIRM_CANCEL_STAY_TITLE'),
         text: res.reservationRef
-          ? `Reference ${res.reservationRef}. You may not be able to undo this close to check-in.`
-          : 'You may not be able to undo this close to check-in.',
-        confirmText: 'Yes, cancel',
-        cancelText: 'Keep booking',
+          ? this.translate.instant('MY_BOOKINGS_PAGE.CONFIRM_CANCEL_STAY_TEXT_REF', { ref: res.reservationRef })
+          : this.translate.instant('MY_BOOKINGS_PAGE.CONFIRM_CANCEL_STAY_TEXT_NO_REF'),
+        confirmText: this.translate.instant('MY_BOOKINGS_PAGE.CONFIRM_YES'),
+        cancelText: this.translate.instant('MY_BOOKINGS_PAGE.CONFIRM_KEEP'),
         icon: 'warning',
       })
       .then((choice) => {
@@ -1043,7 +1147,7 @@ export class MesReservationsComponent implements OnInit {
     if (res.id < 0) {
       this.localStore.removeAccommodation(res.id);
       this.cancellingHebergementId.set(null);
-      this.notifier.show('Local stay booking removed.', 'info', 4500);
+      this.notifier.show(this.translate.instant('MY_BOOKINGS_PAGE.TOAST_LOCAL_STAY_REMOVED'), 'info', 4500);
       this.loadReservations();
       return;
     }
@@ -1061,13 +1165,9 @@ export class MesReservationsComponent implements OnInit {
             alreadyCancelledOnServer = true;
             return of(undefined);
           }
-          const body = err?.error;
-          const msg =
-            (typeof body?.message === 'string' && body.message.trim()) ||
-            (typeof body === 'string' ? body : null) ||
-            'Could not cancel this accommodation booking right now.';
+          const msg = this.resolveCancelErrorMessage(err, 'stay');
           this.error.set(msg);
-          void this.alerts.error('Cancellation failed', msg);
+          void this.alerts.error(this.translate.instant('MY_BOOKINGS_PAGE.ALERT_CANCEL_FAILED_TITLE'), msg);
           return EMPTY;
         }),
         finalize(() => this.cancellingHebergementId.set(null))
@@ -1075,11 +1175,17 @@ export class MesReservationsComponent implements OnInit {
       .subscribe(() => {
         this.localStore.removeAccommodation(res.id);
         if (alreadyCancelledOnServer) {
-          void this.alerts.info('Already cancelled', 'This stay was already cancelled. Your list is refreshed.');
-          this.notifier.show('This stay was already cancelled.', 'info', 4500);
+          void this.alerts.info(
+            this.translate.instant('MY_BOOKINGS_PAGE.ALERT_ALREADY_CANCELLED_STAY_TITLE'),
+            this.translate.instant('MY_BOOKINGS_PAGE.ALERT_ALREADY_CANCELLED_STAY_BODY')
+          );
+          this.notifier.show(this.translate.instant('MY_BOOKINGS_PAGE.TOAST_ALREADY_CANCELLED_STAY'), 'info', 4500);
         } else {
-          void this.alerts.success('Booking cancelled', 'The list has been updated.');
-          this.notifier.show('Accommodation booking cancelled — list updated.', 'success', 4500);
+          void this.alerts.success(
+            this.translate.instant('MY_BOOKINGS_PAGE.ALERT_SUCCESS_CANCEL_TITLE'),
+            this.translate.instant('MY_BOOKINGS_PAGE.ALERT_SUCCESS_CANCEL_BODY')
+          );
+          this.notifier.show(this.translate.instant('MY_BOOKINGS_PAGE.TOAST_ACCOMM_CANCELLED'), 'success', 4500);
         }
         this.loadReservations();
       });
@@ -1121,6 +1227,13 @@ export class MesReservationsComponent implements OnInit {
     return null;
   }
 
+  public isTransportCancellationLocked(res: TransportReservation): boolean {
+    if (res.status === 'CANCELLED') return true;
+    const depMs = this.transportDepartureEpochMs(res);
+    if (depMs == null) return false;
+    return depMs < Date.now() + 24 * 60 * 60 * 1000;
+  }
+
   /**
    * Masquer si l’heure actuelle dépasse la fin du séjour + 1 h.
    * Date de check-out seule (YYYY-MM-DD) → 11:00 à Africa/Tunis (check-out hôtel).
@@ -1146,8 +1259,11 @@ export class MesReservationsComponent implements OnInit {
   /** Backend returns 400 when status is already CANCELLED — treat as success and refresh. */
   private isAlreadyCancelledResponse(err: HttpErrorResponse): boolean {
     if (err.status !== 400) return false;
-    const raw = err.error;
-    const msg = (typeof raw?.message === 'string' ? raw.message : '').toLowerCase();
+    const code = this.extractErrorCode(err);
+    if (code === 'reservation.error.already_cancelled' || code === 'reservation.error.already_cancelled_stay') {
+      return true;
+    }
+    const msg = this.extractErrorMessage(err).toLowerCase();
     return (
       msg.includes('déjà') ||
       msg.includes('deja') ||
@@ -1156,17 +1272,73 @@ export class MesReservationsComponent implements OnInit {
     );
   }
 
+  private isCancellationWindowResponse(err: HttpErrorResponse): boolean {
+    if (err.status !== 400) return false;
+    const code = this.extractErrorCode(err);
+    if (
+      code === 'reservation.error.cancellation_window' ||
+      code === 'reservation.error.cancellation_window_transport'
+    ) {
+      return true;
+    }
+    const msg = this.extractErrorMessage(err).toLowerCase();
+    return (
+      msg.includes('less than 24 hours') ||
+      msg.includes('moins de 24 heures') ||
+      msg.includes('24h') ||
+      msg.includes('reservation.error.cancellation_window')
+    );
+  }
+
+  private extractErrorCode(err: HttpErrorResponse): string {
+    const raw = err.error as any;
+    const direct = typeof raw?.code === 'string' ? raw.code.trim() : '';
+    if (direct) return direct;
+    const nested = typeof raw?.error?.code === 'string' ? raw.error.code.trim() : '';
+    return nested || '';
+  }
+
+  private extractErrorMessage(err: HttpErrorResponse): string {
+    const raw = err.error as any;
+    if (typeof raw === 'string') return raw;
+    const direct = typeof raw?.message === 'string' ? raw.message : '';
+    if (direct) return direct;
+    const nested = typeof raw?.error?.message === 'string' ? raw.error.message : '';
+    return nested || '';
+  }
+
+  private resolveCancelErrorMessage(err: HttpErrorResponse, type: 'transport' | 'stay'): string {
+    if (this.isCancellationWindowResponse(err)) {
+      return this.translate.instant(
+        type === 'transport'
+          ? 'MY_BOOKINGS_PAGE.ALERT_CANCEL_TOO_LATE_TRANSPORT'
+          : 'MY_BOOKINGS_PAGE.ALERT_CANCEL_TOO_LATE_STAY'
+      );
+    }
+    return extractApiErrorMessage(
+      err,
+      this.translate.instant(
+        type === 'transport'
+          ? 'MY_BOOKINGS_PAGE.ALERT_CANCEL_FAILED_BODY'
+          : 'MY_BOOKINGS_PAGE.MSG_CANCEL_STAY_FALLBACK'
+      )
+    );
+  }
+
   goModifyTransport(res: TransportReservation) {
     if (res.status === 'CANCELLED') {
-      void this.alerts.info('Cancelled trip', 'Search for a new ride from the Transport page.');
+      void this.alerts.info(
+        this.translate.instant('MY_BOOKINGS_PAGE.INFO_CANCELLED_TRIP_TITLE'),
+        this.translate.instant('MY_BOOKINGS_PAGE.INFO_CANCELLED_TRIP_BODY')
+      );
       this.router.navigate(['/transport']);
       return;
     }
     const tid = res.transportId;
     if (tid == null || !Number.isFinite(tid)) {
       void this.alerts.warning(
-        'Trip link unavailable',
-        'This older booking has no trip id. Use Transport search to book again.'
+        this.translate.instant('MY_BOOKINGS_PAGE.WARN_TRIP_LINK_TITLE'),
+        this.translate.instant('MY_BOOKINGS_PAGE.WARN_TRIP_LINK_BODY')
       );
       this.router.navigate(['/transport']);
       return;
@@ -1185,8 +1357,8 @@ export class MesReservationsComponent implements OnInit {
     const accId = res.accommodationId;
     if (accId == null || !Number.isFinite(accId)) {
       void this.alerts.warning(
-        'Listing link unavailable',
-        'This booking has no property id. Open Stays and pick your accommodation again.'
+        this.translate.instant('MY_BOOKINGS_PAGE.WARN_LISTING_LINK_TITLE'),
+        this.translate.instant('MY_BOOKINGS_PAGE.WARN_LISTING_LINK_BODY')
       );
       this.router.navigate(['/hebergement']);
       return;
@@ -1223,11 +1395,17 @@ export class MesReservationsComponent implements OnInit {
     ).subscribe({
       next: async (blob) => {
         if (blob.type?.includes('json')) {
-          void this.alerts.error('QR code', await this.messageFromErrorBlob(blob));
+          void this.alerts.error(
+            this.translate.instant('MY_BOOKINGS_PAGE.ALERT_QR_TITLE'),
+            await this.messageFromErrorBlob(blob)
+          );
           return;
         }
         if (!blob?.size) {
-          void this.alerts.error('QR code', 'Empty response from server.');
+          void this.alerts.error(
+            this.translate.instant('MY_BOOKINGS_PAGE.ALERT_QR_TITLE'),
+            this.translate.instant('MY_BOOKINGS_PAGE.MSG_QR_EMPTY')
+          );
           return;
         }
         const blobUrl = URL.createObjectURL(blob);
@@ -1235,8 +1413,8 @@ export class MesReservationsComponent implements OnInit {
       },
       error: () => {
         void this.alerts.error(
-          'QR code',
-          'Could not load the QR code. Sign in again if the problem continues.'
+          this.translate.instant('MY_BOOKINGS_PAGE.ALERT_QR_TITLE'),
+          this.translate.instant('MY_BOOKINGS_PAGE.MSG_QR_LOAD_FAIL')
         );
       },
     });
@@ -1257,7 +1435,10 @@ export class MesReservationsComponent implements OnInit {
     a.href = q.blobUrl;
     a.download = `ticket-${q.ref}-qr.png`;
     a.click();
-    void this.alerts.success('Download', 'Saving QR image…');
+    void this.alerts.success(
+      this.translate.instant('MY_BOOKINGS_PAGE.ALERT_SUCCESS_DOWNLOAD_TITLE'),
+      this.translate.instant('MY_BOOKINGS_PAGE.MSG_QR_SAVING')
+    );
   }
 
   downloadPdfTicket(res: TransportReservation): void {
@@ -1267,11 +1448,17 @@ export class MesReservationsComponent implements OnInit {
     ).subscribe({
       next: async (blob) => {
         if (blob.type?.includes('json')) {
-          void this.alerts.error('PDF ticket', await this.messageFromErrorBlob(blob));
+          void this.alerts.error(
+            this.translate.instant('MY_BOOKINGS_PAGE.ALERT_PDF_TITLE'),
+            await this.messageFromErrorBlob(blob)
+          );
           return;
         }
         if (!blob?.size) {
-          void this.alerts.error('PDF ticket', 'Empty response from server.');
+          void this.alerts.error(
+            this.translate.instant('MY_BOOKINGS_PAGE.ALERT_PDF_TITLE'),
+            this.translate.instant('MY_BOOKINGS_PAGE.MSG_PDF_EMPTY')
+          );
           return;
         }
         const url = URL.createObjectURL(blob);
@@ -1292,17 +1479,16 @@ export class MesReservationsComponent implements OnInit {
         window.setTimeout(() => URL.revokeObjectURL(url), 180_000);
       },
       error: async (err: HttpErrorResponse) => {
-        let msg =
-          'Could not generate the PDF. Check that you are signed in, then try again. If it keeps failing, the server may be busy.';
+        let msg = this.translate.instant('MY_BOOKINGS_PAGE.MSG_PDF_GENERATE_FAIL');
         if (err.error instanceof Blob) {
           msg = await this.messageFromErrorBlob(err.error);
         } else if (err.error && typeof err.error === 'object' && 'message' in err.error) {
           const m = (err.error as { message?: string }).message;
           if (m) msg = m;
         } else if (err.status === 0) {
-          msg = 'Network error — check your connection and that the API is running.';
+          msg = this.translate.instant('MY_BOOKINGS_PAGE.MSG_NETWORK_ERROR');
         }
-        void this.alerts.error('PDF ticket', msg);
+        void this.alerts.error(this.translate.instant('MY_BOOKINGS_PAGE.ALERT_PDF_TITLE'), msg);
       },
     });
   }
@@ -1318,32 +1504,50 @@ export class MesReservationsComponent implements OnInit {
       };
       if (j.message) return j.message;
       if (j.error && typeof j.error === 'string' && j.error.length < 120) return j.error;
-      return text.trim().slice(0, 240) || 'Request failed';
+      return text.trim().slice(0, 240) || this.translate.instant('MY_BOOKINGS_PAGE.MSG_REQUEST_FAILED');
     } catch {
-      return 'Request failed';
+      return this.translate.instant('MY_BOOKINGS_PAGE.MSG_REQUEST_FAILED');
     }
   }
 
-  getTransportTypeLabel(type?: string): string {
-    const map: Record<string, string> = {
-      BUS: 'Bus',
-      VAN: 'Shared taxi (louage)',
-      TAXI: 'Taxi',
-      CAR: 'Car',
-      PLANE: 'Plane',
-      TRAIN: 'Train',
-      FERRY: 'Ferry',
-    };
-    return type ? (map[type] ?? type) : 'Transport';
+  getTransportTypeLabel(res: TransportReservation): string {
+    if (res.typeLabel || res.transportTypeLabel) {
+      return (res.typeLabel || res.transportTypeLabel) as string;
+    }
+    const type = (res.transportType || res.type || '').toUpperCase();
+    const key =
+      type === 'BUS'
+        ? 'TYPE_BUS'
+        : type === 'VAN'
+          ? 'TYPE_VAN'
+          : type === 'TAXI'
+            ? 'TYPE_TAXI'
+            : type === 'CAR'
+              ? 'TYPE_CAR'
+              : type === 'PLANE'
+                ? 'TYPE_PLANE'
+                : type === 'TRAIN'
+                  ? 'TYPE_TRAIN'
+                  : type === 'FERRY'
+                    ? 'TYPE_FERRY'
+                    : '';
+    if (key) {
+      return this.translate.instant(`MY_BOOKINGS_PAGE.${key}`);
+    }
+    return res.transportType || res.type || this.translate.instant('MY_BOOKINGS_PAGE.TYPE_FALLBACK');
   }
 
   formatDate(dateStr: string): string {
     if (!dateStr) return '';
-    return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const lang = this.translate.currentLang || this.translate.defaultLang || 'en';
+    const locale = lang === 'fr' ? 'fr-FR' : lang === 'ar' ? 'ar' : lang === 'en' ? 'en-GB' : lang;
+    return new Date(dateStr).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
   formatTime(dateStr: string): string {
     if (!dateStr) return '';
-    return new Date(dateStr).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    const lang = this.translate.currentLang || this.translate.defaultLang || 'en';
+    const locale = lang === 'fr' ? 'fr-FR' : lang === 'ar' ? 'ar' : lang === 'en' ? 'en-GB' : lang;
+    return new Date(dateStr).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
   }
 }

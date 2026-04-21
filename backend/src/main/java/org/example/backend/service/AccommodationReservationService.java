@@ -42,6 +42,7 @@ public class AccommodationReservationService {
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
     private final SpecialOfferRepository specialOfferRepository;
+    private final UserNotificationService userNotificationService;
 
     @Value("${stripe.api.key:disabled}")
     private String stripeApiKey;
@@ -49,12 +50,24 @@ public class AccommodationReservationService {
     private record SavedStay(Reservation reservation, int nights, double discount) {}
 
     public boolean isStripeAccommodationPaymentsEnabled() {
-        return StripeSecretKeys.isStripeSecretConfigured(StripeSecretKeys.normalize(stripeApiKey));
+        return StripeSecretKeys.isStripeSecretConfigured(resolveStripeApiKey());
+    }
+
+    private String resolveStripeApiKey() {
+        return StripeSecretKeys.resolveEffective(stripeApiKey, System.getenv("STRIPE_SECRET_KEY"));
     }
 
     @Transactional
     public AccommodationReservationResponse createReservation(AccommodationReservationRequest req) {
         SavedStay s = persistNewReservation(req);
+        userNotificationService.notifyReservation(
+                req.getUserId(),
+                "ACCOMMODATION",
+                s.reservation().getReservationId(),
+                "Accommodation reservation created",
+                "Your accommodation reservation was created successfully.",
+                "/mes-reservations"
+        );
         return mapToResponse(s.reservation(), s.nights(), s.discount());
     }
 
@@ -75,6 +88,15 @@ public class AccommodationReservationService {
         if (!isStripeAccommodationPaymentsEnabled()) {
             saved.setStatus(ReservationStatus.CONFIRMED);
             reservationRepository.save(saved);
+            Integer ownerId = saved.getUser() != null ? saved.getUser().getUserId() : null;
+            userNotificationService.notifyReservation(
+                    ownerId,
+                    "ACCOMMODATION",
+                    saved.getReservationId(),
+                    "Accommodation reservation confirmed",
+                    "Your accommodation reservation is confirmed.",
+                    "/mes-reservations"
+            );
             return new AccommodationStripeCheckoutHandoff(buildLocalHebergementReturnUrl(saved), null, 0.0);
         }
         return new AccommodationStripeCheckoutHandoff(null, saved, total);
@@ -85,7 +107,7 @@ public class AccommodationReservationService {
         if (!isStripeAccommodationPaymentsEnabled()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Stripe n'est pas activé.");
         }
-        Stripe.apiKey = StripeSecretKeys.normalize(stripeApiKey);
+        Stripe.apiKey = resolveStripeApiKey();
         try {
             Session session = Session.retrieve(sessionId);
             String pay = session.getPaymentStatus();
@@ -108,6 +130,15 @@ public class AccommodationReservationService {
             }
             res.setStatus(ReservationStatus.CONFIRMED);
             Reservation updated = reservationRepository.save(res);
+                Integer ownerId = updated.getUser() != null ? updated.getUser().getUserId() : null;
+                userNotificationService.notifyReservation(
+                    ownerId,
+                    "ACCOMMODATION",
+                    updated.getReservationId(),
+                    "Accommodation reservation confirmed",
+                    "Payment confirmed for your accommodation reservation.",
+                    "/mes-reservations"
+                );
             int nights = (int) ChronoUnit.DAYS.between(updated.getCheckInDate(), updated.getCheckOutDate());
             return mapToResponse(updated, nights, 0);
         } catch (NumberFormatException e) {
@@ -161,6 +192,7 @@ public class AccommodationReservationService {
                 .checkOutDate(req.getCheckOut().atStartOfDay())
                 .status(ReservationStatus.PENDING)
                 .totalPrice(totalPrice)
+            .guestCount(req.getGuestCount() != null && req.getGuestCount() > 0 ? req.getGuestCount() : 1)
                 .room(room)
                 .user(user)
                 .build();
@@ -264,6 +296,7 @@ public class AccommodationReservationService {
                 .reservationId(r.getReservationId())
                 .accommodationId(accId)
                 .roomId(roomId)
+            .guestCount(r.getGuestCount())
                 .status(r.getStatus().name())
                 .checkIn(r.getCheckInDate().toLocalDate())
                 .checkOut(r.getCheckOutDate().toLocalDate())

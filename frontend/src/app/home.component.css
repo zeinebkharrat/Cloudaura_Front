@@ -2,7 +2,7 @@
   min-height: 100vh;
   display: flex;
   align-items: center;
-  padding: 0 8%;
+  padding: 0 clamp(12px, 6vw, 8%);
   position: relative;
   overflow: hidden;
 }
@@ -38,7 +38,7 @@
 .hero-visual {
   flex: 1;
   position: relative;
-  height: 600px;
+  height: clamp(300px, 60vh, 600px);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -47,7 +47,7 @@
 .model-container {
   width: 100%;
   max-width: 500px;
-  height: 520px;
+  height: clamp(260px, 52vh, 520px);
   border-radius: 20px;
   overflow: hidden;
   position: relative;
@@ -627,11 +627,11 @@
 .map-section-heading h2 {
   font-size: 2.25rem;
   margin-bottom: 12px;
-  color: #0f172a;
+  color: var(--text-color);
 }
 
 .map-section-heading p {
-  color: #334155;
+  color: var(--text-muted);
 }
 
 .map-wrapper {
@@ -1952,5 +1952,262 @@
   .hub-grid,
   .hub-grid--secondary {
     grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Persona strip — Tunisian silhouette + hotspots (no generic city cards); theme-aware */
+.persona-tunisia-section {
+  --persona-glass: color-mix(in srgb, var(--surface-card) 82%, transparent);
+  position: relative;
+  overflow: hidden;
+  margin: clamp(28px, 6vw, 72px) clamp(12px, 5vw, 8%);
+  padding: clamp(28px, 5vw, 52px);
+  border-radius: 28px;
+  isolation: isolate;
+  color: var(--text-color);
+  background:
+    radial-gradient(800px 400px at 12% -10%, color-mix(in srgb, var(--tunisia-red) 22%, transparent), transparent 58%),
+    radial-gradient(700px 440px at 92% 80%, color-mix(in srgb, #ffd166 14%, transparent), transparent 55%),
+    linear-gradient(155deg, var(--surface-2) 0%, var(--surface-card) 52%, var(--bg-color) 100%);
+  border: 1px solid var(--surface-border);
+  box-shadow: var(--shadow-card), 0 36px 90px rgba(15, 23, 42, 0.12);
+  transition:
+    background 0.35s ease,
+    border-color 0.25s ease,
+    box-shadow 0.35s ease,
+    color 0.25s ease;
+}
+
+:root[data-theme='dark'] .persona-tunisia-section {
+  background:
+    radial-gradient(800px 400px at 12% -10%, rgba(231, 0, 19, 0.25), transparent 58%),
+    radial-gradient(700px 440px at 92% 80%, rgba(255, 209, 102, 0.1), transparent 55%),
+    linear-gradient(155deg, #101820 0%, #0f141c 52%, #0d1118 100%);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 40px 120px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.persona-tunisia-bg {
+  position: absolute;
+  inset: -40%;
+  opacity: 0.22;
+  background: repeating-linear-gradient(
+    -12deg,
+    transparent,
+    transparent 14px,
+    color-mix(in srgb, var(--text-color) 6%, transparent) 14px,
+    color-mix(in srgb, var(--text-color) 6%, transparent) 15px
+  );
+  animation: persona-bg-drift 28s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+:root[data-theme='dark'] .persona-tunisia-bg {
+  opacity: 0.28;
+  background: repeating-linear-gradient(
+    -12deg,
+    transparent,
+    transparent 14px,
+    rgba(255, 255, 255, 0.03) 14px,
+    rgba(255, 255, 255, 0.03) 15px
+  );
+}
+
+@keyframes persona-bg-drift {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.persona-tunisia-svg {
+  position: absolute;
+  right: -6%;
+  bottom: -14%;
+  width: min(52vw, 420px);
+  height: auto;
+  opacity: 0.55;
+  filter: drop-shadow(0 30px 60px rgba(0, 0, 0, 0.55));
+  pointer-events: none;
+  z-index: 1;
+}
+
+.persona-tunisia-shape {
+  mix-blend-mode: screen;
+}
+
+.persona-tunisia-inner {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: clamp(20px, 4vw, 36px);
+}
+
+.persona-tunisia-head .persona-tunisia-kicker {
+  display: inline-block;
+  padding: 6px 14px;
+  margin-bottom: 12px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  background: rgba(231, 0, 19, 0.22);
+  border: 1px solid rgba(231, 0, 19, 0.42);
+}
+
+.persona-tunisia-head h2 {
+  margin: 0 0 10px;
+  font-size: clamp(1.45rem, 3.5vw, 2.05rem);
+  font-weight: 850;
+  letter-spacing: -0.02em;
+  color: var(--text-color);
+}
+
+.persona-tunisia-sub {
+  margin: 0;
+  max-width: 56ch;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.persona-tunisia-belt {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.persona-hotspot-wrap {
+  animation: persona-hotspot-in 0.75s cubic-bezier(0.18, 0.85, 0.22, 1) both;
+}
+
+@keyframes persona-hotspot-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.persona-hotspot {
+  position: relative;
+  cursor: pointer;
+  border: none;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 14px;
+  row-gap: 4px;
+  padding: 14px 18px 14px 14px;
+  border-radius: 18px;
+  color: var(--text-color);
+  text-align: left;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--surface-card) 92%, transparent), color-mix(in srgb, var(--surface-2) 88%, transparent));
+  border: 1px solid var(--surface-border);
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.3s cubic-bezier(0.2, 0.85, 0.2, 1), border-color 0.25s ease, box-shadow 0.3s ease;
+  min-width: 220px;
+}
+
+:root[data-theme='dark'] .persona-hotspot {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+}
+
+.persona-hotspot:hover {
+  transform: translateY(-4px) scale(1.02);
+  border-color: color-mix(in srgb, var(--tunisia-red) 35%, var(--surface-border));
+  box-shadow: 0 26px 60px rgba(15, 23, 42, 0.18);
+}
+
+:root[data-theme='dark'] .persona-hotspot:hover {
+  border-color: rgba(255, 209, 102, 0.35);
+  box-shadow: 0 26px 60px rgba(0, 0, 0, 0.48);
+}
+
+.persona-ring {
+  grid-row: 1 / span 2;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: conic-gradient(
+    from -90deg,
+    var(--tunisia-red) 0deg,
+    #ffd166 calc(var(--pct, 0) * 3.6deg),
+    color-mix(in srgb, var(--text-color) 12%, transparent) 0
+  );
+  -webkit-mask: radial-gradient(circle at center, transparent 56%, #000 57%);
+  mask: radial-gradient(circle at center, transparent 56%, #000 57%);
+  filter: saturate(1.08);
+}
+
+:root[data-theme='light'] .persona-ring {
+  background: conic-gradient(
+    from -90deg,
+    #b91c1c 0deg,
+    #ea580c calc(var(--pct, 0) * 3.6deg),
+    #e5e7eb 0
+  );
+}
+
+.persona-city {
+  grid-column: 2;
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+}
+
+.persona-pct {
+  grid-column: 3;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(1.15rem, 2.8vw, 1.45rem);
+  letter-spacing: -0.03em;
+  color: #fde68a;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+:root[data-theme='dark'] .persona-pct {
+  background: linear-gradient(120deg, #fecaca, #fde68a, #fff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+}
+
+/* Light mode: solid high-contrast % (gradient text was washing out on white) */
+:root[data-theme='light'] .persona-pct {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  color: #9a3412 !important;
+  -webkit-text-fill-color: #9a3412;
+  text-shadow: none;
+}
+
+.persona-hint {
+  grid-column: 2 / 4;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+@media (max-width: 640px) {
+  .persona-tunisia-svg {
+    opacity: 0.32;
+    right: -18%;
+  }
+
+  .persona-hotspot {
+    width: 100%;
+    min-width: 0;
   }
 }

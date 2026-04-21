@@ -3,6 +3,12 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { catchError, of } from 'rxjs';
+import { DialogModule } from 'primeng/dialog';
+import { ButtonModule } from 'primeng/button';
+import { InputTextModule } from 'primeng/inputtext';
+import { DropdownModule } from 'primeng/dropdown';
+import { InputNumberModule } from 'primeng/inputnumber';
+import { SliderModule } from 'primeng/slider';
 
 interface Accommodation {
   accommodationId: number;
@@ -33,7 +39,17 @@ interface City {
 @Component({
   selector: 'app-accommodations-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    ReactiveFormsModule,
+    DialogModule,
+    ButtonModule,
+    InputTextModule,
+    DropdownModule,
+    InputNumberModule,
+    SliderModule,
+  ],
   templateUrl: './accommodations-admin.component.html',
   styleUrl: './accommodations-admin.component.css'
 })
@@ -64,6 +80,27 @@ export class AccommodationsAdminComponent {
   accommodationTypes = ['HOTEL', 'GUESTHOUSE', 'MAISON_HOTE', 'AUTRE'];
   roomTypes = ['SINGLE', 'DOUBLE', 'SUITE', 'FAMILY', 'STUDIO'];
   statusOptions = ['AVAILABLE', 'UNAVAILABLE'];
+
+  readonly accTypeOptions = [
+    { label: 'Hotel', value: 'HOTEL' as const },
+    { label: 'Guest house', value: 'GUESTHOUSE' as const },
+    { label: "Maison d'hôte", value: 'MAISON_HOTE' as const },
+    { label: 'Other', value: 'AUTRE' as const },
+  ];
+
+  readonly accStatusOptions = [
+    { label: 'Available', value: 'AVAILABLE' as const },
+    { label: 'Unavailable', value: 'UNAVAILABLE' as const },
+  ];
+
+  cityDropdownOptions = computed(() =>
+    this.cities().map((c) => ({
+      label: c.region ? `${c.name} (${c.region})` : String(c.name),
+      value: c.cityId,
+    }))
+  );
+
+  roomTypeOptions = this.roomTypes.map((rt) => ({ label: rt, value: rt }));
 
   // Filtered accommodations
   filteredAccommodations = computed(() => {
@@ -165,6 +202,28 @@ export class AccommodationsAdminComponent {
     this.accPage.set(1);
   }
 
+  onAccommodationDialogVisible(visible: boolean): void {
+    if (!visible) {
+      this.closeForm();
+    }
+  }
+
+  onRoomDialogVisible(visible: boolean): void {
+    if (!visible) {
+      this.closeRoomForm();
+    }
+  }
+
+  accFieldInvalid(controlName: string): boolean {
+    const c = this.accommodationForm.get(controlName);
+    return !!(c && c.invalid && c.touched);
+  }
+
+  accFieldValid(controlName: string): boolean {
+    const c = this.accommodationForm.get(controlName);
+    return !!(c && c.valid && c.touched);
+  }
+
   accPageEnd(): number {
     return Math.min(this.accPage() * this.PAGE_SIZE, this.filteredAccommodations().length);
   }
@@ -237,12 +296,27 @@ export class AccommodationsAdminComponent {
   }
 
   loadCities() {
-    this.http.get<{success: boolean, data: City[]}>(`/api/cities`)
-      .subscribe(response => {
-        if (response?.success) {
-          this.cities.set(response.data || []);
-        }
-      });
+    this.http
+      .get<unknown>(`/api/cities`)
+      .pipe(catchError(() => of(null)))
+      .subscribe((response) => this.cities.set(this.normalizeCityListPayload(response)));
+  }
+
+  /** Accepts ApiResponse or legacy/raw array shapes from `/api/cities`. */
+  private normalizeCityListPayload(payload: unknown): City[] {
+    if (payload == null) {
+      return [];
+    }
+    if (Array.isArray(payload)) {
+      return payload as City[];
+    }
+    if (typeof payload === 'object' && payload !== null && 'data' in payload) {
+      const data = (payload as { data?: unknown }).data;
+      if (Array.isArray(data)) {
+        return data as City[];
+      }
+    }
+    return [];
   }
 
   openCreateForm() {

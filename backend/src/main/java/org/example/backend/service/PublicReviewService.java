@@ -7,11 +7,15 @@ import org.example.backend.dto.publicapi.CreatePublicReviewRequest;
 import org.example.backend.dto.publicapi.PublicReviewPageResponse;
 import org.example.backend.dto.publicapi.PublicReviewResponse;
 import org.example.backend.dto.publicapi.ReviewSummaryResponse;
+import org.example.backend.model.Accommodation;
+import org.example.backend.model.AccommodationReview;
 import org.example.backend.model.Activity;
 import org.example.backend.model.ActivityReview;
 import org.example.backend.model.Restaurant;
 import org.example.backend.model.RestaurantReview;
 import org.example.backend.model.User;
+import org.example.backend.repository.AccommodationRepository;
+import org.example.backend.repository.AccommodationReviewRepository;
 import org.example.backend.repository.ActivityReviewRepository;
 import org.example.backend.repository.RestaurantReviewRepository;
 import org.example.backend.repository.UserRepository;
@@ -28,12 +32,23 @@ import org.springframework.web.server.ResponseStatusException;
 @RequiredArgsConstructor
 public class PublicReviewService {
 
+    private final AccommodationRepository accommodationRepository;
     private final RestaurantService restaurantService;
     private final ActivityService activityService;
+    private final AccommodationReviewRepository accommodationReviewRepository;
     private final RestaurantReviewRepository restaurantReviewRepository;
     private final ActivityReviewRepository activityReviewRepository;
     private final UserRepository userRepository;
     private final SightengineCommentModerationService moderationService;
+
+    @Transactional(readOnly = true)
+    public PublicReviewPageResponse listAccommodationReviews(Integer accommodationId, Pageable pageable) {
+        findAccommodation(accommodationId);
+        Page<PublicReviewResponse> page = accommodationReviewRepository
+            .findByAccommodationAccommodationId(accommodationId, pageable)
+            .map(this::toResponse);
+        return new PublicReviewPageResponse(summaryForAccommodation(accommodationId), PageResponse.from(page));
+    }
 
     @Transactional(readOnly = true)
     public PublicReviewPageResponse listRestaurantReviews(Integer restaurantId, Pageable pageable) {
@@ -57,6 +72,14 @@ public class PublicReviewService {
     public ReviewSummaryResponse summaryForRestaurant(Integer restaurantId) {
         Double average = restaurantReviewRepository.averageStarsByRestaurantId(restaurantId);
         long total = restaurantReviewRepository.countByRestaurantRestaurantId(restaurantId);
+        return new ReviewSummaryResponse(average != null ? average : 0.0, total);
+    }
+
+    @Transactional(readOnly = true)
+    public ReviewSummaryResponse summaryForAccommodation(Integer accommodationId) {
+        findAccommodation(accommodationId);
+        Double average = accommodationReviewRepository.averageStarsByAccommodationId(accommodationId);
+        long total = accommodationReviewRepository.countByAccommodationAccommodationId(accommodationId);
         return new ReviewSummaryResponse(average != null ? average : 0.0, total);
     }
 
@@ -85,6 +108,26 @@ public class PublicReviewService {
         applyModeration(review, moderation);
 
         return toResponse(restaurantReviewRepository.save(review));
+    }
+
+    @Transactional
+    public PublicReviewResponse upsertAccommodationReview(Integer accommodationId, CreatePublicReviewRequest request) {
+        Accommodation accommodation = findAccommodation(accommodationId);
+        User user = currentAuthenticatedUser();
+
+        AccommodationReview review = accommodationReviewRepository
+            .findByAccommodationAccommodationIdAndUserUserId(accommodationId, user.getUserId())
+            .orElseGet(AccommodationReview::new);
+
+        review.setAccommodation(accommodation);
+        review.setUser(user);
+        review.setStars(request.stars());
+
+        String incoming = request.commentText().trim();
+        CommentModerationResult moderation = moderationService.moderateComment(incoming);
+        applyModeration(review, moderation);
+
+        return toResponse(accommodationReviewRepository.save(review));
     }
 
     @Transactional
@@ -120,6 +163,18 @@ public class PublicReviewService {
     }
 
     @Transactional
+    public void deleteAccommodationReview(Integer accommodationId) {
+        findAccommodation(accommodationId);
+        User user = currentAuthenticatedUser();
+
+        AccommodationReview review = accommodationReviewRepository
+            .findByAccommodationAccommodationIdAndUserUserId(accommodationId, user.getUserId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Avis introuvable"));
+
+        accommodationReviewRepository.delete(review);
+    }
+
+    @Transactional
     public void deleteActivityReview(Integer activityId) {
         activityService.findActivity(activityId);
         User user = currentAuthenticatedUser();
@@ -132,6 +187,19 @@ public class PublicReviewService {
     }
 
     private PublicReviewResponse toResponse(RestaurantReview review) {
+        return new PublicReviewResponse(
+            review.getReviewId(),
+            review.getUser().getUserId(),
+            review.getUser().getUsername(),
+            review.getUser().getEmail(),
+            review.getUser().getProfileImageUrl(),
+            review.getStars(),
+            review.getCommentText(),
+            review.getCreatedAt()
+        );
+    }
+
+    private PublicReviewResponse toResponse(AccommodationReview review) {
         return new PublicReviewResponse(
             review.getReviewId(),
             review.getUser().getUserId(),
@@ -160,7 +228,7 @@ public class PublicReviewService {
     private User currentAuthenticatedUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentification requise");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.review_auth_required");
         }
 
         String username = authentication.getName();
@@ -175,10 +243,22 @@ public class PublicReviewService {
         review.setAbuseCategories(moderation.abuseCategories().isEmpty() ? null : String.join(",", moderation.abuseCategories()));
     }
 
+    private void applyModeration(AccommodationReview review, CommentModerationResult moderation) {
+        review.setOriginalCommentText(moderation.originalContent());
+        review.setSanitizedCommentText(moderation.sanitizedContent());
+        review.setCommentText(moderation.sanitizedContent());
+        review.setAbuseCategories(moderation.abuseCategories().isEmpty() ? null : String.join(",", moderation.abuseCategories()));
+    }
+
     private void applyModeration(ActivityReview review, CommentModerationResult moderation) {
         review.setOriginalCommentText(moderation.originalContent());
         review.setSanitizedCommentText(moderation.sanitizedContent());
         review.setCommentText(moderation.sanitizedContent());
         review.setAbuseCategories(moderation.abuseCategories().isEmpty() ? null : String.join(",", moderation.abuseCategories()));
+    }
+
+    private Accommodation findAccommodation(Integer accommodationId) {
+        return accommodationRepository.findById(accommodationId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Hébergement introuvable"));
     }
 }

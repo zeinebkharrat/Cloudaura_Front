@@ -14,6 +14,19 @@
         </span>
       }
       <div class="sb-head-actions">
+        <button
+          class="tog tog-theme"
+          (click)="toggleTheme()"
+          aria-label="Toggle theme"
+          [title]="isDarkMode() ? 'Light mode' : 'Dark mode'"
+          [attr.data-tip]="isDarkMode() ? 'Light mode' : 'Dark mode'"
+        >
+          @if (isDarkMode()) {
+            <i class="pi pi-sun" aria-hidden="true"></i>
+          } @else {
+            <i class="pi pi-moon" aria-hidden="true"></i>
+          }
+        </button>
         <button class="tog" (click)="toggle()" id="sidebar-toggle-btn" title="Compact sidebar" aria-label="Compact sidebar" data-tip="Compact sidebar">
           <i class="pi pi-bars" aria-hidden="true"></i>
         </button>
@@ -84,6 +97,10 @@
             <div class="sb-urole">{{ user()?.roles?.join(', ') }}</div>
           </div>
         </button>
+        <button class="logout-btn home-btn" (click)="goHome()" id="admin-home-btn">
+          <i class="pi pi-home"></i>
+          Home
+        </button>
         <button class="logout-btn" (click)="logout()" id="admin-logout-btn">
           <i class="pi pi-sign-out"></i>
           Sign out
@@ -98,6 +115,9 @@
         <i class="pi pi-arrow-right"></i>
       </button>
     }
-    <router-outlet />
+
+    <section class="sb-content">
+      <router-outlet />
+    </section>
   </main>
 </div>

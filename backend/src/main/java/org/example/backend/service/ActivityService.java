@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.example.backend.dto.ActivityRequest;
 import org.example.backend.dto.ActivityResponse;
 import org.example.backend.exception.ResourceNotFoundException;
+import org.example.backend.i18n.CatalogKeyUtil;
 import org.example.backend.model.ActivityMedia;
 import org.example.backend.model.Activity;
 import org.example.backend.model.ReservationStatus;
@@ -39,6 +40,7 @@ public class ActivityService {
     private final ActivityReservationRepository activityReservationRepository;
     private final ActivityReviewRepository activityReviewRepository;
     private final CityService cityService;
+    private final CatalogTranslationService catalogTranslationService;
 
     public Page<ActivityResponse> list(String q, Pageable pageable) {
         return list(q, null, null, null, null, 1, pageable);
@@ -70,12 +72,20 @@ public class ActivityService {
                 predicate = cb.and(predicate, cb.equal(root.get("city").get("cityId"), cityId));
             }
 
+            // Public UI always sends min/max from sliders; treat NULL DB price as "price not set"
+            // so rows are not excluded (SQL three-valued logic would drop NULL vs numeric bounds).
             if (minPrice != null) {
-                predicate = cb.and(predicate, cb.greaterThanOrEqualTo(root.get("price"), minPrice));
+                predicate = cb.and(predicate, cb.or(
+                    cb.isNull(root.get("price")),
+                    cb.greaterThanOrEqualTo(root.get("price"), minPrice)
+                ));
             }
 
             if (maxPrice != null) {
-                predicate = cb.and(predicate, cb.lessThanOrEqualTo(root.get("price"), maxPrice));
+                predicate = cb.and(predicate, cb.or(
+                    cb.isNull(root.get("price")),
+                    cb.lessThanOrEqualTo(root.get("price"), maxPrice)
+                ));
             }
 
             return predicate;
@@ -127,7 +137,7 @@ public class ActivityService {
 
     public Activity findActivity(Integer id) {
         return activityRepository.findById(id)
-            .orElseThrow(() -> new ResourceNotFoundException("Activité introuvable: " + id));
+            .orElseThrow(() -> new ResourceNotFoundException("reservation.error.activity_not_found"));
     }
 
     private void apply(Activity activity, ActivityRequest request) {
@@ -142,7 +152,7 @@ public class ActivityService {
 
         Integer maxParticipants = request.getMaxParticipantsPerDay();
         if (maxParticipants != null && maxParticipants < 1) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le nombre maximal de participants doit être >= 1");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.activity.max_participants_invalid");
         }
 
         if (maxParticipants == null) {
@@ -164,15 +174,34 @@ public class ActivityService {
             .map(ActivityMedia::getUrl)
             .orElse(null);
 
+        int aid = activity.getActivityId();
+        int cid = activity.getCity().getCityId();
+
+        String rawName = activity.getName();
+        String resName = catalogTranslationService.resolveEntityField(aid, "activity", "name", rawName);
+        String nameOut = CatalogKeyUtil.isBadI18nPlaceholder(rawName, resName) ? "" : resName;
+
+        String rawType = activity.getType();
+        String resType = catalogTranslationService.resolveEntityField(aid, "activity", "type", rawType);
+        String typeOut = CatalogKeyUtil.isBadI18nPlaceholder(rawType, resType) ? "" : resType;
+
+        String rawDesc = activity.getDescription();
+        String resDesc = catalogTranslationService.resolveEntityField(aid, "activity", "description", rawDesc);
+        String descOut = CatalogKeyUtil.isBadI18nPlaceholder(rawDesc, resDesc) ? null : resDesc;
+
+        String rawAddr = activity.getAddress();
+        String resAddr = catalogTranslationService.resolveEntityField(aid, "activity", "address", rawAddr);
+        String addrOut = CatalogKeyUtil.isBadI18nPlaceholder(rawAddr, resAddr) ? null : resAddr;
+
         return new ActivityResponse(
             activity.getActivityId(),
             activity.getCity().getCityId(),
-            activity.getCity().getName(),
-            activity.getName(),
-            activity.getType(),
+            catalogTranslationService.resolveEntityField(cid, "city", "name", activity.getCity().getName()),
+            nameOut,
+            typeOut,
             activity.getPrice(),
-            activity.getDescription(),
-            activity.getAddress(),
+            descOut,
+            addrOut,
             activity.getLatitude(),
             activity.getLongitude(),
             imageUrl,

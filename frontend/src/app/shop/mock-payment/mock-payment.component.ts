@@ -3,12 +3,13 @@ import { HttpClient } from '@angular/common/http';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { API_BASE_URL } from '../../core/api-url';
 
 @Component({
   selector: 'app-mock-payment',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslateModule],
   templateUrl: './mock-payment.component.html',
   styleUrl: './mock-payment.component.css'
 })
@@ -16,6 +17,7 @@ export class MockPaymentComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly http = inject(HttpClient);
+  private readonly translate = inject(TranslateService);
 
   readonly orderId = signal<string | null>(null);
   readonly amount = signal<string | null>(null);
@@ -29,7 +31,7 @@ export class MockPaymentComponent implements OnInit {
       this.amount.set(params['amount']);
       
       if (!this.orderId()) {
-        this.error.set('Commande invalide.');
+        this.error.set('i18n:MOCK_PAYMENT.ERR_INVALID_ORDER');
       }
     });
   }
@@ -50,7 +52,7 @@ export class MockPaymentComponent implements OnInit {
         }, 2500);
       },
       error: () => {
-        this.error.set('Impossible de confirmer le paiement simulé. Réessayez ou contactez le support.');
+        this.error.set('i18n:MOCK_PAYMENT.ERR_CONFIRM');
         this.loading.set(false);
       }
     });
@@ -70,5 +72,16 @@ export class MockPaymentComponent implements OnInit {
     const num = Number(val);
     if (isNaN(num)) return val;
     return new Intl.NumberFormat('fr-TN', { style: 'currency', currency: 'TND', minimumFractionDigits: 2 }).format(num);
+  }
+
+  displayError(): string {
+    const e = this.error();
+    if (!e) {
+      return '';
+    }
+    if (e.startsWith('i18n:')) {
+      return this.translate.instant(e.slice(5));
+    }
+    return e;
   }
 }

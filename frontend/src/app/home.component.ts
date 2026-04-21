@@ -9,18 +9,22 @@ import {
   PLATFORM_ID,
   signal,
   ChangeDetectorRef,
+  inject,
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { catchError, forkJoin, map, of } from 'rxjs';
+import { TranslateModule } from '@ngx-translate/core';
 import * as echarts from 'echarts';
 import { tunisiaGeoJson } from './tunisia-map';
 import { GOVERNORATE_LABEL_EN, GOVERNORATE_LABEL_FR } from './tunisia-governorate-labels';
 import { ExploreService } from './explore/explore.service';
 import { API_BASE_URL, API_FALLBACK_ORIGIN } from './core/api-url';
 import { AuthService } from './core/auth.service';
-import { PersonalizationService } from './core/personalization.service';
+import { TravelMatchService } from './core/services/travel-match.service';
+import { travelPrefsStorageKey } from './core/travel-match.storage';
+import type { CityMatchScore, TravelPreferencePayload } from './core/travel-match.types';
 
 interface HomeImageCard {
   title: string;
@@ -90,7 +94,7 @@ function normalizeRegionToken(value: unknown): string {
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, TranslateModule],
   templateUrl: './home.component.html',
   styleUrl: './home.component.css',
 })
@@ -101,7 +105,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly heroVideoSrc = '/assets/video.mp4';
   readonly heroVideoPoster = 'assets/sidi_bou.png';
   readonly heroVideoError = signal(false);
-  readonly videoMuted = signal(false);
+  readonly videoMuted = signal(true);
   readonly skeletonCards = Array.from({ length: 4 }, (_, i) => i);
 
   readonly activityCards = signal<HomeImageCard[]>([]);
@@ -120,6 +124,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly currentPersonalizedEventPage = signal(0);
   readonly personalizedEventPageCount = signal(1);
   readonly activeAiCityRoute = signal<string | null>(null);
+  readonly personaMatches = signal<CityMatchScore[]>([]);
 
   readonly loadingActivities = signal(true);
   readonly loadingTransportModes = signal(true);
@@ -150,20 +155,20 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.recalculatePersonalizedPagination('personalized-events-slider', this.personalizedEventPageCount, this.currentPersonalizedEventPage);
   };
 
+  private readonly authService = inject(AuthService);
+  private readonly travelMatch = inject(TravelMatchService);
+
   constructor(
     @Inject(PLATFORM_ID) private platformId: Object,
     private cdr: ChangeDetectorRef,
     private readonly http: HttpClient,
     private readonly exploreService: ExploreService,
-    private readonly authService: AuthService,
-    private readonly personalizationService: PersonalizationService,
     private readonly router: Router,
     private readonly route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
     this.loadHomeSections();
-    this.loadPersonalizedSection();
   }
 
   scrollSlider(containerId: string, direction: 1 | -1): void {
@@ -320,15 +325,8 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    const nextMuted = !video.muted;
-    video.muted = nextMuted;
-    this.videoMuted.set(nextMuted);
-
-    if (video.paused) {
-      void video.play().catch(() => {
-        this.heroVideoError.set(true);
-      });
-    }
+    video.muted = true;
+    this.videoMuted.set(true);
   }
 
   ngAfterViewInit(): void {
@@ -520,83 +518,60 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
 
-      video.defaultMuted = false;
-      video.muted = false;
-      video.volume = 1;
-      this.videoMuted.set(false);
+      video.defaultMuted = true;
+      video.muted = true;
+      video.volume = 0;
+      this.videoMuted.set(true);
 
       void video.play().catch(() => {
-        // Autoplay with sound can be blocked by browsers; fallback to muted autoplay.
-        video.defaultMuted = true;
-        video.muted = true;
-        this.videoMuted.set(true);
-        void video.play().catch(() => {
-          this.heroVideoError.set(true);
-        });
+        this.heroVideoError.set(true);
       });
     }, 0);
   }
 
   private loadHomeSections(): void {
+    this.loadPersonaMatches();
     this.loadActivityCards();
     this.loadTransportCards();
     this.loadRestaurantCards();
     this.loadArtisanCards();
   }
 
-  private loadPersonalizedSection(): void {
-    if (!this.authService.currentUser()) {
-      this.loadingPersonalized.set(false);
+  private loadPersonaMatches(): void {
+    if (!isPlatformBrowser(this.platformId)) {
       return;
     }
-
-    this.personalizationService
-      .getRecommendations()
-      .pipe(catchError(() => of(null)))
-      .subscribe((res) => {
-        if (!res) {
-          this.loadingPersonalized.set(false);
-          return;
-        }
-
-        const cityCards: HomeImageCard[] = (res.recommendedCities ?? []).slice(0, 5).map((item) => ({
-          title: item.name,
-          subtitle: item.description || item.region || 'City recommendation for your next stop.',
-          image: item.imageUrl || 'assets/sidi_bou.png',
-          route: `/city/${item.cityId}`,
-          badge: `Match ${(item.score * 100).toFixed(0)}%`,
-          tags: [item.region || 'Tunisia', 'City'],
-        }));
-
-        const activityCards: HomeImageCard[] = (res.recommendedActivities ?? []).slice(0, 4).map((item) => ({
-          title: item.name,
-          subtitle: item.description || item.cityName || 'Activity recommendation tuned for your profile.',
-          image: item.imageUrl || 'assets/sahara.png',
-          route: `/activities/${item.activityId}`,
-          badge: `Match ${(item.score * 100).toFixed(0)}%`,
-          tags: [item.cityName || 'Tunisia', item.type || 'Activity'],
-          priceTag: item.price != null ? `${Math.round(item.price)} TND` : undefined,
-        }));
-
-        const eventCards: HomeImageCard[] = (res.recommendedEvents ?? []).slice(0, 3).map((item) => ({
-          title: item.title,
-          subtitle: item.venue || item.cityName || 'Event recommendation curated for your interests.',
-          image: item.imageUrl || 'assets/el_jem.png',
-          route: '/evenements',
-          badge: `Match ${(item.score * 100).toFixed(0)}%`,
-          tags: [item.cityName || 'Tunisia', item.eventType || 'Event'],
-          priceTag: item.price != null ? `${Math.round(item.price)} TND` : undefined,
-        }));
-
-        this.personalizedCityCards.set(cityCards);
-        this.personalizedActivityCards.set(activityCards);
-        this.personalizedEventCards.set(eventCards);
-        this.loadingPersonalized.set(false);
-        setTimeout(() => {
-          this.recalculatePersonalizedPagination('personalized-cities-slider', this.personalizedCityPageCount, this.currentPersonalizedCityPage);
-          this.recalculatePersonalizedPagination('personalized-events-slider', this.personalizedEventPageCount, this.currentPersonalizedEventPage);
-        }, 40);
+    const u = this.authService.currentUser();
+    if (!u?.id) {
+      return;
+    }
+    const raw = localStorage.getItem(travelPrefsStorageKey(u.id));
+    if (!raw) {
+      return;
+    }
+    try {
+      const prefs = JSON.parse(raw) as TravelPreferencePayload;
+      this.travelMatch.rankCities(prefs, 6).subscribe({
+        next: (rows) => this.personaMatches.set(rows),
+        error: () => {},
       });
+    } catch {
+      /* ignore malformed prefs */
+    }
+  }
+
+  exploreMatchedCity(cityName: string): void {
+    this.exploreService.resolveCityByName(cityName).subscribe({
+      next: (res) => {
+        const id = res.city?.cityId;
+        if (id != null) {
+          void this.router.navigate(['/city', id]);
+        } else {
+          void this.router.navigate(['/destination-map'], { queryParams: { q: cityName } });
+        }
+      },
+      error: () => void this.router.navigate(['/destination-map']),
+    });
   }
 
   private loadActivityCards(): void {

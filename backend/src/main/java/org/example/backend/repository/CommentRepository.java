@@ -15,7 +15,9 @@ import java.util.List;
 public interface CommentRepository extends JpaRepository<Comment, Integer> {
     List<Comment> findByPost(Post post);
     List<Comment> findByAuthor(User user);
+        List<Comment> findTop5ByAuthor_UserIdOrderByCreatedAtDesc(Integer userId);
     List<Comment> findByPostOrderByCreatedAtAsc(Post post);
+        long countByAuthor_UserId(Integer userId);
 
     @Modifying
     @Query("delete from Comment c where c.post.postId = :postId and c.parent is not null")

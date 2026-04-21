@@ -1,577 +1,455 @@
 <div class="admin-container">
-  <p-tabView [(activeIndex)]="activeTabIndex">
 
-    <!-- ═══ TRANSPORTS TAB ═══ -->
-    <p-tabPanel header="Transport" leftIcon="pi pi-car">
-
-      <!-- Stats Row -->
-      <div class="stats-row">
-        <div class="stat-card">
-          <div class="stat-icon red"><i class="pi pi-car"></i></div>
-          <div class="stat-body">
-            <span class="stat-num">{{ totalTransportsCount() }}</span>
-            <span class="stat-lbl">Total transports</span>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon green"><i class="pi pi-check-circle"></i></div>
-          <div class="stat-body">
-            <span class="stat-num">{{ activeTransportCount() }}</span>
-            <span class="stat-lbl">Active</span>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon blue"><i class="pi pi-users"></i></div>
-          <div class="stat-body">
-            <span class="stat-num">{{ totalAvailableSeats() }}</span>
-            <span class="stat-lbl">Seats avail.</span>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon amber"><i class="pi pi-truck"></i></div>
-          <div class="stat-body">
-            <span class="stat-num">{{ totalVehiclesCount() }}</span>
-            <span class="stat-lbl">Active vehicles</span>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon purple"><i class="pi pi-id-card"></i></div>
-          <div class="stat-body">
-            <span class="stat-num">{{ totalDriversCount() }}</span>
-            <span class="stat-lbl">Active drivers</span>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon teal"><i class="pi pi-calendar-check"></i></div>
-          <div class="stat-body">
-            <span class="stat-num">{{ todayReservationsCount() }}</span>
-            <span class="stat-lbl">Today's bookings</span>
-          </div>
-        </div>
+  <!-- Stats Row -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon red"><i class="pi pi-car"></i></div>
+      <div class="stat-body">
+        <span class="stat-num">{{ totalTransportsCount() }}</span>
+        <span class="stat-lbl">Total transports</span>
       </div>
-
-      <div class="section-header">
-        <h2>Transport management</h2>
-        <button pButton label="+ New transport" class="btn-create" (click)="openTransportDialog()"></button>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon green"><i class="pi pi-check-circle"></i></div>
+      <div class="stat-body">
+        <span class="stat-num">{{ activeTransportCount() }}</span>
+        <span class="stat-lbl">Active</span>
       </div>
-
-      <!-- Search bar -->
-      <div class="search-form">
-        <input class="search-input" type="text"
-               [ngModel]="transportSearch()" (ngModelChange)="onTransportSearch($event)"
-               placeholder="Search type, city, vehicle, driver, airline, price, status…" />
-        <select class="type-filter" [ngModel]="filterTypeValue()" (ngModelChange)="onTypeFilter($event)">
-          <option value="">All types</option>
-          <option *ngFor="let t of transportTypes" [value]="t.value">{{ t.label }}</option>
-        </select>
-        <button class="search-btn" (click)="clearTransportSearch()">
-          <i class="pi pi-refresh"></i> Clear
-        </button>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon blue"><i class="pi pi-users"></i></div>
+      <div class="stat-body">
+        <span class="stat-num">{{ totalAvailableSeats() }}</span>
+        <span class="stat-lbl">Seats avail.</span>
       </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon teal"><i class="pi pi-calendar-check"></i></div>
+      <div class="stat-body">
+        <span class="stat-num">{{ todayReservationsCount() }}</span>
+        <span class="stat-lbl">Today's bookings</span>
+      </div>
+    </div>
+  </div>
 
-      <!-- Table -->
-      <div class="table-wrap">
-        @if (isLoading()) {
-          <table class="data-table">
-            <tbody>
-              @for (i of [1,2,3,4,5,6,7]; track i) {
-                <tr><td colspan="9" style="padding:12px 14px;"><div style="height:18px; background:rgba(255,255,255,0.04); border-radius:6px; animation:pulse 1.5s infinite;"></div></td></tr>
-              }
-            </tbody>
-          </table>
-        } @else if (pagedTransports().length === 0) {
-          <div class="empty-state">
-            <i class="pi pi-car empty-icon"></i>
-            <p>{{ transportSearch() || filterTypeValue() ? 'No transport matches your search.' : 'No transport found.' }}</p>
-          </div>
-        } @else {
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>TYPE</th>
-                <th>ROUTE</th>
-                <th>DEPARTURE</th>
-                <th>ARRIVAL</th>
-                <th>SEATS</th>
-                <th>PRICE</th>
-                <th>VEHICLE / DRIVER</th>
-                <th>STATUS</th>
-                <th>ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (t of pagedTransports(); track t.transportId) {
-                <tr [class.inactive]="!t.isActive">
-                  <td><span class="type-badge" [ngClass]="'badge-' + t.type.toLowerCase()">{{ getTypeLabel(t.type) }}</span></td>
-                  <td>
-                    <div class="cell-main">
-                      {{ t.departureCityName || ('City ' + t.departureCityId) }}
-                      <i class="pi pi-arrow-right route-arrow"></i>
-                      {{ t.arrivalCityName || ('City ' + t.arrivalCityId) }}
-                    </div>
-                  </td>
-                  <td>
-                    <div class="cell-main">{{ t.departureTime | date:'d/MM/yy' }}</div>
-                    <div class="cell-sub">{{ t.departureTime | date:'HH:mm' }}</div>
-                  </td>
-                  <td>
-                    <div class="cell-main">{{ t.arrivalTime | date:'d/MM/yy' }}</div>
-                    <div class="cell-sub">{{ t.arrivalTime | date:'HH:mm' }}</div>
-                  </td>
-                  <td>
-                  @if (t.availableSeats === 0) {
-                    <span class="seats-badge seats-full">FULL</span>
-                  } @else {
-                      <span class="seats-badge" [ngClass]="getSeatClass(t)">
-                        {{ t.availableSeats }} / {{ t.capacity }}
-                      </span>
-                    }
-                  </td>
-                  <td><span class="price-val">{{ t.price | currency:'TND':'symbol':'1.2-2' }}</span></td>
-                  <td>
-                    @if (t.type === 'PLANE') {
-                      <div class="cell-main"><i class="pi pi-send" style="margin-right:4px;font-size:0.75rem;opacity:0.6;"></i>{{ t.operatorName || '—' }}</div>
-                      <div class="cell-sub">{{ t.flightCode || '' }}</div>
-                    } @else {
-                      <div class="cell-main">{{ t.vehicleInfo || '—' }}</div>
-                      <div class="cell-sub">{{ t.driverName || '' }}</div>
-                    }
-                  </td>
-                  <td>
-                    <div class="status-stack">
-                      <span class="status-badge" [class.active]="t.isActive" [class.inactive-badge]="!t.isActive">{{ t.isActive ? 'Active' : 'Inactive' }}</span>
-                      @if (t.isActive && t.availableSeats === 0) {
-                        <span class="status-badge full-badge">Full</span>
-                      }
-                    </div>
-                  </td>
-                  <td>
-                    <div class="actions">
-                      <button class="action-btn edit" title="Edit" (click)="openTransportDialog(t)">
-                        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                        <span>Edit</span>
-                      </button>
-                      <button class="action-btn view" title="Bookings" (click)="viewReservations(t)">
-                        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
-                        <span>Bookings</span>
-                      </button>
-                      <button class="action-btn" [class.toggle-on]="t.isActive" [class.toggle-off]="!t.isActive"
-                              [title]="t.isActive ? 'Deactivate' : 'Activate'" (click)="toggleTransportStatus(t)">
-                        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-                          <circle cx="12" cy="12" r="9"/>
-                          @if (t.isActive) { <path d="M5 5l14 14"/> } @else { <path d="M20 6 9 17l-5-5"/> }
-                        </svg>
-                        <span>{{ t.isActive ? 'Deactivate' : 'Activate' }}</span>
-                      </button>
-                      <button class="action-btn delete" title="Delete" (click)="deleteTransport(t)">
-                        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
-                        <span>Delete</span>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        }
+  <div class="section-header">
+    <h2>Transport management</h2>
+    <button pButton label="+ New transport" class="btn-create" (click)="openTransportDialog()"></button>
+  </div>
 
-        <!-- Pagination -->
-        @if (totalTransportPages() > 1) {
-          <div class="pagination">
-            <span class="pg-info">
-              {{ (transportPage - 1) * PAGE_SIZE + 1 }}–{{ tPageEnd() }} of {{ filteredTransports().length }}
-            </span>
-            <div class="pg-controls">
-              <button class="pg-btn" (click)="transportPage = 1" [disabled]="transportPage === 1">«</button>
-              <button class="pg-btn" (click)="transportPage = transportPage - 1" [disabled]="transportPage === 1">‹</button>
-              @for (p of getTransportPageNumbers(); track p) {
-                @if (p === -1) {
-                  <span class="pg-dots">…</span>
-                } @else {
-                  <button class="pg-btn" [class.active]="transportPage === p" (click)="transportPage = p">{{ p }}</button>
+  <div class="search-form">
+    <input class="search-input" type="text"
+           [ngModel]="transportSearch()" (ngModelChange)="onTransportSearch($event)"
+           placeholder="Search type, city, airline, price, status…" />
+    <select class="type-filter" [ngModel]="filterTypeValue()" (ngModelChange)="onTypeFilter($event)">
+      <option value="">All types</option>
+      <option *ngFor="let t of transportTypes" [value]="t.value">{{ t.label }}</option>
+    </select>
+    <button class="search-btn" (click)="clearTransportSearch()">
+      <i class="pi pi-refresh"></i> Clear
+    </button>
+  </div>
+
+  <div class="table-wrap">
+    @if (isLoading()) {
+      <table class="data-table">
+        <tbody>
+          @for (i of [1,2,3,4,5,6,7]; track i) {
+            <tr><td colspan="9" style="padding:12px 14px;"><div style="height:18px; background:rgba(255,255,255,0.04); border-radius:6px; animation:pulse 1.5s infinite;"></div></td></tr>
+          }
+        </tbody>
+      </table>
+    } @else if (pagedTransports().length === 0) {
+      <div class="empty-state">
+        <i class="pi pi-car empty-icon"></i>
+        <p>{{ transportSearch() || filterTypeValue() ? 'No transport matches your search.' : 'No transport found.' }}</p>
+      </div>
+    } @else {
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>TYPE</th>
+            <th>ROUTE</th>
+            <th>DEPARTURE</th>
+            <th>ARRIVAL</th>
+            <th>SEATS</th>
+            <th>PRICE</th>
+            <th>OPERATOR / FLIGHT</th>
+            <th>STATUS</th>
+            <th>ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (t of pagedTransports(); track t.transportId) {
+            <tr [class.inactive]="!t.isActive">
+              <td><span class="type-badge" [ngClass]="'badge-' + t.type.toLowerCase()">{{ getTypeLabel(t.type) }}</span></td>
+              <td>
+                <div class="cell-main">
+                  {{ t.departureCityName || ('City ' + t.departureCityId) }}
+                  <i class="pi pi-arrow-right route-arrow"></i>
+                  {{ t.arrivalCityName || ('City ' + t.arrivalCityId) }}
+                </div>
+              </td>
+              <td>
+                <div class="cell-main">{{ t.departureTime | date:'d/MM/yy' }}</div>
+                <div class="cell-sub">{{ t.departureTime | date:'HH:mm' }}</div>
+              </td>
+              <td>
+                <div class="cell-main">{{ t.arrivalTime | date:'d/MM/yy' }}</div>
+                <div class="cell-sub">{{ t.arrivalTime | date:'HH:mm' }}</div>
+              </td>
+              <td>
+              @if (t.availableSeats === 0) {
+                <span class="seats-badge seats-full">FULL</span>
+              } @else {
+                  <span class="seats-badge" [ngClass]="getSeatClass(t)">
+                    {{ t.availableSeats }} / {{ t.capacity }}
+                  </span>
                 }
-              }
-              <button class="pg-btn" (click)="transportPage = transportPage + 1" [disabled]="transportPage === totalTransportPages()">›</button>
-              <button class="pg-btn" (click)="transportPage = totalTransportPages()" [disabled]="transportPage === totalTransportPages()">»</button>
-            </div>
-          </div>
-        }
-      </div>
-    </p-tabPanel>
+              </td>
+              <td><span class="price-val">{{ t.price | currency:'TND':'symbol':'1.2-2' }}</span></td>
+              <td>
+                @if (t.type === 'PLANE') {
+                  <div class="cell-main"><i class="pi pi-send" style="margin-right:4px;font-size:0.75rem;opacity:0.6;"></i>{{ t.operatorName || '—' }}</div>
+                  <div class="cell-sub">{{ t.flightCode || '' }}</div>
+                } @else {
+                  <div class="cell-main">—</div>
+                  <div class="cell-sub"></div>
+                }
+              </td>
+              <td>
+                <div class="status-stack">
+                  <span class="status-badge" [class.active]="t.isActive" [class.inactive-badge]="!t.isActive">{{ t.isActive ? 'Active' : 'Inactive' }}</span>
+                  @if (t.isActive && t.availableSeats === 0) {
+                    <span class="status-badge full-badge">Full</span>
+                  }
+                </div>
+              </td>
+              <td>
+                <div class="actions">
+                  <button class="action-btn edit" title="Edit" (click)="openTransportDialog(t)">
+                    <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>
+                    <span>Edit</span>
+                  </button>
+                  <button class="action-btn view" title="Bookings" (click)="viewReservations(t)">
+                    <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                    <span>Bookings</span>
+                  </button>
+                  <button class="action-btn" [class.toggle-on]="t.isActive" [class.toggle-off]="!t.isActive"
+                          [title]="t.isActive ? 'Deactivate' : 'Activate'" (click)="toggleTransportStatus(t)">
+                    <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                      <circle cx="12" cy="12" r="9"/>
+                      @if (t.isActive) { <path d="M5 5l14 14"/> } @else { <path d="M20 6 9 17l-5-5"/> }
+                    </svg>
+                    <span>{{ t.isActive ? 'Deactivate' : 'Activate' }}</span>
+                  </button>
+                  <button class="action-btn delete" title="Delete" (click)="deleteTransport(t)">
+                    <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+                    <span>Delete</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
 
-    <!-- ═══ VEHICLES TAB ═══ -->
-    <p-tabPanel header="Vehicles" leftIcon="pi pi-truck">
-      <div class="section-header">
-        <h2>Vehicle management</h2>
-        <button pButton label="+ New vehicle" class="btn-create" (click)="openVehicleDialog()"></button>
+    @if (totalTransportPages() > 1) {
+      <div class="pagination">
+        <span class="pg-info">
+          {{ (transportPage - 1) * PAGE_SIZE + 1 }}–{{ tPageEnd() }} of {{ filteredTransports().length }}
+        </span>
+        <div class="pg-controls">
+          <button class="pg-btn" (click)="transportPage = 1" [disabled]="transportPage === 1">«</button>
+          <button class="pg-btn" (click)="transportPage = transportPage - 1" [disabled]="transportPage === 1">‹</button>
+          @for (p of getTransportPageNumbers(); track p) {
+            @if (p === -1) {
+              <span class="pg-dots">…</span>
+            } @else {
+              <button class="pg-btn" [class.active]="transportPage === p" (click)="transportPage = p">{{ p }}</button>
+            }
+          }
+          <button class="pg-btn" (click)="transportPage = transportPage + 1" [disabled]="transportPage === totalTransportPages()">›</button>
+          <button class="pg-btn" (click)="transportPage = totalTransportPages()" [disabled]="transportPage === totalTransportPages()">»</button>
+        </div>
       </div>
-      <div class="search-form" style="grid-template-columns: 1fr auto;">
-        <input class="search-input" type="text"
-               [ngModel]="vehicleSearch()" (ngModelChange)="onVehicleSearch($event)"
-               placeholder="Search brand, model, plate, type, color…" />
-        <button class="search-btn" (click)="clearVehicleSearch()"><i class="pi pi-refresh"></i> Clear</button>
-      </div>
-      <div class="table-wrap">
-        @if (pagedVehicles().length === 0) {
-          <div class="empty-state"><i class="pi pi-truck empty-icon"></i><p>No vehicles found.</p></div>
-        } @else {
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>BRAND / MODEL</th>
-                <th>TYPE</th>
-                <th>PLATE</th>
-                <th>CAPACITY</th>
-                <th>COLOR / YEAR</th>
-                <th>PRICE / TRIP</th>
-                <th>STATUS</th>
-                <th>ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (v of pagedVehicles(); track v.vehicleId) {
-                <tr [class.inactive]="!v.isActive">
-                  <td><div class="cell-main">{{ v.brand }} {{ v.model }}</div></td>
-                  <td><span class="type-badge" [ngClass]="'badge-' + v.type.toLowerCase()">{{ v.type }}</span></td>
-                  <td><code>{{ v.plateNumber }}</code></td>
-                  <td>{{ v.capacity }} seats</td>
-                  <td>
-                    <div class="cell-main">{{ v.color || '—' }}</div>
-                    <div class="cell-sub">{{ v.year || '—' }}</div>
-                  </td>
-                  <td><span class="price-val">{{ v.pricePerTrip | currency:'TND':'symbol':'1.2-2' }}</span></td>
-                  <td><span class="status-badge" [class.active]="v.isActive" [class.inactive-badge]="!v.isActive">{{ v.isActive ? 'Active' : 'Inactive' }}</span></td>
-                  <td>
-                    <div class="actions">
-                      <button class="action-btn edit" (click)="openVehicleDialog(v)">
-                        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                        <span>Edit</span>
-                      </button>
-                      <button class="action-btn delete" (click)="deleteVehicle(v)">
-                        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
-                        <span>Delete</span>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        }
-        @if (totalVehiclePages() > 1) {
-          <div class="pagination">
-            <span class="pg-info">{{ (vehiclePage - 1) * PAGE_SIZE + 1 }}–{{ vPageEnd() }} of {{ filteredVehicles().length }}</span>
-            <div class="pg-controls">
-              <button class="pg-btn" (click)="vehiclePage = 1" [disabled]="vehiclePage === 1">«</button>
-              <button class="pg-btn" (click)="vehiclePage = vehiclePage - 1" [disabled]="vehiclePage === 1">‹</button>
-              @for (p of getVehiclePageNumbers(); track p) {
-                @if (p === -1) { <span class="pg-dots">…</span> }
-                @else { <button class="pg-btn" [class.active]="vehiclePage === p" (click)="vehiclePage = p">{{ p }}</button> }
-              }
-              <button class="pg-btn" (click)="vehiclePage = vehiclePage + 1" [disabled]="vehiclePage === totalVehiclePages()">›</button>
-              <button class="pg-btn" (click)="vehiclePage = totalVehiclePages()" [disabled]="vehiclePage === totalVehiclePages()">»</button>
-            </div>
-          </div>
-        }
-      </div>
-    </p-tabPanel>
-
-    <!-- ═══ DRIVERS TAB ═══ -->
-    <p-tabPanel header="Drivers" leftIcon="pi pi-id-card">
-      <div class="section-header">
-        <h2>Driver management</h2>
-        <button pButton label="+ New driver" class="btn-create" (click)="openDriverDialog()"></button>
-      </div>
-      <div class="search-form" style="grid-template-columns: 1fr auto;">
-        <input class="search-input" type="text"
-               [ngModel]="driverSearch()" (ngModelChange)="onDriverSearch($event)"
-               placeholder="Search name, license, phone, email…" />
-        <button class="search-btn" (click)="clearDriverSearch()"><i class="pi pi-refresh"></i> Clear</button>
-      </div>
-      <div class="table-wrap">
-        @if (pagedDrivers().length === 0) {
-          <div class="empty-state"><i class="pi pi-id-card empty-icon"></i><p>No drivers found.</p></div>
-        } @else {
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>FULL NAME</th>
-                <th>LICENSE NO.</th>
-                <th>PHONE</th>
-                <th>EMAIL</th>
-                <th>RATING</th>
-                <th>TRIPS</th>
-                <th>STATUS</th>
-                <th>ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (d of pagedDrivers(); track d.driverId) {
-                <tr [class.inactive]="!d.isActive">
-                  <td>
-                    <div class="driver-avatar-row">
-                      <div class="driver-avatar">{{ (d.firstName[0] || '') + (d.lastName[0] || '') }}</div>
-                      <div class="cell-main">{{ d.firstName }} {{ d.lastName }}</div>
-                    </div>
-                  </td>
-                  <td><code>{{ d.licenseNumber }}</code></td>
-                  <td>{{ d.phone || '—' }}</td>
-                  <td>
-                    @if (d.email) {
-                      <a [href]="'mailto:' + d.email" class="email-link">{{ d.email }}</a>
-                    } @else { <span style="opacity:0.4">—</span> }
-                  </td>
-                  <td>
-                    @if (d.rating && d.rating > 0) {
-                      <span class="rating-badge"><i class="pi pi-star-fill" style="color:#fbbf24;font-size:0.75rem;"></i> {{ d.rating | number:'1.1-1' }}</span>
-                    } @else {
-                      <span style="opacity:0.4;font-size:0.75rem;">No rating</span>
-                    }
-                  </td>
-                  <td><span class="trips-badge">{{ d.totalTrips || 0 }} trip(s)</span></td>
-                  <td><span class="status-badge" [class.active]="d.isActive" [class.inactive-badge]="!d.isActive">{{ d.isActive ? 'Active' : 'Inactive' }}</span></td>
-                  <td>
-                    <div class="actions">
-                      <button class="action-btn edit" (click)="openDriverDialog(d)">
-                        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4Z"/></svg>
-                        <span>Edit</span>
-                      </button>
-                      <button class="action-btn delete" (click)="deleteDriver(d)">
-                        <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
-                        <span>Delete</span>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        }
-        @if (totalDriverPages() > 1) {
-          <div class="pagination">
-            <span class="pg-info">{{ (driverPage - 1) * PAGE_SIZE + 1 }}–{{ dPageEnd() }} of {{ filteredDrivers().length }}</span>
-            <div class="pg-controls">
-              <button class="pg-btn" (click)="driverPage = 1" [disabled]="driverPage === 1">«</button>
-              <button class="pg-btn" (click)="driverPage = driverPage - 1" [disabled]="driverPage === 1">‹</button>
-              @for (p of getDriverPageNumbers(); track p) {
-                @if (p === -1) { <span class="pg-dots">…</span> }
-                @else { <button class="pg-btn" [class.active]="driverPage === p" (click)="driverPage = p">{{ p }}</button> }
-              }
-              <button class="pg-btn" (click)="driverPage = driverPage + 1" [disabled]="driverPage === totalDriverPages()">›</button>
-              <button class="pg-btn" (click)="driverPage = totalDriverPages()" [disabled]="driverPage === totalDriverPages()">»</button>
-            </div>
-          </div>
-        }
-      </div>
-    </p-tabPanel>
-  </p-tabView>
+    }
+  </div>
 </div>
 
-<!-- ═══ Transport Dialog ═══ -->
-<p-dialog [header]="selectedTransport() ? 'Edit transport' : 'New transport'"
-          [(visible)]="showTransportDialog" [modal]="true" [style]="{width:'720px'}" [closable]="true"
-          appendTo="body">
-  <form [formGroup]="transportForm" class="dialog-form">
-    <div class="form-grid">
-
-      <!-- TYPE -->
-      <div class="form-field">
-        <label>Type *</label>
-        <p-dropdown [options]="transportTypes" formControlName="type"
-                    optionLabel="label" optionValue="value"
-                    placeholder="Select type"
-                    styleClass="w-full"
-                    (onChange)="onTypeChange($event)">
-        </p-dropdown>
-      </div>
-
-      <!-- PRICE -->
-      <div class="form-field">
-        <label>Price (TND) *</label>
-        <p-inputNumber formControlName="price" [min]="0" [minFractionDigits]="2" mode="decimal"
-                       styleClass="w-full" (onInput)="onPriceChange($event.value ?? 0)">
-        </p-inputNumber>
-        <small class="hint-warning" *ngIf="priceWarning">⚠ {{ priceWarning }}</small>
-      </div>
-
-      <!-- DEPARTURE CITY -->
-      <div class="form-field">
-        <label>Departure city *</label>
-        <p-dropdown [options]="cities()" formControlName="departureCityId"
-                    optionLabel="name" optionValue="cityId"
-                    placeholder="Select" [filter]="true" styleClass="w-full">
-        </p-dropdown>
-      </div>
-
-      <!-- ARRIVAL CITY -->
-      <div class="form-field">
-        <label>Arrival city *</label>
-        <p-dropdown [options]="cities()" formControlName="arrivalCityId"
-                    optionLabel="name" optionValue="cityId"
-                    placeholder="Select" [filter]="true" styleClass="w-full">
-        </p-dropdown>
-      </div>
-
-      <!-- DEPARTURE TIME -->
-      <div class="form-field">
-        <label>Departure time *</label>
-        <input pInputText type="datetime-local" formControlName="departureTime"
-               class="w-full" (change)="onTimeChange()" />
-      </div>
-
-      <!-- ARRIVAL TIME -->
-      <div class="form-field">
-        <label>Arrival time *</label>
-        <input pInputText type="datetime-local" formControlName="arrivalTime"
-               class="w-full" (change)="onTimeChange()" />
-        <small class="hint-success" *ngIf="calculatedDuration">Duration: {{ calculatedDuration }}</small>
-        <small class="hint-warning" *ngIf="durationWarning">⚠ {{ durationWarning }}</small>
-      </div>
-
-      <!-- VEHICLE — hidden if PLANE -->
-      <div class="form-field" *ngIf="showVehicleField">
-        <label>Vehicle *</label>
-        <p-dropdown [options]="availableVehicles().length ? availableVehicles() : vehicles()"
-                    formControlName="vehicleId"
-                    optionLabel="displayLabel" optionValue="vehicleId"
-                    placeholder="Select a vehicle"
-                    [showClear]="false" styleClass="w-full"
-                    (onChange)="onVehicleChange($event.value)"
-                    emptyMessage="No compatible vehicle available">
-          <ng-template let-item pTemplate="item">
-            <span>{{ item.brand }} {{ item.model }} — {{ item.capacity }} seats — {{ item.plateNumber }}</span>
-          </ng-template>
-          <ng-template let-item pTemplate="selectedItem">
-            <span *ngIf="item">{{ item.brand }} {{ item.model }} ({{ item.plateNumber }})</span>
-          </ng-template>
-        </p-dropdown>
-        <div class="capacity-inherited" *ngIf="selectedVehicleCapacity">
-          Inherited capacity: <strong>{{ selectedVehicleCapacity }} seats</strong>
+<p-dialog [(visible)]="showTransportDialog" [modal]="true" [closable]="true" appendTo="body"
+          [draggable]="false" [resizable]="false"
+          [style]="{ width: 'min(92vw, 640px)', maxWidth: '100%' }"
+          styleClass="adm-modal-dialog"
+          [focusOnShow]="true"
+          [attr.aria-label]="selectedTransport() ? 'Edit transport' : 'New transport'">
+  <ng-template pTemplate="header">
+    <div class="adm-dlg-head">
+      <div class="adm-dlg-head-accent" aria-hidden="true"></div>
+      <div class="adm-dlg-head-main">
+        <span class="adm-dlg-icon-wrap" aria-hidden="true"><i class="pi pi-compass"></i></span>
+        <div>
+          <h2 class="adm-dlg-title" id="adm-transport-dialog-title">{{ selectedTransport() ? 'Edit route' : 'New transport' }}</h2>
+          <p class="adm-dlg-subtitle">Define schedule, pricing, and capacity for this offer.</p>
         </div>
       </div>
+    </div>
+  </ng-template>
 
-      <!-- DRIVER — hidden if PLANE -->
-      <div class="form-field" *ngIf="showDriverField">
-        <label>Driver *</label>
-        <p-dropdown [options]="availableDrivers().length ? availableDrivers() : drivers()"
-                    formControlName="driverId"
-                    optionLabel="fullName" optionValue="driverId"
-                    placeholder="Select a driver"
-                    [showClear]="false" styleClass="w-full"
-                    emptyMessage="No driver available for this slot">
-          <ng-template let-item pTemplate="item">
-            <div class="driver-option-item">
-              <span>{{ item.firstName }} {{ item.lastName }}</span>
-              <span class="driver-license-small">{{ item.licenseNumber }}</span>
-              <span class="driver-rating-small" *ngIf="item.rating > 0">★ {{ item.rating | number:'1.1-1' }}</span>
+  <form [formGroup]="transportForm" class="adm-transport-form" aria-labelledby="adm-transport-dialog-title">
+    <div class="adm-dlg-body">
+
+      <!-- A. Transport type -->
+      <section class="adm-section adm-animate" aria-labelledby="adm-sec-type">
+        <div class="adm-section-head">
+          <span class="adm-section-icon" aria-hidden="true"><i class="pi pi-th-large"></i></span>
+          <div>
+            <h3 class="adm-section-title" id="adm-sec-type">Transport type</h3>
+            <p class="adm-section-hint">Choose how passengers travel on this route.</p>
+          </div>
+        </div>
+        <div class="adm-type-chips" role="group" aria-label="Transport type">
+          @for (t of transportTypes; track t.value) {
+            <button type="button"
+                    class="adm-chip"
+                    [class.adm-chip--active]="transportForm.get('type')?.value === t.value"
+                    [attr.aria-pressed]="transportForm.get('type')?.value === t.value"
+                    (click)="selectTransportType(t.value)">
+              <i [class]="t.icon" aria-hidden="true"></i>
+              <span>{{ t.label }}</span>
+            </button>
+          }
+        </div>
+      </section>
+
+      <!-- B. Route -->
+      <section class="adm-section adm-animate adm-animate-delay-1" aria-labelledby="adm-sec-route">
+        <div class="adm-section-head">
+          <span class="adm-section-icon" aria-hidden="true"><i class="pi pi-map"></i></span>
+          <div>
+            <h3 class="adm-section-title" id="adm-sec-route">Route</h3>
+            <p class="adm-section-hint">Origin and destination cities.</p>
+          </div>
+        </div>
+        <div class="adm-route-row">
+          <div class="adm-field"
+               [class.adm-field--error]="fieldInvalid('departureCityId')"
+               [class.adm-field--ok]="fieldValid('departureCityId')">
+            <label class="adm-label" for="adm-dep-city">
+              <i class="pi pi-sign-out adm-label-ico" aria-hidden="true"></i>
+              Departure
+            </label>
+            <p-dropdown inputId="adm-dep-city"
+                        [options]="cities()" formControlName="departureCityId"
+                        optionLabel="name" optionValue="cityId"
+                        placeholder="e.g. Tunis"
+                        [filter]="true" filterPlaceholder="Tunis, Sousse, Hammamet…"
+                        styleClass="adm-p-dropdown w-full"
+                        panelStyleClass="admin-city-dropdown-panel"
+                        scrollHeight="220px"
+                        [showClear]="true"
+                        [appendTo]="'body'">
+            </p-dropdown>
+            @if (fieldInvalid('departureCityId')) {
+              <span class="adm-field-msg adm-field-msg--err" role="alert">Select a departure city</span>
+            }
+          </div>
+          <div class="adm-route-arrow" aria-hidden="true">
+            <i class="pi pi-arrow-right"></i>
+          </div>
+          <div class="adm-field"
+               [class.adm-field--error]="fieldInvalid('arrivalCityId')"
+               [class.adm-field--ok]="fieldValid('arrivalCityId')">
+            <label class="adm-label" for="adm-arr-city">
+              <i class="pi pi-sign-in adm-label-ico" aria-hidden="true"></i>
+              Arrival
+            </label>
+            <p-dropdown inputId="adm-arr-city"
+                        [options]="cities()" formControlName="arrivalCityId"
+                        optionLabel="name" optionValue="cityId"
+                        placeholder="e.g. Sousse"
+                        [filter]="true" filterPlaceholder="Sfax, Djerba, Paris…"
+                        styleClass="adm-p-dropdown w-full"
+                        panelStyleClass="admin-city-dropdown-panel"
+                        scrollHeight="220px"
+                        [showClear]="true"
+                        [appendTo]="'body'">
+            </p-dropdown>
+            @if (fieldInvalid('arrivalCityId')) {
+              <span class="adm-field-msg adm-field-msg--err" role="alert">Select an arrival city</span>
+            }
+          </div>
+        </div>
+      </section>
+
+      <!-- C. Schedule -->
+      <section class="adm-section adm-animate adm-animate-delay-2" aria-labelledby="adm-sec-schedule">
+        <div class="adm-section-head">
+          <span class="adm-section-icon" aria-hidden="true"><i class="pi pi-clock"></i></span>
+          <div>
+            <h3 class="adm-section-title" id="adm-sec-schedule">Schedule</h3>
+            <p class="adm-section-hint">Local departure and arrival times.</p>
+          </div>
+        </div>
+        <div class="adm-schedule-grid">
+          <div class="adm-field"
+               [class.adm-field--error]="fieldInvalid('departureTime')"
+               [class.adm-field--ok]="fieldValid('departureTime')">
+            <label class="adm-label" for="adm-dep-time">
+              <i class="pi pi-calendar adm-label-ico" aria-hidden="true"></i>
+              Departure time
+            </label>
+            <input pInputText type="datetime-local" id="adm-dep-time" formControlName="departureTime"
+                   class="adm-input" autocomplete="off" (change)="onTimeChange()" />
+            @if (fieldInvalid('departureTime')) {
+              <span class="adm-field-msg adm-field-msg--err" role="alert">Required</span>
+            }
+          </div>
+          <div class="adm-field"
+               [class.adm-field--error]="fieldInvalid('arrivalTime')"
+               [class.adm-field--ok]="fieldValid('arrivalTime')">
+            <label class="adm-label" for="adm-arr-time">
+              <i class="pi pi-calendar-plus adm-label-ico" aria-hidden="true"></i>
+              Arrival time
+            </label>
+            <input pInputText type="datetime-local" id="adm-arr-time" formControlName="arrivalTime"
+                   class="adm-input" autocomplete="off" (change)="onTimeChange()" />
+            @if (fieldInvalid('arrivalTime')) {
+              <span class="adm-field-msg adm-field-msg--err" role="alert">Required</span>
+            }
+          </div>
+        </div>
+        @if (calculatedDuration) {
+          <p class="adm-inline-hint adm-inline-hint--ok"><i class="pi pi-check-circle" aria-hidden="true"></i> Trip duration: {{ calculatedDuration }}</p>
+        }
+        @if (durationWarning) {
+          <p class="adm-inline-hint adm-inline-hint--warn" role="status"><i class="pi pi-exclamation-triangle" aria-hidden="true"></i> {{ durationWarning }}</p>
+        }
+      </section>
+
+      <!-- D. Pricing -->
+      <section class="adm-section adm-animate adm-animate-delay-3" aria-labelledby="adm-sec-price">
+        <div class="adm-section-head">
+          <span class="adm-section-icon" aria-hidden="true"><i class="pi pi-wallet"></i></span>
+          <div>
+            <h3 class="adm-section-title" id="adm-sec-price">Pricing</h3>
+            <p class="adm-section-hint">Set the fare in Tunisian dinar.</p>
+          </div>
+        </div>
+        <div class="adm-price-card"
+             [class.adm-field--error]="fieldInvalid('price')"
+             [class.adm-field--ok]="fieldValid('price')">
+          <div class="adm-price-card-inner">
+            <span class="adm-price-currency">TND</span>
+            <p-inputNumber inputId="adm-price" formControlName="price" [min]="0" [minFractionDigits]="2"
+                           mode="decimal" styleClass="adm-price-input-wrap"
+                           (onInput)="onPriceChange($event.value ?? 0)">
+            </p-inputNumber>
+          </div>
+          @if (priceWarning) {
+            <p class="adm-inline-hint adm-inline-hint--warn">{{ priceWarning }}</p>
+          }
+          @if (fieldInvalid('price')) {
+            <span class="adm-field-msg adm-field-msg--err" role="alert">Enter a valid price</span>
+          }
+        </div>
+      </section>
+
+      <!-- E. Capacity -->
+      <section class="adm-section adm-animate adm-animate-delay-3" aria-labelledby="adm-sec-cap">
+        <div class="adm-section-head">
+          <span class="adm-section-icon" aria-hidden="true"><i class="pi pi-users"></i></span>
+          <div>
+            <h3 class="adm-section-title" id="adm-sec-cap">Capacity</h3>
+            <p class="adm-section-hint">Seats for this run — slider max is {{ capacitySliderMax() }} (taxi/car: 4, bus: 45, flight: 100).</p>
+          </div>
+        </div>
+        <div class="adm-capacity-block"
+             [class.adm-field--error]="fieldInvalid('capacity')"
+             [class.adm-field--ok]="fieldValid('capacity')">
+          <div class="adm-capacity-value">
+            <span class="adm-capacity-num">{{ transportForm.get('capacity')?.value ?? '—' }}</span>
+            <span class="adm-capacity-label">seats</span>
+          </div>
+          <p-slider formControlName="capacity" [min]="1" [max]="capacitySliderMax()" [step]="1"
+                    styleClass="adm-capacity-slider" [attr.aria-valuetext]="(transportForm.get('capacity')?.value ?? 0) + ' seats'">
+          </p-slider>
+          @if (fieldInvalid('capacity')) {
+            <span class="adm-field-msg adm-field-msg--err" role="alert">Use 1–{{ capacitySliderMax() }} seats for this vehicle type</span>
+          }
+        </div>
+      </section>
+
+      <!-- Flight-only -->
+      @if (showAirlineField) {
+        <section class="adm-section adm-animate adm-section--flight" aria-labelledby="adm-sec-flight">
+          <div class="adm-section-head">
+            <span class="adm-section-icon" aria-hidden="true"><i class="pi pi-send"></i></span>
+            <div>
+              <h3 class="adm-section-title" id="adm-sec-flight">Flight details</h3>
+              <p class="adm-section-hint">Airline and optional flight code.</p>
             </div>
-          </ng-template>
-          <ng-template let-item pTemplate="selectedItem">
-            <span *ngIf="item">{{ item.firstName }} {{ item.lastName }}</span>
-          </ng-template>
-        </p-dropdown>
-      </div>
+          </div>
+          <div class="adm-flight-grid">
+            <div class="adm-field"
+                 [class.adm-field--error]="fieldInvalid('operatorName')"
+                 [class.adm-field--ok]="fieldValid('operatorName')">
+              <label class="adm-label" for="adm-airline">Airline</label>
+              <p-dropdown inputId="adm-airline" [options]="airlines" formControlName="operatorName"
+                          optionLabel="label" optionValue="value"
+                          placeholder="e.g. Tunisair" styleClass="adm-p-dropdown w-full" appendTo="body">
+              </p-dropdown>
+              @if (fieldInvalid('operatorName')) {
+                <span class="adm-field-msg adm-field-msg--err" role="alert">Select an airline</span>
+              }
+            </div>
+            <div class="adm-field">
+              <label class="adm-label" for="adm-flight-code">Flight code <span class="adm-optional">(optional)</span></label>
+              <input pInputText id="adm-flight-code" formControlName="flightCode" class="adm-input"
+                     placeholder="e.g. TU-202" autocomplete="off" />
+            </div>
+          </div>
+        </section>
+      }
 
-      <!-- AIRLINE — shown if PLANE -->
-      <div class="form-field" *ngIf="showAirlineField">
-        <label>Airline *</label>
-        <p-dropdown [options]="airlines" formControlName="operatorName"
-                    optionLabel="label" optionValue="value"
-                    placeholder="Ex: Tunisair" styleClass="w-full">
-        </p-dropdown>
-      </div>
+      <!-- F. Description -->
+      <section class="adm-section adm-animate adm-animate-delay-4" aria-labelledby="adm-sec-desc">
+        <div class="adm-section-head">
+          <span class="adm-section-icon" aria-hidden="true"><i class="pi pi-align-left"></i></span>
+          <div>
+            <h3 class="adm-section-title" id="adm-sec-desc">Description</h3>
+            <p class="adm-section-hint">Notes for your team or passengers (optional).</p>
+          </div>
+        </div>
+        <div class="adm-field">
+          <label class="adm-label adm-sr-only" for="adm-description">Description</label>
+          <textarea id="adm-description" pInputText formControlName="description" rows="2"
+                    class="adm-textarea-auto" placeholder="e.g. Express service with Wi‑Fi, stops at Enfidha…"
+                    (input)="resizeDescription($event)"></textarea>
+        </div>
+      </section>
 
-      <!-- FLIGHT CODE — shown if PLANE -->
-      <div class="form-field" *ngIf="showAirlineField">
-        <label>Flight code (optional)</label>
-        <input pInputText formControlName="flightCode" placeholder="Ex: TU-202" class="w-full" />
-      </div>
-
-      <!-- CAPACITY — editable for PLANE only -->
-      <div class="form-field" *ngIf="showCapacityField">
-        <label>Capacity (seats) *</label>
-        <p-inputNumber formControlName="capacity" [min]="1" [max]="500"
-                       [showButtons]="true" styleClass="w-full"
-                       placeholder="Number of seats">
-        </p-inputNumber>
-      </div>
-
-      <!-- DESCRIPTION -->
-      <div class="form-field full-width">
-        <label>Description</label>
-        <textarea pInputText formControlName="description" rows="3"
-                  class="w-full" placeholder="Additional information…"></textarea>
-      </div>
     </div>
   </form>
+
   <ng-template pTemplate="footer">
-    <button pButton label="Cancel" icon="pi pi-times" class="p-button-outlined p-button-secondary"
-            (click)="showTransportDialog = false"></button>
-    <button pButton [label]="selectedTransport() ? 'Save changes' : 'Create transport'"
-            icon="pi pi-check" class="btn-create"
-            (click)="saveTransport()" [disabled]="transportForm.invalid"></button>
+    <div class="adm-dlg-footer">
+      <button type="button" class="adm-btn adm-btn--secondary"
+              (click)="showTransportDialog = false">
+        <i class="pi pi-times" aria-hidden="true"></i>
+        Cancel
+      </button>
+      <button type="button" class="adm-btn adm-btn--primary"
+              (click)="saveTransport()"
+              [disabled]="transportForm.invalid">
+        <i class="pi pi-check" aria-hidden="true"></i>
+        {{ selectedTransport() ? 'Save changes' : 'Create transport' }}
+      </button>
+    </div>
   </ng-template>
 </p-dialog>
 
-<!-- ═══ Vehicle Dialog ═══ -->
-<p-dialog [header]="selectedVehicle() ? 'Edit vehicle' : 'New vehicle'"
-          [(visible)]="showVehicleDialog" [modal]="true" [style]="{width:'620px'}">
-  <form [formGroup]="vehicleForm" class="dialog-form">
-    <div class="form-grid">
-      <div class="form-field"><label>Brand *</label><input pInputText formControlName="brand" placeholder="e.g. Toyota" class="w-full" /></div>
-      <div class="form-field"><label>Model *</label><input pInputText formControlName="model" placeholder="e.g. Coaster" class="w-full" /></div>
-      <div class="form-field">
-        <label>Type *</label>
-        <p-dropdown [options]="vehicleTypes" formControlName="type" optionLabel="label" optionValue="value" styleClass="w-full"></p-dropdown>
-      </div>
-      <div class="form-field"><label>Plate number *</label><input pInputText formControlName="plateNumber" placeholder="e.g. 123 TUN 456" class="w-full" /></div>
-      <div class="form-field"><label>Capacity *</label><p-inputNumber formControlName="capacity" [min]="1" [max]="500" [showButtons]="true" styleClass="w-full"></p-inputNumber></div>
-      <div class="form-field"><label>Price per trip (TND) *</label><p-inputNumber formControlName="pricePerTrip" [min]="0" [minFractionDigits]="2" mode="decimal" styleClass="w-full"></p-inputNumber></div>
-      <div class="form-field">
-        <label>Color *</label>
-        <input pInputText formControlName="color" placeholder="e.g. White, metallic grey" class="w-full" />
-        <small class="hint-error" *ngIf="vehicleForm.get('color')?.invalid && vehicleForm.get('color')?.touched">Color is required</small>
-      </div>
-      <div class="form-field">
-        <label>Year *</label>
-        <p-inputNumber formControlName="year" [min]="2000" [max]="2030" styleClass="w-full" placeholder="e.g. 2023"></p-inputNumber>
-        <small class="hint-error" *ngIf="vehicleForm.get('year')?.invalid && vehicleForm.get('year')?.touched">Year must be between 2000 and 2030</small>
-      </div>
-    </div>
-  </form>
-  <ng-template pTemplate="footer">
-    <button pButton label="Cancel" icon="pi pi-times" class="p-button-outlined p-button-secondary" (click)="showVehicleDialog = false"></button>
-    <button pButton [label]="selectedVehicle() ? 'Save changes' : 'Create vehicle'"
-            icon="pi pi-check" class="btn-create"
-            (click)="saveVehicle()" [disabled]="vehicleForm.invalid"></button>
-  </ng-template>
-</p-dialog>
-
-<!-- ═══ Driver Dialog ═══ -->
-<p-dialog [header]="selectedDriver() ? 'Edit driver' : 'New driver'"
-          [(visible)]="showDriverDialog" [modal]="true" [style]="{width:'520px'}">
-  <form [formGroup]="driverForm" class="dialog-form">
-    <div class="form-grid">
-      <div class="form-field"><label>First name *</label><input pInputText formControlName="firstName" placeholder="e.g. Mohamed" class="w-full" /></div>
-      <div class="form-field"><label>Last name *</label><input pInputText formControlName="lastName" placeholder="e.g. Ben Salem" class="w-full" /></div>
-      <div class="form-field"><label>License no. *</label><input pInputText formControlName="licenseNumber" placeholder="e.g. TN-2024-XXXXX" class="w-full" /></div>
-      <div class="form-field"><label>Phone</label><input pInputText formControlName="phone" placeholder="+216 XX XXX XXX" class="w-full" /></div>
-      <div class="form-field full-width">
-        <label>Email *</label>
-        <input pInputText formControlName="email" placeholder="driver@email.com" class="w-full" />
-        <small class="hint-error" *ngIf="driverForm.get('email')?.invalid && driverForm.get('email')?.touched">A valid email is required</small>
-      </div>
-    </div>
-  </form>
-  <ng-template pTemplate="footer">
-    <button pButton label="Cancel" icon="pi pi-times" class="p-button-outlined p-button-secondary" (click)="showDriverDialog = false"></button>
-    <button pButton [label]="selectedDriver() ? 'Save changes' : 'Create driver'"
-            icon="pi pi-check" class="btn-create"
-            (click)="saveDriver()" [disabled]="driverForm.invalid"></button>
-  </ng-template>
-</p-dialog>
-
-<!-- ═══ Reservations Dialog ═══ -->
 <p-dialog header="Route bookings"
           [(visible)]="showReservationsDialog" [modal]="true" [style]="{width:'940px'}">
   <div class="res-header" *ngIf="selectedTransport()">

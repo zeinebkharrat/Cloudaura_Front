@@ -1,6 +1,7 @@
 import { Component, signal, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
+import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { LudificationService, Quiz, QuizQuestion } from '../core/ludification.service';
 import { AuthService } from '../core/auth.service';
 import { GamificationService } from '../core/gamification.service';
@@ -9,7 +10,7 @@ import { API_BASE_URL } from '../core/api-url';
 @Component({
   selector: 'app-quiz-player',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslateModule],
   templateUrl: './quiz-player.component.html',
   styleUrl: './quiz-player.component.css',
 })
@@ -19,6 +20,7 @@ export class QuizPlayerComponent implements OnInit, OnDestroy {
   private readonly router = inject(Router);
   private readonly auth = inject(AuthService);
   private readonly gamification = inject(GamificationService);
+  private readonly translate = inject(TranslateService);
 
   quiz = signal<Quiz | null>(null);
   currentQuestion = signal<number>(0);
@@ -67,7 +69,7 @@ export class QuizPlayerComponent implements OnInit, OnDestroy {
           this.quiz.set(found);
           this.questions.set(this.mapQuestions(found.questions ?? []));
           if (this.questions().length === 0) {
-            this.loadError.set('Ce quiz ne contient pas de questions valides.');
+            this.loadError.set('i18n:QUIZ_PLAYER.ERR_NO_QUESTIONS');
           } else {
             this.loadError.set(null);
             this.initTimer(found);
@@ -78,14 +80,14 @@ export class QuizPlayerComponent implements OnInit, OnDestroy {
         error: () => {
           this.quiz.set(null);
           this.questions.set([]);
-          this.loadError.set('Could not load the quiz.');
+          this.loadError.set('i18n:QUIZ_PLAYER.ERR_LOAD');
           this.isLoading.set(false);
         },
       });
     } else {
       this.quiz.set(null);
       this.questions.set([]);
-      this.loadError.set('Identifiant de quiz invalide.');
+      this.loadError.set('i18n:QUIZ_PLAYER.ERR_INVALID_ID');
       this.isLoading.set(false);
     }
   }
@@ -202,7 +204,8 @@ export class QuizPlayerComponent implements OnInit, OnDestroy {
     this.api.canPlayRoadmapNode(nodeId).subscribe({
       next: (res) => {
         if (!res.allowed) {
-          this.loadError.set(res.error ?? 'Cette étape du parcours n’est pas accessible.');
+          const msg = res.error?.trim();
+          this.loadError.set(msg ? msg : 'i18n:QUIZ_PLAYER.ROADMAP_BLOCKED');
         }
       },
       error: () => {},
@@ -290,6 +293,18 @@ export class QuizPlayerComponent implements OnInit, OnDestroy {
 
   backToHub() {
     this.router.navigate(['/games']);
+  }
+
+  /** Supports `i18n:KEY` for localised errors; otherwise returns raw message (e.g. API). */
+  displayLoadError(): string {
+    const e = this.loadError();
+    if (!e) {
+      return '';
+    }
+    if (e.startsWith('i18n:')) {
+      return this.translate.instant(e.slice(5));
+    }
+    return e;
   }
 
   private mapQuestions(raw: QuizQuestion[]): Array<{ text: string; options: string[]; correct: number }> {

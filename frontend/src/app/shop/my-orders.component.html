@@ -6,6 +6,12 @@
     <p class="lead">Your crafts purchase history. Open a row to see details.</p>
   </header>
 
+  @if (paymentInfo()) {
+    <div class="loading glass-panel">
+      <p>{{ paymentInfo() }}</p>
+    </div>
+  }
+
   @if (loading()) {
     <div class="loading glass-panel">
       <div class="loading-spinner"></div>
@@ -64,16 +70,31 @@
                   } @else if (detailError()) {
                     <p class="detail-state err">{{ detailError() }}</p>
                   } @else if (detail()) {
-                    <section class="order-detail" aria-labelledby="order-detail-heading">
+                    <section class="order-detail order-receipt" aria-labelledby="order-detail-heading">
                       <h2 id="order-detail-heading" class="visually-hidden">
                         Order #{{ detail()!.orderId }} details
                       </h2>
+                      <div class="receipt-brand">
+                        <img src="assets/logo/yallatn-logo.png" alt="YallaTN logo" class="receipt-logo" />
+                        <div>
+                          <p class="receipt-app-name">YallaTN+</p>
+                          <p class="receipt-app-subtitle">Order receipt</p>
+                        </div>
+                      </div>
                       <div class="detail-grid">
                         <div class="detail-card">
                           <h3>Reference</h3>
                           <p class="detail-row">
+                            <span class="label">Order no.</span>
+                            <strong>#{{ detail()!.orderId }}</strong>
+                          </p>
+                          <p class="detail-row">
                             <span class="label">Status</span>
                             <span class="status-pill">{{ orderStatusLabel(detail()!.status) }}</span>
+                          </p>
+                          <p class="detail-row">
+                            <span class="label">Payment method</span>
+                            <span>{{ paymentMethodLabel(detail()!.paymentMethod) }}</span>
                           </p>
                           <p class="detail-row detail-row--total">
                             <span class="label">Total (incl. tax)</span>
@@ -118,6 +139,9 @@
                             }
                           </tbody>
                         </table>
+                      </div>
+                      <div class="receipt-actions">
+                        <button type="button" class="btn ghost" (click)="downloadReceiptPdf()">Download PDF</button>
                       </div>
                     </section>
                   }

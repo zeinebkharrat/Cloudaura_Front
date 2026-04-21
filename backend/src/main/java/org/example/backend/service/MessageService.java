@@ -1,6 +1,7 @@
 package org.example.backend.service;
 
 import org.example.backend.dto.MessageResponse;
+import org.example.backend.exception.ResourceNotFoundException;
 import org.example.backend.model.ChatRoom;
 import org.example.backend.model.Message;
 import org.example.backend.model.User;
@@ -8,6 +9,7 @@ import org.example.backend.repository.ChatRoomRepository;
 import org.example.backend.repository.MessageRepository;
 import org.example.backend.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

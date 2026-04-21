@@ -5,15 +5,15 @@ import org.example.backend.exception.ResourceNotFoundException;
 import org.example.backend.model.City;
 import org.example.backend.model.Transport;
 import org.example.backend.model.TransportReservation;
+import org.springframework.stereotype.Component;
 
 /**
  * Maps {@link TransportReservation} to API DTO with null-safe handling for incomplete DB rows.
  */
-public final class TransportReservationMapper {
+@Component
+public class TransportReservationMapper {
 
-    private TransportReservationMapper() {}
-
-    public static TransportReservationResponse toResponse(TransportReservation r) {
+    public TransportReservationResponse toResponse(TransportReservation r) {
         if (r == null) {
             throw new ResourceNotFoundException("Réservation non trouvée.");
         }

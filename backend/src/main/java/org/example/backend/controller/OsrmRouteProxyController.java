@@ -10,14 +10,12 @@ import java.time.Duration;
 import java.util.Locale;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Proxies driving routes to a public OSRM instance so the Angular app stays same-origin (no CORS)
@@ -27,6 +25,12 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/api/routing")
 @Slf4j
 public class OsrmRouteProxyController {
+
+    /**
+     * Empty OSRM-shaped body so the SPA can apply its Haversine fallback without treating the call as HTTP error.
+     */
+    private static final byte[] OSRM_FALLBACK_JSON =
+            "{\"code\":\"Ok\",\"routes\":[]}".getBytes(StandardCharsets.UTF_8);
 
     private static final HttpClient HTTP = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(8))
@@ -42,7 +46,9 @@ public class OsrmRouteProxyController {
             @RequestParam double toLat,
             @RequestParam double toLon) {
         if (!isFiniteCoordinate(fromLat, fromLon) || !isFiniteCoordinate(toLat, toLon)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Coordonnées invalides.");
+            return ResponseEntity.badRequest()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("{\"error\":\"invalid coordinates\"}".getBytes(StandardCharsets.UTF_8));
         }
         String base = osrmBaseUrl.endsWith("/") ? osrmBaseUrl.substring(0, osrmBaseUrl.length() - 1) : osrmBaseUrl;
         String path = String.format(
@@ -61,8 +67,10 @@ public class OsrmRouteProxyController {
                     .build();
             HttpResponse<byte[]> res = HTTP.send(req, HttpResponse.BodyHandlers.ofByteArray());
             if (res.statusCode() < 200 || res.statusCode() >= 300) {
-                log.warn("OSRM HTTP {} for {}", res.statusCode(), url);
-                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Itinéraire indisponible.");
+                log.warn("OSRM HTTP {} for {} — returning empty routes for client-side fallback", res.statusCode(), url);
+                                return ResponseEntity.ok()
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .body(buildFallbackRoute(fromLat, fromLon, toLat, toLon));
             }
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_JSON)

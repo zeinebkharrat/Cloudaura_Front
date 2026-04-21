@@ -21,6 +21,7 @@ import {
   MessageResponse,
   TypingEvent,
 } from './chat.types';
+import { TranslateModule } from '@ngx-translate/core';
 
 interface StoryReplyPayload {
   kind: string;
@@ -37,7 +38,7 @@ interface StoryReplyPayload {
 @Component({
   selector: 'app-chat',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslateModule],
   templateUrl: './chat.component.html',
   styleUrl: './chat.component.css',
 })

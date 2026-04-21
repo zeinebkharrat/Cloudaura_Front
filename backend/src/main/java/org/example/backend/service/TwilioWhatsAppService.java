@@ -36,6 +36,8 @@ public class TwilioWhatsAppService {
     @Value("${twilio.whatsapp-from:whatsapp:+14155238886}")
     private String whatsappFrom;
 
+    private volatile boolean initialized = false;
+
     @PostConstruct
     public void init() {
         if (!enabled) {
@@ -50,13 +52,22 @@ public class TwilioWhatsAppService {
             log.warn("Twilio enabled but auth-token is missing or placeholder; Twilio.init skipped");
             return;
         }
+        if (whatsappFrom == null || whatsappFrom.isBlank()) {
+            log.warn("Twilio enabled but whatsapp-from is blank; Twilio.init skipped");
+            return;
+        }
         Twilio.init(accountSid.trim(), authToken.trim());
+        initialized = true;
         log.info("Twilio initialized");
     }
 
     public void sendWhatsApp(String toPhone, String message) {
         if (!enabled) {
             log.debug("Twilio disabled; skip WhatsApp send");
+            return;
+        }
+        if (!initialized) {
+            log.warn("Twilio skipped: service not initialized");
             return;
         }
         if (toPhone == null || toPhone.isBlank()) {
@@ -74,12 +85,17 @@ public class TwilioWhatsAppService {
                 return;
             }
             String toAddress = formatted.startsWith("whatsapp:") ? formatted : "whatsapp:" + formatted;
-            String fromAddress = whatsappFrom != null && whatsappFrom.startsWith("whatsapp:")
-                    ? whatsappFrom
-                    : "whatsapp:" + whatsappFrom.replace("whatsapp:", "");
+            String sender = whatsappFrom == null ? "" : whatsappFrom.trim();
+            if (sender.isBlank()) {
+                log.warn("WhatsApp skipped: sender is blank");
+                return;
+            }
+            String fromAddress = sender.startsWith("whatsapp:")
+                    ? sender
+                    : "whatsapp:" + sender.replace("whatsapp:", "");
 
             Message.creator(new PhoneNumber(toAddress), new PhoneNumber(fromAddress), message).create();
-            log.info("WhatsApp sent to {}", formatted);
+            log.info("WhatsApp sent to {}", maskPhone(formatted));
         } catch (Exception e) {
             log.error("WhatsApp send failed for toPhone={}: {}", maskPhone(toPhone), e.getMessage());
         }
@@ -107,7 +123,10 @@ public class TwilioWhatsAppService {
         if (digits.length() == 8) {
             return "+216" + digits;
         }
-        return digits;
+        if (digits.length() >= 8 && digits.length() <= 15) {
+            return "+" + digits;
+        }
+        return "";
     }
 
     private static String maskPhone(String phone) {

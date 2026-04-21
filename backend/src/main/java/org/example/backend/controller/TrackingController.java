@@ -36,7 +36,7 @@ public class TrackingController {
         }
 
         TransportReservation res = reservationRepo.findById(reservationId)
-                .orElseThrow(() -> new ResourceNotFoundException("Réservation non trouvée."));
+                .orElseThrow(() -> new ResourceNotFoundException("reservation.error.reservation_not_found"));
 
         City from = res.getTransport().getDepartureCity();
         City to = res.getTransport().getArrivalCity();

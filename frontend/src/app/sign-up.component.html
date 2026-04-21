@@ -11,13 +11,13 @@
 
     <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
       <div class="upload-block upload-block-top">
-        <label class="upload-label">Profile photo (optional)</label>
+        <label class="upload-label">{{ 'AUTH_SIGNUP.PHOTO_LABEL' | translate }}</label>
         <div class="upload-top-layout">
           <div class="upload-preview-shell">
             @if (uploadedImageUrl()) {
-              <img [src]="uploadedImageUrl()!" alt="Profile preview" class="preview-image" />
+              <img [src]="uploadedImageUrl()!" [attr.alt]="'AUTH_SIGNUP.PHOTO_ALT' | translate" class="preview-image" />
             } @else {
-              <div class="preview-placeholder">Photo</div>
+              <div class="preview-placeholder">{{ 'AUTH_SIGNUP.PHOTO_PLACEHOLDER' | translate }}</div>
             }
           </div>
           <div class="upload-actions">
@@ -30,11 +30,11 @@
             <input id="signup-upload" type="file" accept="image/*" (change)="onImageSelected($event)" [disabled]="isUploadingImage()" />
 
             @if (isUploadingImage()) {
-              <p class="upload-state">Uploading…</p>
+              <p class="upload-state">{{ 'AUTH_SIGNUP.UPLOAD_STATE_LOADING' | translate }}</p>
             } @else if (uploadedImageUrl()) {
-              <p class="upload-state success">Image uploaded successfully.</p>
+              <p class="upload-state success">{{ 'AUTH_SIGNUP.UPLOAD_SUCCESS' | translate }}</p>
             } @else {
-              <p class="upload-state">Add a photo to personalize your account.</p>
+              <p class="upload-state">{{ 'AUTH_SIGNUP.UPLOAD_HINT' | translate }}</p>
             }
           </div>
         </div>
@@ -42,41 +42,41 @@
 
       <div class="grid-two">
         <label>
-          First name
-          <input type="text" formControlName="firstName" placeholder="Your first name" autocomplete="given-name" [class.input-invalid]="controlInvalid('firstName')" />
+          {{ 'AUTH_SIGNUP.FIRST_NAME' | translate }}
+          <input type="text" formControlName="firstName" [placeholder]="'AUTH_SIGNUP.FIRST_PH' | translate" autocomplete="given-name" [class.input-invalid]="controlInvalid('firstName')" />
           @if (controlInvalid('firstName')) {
-            <small class="field-error">First name is required (min. 2 characters).</small>
+            <small class="field-error">{{ 'AUTH_SIGNUP.ERR_FIRST_NAME' | translate }}</small>
           }
         </label>
 
         <label>
-          Last name
-          <input type="text" formControlName="lastName" placeholder="Your last name" autocomplete="family-name" [class.input-invalid]="controlInvalid('lastName')" />
+          {{ 'AUTH_SIGNUP.LAST_NAME' | translate }}
+          <input type="text" formControlName="lastName" [placeholder]="'AUTH_SIGNUP.LAST_PH' | translate" autocomplete="family-name" [class.input-invalid]="controlInvalid('lastName')" />
           @if (controlInvalid('lastName')) {
-            <small class="field-error">Last name is required (min. 2 characters).</small>
+            <small class="field-error">{{ 'AUTH_SIGNUP.ERR_LAST_NAME' | translate }}</small>
           }
         </label>
       </div>
 
       <label>
-        Username
-        <input type="text" formControlName="username" placeholder="e.g. explorer_sousse" autocomplete="username" [class.input-invalid]="controlInvalid('username')" />
+        {{ 'AUTH_SIGNUP.USERNAME' | translate }}
+        <input type="text" formControlName="username" [placeholder]="'AUTH_SIGNUP.USERNAME_PH' | translate" autocomplete="username" [class.input-invalid]="controlInvalid('username')" />
         @if (controlInvalid('username')) {
-          <small class="field-error">Username is required (min. 3 characters).</small>
+          <small class="field-error">{{ 'AUTH_SIGNUP.ERR_USERNAME' | translate }}</small>
         }
       </label>
 
       <label>
-        Email
-        <input type="email" formControlName="email" placeholder="you@email.com" autocomplete="email" [class.input-invalid]="controlInvalid('email')" />
+        {{ 'AUTH_SIGNUP.EMAIL' | translate }}
+        <input type="email" formControlName="email" [placeholder]="'AUTH_SIGNUP.EMAIL_PH' | translate" autocomplete="email" [class.input-invalid]="controlInvalid('email')" />
         @if (controlInvalid('email')) {
-          <small class="field-error">Please enter a valid email address.</small>
+          <small class="field-error">{{ 'AUTH_SIGNUP.ERR_EMAIL' | translate }}</small>
         }
       </label>
 
       <label>
-        Phone number
-        <input type="tel" formControlName="phone" placeholder="+216 22 345 678" autocomplete="tel" [class.input-invalid]="controlInvalid('phone')" />
+        {{ 'AUTH_SIGNUP.PHONE' | translate }}
+        <input type="tel" formControlName="phone" [placeholder]="'AUTH_SIGNUP.PHONE_PH' | translate" autocomplete="tel" [class.input-invalid]="controlInvalid('phone')" />
         @if (controlInvalid('phone')) {
           <small class="field-error">{{ phoneErrorMessage() }}</small>
         }
@@ -84,9 +84,9 @@
 
       <div class="grid-two">
         <label>
-          Nationality
+          {{ 'AUTH_SIGNUP.NATIONALITY' | translate }}
           <select formControlName="nationality">
-            <option value="">Choose a nationality</option>
+            <option value="">{{ 'AUTH_SIGNUP.NATIONALITY_PH' | translate }}</option>
             @for (nationality of nationalities(); track nationality) {
               <option [value]="nationality">{{ nationality }}</option>
             }
@@ -95,15 +95,15 @@
 
         @if (showCityField()) {
           <label>
-            City (Tunisia)
+            {{ 'AUTH_SIGNUP.CITY_LABEL' | translate }}
             <select formControlName="cityId" [class.input-invalid]="cityErrorVisible()">
-              <option [ngValue]="null">Choose a city</option>
+              <option [ngValue]="null">{{ 'AUTH_SIGNUP.CITY_PH' | translate }}</option>
               @for (city of cities(); track city.id) {
-                <option [ngValue]="city.id">{{ city.name }}@if (city.region) { — {{ city.region }} }</option>
+                <option [ngValue]="city.id">{{ city.name }}@if (city.region) { ({{ city.region }}) }</option>
               }
             </select>
             @if (cityErrorVisible()) {
-              <small class="field-error">Please select a city in Tunisia.</small>
+              <small class="field-error">{{ 'AUTH_SIGNUP.ERR_CITY_TUNISIA' | translate }}</small>
             }
           </label>
         }
@@ -154,7 +154,7 @@
           </div>
         </div>
         @if (controlInvalid('password')) {
-          <small class="field-error">Password is required (min. 8 characters).</small>
+          <small class="field-error">{{ 'AUTH_SIGNUP.ERR_PASSWORD' | translate }}</small>
         }
       </label>
 
@@ -165,24 +165,23 @@
           {{ passwordMatchHint() }}
         </small>
         @if (controlInvalid('confirmPassword')) {
-          <small class="field-error">Please confirm your password.</small>
+          <small class="field-error">{{ 'AUTH_SIGNUP.ERR_CONFIRM' | translate }}</small>
         }
       </label>
 
       @if (captchaMisconfigured()) {
         <div class="auth-error" role="alert">
-          Incomplete reCAPTCHA configuration: the secret key is set but not the site key. Set
-          <code>app.recaptcha.site-key</code>.
+          {{ 'AUTH_SIGNUP.CAPTCHA_MISCONFIGURED' | translate }}
         </div>
       }
 
       @if (captchaEnabled() && !captchaV3()) {
-        <section class="recaptcha-panel" aria-label="reCAPTCHA">
+        <section class="recaptcha-panel" [attr.aria-label]="'AUTH_SIGNUP.RECAPTCHA_ARIA' | translate">
           <div class="recaptcha-panel__head">
             <span class="recaptcha-panel__icon" aria-hidden="true">🛡️</span>
             <div>
-              <strong>Anti-bot verification</strong>
-              <p class="recaptcha-panel__hint">Google reCAPTCHA v2 — check the box below.</p>
+              <strong>{{ 'AUTH_SIGNUP.RECAPTCHA_TITLE' | translate }}</strong>
+              <p class="recaptcha-panel__hint">{{ 'AUTH_SIGNUP.RECAPTCHA_HINT' | translate }}</p>
             </div>
           </div>
           <div #recaptchaHost class="recaptcha-host g-recaptcha"></div>
@@ -193,18 +192,18 @@
         <label class="artisan-check">
           <input type="checkbox" id="becomeArtisan" formControlName="becomeArtisan" [disabled]="!canRequestArtisan()" />
           <span class="checkbox-box"></span>
-          <span>I am a craftsperson and I want to sell my products</span>
+          <span>{{ 'AUTH_SIGNUP.ARTISAN_LABEL' | translate }}</span>
         </label>
         @if (!canRequestArtisan()) {
           <p class="artisan-note">Only users with Tunisian nationality can request artisan status.</p>
         }
         @if (form.controls.becomeArtisan.value) {
-          <p>Your artisan request will be reviewed by an administrator before the role is activated.</p>
+          <p>{{ 'AUTH_SIGNUP.ARTISAN_NOTE' | translate }}</p>
         }
       </div>
 
       @if (form.hasError('passwordMismatch') && form.controls.confirmPassword.touched) {
-        <p class="field-error">Passwords do not match.</p>
+        <p class="field-error">{{ 'AUTH_SIGNUP.ERR_PASSWORD_MISMATCH' | translate }}</p>
       }
 
       @if (formError()) {
@@ -219,7 +218,7 @@
         class="auth-submit"
         [disabled]="isLoading() || !captchaConfigReady() || captchaConfigUnavailable()"
       >
-        {{ isLoading() ? 'Creating account…' : 'Create my account' }}
+        {{ isLoading() ? ('AUTH_SIGNUP.SUBMIT_LOADING' | translate) : ('AUTH_SIGNUP.SUBMIT_BTN' | translate) }}
       </button>
     </form>
 

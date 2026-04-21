@@ -14,12 +14,16 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.UUID;
 
 public abstract class AbstractCrudController<T> {
+
+    private static final Logger log = LoggerFactory.getLogger(AbstractCrudController.class);
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -113,12 +117,11 @@ public abstract class AbstractCrudController<T> {
                 return UUID.fromString(rawId);
             }
         } catch (RuntimeException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid id value: " + rawId, ex);
+            log.warn("Invalid id value: {}", rawId, ex);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.invalid_id");
         }
-        throw new ResponseStatusException(
-                HttpStatus.BAD_REQUEST,
-                "Unsupported id type for " + entityClass.getSimpleName() + ": " + idType.getName()
-        );
+        log.warn("Unsupported id type for {}: {}", entityClass.getSimpleName(), idType.getName());
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.invalid_id");
     }
 
     private void setId(T entity, Object idValue) {

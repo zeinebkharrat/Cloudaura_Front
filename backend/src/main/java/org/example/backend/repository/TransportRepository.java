@@ -11,6 +11,7 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface TransportRepository extends JpaRepository<Transport, Integer> {
@@ -23,49 +24,91 @@ public interface TransportRepository extends JpaRepository<Transport, Integer> {
 
     List<Transport> findByTypeAndIsActiveTrue(Transport.TransportType type);
 
-        @EntityGraph(attributePaths = {"departureCity", "arrivalCity"})
-        List<Transport> findByIsActiveTrue();
+    Optional<Transport> findFirstByTypeAndFlightCodeAndDepartureTimeAndArrivalTime(
+            Transport.TransportType type,
+            String flightCode,
+            LocalDateTime departureTime,
+            LocalDateTime arrivalTime);
 
-        @EntityGraph(attributePaths = {"departureCity", "arrivalCity"})
-        List<Transport> findTop5ByIsActiveTrueOrderByDepartureTimeAsc();
+    Optional<Transport> findFirstByTypeAndOperatorNameAndDepartureTimeAndArrivalTimeAndDepartureCity_CityIdAndArrivalCity_CityId(
+            Transport.TransportType type,
+            String operatorName,
+            LocalDateTime departureTime,
+            LocalDateTime arrivalTime,
+            Integer departureCityId,
+            Integer arrivalCityId);
 
-    @Query("SELECT COUNT(t) > 0 FROM Transport t WHERE t.vehicle.vehicleId = :vehicleId " +
-           "AND t.isActive = true AND t.departureTime < :arrivalTime AND t.arrivalTime > :departureTime")
-    boolean existsByVehicleIdAndTimeOverlap(
-            @Param("vehicleId") Integer vehicleId,
-            @Param("departureTime") LocalDateTime departureTime,
-            @Param("arrivalTime") LocalDateTime arrivalTime);
+            @EntityGraph(attributePaths = {"departureCity", "arrivalCity"})
+            List<Transport> findByIsActiveTrue();
 
-    @Query("SELECT COUNT(t) > 0 FROM Transport t WHERE t.vehicle.vehicleId = :vehicleId " +
-           "AND t.isActive = true AND t.departureTime < :arrivalTime AND t.arrivalTime > :departureTime " +
-           "AND t.transportId <> :excludeId")
-    boolean existsByVehicleIdAndTimeOverlapExcluding(
-            @Param("vehicleId") Integer vehicleId,
-            @Param("departureTime") LocalDateTime departureTime,
-            @Param("arrivalTime") LocalDateTime arrivalTime,
-            @Param("excludeId") Integer excludeId);
-
-    @Query("SELECT COUNT(t) > 0 FROM Transport t WHERE t.driver.driverId = :driverId " +
-           "AND t.isActive = true AND t.departureTime < :arrivalTime AND t.arrivalTime > :departureTime")
-    boolean existsByDriverIdAndTimeOverlap(
-            @Param("driverId") Integer driverId,
-            @Param("departureTime") LocalDateTime departureTime,
-            @Param("arrivalTime") LocalDateTime arrivalTime);
-
-    @Query("SELECT COUNT(t) > 0 FROM Transport t WHERE t.driver.driverId = :driverId " +
-           "AND t.isActive = true AND t.departureTime < :arrivalTime AND t.arrivalTime > :departureTime " +
-           "AND t.transportId <> :excludeId")
-    boolean existsByDriverIdAndTimeOverlapExcluding(
-            @Param("driverId") Integer driverId,
-            @Param("departureTime") LocalDateTime departureTime,
-            @Param("arrivalTime") LocalDateTime arrivalTime,
-            @Param("excludeId") Integer excludeId);
+            @EntityGraph(attributePaths = {"departureCity", "arrivalCity"})
+            List<Transport> findTop5ByIsActiveTrueOrderByDepartureTimeAsc();
 
     @Query("SELECT COUNT(t) FROM Transport t WHERE t.isActive = true")
     long countActive();
 
     @Query("SELECT COALESCE(SUM(t.capacity), 0) FROM Transport t WHERE t.isActive = true")
     long sumCapacityActive();
+
+        @Query("""
+            SELECT CASE WHEN COUNT(t) > 0 THEN true ELSE false END
+            FROM Transport t
+            WHERE t.vehicle.vehicleId = :vehicleId
+              AND t.isActive = true
+              AND t.departureTime < :arrival
+              AND t.arrivalTime > :departure
+            """)
+        boolean existsByVehicleIdAndTimeOverlap(
+            @Param("vehicleId") Integer vehicleId,
+            @Param("departure") LocalDateTime departure,
+            @Param("arrival") LocalDateTime arrival
+        );
+
+        @Query("""
+            SELECT CASE WHEN COUNT(t) > 0 THEN true ELSE false END
+            FROM Transport t
+            WHERE t.vehicle.vehicleId = :vehicleId
+              AND t.transportId <> :excludeTransportId
+              AND t.isActive = true
+              AND t.departureTime < :arrival
+              AND t.arrivalTime > :departure
+            """)
+        boolean existsByVehicleIdAndTimeOverlapExcluding(
+            @Param("vehicleId") Integer vehicleId,
+            @Param("departure") LocalDateTime departure,
+            @Param("arrival") LocalDateTime arrival,
+            @Param("excludeTransportId") Integer excludeTransportId
+        );
+
+        @Query("""
+            SELECT CASE WHEN COUNT(t) > 0 THEN true ELSE false END
+            FROM Transport t
+            WHERE t.driver.driverId = :driverId
+              AND t.isActive = true
+              AND t.departureTime < :arrival
+              AND t.arrivalTime > :departure
+            """)
+        boolean existsByDriverIdAndTimeOverlap(
+            @Param("driverId") Integer driverId,
+            @Param("departure") LocalDateTime departure,
+            @Param("arrival") LocalDateTime arrival
+        );
+
+        @Query("""
+            SELECT CASE WHEN COUNT(t) > 0 THEN true ELSE false END
+            FROM Transport t
+            WHERE t.driver.driverId = :driverId
+              AND t.transportId <> :excludeTransportId
+              AND t.isActive = true
+              AND t.departureTime < :arrival
+              AND t.arrivalTime > :departure
+            """)
+        boolean existsByDriverIdAndTimeOverlapExcluding(
+            @Param("driverId") Integer driverId,
+            @Param("departure") LocalDateTime departure,
+            @Param("arrival") LocalDateTime arrival,
+            @Param("excludeTransportId") Integer excludeTransportId
+        );
 
     /**
      * Transports expirés : {@code departureTime + 1h < now} ⇔ {@code departureTime < now - 1h}

@@ -115,6 +115,7 @@ export interface PublicCityDetailsResponse {
 export interface CreateActivityReservationRequest {
   reservationDate: string;
   numberOfPeople: number;
+  presentmentCurrency?: string;
 }
 
 export interface ActivityReservationResponse {
@@ -125,6 +126,10 @@ export interface ActivityReservationResponse {
   numberOfPeople: number;
   totalPrice: number;
   status: 'PENDING' | 'CONFIRMED' | 'CANCELLED';
+  statusLabel?: string;
+  cityId?: number | null;
+  cityLabel?: string | null;
+  nameLabel?: string | null;
 }
 
 export interface ActivityAvailabilityDay {
@@ -145,6 +150,9 @@ export interface ActivityReservationListItem {
   numberOfPeople: number;
   totalPrice: number;
   status: 'PENDING' | 'CONFIRMED' | 'CANCELLED';
+  statusLabel?: string;
+  nameLabel?: string;
+  cityLabel?: string;
   userId: number | null;
   username: string | null;
   userEmail: string | null;

@@ -23,6 +23,7 @@ import org.example.backend.service.ActivityReceiptPdfService;
 import org.example.backend.service.ActivityReservationService;
 import org.example.backend.service.QrCodeService;
 import org.example.backend.service.UserIdentityResolver;
+import org.example.backend.service.UserNotificationService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -51,6 +52,7 @@ public class ActivityPaymentController {
     private final ActivityReceiptPdfService activityReceiptPdfService;
     private final QrCodeService qrCodeService;
     private final UserIdentityResolver userIdentityResolver;
+    private final UserNotificationService userNotificationService;
 
     @Value("${app.frontend.base-url:http://localhost:4200}")
     private String frontendBaseUrl;
@@ -170,7 +172,20 @@ public class ActivityPaymentController {
             if (reservation.getStatus() != ReservationStatus.CONFIRMED) {
                 reservation.setStatus(ReservationStatus.CONFIRMED);
                 reservationRepository.save(reservation);
+
+                Integer ownerId = reservation.getUser() != null ? reservation.getUser().getUserId() : null;
+                String activityName = reservation.getActivity() != null ? reservation.getActivity().getName() : "activity";
+                userNotificationService.notifyReservation(
+                    ownerId,
+                    "ACTIVITY",
+                    reservation.getActivityReservationId(),
+                    "Activity reservation confirmed",
+                    "Payment confirmed for \"" + activityName + "\".",
+                    "/mes-reservations"
+                );
             }
+
+            ensureReceiptPdfUrl(reservation);
 
             ActivityReservationResponse response = reservationService.toResponse(reservation);
             return ResponseEntity.ok(response);
@@ -194,7 +209,7 @@ public class ActivityPaymentController {
         assertReservationOwner(reservation, authentication);
         assertConfirmedReservation(reservation);
 
-        String content = activityReceiptPdfService.buildQrContent(reservation);
+        String content = ensureReceiptPdfUrl(reservation);
         byte[] qr = qrCodeService.generateQrPng(content, 320);
 
         return ResponseEntity.ok()
@@ -214,7 +229,8 @@ public class ActivityPaymentController {
         assertReservationOwner(reservation, authentication);
         assertConfirmedReservation(reservation);
 
-        byte[] pdf = activityReceiptPdfService.generateReceiptPdf(reservation);
+        String receiptUrl = ensureReceiptPdfUrl(reservation);
+        byte[] pdf = activityReceiptPdfService.generateReceiptPdf(reservation, receiptUrl);
         String filename = "activity-receipt-ACT-" + reservation.getActivityReservationId() + ".pdf";
 
         return ResponseEntity.ok()
@@ -274,7 +290,7 @@ public class ActivityPaymentController {
                                 .findFirst()
                                 .orElse(null);
 
-                String downloadUrl = activityReceiptLinkService.buildPublicPdfUrl(reservationId);
+                String downloadUrl = ensureReceiptPdfUrl(reservation);
                 String imageBlock = (imageUrl != null)
                         ? "<img class=\"hero\" src=\"" + esc(imageUrl) + "\" alt=\"Activity image\"/>"
                         : "<div class=\"hero-fallback\">" + esc(activityName) + "</div>";
@@ -384,5 +400,32 @@ public class ActivityPaymentController {
             .replace(">", "&gt;")
             .replace("\"", "&quot;")
             .replace("'", "&#39;");
+    }
+
+    private String ensureReceiptPdfUrl(ActivityReservation reservation) {
+        if (reservation.getReceiptPdfUrl() != null && !reservation.getReceiptPdfUrl().isBlank()) {
+            String existing = reservation.getReceiptPdfUrl().trim();
+            if (isValidPublicReceiptUrl(existing)) {
+                return existing;
+            }
+        }
+
+        Integer reservationId = reservation.getActivityReservationId();
+        String signedPublicPdfUrl = activityReceiptLinkService.buildPublicPdfUrl(reservationId);
+
+        reservation.setReceiptPdfUrl(signedPublicPdfUrl);
+        reservationRepository.save(reservation);
+        return signedPublicPdfUrl;
+    }
+
+    private boolean isValidPublicReceiptUrl(String value) {
+        if (value == null || value.isBlank()) {
+            return false;
+        }
+        String lower = value.trim().toLowerCase();
+        return (lower.startsWith("https://") || lower.startsWith("http://"))
+            && lower.contains("/api/public/activity-receipts/")
+            && lower.contains("/pdf")
+            && lower.contains("?sig=");
     }
 }

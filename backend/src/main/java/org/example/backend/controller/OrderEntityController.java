@@ -2,6 +2,7 @@ package org.example.backend.controller;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import org.example.backend.model.OrderEntity;
 import org.example.backend.service.OrderEntityService;
@@ -47,9 +48,14 @@ public class OrderEntityController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<OrderEntity> update(@PathVariable Integer id, @RequestBody OrderEntity entity) {
+    public ResponseEntity<?> update(@PathVariable Integer id, @RequestBody OrderEntity entity) {
         try {
-            return ResponseEntity.ok(orderEntityService.update(id, entity));
+            OrderEntity updated = orderEntityService.update(id, entity);
+            return ResponseEntity.ok(Map.of(
+                "orderId", updated.getOrderId(),
+                "status", updated.getStatus() != null ? updated.getStatus().name() : null,
+                "totalAmount", updated.getTotalAmount()
+            ));
         } catch (NoSuchElementException ex) {
             return ResponseEntity.notFound().build();
         }

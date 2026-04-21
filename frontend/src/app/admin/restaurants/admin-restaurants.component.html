@@ -33,7 +33,12 @@
         </span>
         <input type="text" [(ngModel)]="q" (ngModelChange)="onSearchInputChange()" placeholder="Search restaurants…" />
       </div>
-      <input type="text" [(ngModel)]="cuisineFilter" (ngModelChange)="onSearchInputChange()" placeholder="Filtrer par type de cuisine..." />
+      <select [(ngModel)]="cuisineFilter" (ngModelChange)="onSearchInputChange()">
+        <option value="">All cuisines</option>
+        @for (cuisine of cuisineOptions; track cuisine) {
+          <option [ngValue]="cuisine">{{ cuisine }}</option>
+        }
+      </select>
       <select [(ngModel)]="sort" (change)="onSearchInputChange()">
         <option value="restaurantId,desc">Newest first</option>
         <option value="name,asc">Nom A → Z</option>
@@ -145,7 +150,12 @@
         </label>
         <label>
           Cuisine type
-          <input type="text" [(ngModel)]="form.cuisineType" />
+          <select [(ngModel)]="form.cuisineType">
+            <option value="">Select cuisine…</option>
+            @for (cuisine of cuisineOptions; track cuisine) {
+              <option [ngValue]="cuisine">{{ cuisine }}</option>
+            }
+          </select>
         </label>
         @if (editingId) {
           <label>

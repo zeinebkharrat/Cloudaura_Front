@@ -16,6 +16,7 @@ import { PostMedia } from '../../Community/community.types';
 })
 export class AdminPostsComponent implements OnInit, OnDestroy {
   posts: AdminPost[] = [];
+  postThumbnails: Record<number, string> = {};
   q = '';
   tag = '';
   sort = 'createdAt,desc';
@@ -54,6 +55,7 @@ export class AdminPostsComponent implements OnInit, OnDestroy {
         this.totalPages = res.totalPages;
         this.totalElements = res.totalElements;
         this.error = '';
+        this.loadPageThumbnails(this.posts);
       },
       error: (err) => {
         this.error = err?.error?.message ?? 'Error loading posts';
@@ -123,10 +125,15 @@ export class AdminPostsComponent implements OnInit, OnDestroy {
         this.loadPosts();
       },
       error: async (err) => {
+        const isFkConflict = err?.status === 409;
+        const fallbackText = isFkConflict
+          ? 'This post is linked to other records (comments, reposts, views, notifications). Remove those links first, then retry.'
+          : 'Please try again.';
+
         await Swal.fire({
           icon: 'error',
-          title: 'Could not delete',
-          text: err?.error?.message ?? 'Please try again.',
+          title: isFkConflict ? 'Delete blocked by linked data' : 'Could not delete',
+          text: err?.error?.message ?? fallbackText,
         });
       },
     });
@@ -165,6 +172,70 @@ export class AdminPostsComponent implements OnInit, OnDestroy {
 
   trackByMedia(index: number, media: PostMedia): number | string {
     return media.mediaId ?? `${media.fileUrl ?? 'media'}-${index}`;
+  }
+
+  postThumbnail(post: AdminPost): string | null {
+    if (post.postId == null) {
+      return null;
+    }
+    return this.postThumbnails[post.postId] ?? null;
+  }
+
+  private loadPageThumbnails(posts: AdminPost[]): void {
+    const postIds = posts
+      .map((item) => item.postId)
+      .filter((id): id is number => typeof id === 'number' && Number.isFinite(id));
+
+    if (postIds.length === 0) {
+      this.postThumbnails = {};
+      return;
+    }
+
+    const idSet = new Set(postIds);
+
+    this.postMediaService.getAllMedias().subscribe({
+      next: (items) => {
+        const byPost = new Map<number, PostMedia[]>();
+
+        for (const media of items) {
+          const postId = media.post?.postId;
+          if (postId == null || !idSet.has(postId) || !media.fileUrl) {
+            continue;
+          }
+
+          const bucket = byPost.get(postId) ?? [];
+          bucket.push(media);
+          byPost.set(postId, bucket);
+        }
+
+        const nextThumbs: Record<number, string> = {};
+        for (const postId of postIds) {
+          const medias = byPost.get(postId) ?? [];
+          if (medias.length === 0) {
+            continue;
+          }
+
+          const sorted = [...medias].sort((a, b) => {
+            const orderA = a.orderIndex ?? 0;
+            const orderB = b.orderIndex ?? 0;
+            if (orderA !== orderB) {
+              return orderA - orderB;
+            }
+            return (a.mediaId ?? 0) - (b.mediaId ?? 0);
+          });
+
+          const preferred = sorted.find((media) => !this.isVideo(media)) ?? sorted[0];
+          if (preferred?.fileUrl) {
+            nextThumbs[postId] = preferred.fileUrl;
+          }
+        }
+
+        this.postThumbnails = nextThumbs;
+      },
+      error: () => {
+        this.postThumbnails = {};
+      },
+    });
   }
 
   private loadDetailsMedia(postId?: number): void {

@@ -23,6 +23,19 @@
   animation: fadeUp 0.7s ease both;
 }
 
+.profile-lang-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0 4px;
+}
+
+.profile-lang-label {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
 .auth-bg-orb {
   position: absolute;
   width: 420px;
@@ -926,5 +939,56 @@ select {
   .cover-btn {
     width: 100%;
     text-align: center;
+  }
+}
+
+@media (max-width: 560px) {
+  .profile-page {
+    padding: 104px 12px 26px;
+  }
+
+  .profile-card {
+    border-radius: 20px;
+    padding: 16px;
+  }
+
+  .profile-cover,
+  .profile-cover-overlay {
+    min-height: 190px;
+  }
+
+  .profile-cover-overlay {
+    padding: 12px;
+  }
+
+  .profile-bookings-cta {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .avatar-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .upload-row-modern {
+    min-width: 0;
+    width: 100%;
+    padding: 12px;
+  }
+
+  .camera-modal {
+    width: min(560px, 100%);
+    padding: 12px;
+  }
+
+  .camera-actions {
+    flex-direction: column;
+  }
+
+  .camera-actions .btn-outline,
+  .camera-actions .camera-capture-btn,
+  .security-main-btn {
+    width: 100%;
   }
 }

@@ -11,6 +11,8 @@ import org.springframework.stereotype.Repository;
 public interface OrderItemRepository extends JpaRepository<OrderItem, Integer> {
     long countByOrder_OrderId(Integer orderId);
 
+    long countByVariant_VariantId(Integer variantId);
+
     void deleteByOrder_OrderId(Integer orderId);
 
     void deleteAllByProduct_ProductId(Integer productId);

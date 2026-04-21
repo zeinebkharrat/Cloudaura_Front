@@ -36,13 +36,15 @@ export class PostMediaService {
     file: File,
     postId: number,
     mediaType: MediaType,
-    orderIndex?: number
+    orderIndex?: number,
+    autoTagOnPublish: boolean = false
   ): Observable<PostMedia> {
     const fd = new FormData();
     fd.append('file', file);
     fd.append('postId', String(postId));
     fd.append('mediaType', String(mediaType));
     if (orderIndex != null) fd.append('orderIndex', String(orderIndex));
+    if (autoTagOnPublish) fd.append('autoTagOnPublish', 'true');
 
     return this.http.post<PostMedia>(`${this.baseUrl}/media/upload`, fd);
   }

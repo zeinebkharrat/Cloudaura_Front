@@ -43,10 +43,21 @@ public class ActivityReservationService {
     private final ActivityRepository activityRepository;
     private final ActivityReservationRepository reservationRepository;
     private final UserRepository userRepository;
+    private final UserNotificationService userNotificationService;
 
     @Transactional
     public ActivityReservationResponse create(Integer activityId, CreateActivityReservationRequest request) {
         ActivityReservation saved = createPendingReservation(activityId, request);
+        Integer userId = saved.getUser() != null ? saved.getUser().getUserId() : null;
+        String activityName = saved.getActivity() != null ? saved.getActivity().getName() : "activity";
+        userNotificationService.notifyReservation(
+            userId,
+            "ACTIVITY",
+            saved.getActivityReservationId(),
+            "Activity reservation created",
+            "Your reservation for \"" + activityName + "\" was created.",
+            "/mes-reservations"
+        );
         return toResponse(saved);
     }
 
@@ -102,14 +113,23 @@ public class ActivityReservationService {
             .atOffset(ZoneOffset.UTC)
             .toLocalDate();
 
+        String activityName = reservation.getActivity().getName();
+        Integer cityId = reservation.getActivity().getCity() != null ? reservation.getActivity().getCity().getCityId() : null;
+        String cityName = reservation.getActivity().getCity() != null ? reservation.getActivity().getCity().getName() : null;
+        String statusLabel = reservation.getStatus() != null ? reservation.getStatus().name() : null;
+
         return new ActivityReservationResponse(
             reservation.getActivityReservationId(),
             reservation.getActivity().getActivityId(),
-            reservation.getActivity().getName(),
+            activityName,
             date.toString(),
             reservation.getNumberOfPeople(),
             reservation.getTotalPrice(),
-            reservation.getStatus()
+            reservation.getStatus(),
+            statusLabel,
+            cityId,
+            cityName,
+            activityName
         );
     }
 
@@ -214,19 +234,25 @@ public class ActivityReservationService {
             .toLocalDate();
 
         User user = reservation.getUser();
+        String activityName = reservation.getActivity().getName();
+        String cityName = reservation.getActivity().getCity().getName();
+        String statusLabel = reservation.getStatus() != null ? reservation.getStatus().name() : null;
         return new ActivityReservationListItemResponse(
             reservation.getActivityReservationId(),
             reservation.getActivity().getActivityId(),
-            reservation.getActivity().getName(),
+            activityName,
             reservation.getActivity().getCity().getCityId(),
-            reservation.getActivity().getCity().getName(),
+            cityName,
             date.toString(),
             reservation.getNumberOfPeople(),
             reservation.getTotalPrice(),
             reservation.getStatus(),
+            statusLabel,
             user != null ? user.getUserId() : null,
             user != null ? user.getUsername() : null,
-            user != null ? user.getEmail() : null
+            user != null ? user.getEmail() : null,
+            activityName,
+            cityName
         );
     }
 

@@ -422,3 +422,62 @@
   margin-top: 2px;
   font-size: 0.8rem;
 }
+
+.receipt-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.receipt-logo {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.receipt-app-name {
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.receipt-app-subtitle {
+  margin: 2px 0 0;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.receipt-actions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media print {
+  .back,
+  .page-head,
+  .orders-table-wrap > table > thead,
+  .orders-table > tbody > tr.order-row,
+  .chev-cell,
+  .payment-info,
+  .loading,
+  .error,
+  .empty,
+  .receipt-actions,
+  .btn {
+    display: none !important;
+  }
+
+  .my-orders-page {
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  .order-detail.order-receipt {
+    border: 1px solid #ddd;
+    background: #fff;
+    color: #000;
+  }
+}

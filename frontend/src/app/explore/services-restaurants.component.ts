@@ -7,11 +7,12 @@ import { ExploreService } from './explore.service';
 import { City, Restaurant, VoiceTranscriptionResponse } from './explore.models';
 import { VoiceSearchService } from './voice-search.service';
 import { parseRestaurantVoiceQuery } from './voice-query.parser';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-services-restaurants',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, TranslateModule],
   templateUrl: './services-restaurants.component.html',
   styleUrl: './services-restaurants.component.css',
 })

@@ -4,12 +4,17 @@ import jakarta.mail.MessagingException;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.text.SimpleDateFormat;
 import java.util.List;
+import java.util.Locale;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.InputStreamSource;
 import org.springframework.mail.MailException;
 import org.springframework.mail.MailSendException;
@@ -26,18 +31,21 @@ public class EmailService {
     private final InternetAddress userFromAddress;
     private final InternetAddress shopFromAddress;
     private final String frontendBaseUrl;
+    private final String welcomeImagePath;
 
     public EmailService(
             JavaMailSender userMailSender,
             @Qualifier("shopMailSender") JavaMailSender shopMailSender,
             @Value("${app.mail.from.name:YallaTN+}") String userFromName,
-            @Value("${app.mail.from.address:${spring.mail.username}}") String userFromEmail,
+            @Value("${app.mail.from.address:${spring.mail.username:no-reply@localhost}}") String userFromEmail,
             @Value("${app.shop.mail.from.name:YallaTN}") String shopFromName,
-            @Value("${app.shop.mail.from.address:${app.shop.mail.username}}") String shopFromEmail,
-            @Value("${app.frontend.base-url:http://localhost:4200}") String frontendBaseUrl) {
+            @Value("${app.shop.mail.from.address:${app.shop.mail.username:no-reply@localhost}}") String shopFromEmail,
+            @Value("${app.frontend.base-url:http://localhost:4200}") String frontendBaseUrl,
+            @Value("${app.mail.welcome-image-path:}") String welcomeImagePath) {
         this.userMailSender = userMailSender;
         this.shopMailSender = shopMailSender;
         this.frontendBaseUrl = normalizeBaseUrl(frontendBaseUrl);
+        this.welcomeImagePath = welcomeImagePath;
         this.userFromAddress = buildFrom(userFromEmail, userFromName, "YallaTN+");
         this.shopFromAddress = buildFrom(shopFromEmail, shopFromName, "YallaTN");
     }
@@ -90,6 +98,12 @@ public class EmailService {
             + "Telephone : " + phoneValue + "\n"
             + "Nationalite : " + nationalityValue + "\n\n"
             + "L'equipe YallaTN+";
+
+        byte[] welcomeImageBytes = loadWelcomeImageBytes();
+        String welcomeImageSrc = (welcomeImageBytes != null && welcomeImageBytes.length > 0)
+            ? "cid:welcome-image"
+            : "";
+
         String html = buildSignupVerificationHtml(
             displayName,
             fullName,
@@ -97,9 +111,51 @@ public class EmailService {
             emailValue,
             phoneValue,
             nationalityValue,
-            gender,
+            welcomeImageSrc,
             verificationLink);
-        sendEmail(userMailSender, userFromAddress, toEmail, subject, plainText, html);
+
+        MimeMessage message = userMailSender.createMimeMessage();
+        try {
+            MimeMessageHelper helper = new MimeMessageHelper(
+                    message,
+                    MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED,
+                    "UTF-8");
+            helper.setFrom(userFromAddress);
+            helper.setTo(toEmail);
+            helper.setSubject(subject);
+            helper.setText(plainText, html);
+            if (welcomeImageBytes != null && welcomeImageBytes.length > 0) {
+                helper.addInline("welcome-image", new ByteArrayResource(welcomeImageBytes), "image/png");
+            }
+            userMailSender.send(message);
+        } catch (MessagingException ex) {
+            throw new MailSendException("Failed to build or send verification email", ex);
+        } catch (MailException ex) {
+            throw ex;
+        }
+    }
+
+    private byte[] loadWelcomeImageBytes() {
+        try {
+            ClassPathResource classPathResource = new ClassPathResource("static/assets/welcome.png");
+            if (classPathResource.exists()) {
+                try (var stream = classPathResource.getInputStream()) {
+                    return stream.readAllBytes();
+                }
+            }
+        } catch (Exception ignored) {
+            // Fall back to configured file path.
+        }
+
+        try {
+            Path imagePath = Path.of(welcomeImagePath == null ? "" : welcomeImagePath.trim());
+            if (welcomeImagePath != null && !welcomeImagePath.isBlank() && Files.exists(imagePath) && Files.isReadable(imagePath)) {
+                return Files.readAllBytes(imagePath);
+            }
+        } catch (Exception ignored) {
+            // No extra fallback.
+        }
+        return null;
     }
 
     public void sendPasswordResetEmail(String toEmail, String firstName, String resetLink) {
@@ -188,12 +244,12 @@ public class EmailService {
         String bodyHtml = "Votre départ est prévu dans environ <strong>une heure</strong>.<br/><br/>"
                 + "<strong>Référence</strong> : " + safeRef + "<br/>"
                 + "<strong>Trajet</strong> : " + safeRoute + "<br/>"
-                + "<strong>Départ</strong> : " + safeWhen + "<br/><br/>"
+            + "<strong>Départ après</strong> : environ 1h (prévu le " + safeWhen + ")<br/><br/>"
                 + "Votre billet QR est joint à cet e-mail. Présentez-le à l'embarquement.";
         String plain = "Bonjour " + displayName + ",\n\n"
                 + "Rappel : votre transport (" + reservationRef + ") part dans environ une heure.\n"
                 + "Trajet : " + routeLabel + "\n"
-                + "Départ : " + departureWhenLabel + "\n\n"
+            + "Départ après : environ 1h (prévu le " + departureWhenLabel + ")\n\n"
                 + "Le QR code est en pièce jointe (ticket-qr.png).\n\n"
                 + "— YallaTN+";
         String tripsUrl = frontendBaseUrl + "/mes-reservations?tab=transport";
@@ -340,14 +396,14 @@ public class EmailService {
         public void sendEventJoinConfirmation(String toEmail, String firstName, String eventTitle, java.util.Date startDate, String venue) {
         String displayName = (firstName == null || firstName.isBlank()) ? "traveler" : firstName;
         String subject = "YallaTN+ - Event registration confirmed";
-        String dateLabel = startDate == null ? "TBA" : new SimpleDateFormat("dd/MM/yyyy").format(startDate);
+        String dateTimeLabel = formatEventDateTime(startDate);
         String safeEventTitle = eventTitle == null || eventTitle.isBlank() ? "Event" : eventTitle;
         String safeVenue = venue == null || venue.isBlank() ? "TBA" : venue;
 
         String plain = "Hi " + displayName + ",\n\n"
             + "Your event registration is confirmed.\n"
             + "Event: " + safeEventTitle + "\n"
-            + "Date: " + dateLabel + "\n"
+            + "Date & Time: " + dateTimeLabel + "\n"
             + "Venue: " + safeVenue + "\n\n"
             + "Thank you for joining YallaTN+.";
 
@@ -355,7 +411,7 @@ public class EmailService {
             "Event registration confirmed",
             "You are successfully registered.",
             "Your registration is confirmed for <strong>" + escapeHtml(safeEventTitle) + "</strong>.<br/>"
-                + "Date: <strong>" + escapeHtml(dateLabel) + "</strong><br/>"
+                + "Date &amp; Time: <strong>" + escapeHtml(dateTimeLabel) + "</strong><br/>"
                 + "Venue: <strong>" + escapeHtml(safeVenue) + "</strong>",
             true,
             "View events",
@@ -562,7 +618,7 @@ public class EmailService {
             String email,
             String phone,
             String nationality,
-            String gender,
+            String welcomeImageSrc,
             String verificationLink) {
         String safeFirstName = escapeHtml(firstName);
         String safeFullName = escapeHtml(fullName);
@@ -571,13 +627,10 @@ public class EmailService {
         String safePhone = escapeHtml(phone);
         String safeNationality = escapeHtml(nationality);
         String safeLink = escapeHtml(verificationLink);
-        String normalizedGender = gender == null ? "" : gender.trim().toUpperCase();
-        String characterImageUrl = "FEMALE".equals(normalizedGender)
-            ? frontendBaseUrl + "/assets/female.png"
-            : ("MALE".equals(normalizedGender)
-                ? frontendBaseUrl + "/assets/male.png"
-                : frontendBaseUrl + "/assets/guide-mascot.png");
-        String safeCharacterImageUrl = escapeHtml(characterImageUrl);
+        String safeCharacterImageUrl = escapeHtml(welcomeImageSrc);
+        String imageHtml = safeCharacterImageUrl.isBlank()
+            ? "<div style=\"display:inline-block;padding:10px 14px;border-radius:10px;background:#e2e8f0;color:#334155;font-size:13px;\">Welcome image unavailable</div>"
+            : "<img src=\"" + safeCharacterImageUrl + "\" alt=\"Voyageur\" width=\"620\" style=\"width:100%;max-width:620px;height:auto;display:block;border-radius:12px;box-shadow:0 10px 24px rgba(15,23,42,0.18);\" />";
 
         return """
                 <!doctype html>
@@ -612,7 +665,7 @@ public class EmailService {
                                             <table role="presentation" width="100%%" cellpadding="0" cellspacing="0" style="border:1px solid #d7e3f4;border-radius:16px;background:linear-gradient(130deg,#f8fbff,#eef5ff);">
                                                 <tr>
                                                     <td style="padding:16px 14px 6px;text-align:center;">
-                                                        <img src="%s" alt="Voyageur" width="160" style="width:160px;height:auto;display:inline-block;" />
+                                                        %s
                                                     </td>
                                                 </tr>
                                                 <tr>
@@ -698,7 +751,7 @@ public class EmailService {
                 </body>
                 </html>
                 """.formatted(
-                safeCharacterImageUrl,
+                imageHtml,
                 safeFirstName,
                 safeFullName,
                 safeUsername,
@@ -741,23 +794,48 @@ public class EmailService {
             java.util.Date startDate,
             Integer reservationId,
             List<String> qrTokens,
+            List<String> participantNames,
             byte[] primaryQrPng) {
 
         String displayName = (firstName == null || firstName.isBlank()) ? "traveler" : firstName;
         String safeEventTitle = escapeHtml(eventTitle == null ? "Event" : eventTitle);
         String safeVenue = escapeHtml(venue == null ? "TBA" : venue);
         String safeReservation = escapeHtml(String.valueOf(reservationId));
-        String eventDate = startDate == null ? "TBA" : new SimpleDateFormat("dd/MM/yyyy").format(startDate);
+        String eventDateTime = formatEventDateTime(startDate);
 
-        String qrListHtml = "";
-        if (qrTokens != null && !qrTokens.isEmpty()) {
+        String ticketDetailsHtml = "";
+        StringBuilder ticketDetailsPlain = new StringBuilder();
+        int ticketsCount = qrTokens == null ? 0 : qrTokens.size();
+        if (ticketsCount > 0) {
             StringBuilder b = new StringBuilder();
-            for (String token : qrTokens) {
-                b.append("<li style=\"margin:4px 0;font-family:monospace;\">")
+            b.append("<ul style=\"padding-left:18px;color:#3a4d67;\">");
+            for (int i = 0; i < ticketsCount; i++) {
+                String token = qrTokens.get(i);
+                String participant = (participantNames != null && i < participantNames.size())
+                        ? participantNames.get(i)
+                        : ("Participant " + (i + 1));
+                b.append("<li style=\"margin:6px 0;\"><strong>Ticket #")
+                        .append(i + 1)
+                        .append("</strong> - Participant: ")
+                        .append(escapeHtml(participant))
+                        .append(" - Reservation ID: ")
+                        .append(safeReservation)
+                        .append("<br/><span style=\"font-family:monospace;\">QR: ")
                         .append(escapeHtml(token))
-                        .append("</li>");
+                        .append("</span></li>");
+
+                ticketDetailsPlain.append("Ticket #")
+                        .append(i + 1)
+                        .append(" - Participant: ")
+                        .append(participant)
+                        .append(" - Reservation ID: ")
+                        .append(reservationId)
+                        .append(" - QR: ")
+                        .append(token)
+                        .append("\n");
             }
-            qrListHtml = "<ul style=\"padding-left:18px;color:#3a4d67;\">" + b + "</ul>";
+            b.append("</ul>");
+            ticketDetailsHtml = b.toString();
         }
 
         String html = """
@@ -770,19 +848,18 @@ public class EmailService {
                             <table role="presentation" width="620" cellpadding="0" cellspacing="0" style="max-width:620px;width:100%%;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 16px 34px rgba(15,42,74,.12);">
                                 <tr><td style="padding:24px 28px;background:linear-gradient(135deg,#e8002d 0%%,#0077b6 100%%);color:#fff;">
                                     <div style="font-size:26px;font-weight:800;">YallaTN+</div>
-                                    <div style="margin-top:8px;font-size:20px;font-weight:700;">Votre ticket est confirme</div>
+                                    <div style="margin-top:8px;font-size:20px;font-weight:700;">Your ticket is confirmed</div>
                                 </td></tr>
                                 <tr><td style="padding:24px 28px;">
                                     <p style="margin:0 0 10px;">Hi %s,</p>
-                                    <p style="margin:0 0 12px;color:#3a4d67;">Merci pour votre paiement. Votre reservation est confirmee.</p>
+                                    <p style="margin:0 0 12px;color:#3a4d67;">Thanks for your payment. Your reservation is confirmed.</p>
                                     <p style="margin:0;color:#3a4d67;"><strong>Event:</strong> %s</p>
                                     <p style="margin:6px 0;color:#3a4d67;"><strong>Venue:</strong> %s</p>
-                                    <p style="margin:6px 0;color:#3a4d67;"><strong>Date:</strong> %s</p>
-                                    <p style="margin:6px 0 16px;color:#3a4d67;"><strong>Reservation ID:</strong> %s</p>
+                                    <p style="margin:6px 0;color:#3a4d67;"><strong>Date &amp; Time:</strong> %s</p>
                                     <div style="margin:16px 0;text-align:center;">
                                         <img src="cid:event-ticket-qr" alt="QR Code" style="width:210px;height:210px;border:1px solid #e6eef7;border-radius:10px;padding:8px;background:#fff;"/>
                                     </div>
-                                    <p style="margin:0 0 8px;color:#3a4d67;"><strong>QR tokens:</strong></p>
+                                    <p style="margin:0 0 8px;color:#3a4d67;"><strong>Your tickets:</strong></p>
                                     %s
                                 </td></tr>
                             </table>
@@ -794,17 +871,16 @@ public class EmailService {
                 escapeHtml(displayName),
                 safeEventTitle,
                 safeVenue,
-                escapeHtml(eventDate),
-                safeReservation,
-                qrListHtml
+                escapeHtml(eventDateTime),
+                ticketDetailsHtml
         );
 
         String plain = "Hi " + displayName + ",\n\n"
                 + "Your event reservation is confirmed.\n"
                 + "Event: " + (eventTitle == null ? "Event" : eventTitle) + "\n"
-                + "Reservation ID: " + reservationId + "\n"
                 + "Venue: " + (venue == null ? "TBA" : venue) + "\n"
-                + "Date: " + eventDate + "\n";
+                + "Date & Time: " + eventDateTime + "\n"
+                + ticketDetailsPlain;
 
         MimeMessage message = userMailSender.createMimeMessage();
         try {
@@ -828,5 +904,12 @@ public class EmailService {
         } catch (MailException ex) {
             throw ex;
         }
+    }
+
+    private String formatEventDateTime(java.util.Date value) {
+        if (value == null) {
+            return "TBA";
+        }
+        return new SimpleDateFormat("EEE, MMM dd, yyyy 'at' HH:mm", Locale.ENGLISH).format(value);
     }
 }

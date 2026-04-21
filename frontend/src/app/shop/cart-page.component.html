@@ -9,6 +9,13 @@
   @if (orderDone()) {
     <section class="order-receipt glass-panel" aria-labelledby="receipt-title">
       <div class="receipt-header">
+        <div class="receipt-brand">
+          <img src="assets/logo/yallatn-logo.png" alt="YallaTN logo" class="receipt-logo" />
+          <div>
+            <p class="receipt-app-name">YallaTN+</p>
+            <p class="receipt-app-subtitle">Order receipt</p>
+          </div>
+        </div>
         <h2 id="receipt-title">Order confirmed</h2>
         <p class="receipt-intro">Thank you for your purchase. Keep these details for your records.</p>
       </div>
@@ -27,6 +34,10 @@
           <p class="receipt-card__row">
             <span class="label">Status</span>
             <span class="status-pill">{{ orderStatusLabel(orderDone()!.status) }}</span>
+          </p>
+          <p class="receipt-card__row">
+            <span class="label">Payment method</span>
+            <span>{{ paymentMethodLabel(orderDone()!.paymentMethod) }}</span>
           </p>
           <p class="receipt-card__row">
             <span class="label">Sous-total</span>
@@ -103,6 +114,7 @@
       </div>
 
       <div class="receipt-actions">
+        <button type="button" class="btn ghost" (click)="downloadReceiptPdf()">Download PDF</button>
         <a routerLink="/artisanat" class="btn primary">Continue shopping</a>
         <button type="button" class="btn ghost" (click)="clearReceipt()">Close receipt</button>
       </div>

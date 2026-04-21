@@ -2,6 +2,7 @@ package org.example.backend.dto.transport;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -16,6 +17,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class TransportCheckoutRequest {
 
+    /**
+     * Positive: persisted transport. Negative: flight-search offer — requires {@link #syntheticFlightOffer}.
+     */
     @NotNull
     private Integer transportId;
 
@@ -29,6 +33,9 @@ public class TransportCheckoutRequest {
 
     /** Required when transport type is TAXI (km for pricing). */
     private Double routeKm;
+
+    /** Optional duration in minutes for TAXI pricing (falls back to km-based estimate). */
+    private Integer routeDurationMin;
 
     /** Used for CAR rentals; optional, defaults to 1. */
     private Integer rentalDays;
@@ -52,4 +59,11 @@ public class TransportCheckoutRequest {
     @NotBlank
     @Size(min = 8, max = 36)
     private String idempotencyKey;
+
+    /** Optional Stripe Checkout presentment: {@code tnd}, {@code eur}, or {@code usd}. */
+    private String presentmentCurrency;
+
+    /** Required when {@code transportId < 0} (international / API flight row). */
+    @Valid
+    private SyntheticFlightOfferDto syntheticFlightOffer;
 }

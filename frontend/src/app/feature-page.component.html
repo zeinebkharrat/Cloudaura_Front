@@ -357,6 +357,8 @@
             class="event-card glass-panel" 
             *ngFor="let event of filteredEvents; let i = index" 
             [style.animation-delay.ms]="i * 70"
+            [attr.data-event-id]="event.eventId ?? null"
+            [class.event-card--deep-linked]="isDeepLinkedEvent(event)"
             (click)="selectEvent(event)"
           >
             <div class="event-card__image-container" *ngIf="event.imageUrl">
@@ -367,11 +369,11 @@
             </div>
             <div class="event-card__content">
               <div class="event-card__meta-row">
-                <span class="event-date-badge">{{ eventDisplayDate(event) }}</span>
                 <span class="event-status-badge" [ngClass]="eventStatusClass(event.status)">{{ event.status }}</span>
               </div>
               <h3 class="event-card__title">{{ event.title }}</h3>
               <p class="event-card__venue">📍 {{ event.venue }}</p>
+              <p class="event-card__detail"><strong>Date:</strong> {{ eventDisplayDateTimeLine(event) }}</p>
               <p class="event-card__detail"><strong>Type:</strong> {{ event.eventType }}</p>
               <p class="event-card__detail"><strong>Price:</strong> {{ eventPriceAmount(event) | number:'1.0-0' }} TND</p>
             </div>
@@ -388,33 +390,44 @@
       <button type="button" class="event-detail-close" (click)="closeEventDetails()">×</button>
 
       <div class="event-detail-scroll">
-        <div class="event-poster" [class.event-poster--placeholder]="!selectedEvent.imageUrl">
+        <div
+          class="event-poster"
+          [class.event-poster--placeholder]="!selectedEvent.imageUrl"
+          [class.event-poster--generated]="isAiGeneratedPoster(selectedEvent)"
+        >
           <img
             [src]="selectedEvent.imageUrl || 'assets/placeholder.png'"
             [alt]="selectedEvent.title"
             referrerpolicy="no-referrer"
             class="event-poster__image"
+            [class.event-poster__image--generated]="isAiGeneratedPoster(selectedEvent)"
           />
-          <div class="event-poster__scrim"></div>
-          <div class="event-poster__gradient"></div>
+          <ng-container *ngIf="isAiGeneratedPoster(selectedEvent)">
+            <div class="event-poster__top-mask"></div>
+            <div class="event-poster__scrim"></div>
+            <div class="event-poster__gradient"></div>
 
-          <div class="event-poster__brand">
-            <img src="assets/logo/yallatn-logo.png" alt="YallaTN logo" />
-          </div>
-
-          <div class="event-poster__meta">
-            <h2 class="event-poster__title">{{ selectedEvent.title }}</h2>
-            <div class="event-poster__facts">
-              <span class="event-poster__fact">
-                <span class="event-poster__icon" aria-hidden="true">📅</span>
-                {{ eventPosterDateRange(selectedEvent) }}
-              </span>
-              <span class="event-poster__fact event-poster__fact--price">
-                <span class="event-poster__icon" aria-hidden="true">🎟️</span>
-                {{ isPaidEvent(selectedEvent) ? (eventPriceAmount(selectedEvent) | number:'1.2-2') + ' TND' : 'Free' }}
-              </span>
+            <div class="event-poster__brand">
+              <img src="assets/logo/yallatn-logo.png" alt="YallaTN logo" />
             </div>
-          </div>
+
+            <div class="event-poster__meta">
+              <h2 class="event-poster__title">{{ selectedEvent.title }}</h2>
+              <div class="event-poster__facts">
+                <span class="event-poster__fact event-poster__fact--schedule">
+                  <span class="event-poster__icon" aria-hidden="true">🕒</span>
+                  <span class="event-poster__schedule">
+                    <span>{{ eventPosterDateRange(selectedEvent) }}</span>
+                    <span class="event-poster__time-accent" *ngIf="eventPosterTimeRange(selectedEvent) as posterTimeRange">{{ posterTimeRange }}</span>
+                  </span>
+                </span>
+                <span class="event-poster__fact event-poster__fact--price">
+                  <span class="event-poster__icon" aria-hidden="true">🎟️</span>
+                  {{ isPaidEvent(selectedEvent) ? (eventPriceAmount(selectedEvent) | number:'1.2-2') + ' TND' : 'Free' }}
+                </span>
+              </div>
+            </div>
+          </ng-container>
         </div>
 
         <div class="event-detail-content">
@@ -424,12 +437,20 @@
               <span><strong>Venue:</strong> {{ selectedEvent.venue }}</span>
             </p>
             <p class="detail-row">
+              <img src="icones/city.png" alt="" class="detail-ico" width="18" height="18" />
+              <span><strong>City:</strong> {{ toEventCityLabel(selectedEvent) }}</span>
+            </p>
+            <p class="detail-row">
               <img src="icones/actitvity.png" alt="" class="detail-ico" width="18" height="18" />
               <span><strong>Type:</strong> {{ selectedEvent.eventType }}</span>
             </p>
             <p class="detail-row">
               <i class="pi pi-calendar detail-pi" aria-hidden="true"></i>
-              <span><strong>Date:</strong> {{ selectedEvent.startDate | date:'dd MMM yyyy' }}</span>
+              <span><strong>Start Date:</strong> {{ eventDetailDateTimeLabel(selectedEvent) }}</span>
+            </p>
+            <p class="detail-row">
+              <i class="pi pi-calendar detail-pi" aria-hidden="true"></i>
+              <span><strong>End Date:</strong> {{ eventDetailEndDateTimeLabel(selectedEvent) }}</span>
             </p>
             <p class="detail-row detail-price">
               <img src="icones/money-bag.png" alt="" class="detail-ico" width="18" height="18" />
@@ -440,16 +461,18 @@
             </p>
             <p class="detail-row"><strong>Status:</strong> <span class="status-badge">{{ selectedEvent.status }}</span></p>
           </div>
-          <p class="event-join-error" *ngIf="eventJoinError() as err">{{ err }}</p>
         </div>
       </div>
 
       <div class="event-detail-footer modal-actions">
-        <button class="btn-secondary" type="button" (click)="closeEventDetails()" [disabled]="eventJoinLoading()">Cancel</button>
-        <button class="btn-join" type="button" (click)="onJoinEvent(selectedEvent); $event.stopPropagation()" [disabled]="eventJoinLoading()">
-          <span>{{ eventJoinLoading() ? joinLoadingLabel(selectedEvent) : joinActionLabel(selectedEvent) }}</span>
-          <i class="icon-arrow" *ngIf="!eventJoinLoading()">→</i>
-        </button>
+        <p class="event-join-error event-join-error--footer" *ngIf="eventJoinError() as err">{{ err }}</p>
+        <div class="event-detail-footer__actions">
+          <button class="btn-secondary" type="button" (click)="closeEventDetails()" [disabled]="eventJoinLoading()">{{ 'FEATURE_CATALOG.BTN_CANCEL' | translate }}</button>
+          <button class="btn-join" type="button" (click)="onJoinEvent(selectedEvent); $event.stopPropagation()" [disabled]="eventJoinLoading()">
+            <span>{{ eventJoinLoading() ? joinLoadingLabel(selectedEvent) : joinActionLabel(selectedEvent) }}</span>
+            <i class="icon-arrow" *ngIf="!eventJoinLoading()">→</i>
+          </button>
+        </div>
       </div>
     </article>
   </div>

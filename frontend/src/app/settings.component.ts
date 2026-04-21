@@ -2,7 +2,8 @@ import { CommonModule } from '@angular/common';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Component, DestroyRef, ElementRef, HostListener, OnInit, ViewChild, computed, inject, signal } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, ParamMap, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -75,6 +76,8 @@ export class SettingsComponent implements OnInit {
   private readonly likeService = inject(LikeService);
   private readonly commentService = inject(CommentService);
   private readonly dataSource = inject(DATA_SOURCE_TOKEN);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   @ViewChild('avatarPicker') private avatarPickerRef?: ElementRef<HTMLInputElement>;
   @ViewChild('coverPicker') private coverPickerRef?: ElementRef<HTMLInputElement>;
@@ -94,7 +97,7 @@ export class SettingsComponent implements OnInit {
   readonly editingProfile = signal(false);
   readonly profilePhotoMenuOpen = signal(false);
   readonly profilePhotoViewerOpen = signal(false);
-  readonly coverImageUrl = signal('/assets/banner.png');
+  readonly profileBaseline = signal<string>('');
 
   readonly cities = signal<CityOption[]>([]);
   readonly nationalities = signal<string[]>([]);
@@ -122,8 +125,20 @@ export class SettingsComponent implements OnInit {
     email: ['', [Validators.required, Validators.email]],
     phone: ['', [Validators.pattern(/^$|^(\+216)?[0-9]{8}$/)]],
     nationality: [''],
+    gender: ['' as '' | 'MALE' | 'FEMALE'],
+    dateOfBirth: [''],
     cityId: [null as number | null],
     profileImageUrl: [''],
+    coverImageUrl: ['/assets/banner.png'],
+  });
+
+  readonly hasPendingProfileChanges = computed(() => {
+    const baseline = this.profileBaseline();
+    if (!baseline) {
+      return false;
+    }
+
+    return baseline !== JSON.stringify(this.profileStateSnapshot());
   });
 
   readonly currentUser = this.auth.currentUser;
@@ -248,6 +263,10 @@ export class SettingsComponent implements OnInit {
   readonly activeSessionsCount = computed(() => this.deviceSessions().filter((session) => session.active).length);
 
   ngOnInit(): void {
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      this.applyDeepLinkParams(params);
+    });
+
     this.auth.getNationalities().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (list) => this.nationalities.set(list),
       error: () => this.nationalities.set([]),
@@ -287,10 +306,24 @@ export class SettingsComponent implements OnInit {
     }
   }
 
+  relaunchNavbarTutorial(): void {
+    const userId = this.currentUser()?.id;
+    if (!userId) {
+      this.actionError.set('Please sign in again before launching the tutorial.');
+      return;
+    }
+
+    localStorage.removeItem(`navbar-tour-done-${userId}`);
+    localStorage.setItem(`navbar-tour-pending-${userId}`, '1');
+    this.actionSuccess.set('Tutorial replay prepared. Redirecting to Home...');
+    this.router.navigateByUrl('/');
+  }
+
   toggleEditProfile(): void {
     if (this.editingProfile()) {
       this.editingProfile.set(false);
       this.patchProfileForm(this.currentUser());
+      this.captureProfileBaseline();
       return;
     }
     this.editingProfile.set(true);
@@ -335,7 +368,8 @@ export class SettingsComponent implements OnInit {
     this.auth.uploadProfileImage(file).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (response) => {
         this.profileForm.patchValue({ profileImageUrl: response.url });
-        this.actionSuccess.set('Profile photo updated.');
+        this.editingProfile.set(true);
+        this.actionSuccess.set('Profile photo updated. Click Save changes to persist.');
       },
       error: (error: HttpErrorResponse) => {
         this.actionError.set(extractApiErrorMessage(error, 'Image upload failed.'));
@@ -359,11 +393,9 @@ export class SettingsComponent implements OnInit {
 
     this.auth.uploadProfileImage(file).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (response) => {
-        this.coverImageUrl.set(response.url);
-        const userId = this.currentUser()?.id;
-        if (userId != null) {
-          localStorage.setItem(this.coverStorageKey(userId), response.url);
-        }
+        this.profileForm.patchValue({ coverImageUrl: response.url });
+        this.editingProfile.set(true);
+        this.actionSuccess.set('Cover photo updated. Click Save changes to persist.');
       },
       error: (error: HttpErrorResponse) => {
         this.actionError.set(extractApiErrorMessage(error, 'Cover upload failed.'));
@@ -376,15 +408,13 @@ export class SettingsComponent implements OnInit {
   }
 
   resetCoverPhoto(): void {
-    this.coverImageUrl.set('/assets/banner.png');
-    const userId = this.currentUser()?.id;
-    if (userId != null) {
-      localStorage.removeItem(this.coverStorageKey(userId));
-    }
+    this.profileForm.patchValue({ coverImageUrl: '/assets/banner.png' });
+    this.editingProfile.set(true);
   }
 
   coverBackground(): string {
-    return `linear-gradient(180deg, rgba(15, 23, 42, 0.08), rgba(15, 23, 42, 0.28)), url('${this.coverImageUrl()}')`;
+    const cover = this.profileForm.controls.coverImageUrl.value || '/assets/banner.png';
+    return `linear-gradient(180deg, rgba(15, 23, 42, 0.08), rgba(15, 23, 42, 0.28)), url('${cover}')`;
   }
 
   saveProfile(): void {
@@ -400,8 +430,11 @@ export class SettingsComponent implements OnInit {
       email: raw.email,
       phone: this.normalizePhone(raw.phone),
       nationality: raw.nationality?.trim() || null,
+      gender: raw.gender || null,
+      dateOfBirth: raw.dateOfBirth?.trim() || null,
       cityId: raw.cityId ?? null,
       profileImageUrl: raw.profileImageUrl?.trim() || null,
+      coverImageUrl: raw.coverImageUrl?.trim() || null,
     };
 
     this.profileSaveBusy.set(true);
@@ -412,6 +445,7 @@ export class SettingsComponent implements OnInit {
       next: (user) => {
         this.patchProfileForm(user);
         this.editingProfile.set(false);
+        this.captureProfileBaseline();
         this.actionSuccess.set('Profile updated successfully.');
       },
       error: (error: HttpErrorResponse) => {
@@ -736,10 +770,7 @@ export class SettingsComponent implements OnInit {
 
   private initializeProfileState(user: UserProfile): void {
     this.patchProfileForm(user);
-    const savedCover = localStorage.getItem(this.coverStorageKey(user.id));
-    if (savedCover) {
-      this.coverImageUrl.set(savedCover);
-    }
+    this.captureProfileBaseline();
     this.loadDashboardData();
   }
 
@@ -753,9 +784,20 @@ export class SettingsComponent implements OnInit {
       email: user.email,
       phone: user.phone ?? '',
       nationality: user.nationality ?? '',
+      gender: user.gender ?? '',
+      dateOfBirth: user.dateOfBirth ?? '',
       cityId: user.cityId ?? null,
       profileImageUrl: user.profileImageUrl ?? '',
+      coverImageUrl: user.coverImageUrl ?? '/assets/banner.png',
     });
+  }
+
+  private profileStateSnapshot(): unknown {
+    return this.profileForm.getRawValue();
+  }
+
+  private captureProfileBaseline(): void {
+    this.profileBaseline.set(JSON.stringify(this.profileStateSnapshot()));
   }
 
   private loadDashboardData(): void {
@@ -797,6 +839,7 @@ export class SettingsComponent implements OnInit {
       .subscribe({
         next: (payload) => {
           this.patchProfileForm(payload.profile);
+          this.captureProfileBaseline();
           this.allPosts.set(payload.posts);
           this.myPosts.set(payload.posts.filter((post) => post.author?.userId === userId));
           this.myLikes.set(payload.likes.filter((like) => like.user?.userId === userId));
@@ -920,6 +963,35 @@ export class SettingsComponent implements OnInit {
     return `profile-cover-${userId}`;
   }
 
+  private applyDeepLinkParams(params: ParamMap): void {
+    const section = params.get('section');
+    if (section === 'profile' || section === 'security' || section === 'devices' || section === 'logs' || section === 'history') {
+      this.section.set(section);
+    }
+
+    const type = this.parseHistoryType(params.get('type'));
+    if (type) {
+      this.historyTypeFilter.set(type);
+    }
+  }
+
+  private parseHistoryType(value: string | null): HistoryTypeFilter | null {
+    if (!value) {
+      return null;
+    }
+    const normalized = value.trim().toLowerCase();
+    if (
+      normalized === 'all' ||
+      normalized === 'transport' ||
+      normalized === 'stay' ||
+      normalized === 'activity' ||
+      normalized === 'event' ||
+      normalized === 'artisan'
+    ) {
+      return normalized;
+    }
+    return null;
+  }
   private clip(value: string, maxLength: number): string {
     if (value.length <= maxLength) {
       return value;

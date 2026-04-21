@@ -4,7 +4,7 @@ import { Observable, Subject } from 'rxjs';
 import { Client, IFrame, IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { AuthService } from '../core/auth.service';
-import { ChatE2eeService } from './chat-e2ee.service';
+import { ChatE2eeService, ReceiverHasNoE2eeKeyError } from './chat-e2ee.service';
 import {
   ChatRoomResponse,
   ConversationResponse,
@@ -173,14 +173,35 @@ export class ChatService implements OnDestroy {
       throw new Error('Cannot send encrypted message without authenticated sender');
     }
 
-    const encrypted = await this.e2eeService.encryptTextForParticipants(senderId, receiverId, plainText);
-    const request: SendMessageRequest = {
-      chatRoomId,
-      receiverId,
-      encryptedMessage: encrypted.encryptedMessage,
-      encryptedKey: encrypted.encryptedKey,
-      iv: encrypted.iv,
-    };
+    let request: SendMessageRequest;
+    try {
+      const encrypted = await this.e2eeService.encryptTextForParticipants(senderId, receiverId, plainText);
+      request = {
+        chatRoomId,
+        receiverId,
+        encryptedMessage: encrypted.encryptedMessage,
+        encryptedKey: encrypted.encryptedKey,
+        iv: encrypted.iv,
+      };
+    } catch (e: unknown) {
+      const noKey =
+        e instanceof ReceiverHasNoE2eeKeyError ||
+        (typeof e === 'object' &&
+          e !== null &&
+          (e as { name?: string }).name === 'ReceiverHasNoE2eeKeyError');
+      if (noKey) {
+        console.warn(
+          'Chat: receiver has no E2EE public key — sending plaintext until they log in and keys are registered.',
+        );
+        request = {
+          chatRoomId,
+          receiverId,
+          content: plainText,
+        };
+      } else {
+        throw e;
+      }
+    }
 
     const publish = () =>
       this.stompClient?.publish({

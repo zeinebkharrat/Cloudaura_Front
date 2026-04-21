@@ -382,6 +382,12 @@
   border: 1px solid rgba(45, 180, 140, 0.32);
 }
 
+.ao-pill[data-status='PROCESSING'] {
+  background: rgba(0, 119, 182, 0.18);
+  color: #7ec8f0;
+  border: 1px solid rgba(0, 119, 182, 0.35);
+}
+
 .ao-pill[data-status='SHIPPED'] {
   background: rgba(0, 119, 182, 0.16);
   color: #7ec8f0;
@@ -567,7 +573,13 @@
   background: linear-gradient(125deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
   box-shadow: 0 10px 36px rgba(0, 0, 0, 0.22);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
+  isolation: isolate;
+}
+
+/* Bring focused/open select above sibling rows so the native dropdown doesn’t clash */
+.ao-line:focus-within {
+  z-index: 4;
 }
 
 .ao-line::before {
@@ -587,7 +599,7 @@
 
 @media (min-width: 900px) {
   .ao-line {
-    grid-template-columns: minmax(0, 1fr) minmax(100px, 130px) minmax(200px, 240px);
+    grid-template-columns: minmax(0, 1fr) minmax(100px, 130px) minmax(220px, min(100%, 280px));
     align-items: center;
     gap: 20px 28px;
   }
@@ -672,7 +684,8 @@
 @media (min-width: 900px) {
   .ao-line__status {
     width: auto;
-    min-width: 200px;
+    min-width: 240px;
+    max-width: 100%;
   }
 }
 
@@ -688,10 +701,12 @@
 
 .ao-select-wrap {
   position: relative;
+  z-index: 1;
 }
 
 .ao-select {
   width: 100%;
+  min-width: 0;
   padding: 12px 38px 12px 14px;
   border-radius: 12px;
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -702,6 +717,21 @@
   cursor: pointer;
   appearance: none;
   transition: border-color 0.2s, box-shadow 0.2s;
+  color-scheme: dark;
+}
+
+/* Native option list follows OS theme; hint light UI when app is in light mode */
+:host-context([data-theme='light']) .ao-select {
+  background: var(--surface-1);
+  border: 1px solid var(--border-soft);
+  color: var(--text-color);
+  color-scheme: light;
+  box-shadow: var(--shadow-soft);
+}
+
+:host-context([data-theme='light']) .ao-select:focus {
+  border-color: color-mix(in srgb, var(--tunisia-red) 45%, var(--border-soft));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tunisia-red) 14%, transparent);
 }
 
 .ao-select:focus {

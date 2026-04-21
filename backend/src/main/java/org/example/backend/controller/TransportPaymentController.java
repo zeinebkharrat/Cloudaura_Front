@@ -8,11 +8,10 @@ import org.example.backend.dto.ApiResponse;
 import org.example.backend.dto.transport.TransportCheckoutRequest;
 import org.example.backend.dto.transport.TransportPaymentStartDto;
 import org.example.backend.dto.transport.TransportReservationResponse;
+import org.example.backend.model.TransportReservation;
 import org.example.backend.service.PaymentService;
 import org.example.backend.service.TransportReservationService;
 import org.example.backend.service.UserIdentityResolver;
-import org.example.backend.util.StripeSecretKeys;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -39,26 +38,36 @@ public class TransportPaymentController {
     private final PaymentService paymentService;
     private final UserIdentityResolver userIdentityResolver;
 
-    @Value("${stripe.api.key:disabled}")
-    private String stripeApiKey;
-
     @PostMapping("/checkout-session")
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<Map<String, String>> createCheckoutSession(
             @Valid @RequestBody TransportCheckoutRequest body, Authentication authentication) {
         Integer uid = userIdentityResolver.resolveUserId(authentication);
         if (uid == null) {
-            throw new AccessDeniedException("Authentication required");
+            throw new AccessDeniedException("api.error.unauthorized");
         }
 
-        String normalizedKey = StripeSecretKeys.normalize(stripeApiKey);
-        boolean realStripe = StripeSecretKeys.isStripeSecretConfigured(normalizedKey);
+        boolean realStripe = paymentService.isStripeCheckoutEnabled();
         log.info(
                 "Transport checkout-session: realStripe={} (stripe.api.key normalized prefix: {})",
                 realStripe,
-                normalizedKey.length() >= 7 ? normalizedKey.substring(0, 7) + "…" : "(short/empty)");
+            paymentService.stripeKeyPrefixForLogs());
 
         var handoff = transportReservationService.prepareTransportStripeCheckoutHandoff(body, uid);
+
+        /*
+         * Idempotent replay: same idempotency key as a booking already paid (Stripe or local).
+         * Do not open a second Checkout session — send the client to the in-app success URL.
+         */
+        if (handoff.reservation() != null
+                && handoff.reservation().getStatus() == TransportReservation.ReservationStatus.CONFIRMED
+                && handoff.localSimulationUrl() != null
+                && !handoff.localSimulationUrl().isBlank()) {
+            log.info(
+                    "Transport checkout idempotent replay: reservation {} already confirmed — returning return URL",
+                    handoff.reservation().getTransportReservationId());
+            return ApiResponse.success(Map.of("url", handoff.localSimulationUrl()));
+        }
 
         final String url;
         if (realStripe) {
@@ -74,7 +83,8 @@ public class TransportPaymentController {
                         HttpStatus.INTERNAL_SERVER_ERROR, "Réservation manquante pour Stripe Checkout.");
             }
             TransportPaymentStartDto start =
-                    paymentService.createTransportCheckoutSession(handoff.reservation(), handoff.totalTnd());
+                    paymentService.createTransportCheckoutSession(
+                            handoff.reservation(), handoff.totalTnd(), body.getPresentmentCurrency());
             url = start.getUrl();
             log.info("Stripe session URL: {}", url);
         } else {
@@ -83,7 +93,7 @@ public class TransportPaymentController {
         }
 
         if (url == null || url.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "No checkout URL");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "api.error.transport_payment.checkout_url_missing");
         }
         return ApiResponse.success(Map.of("url", url));
     }
@@ -93,10 +103,10 @@ public class TransportPaymentController {
             @RequestParam("session_id") String sessionId, Authentication authentication) {
         Integer uid = userIdentityResolver.resolveUserId(authentication);
         if (uid == null) {
-            throw new AccessDeniedException("Authentication required");
+            throw new AccessDeniedException("api.error.unauthorized");
         }
         if (sessionId == null || sessionId.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "session_id requis.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.transport_payment.session_required");
         }
         return ApiResponse.success(transportReservationService.confirmTransportStripeSession(sessionId.trim(), uid));
     }

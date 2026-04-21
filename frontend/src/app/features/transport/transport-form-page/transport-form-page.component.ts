@@ -329,7 +329,6 @@ export class TransportFormPageComponent implements OnInit {
 
   cities = signal<City[]>([]);
   transportType = 'BUS';
-  private hasQueryPrefillFrom = false;
 
   searchForm = this.fb.group({
     from: ['', Validators.required],
@@ -342,11 +341,11 @@ export class TransportFormPageComponent implements OnInit {
     this.dataSource.getCities().subscribe((data: City[]) => {
       this.cities.set(data);
       const currentCity = data.find((c: City) => c.id === this.store.selectedCityId());
-      if (currentCity && !this.hasQueryPrefillFrom) {
+      if (currentCity) {
         this.searchForm.patchValue({ from: currentCity.id.toString() });
       }
 
-      if (typeof navigator !== 'undefined' && navigator.geolocation && !this.hasQueryPrefillFrom) {
+      if (typeof navigator !== 'undefined' && navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
             void this.cityMatch
@@ -374,32 +373,8 @@ export class TransportFormPageComponent implements OnInit {
     }
 
     this.route.queryParams.subscribe(params => {
-      const from = params['from'];
-      const to = params['to'];
-      const date = params['date'];
-      const passengers = params['passengers'];
-      const transportType = params['transportType'] || params['type'];
-
-      if (from != null && String(from).trim() !== '') {
-        this.searchForm.patchValue({ from: String(from) });
-        this.hasQueryPrefillFrom = true;
-      }
-      if (to != null && String(to).trim() !== '') {
-        this.searchForm.patchValue({ to: String(to) });
-      }
-      if (date != null && String(date).trim() !== '') {
-        const raw = String(date);
-        const dateOnly = raw.includes('T') ? raw.slice(0, 10) : raw;
-        this.searchForm.patchValue({ date: dateOnly });
-      }
-      if (passengers != null && String(passengers).trim() !== '') {
-        const pax = Number(passengers);
-        if (Number.isFinite(pax) && pax > 0) {
-          this.searchForm.patchValue({ passengers: pax });
-        }
-      }
-      if (transportType) {
-        this.transportType = String(transportType).toUpperCase();
+      if (params['type']) {
+        this.transportType = params['type'];
       }
     });
   }

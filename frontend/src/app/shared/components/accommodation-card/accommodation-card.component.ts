@@ -1,26 +1,58 @@
-import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  EventEmitter,
+  Input,
+  OnChanges,
+  Output,
+  SimpleChanges,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Accommodation } from '../../../core/models/travel.models';
+import { TranslateModule } from '@ngx-translate/core';
+import { createCurrencyDisplaySyncEffect } from '../../../core/utils/currency-display-sync';
+
+/** Curated hotel / resort photos (Unsplash) used when the API returns no photo. */
+const HOTEL_PLACEHOLDER_IMAGES: readonly string[] = [
+  'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=75',
+  'https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=800&q=75',
+  'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=800&q=75',
+  'https://images.unsplash.com/photo-1520250497591-112acf2f40ce?auto=format&fit=crop&w=800&q=75',
+  'https://images.unsplash.com/photo-1596436889106-bc7b90b7098a?auto=format&fit=crop&w=800&q=75',
+  'https://images.unsplash.com/photo-1564501049412-61c2a3083791?auto=format&fit=crop&w=800&q=75',
+];
 
 @Component({
   selector: 'app-accommodation-card',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, TranslateModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="hotel-card" (click)="select.emit()">
-      <!-- Image Area with gradient overlay -->
-      <div class="card-visual" [style.background]="getGradient()">
+      <div class="card-visual">
+        @if (!coverFailed) {
+          <img
+            class="card-cover"
+            [src]="coverImageUrl()"
+            alt=""
+            loading="lazy"
+            decoding="async"
+            (error)="onCoverError()"
+          />
+        } @else {
+          <div class="card-cover-fallback" [style.background]="getGradient()"></div>
+        }
+        <div class="card-visual-overlay" aria-hidden="true"></div>
         <div class="visual-content">
           <span class="type-pill">
             <img class="type-pill-icon" [src]="typeIconSrc(accommodation.type)" alt="" width="18" height="18" />
-            {{ formatType(accommodation.type) }}
+            {{ ('HEBERG.TYPE.' + accommodation.type) | translate }}
           </span>
           <div class="visual-icon-wrap">
             <img class="visual-icon-img" [src]="typeIconSrc(accommodation.type)" alt="" />
           </div>
         </div>
-        <!-- Rating badge -->
         <div class="rating-badge" [class.excellent]="accommodation.rating >= 4.5"
              [class.good]="accommodation.rating >= 3.5 && accommodation.rating < 4.5">
           <span class="rating-stars">{{ getStars(accommodation.rating) }}</span>
@@ -34,25 +66,25 @@ import { Accommodation } from '../../../core/models/travel.models';
         
         <div class="location-row">
           <span class="loc-dot"></span>
-          <span>{{ accommodation.cityName || 'Tunisie' }}</span>
+          <span>{{ accommodation.cityName || ('HEBERG.LIST.HERO_TUNISIA' | translate) }}</span>
           <span class="region-tag" *ngIf="accommodation.cityRegion">{{ accommodation.cityRegion }}</span>
         </div>
 
         <!-- Quick amenities -->
         <div class="amenity-row">
-          <span class="amenity-chip"><i class="pi pi-wifi amenity-pi" aria-hidden="true"></i> Wi‑Fi</span>
-          <span class="amenity-chip"><i class="pi pi-car amenity-pi" aria-hidden="true"></i> Parking</span>
-          <span class="amenity-chip" *ngIf="accommodation.rating >= 4"><i class="pi pi-database amenity-pi" aria-hidden="true"></i> Pool</span>
+          <span class="amenity-chip"><i class="pi pi-wifi amenity-pi" aria-hidden="true"></i> {{ 'HEBERG.CARD.WIFI' | translate }}</span>
+          <span class="amenity-chip"><i class="pi pi-car amenity-pi" aria-hidden="true"></i> {{ 'HEBERG.CARD.PARKING' | translate }}</span>
+          <span class="amenity-chip" *ngIf="accommodation.rating >= 4"><i class="pi pi-database amenity-pi" aria-hidden="true"></i> {{ 'HEBERG.CARD.POOL' | translate }}</span>
         </div>
 
         <!-- Footer -->
         <div class="card-footer">
           <div class="price-block">
-            <span class="price-value">{{ accommodation.pricePerNight | number:'1.0-0' }}</span>
-            <span class="price-currency">TND<small>/nuit</small></span>
+            <span class="price-dual">{{ accommodation.pricePerNight | number: '1.0-2' }} TND</span>
+            <span class="price-currency"><small>{{ 'HEBERG.CARD.NIGHT' | translate }}</small></span>
           </div>
           <button class="btn-voir">
-            Voir <span class="arrow">→</span>
+            {{ 'HEBERG.CARD.VIEW' | translate }} <span class="arrow">→</span>
           </button>
         </div>
       </div>
@@ -60,8 +92,8 @@ import { Accommodation } from '../../../core/models/travel.models';
   `,
   styles: [`
     .hotel-card {
-      background: #161922;
-      border: 1px solid rgba(255,255,255,0.06);
+      background: var(--surface-1);
+      border: 1px solid var(--border-soft);
       border-radius: 18px;
       overflow: hidden;
       cursor: pointer;
@@ -72,8 +104,8 @@ import { Accommodation } from '../../../core/models/travel.models';
     }
     .hotel-card:hover {
       transform: translateY(-6px);
-      box-shadow: 0 20px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(241,37,69,0.2);
-      border-color: rgba(241,37,69,0.3);
+      box-shadow: var(--shadow-card), 0 0 0 1px color-mix(in srgb, var(--tunisia-red) 22%, transparent);
+      border-color: color-mix(in srgb, var(--tunisia-red) 35%, var(--border-soft));
     }
 
     /* Visual Area */
@@ -82,6 +114,27 @@ import { Accommodation } from '../../../core/models/travel.models';
       position: relative;
       display: flex;
       overflow: hidden;
+      background: #1a0a2e;
+    }
+    .card-cover {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 0;
+    }
+    .card-cover-fallback {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+    }
+    .card-visual-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background: linear-gradient(180deg, rgba(0, 0, 0, 0.42) 0%, transparent 42%, rgba(0, 0, 0, 0.5) 100%);
     }
     .visual-content {
       position: absolute;
@@ -131,7 +184,7 @@ import { Accommodation } from '../../../core/models/travel.models';
       display: flex;
       align-items: center;
       gap: 6px;
-      z-index: 2;
+      z-index: 3;
     }
     .rating-badge.excellent { background: rgba(241,37,69,0.8); }
     .rating-badge.good { background: rgba(255,152,0,0.7); }
@@ -148,7 +201,7 @@ import { Accommodation } from '../../../core/models/travel.models';
     .hotel-name {
       font-size: 1.1rem;
       font-weight: 700;
-      color: #fff;
+      color: var(--text-color);
       margin: 0 0 8px 0;
       line-height: 1.3;
       display: -webkit-box;
@@ -160,22 +213,22 @@ import { Accommodation } from '../../../core/models/travel.models';
       display: flex;
       align-items: center;
       gap: 8px;
-      color: rgba(255,255,255,0.5);
+      color: var(--text-muted);
       font-size: 0.85rem;
       margin-bottom: 12px;
     }
     .loc-dot {
       width: 6px; height: 6px;
       border-radius: 50%;
-      background: #f12545;
+      background: var(--tunisia-red);
       flex-shrink: 0;
     }
     .region-tag {
-      background: rgba(255,255,255,0.08);
+      background: var(--surface-2);
       padding: 2px 8px;
       border-radius: 4px;
       font-size: 0.72rem;
-      color: rgba(255,255,255,0.45);
+      color: var(--text-muted);
     }
 
     /* Amenities */
@@ -191,12 +244,12 @@ import { Accommodation } from '../../../core/models/travel.models';
       gap: 5px;
       font-size: 0.72rem;
       padding: 4px 8px;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.06);
+      background: var(--surface-2);
+      border: 1px solid var(--border-soft);
       border-radius: 6px;
-      color: rgba(255,255,255,0.6);
+      color: var(--text-muted);
     }
-    .amenity-pi { font-size: 0.78rem; color: rgba(200, 184, 232, 0.95); }
+    .amenity-pi { font-size: 0.78rem; color: var(--tunisia-red); opacity: 0.9; }
 
     /* Footer */
     .card-footer {
@@ -205,23 +258,25 @@ import { Accommodation } from '../../../core/models/travel.models';
       align-items: center;
       margin-top: auto;
       padding-top: 12px;
-      border-top: 1px solid rgba(255,255,255,0.06);
+      border-top: 1px solid var(--border-soft);
     }
-    .price-block { display: flex; align-items: baseline; gap: 4px; }
-    .price-value {
-      font-size: 1.5rem;
+    .price-block { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; max-width: 100%; }
+    .price-dual {
+      font-size: 0.92rem;
       font-weight: 800;
-      color: #fff;
+      color: var(--text-color);
+      line-height: 1.25;
+      word-break: break-word;
     }
     .price-currency {
       font-size: 0.8rem;
-      color: rgba(255,255,255,0.4);
+      color: var(--text-muted);
     }
     .price-currency small {
       font-size: 0.7rem;
     }
     .btn-voir {
-      background: #f12545;
+      background: var(--tunisia-red);
       border: none;
       color: #fff;
       padding: 10px 18px;
@@ -235,26 +290,44 @@ import { Accommodation } from '../../../core/models/travel.models';
       gap: 6px;
     }
     .btn-voir:hover {
-      background: #ff3355;
+      filter: brightness(1.06);
       transform: translateX(2px);
-      box-shadow: 0 4px 12px rgba(241,37,69,0.3);
+      box-shadow: 0 4px 12px var(--tunisia-red-glow);
     }
     .arrow { transition: transform 0.2s; }
     .hotel-card:hover .arrow { transform: translateX(3px); }
   `]
 })
-export class AccommodationCardComponent {
+export class AccommodationCardComponent implements OnChanges {
+  private readonly _currencyDisplaySync = createCurrencyDisplaySyncEffect();
+
   @Input() accommodation!: Accommodation;
   @Output() select = new EventEmitter<void>();
 
-  formatType(type: string): string {
-    const map: Record<string, string> = {
-      HOTEL: 'Hotel',
-      MAISON_HOTE: 'Guest house',
-      GUESTHOUSE: 'Rural guesthouse',
-      AUTRE: 'Stay',
-    };
-    return map[type] || type;
+  /** Set when remote image fails to load; falls back to gradient. */
+  coverFailed = false;
+
+  constructor(private readonly cdr: ChangeDetectorRef) {}
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['accommodation']) {
+      this.coverFailed = false;
+    }
+  }
+
+  onCoverError(): void {
+    this.coverFailed = true;
+    this.cdr.markForCheck();
+  }
+
+  coverImageUrl(): string {
+    const raw = (this.accommodation.mainPhotoUrl || this.accommodation.imageUrl || '').trim();
+    if (raw) {
+      return raw;
+    }
+    const id = this.accommodation.id > 0 ? this.accommodation.id : 1;
+    const idx = id % HOTEL_PLACEHOLDER_IMAGES.length;
+    return HOTEL_PLACEHOLDER_IMAGES[idx];
   }
 
   typeIconSrc(type: string): string {

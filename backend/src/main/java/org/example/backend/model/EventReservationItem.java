@@ -29,6 +29,12 @@ public class EventReservationItem {
     @Column(name = "is_scanned", nullable = false)
     private Boolean isScanned = false;
 
+    @Column(name = "participant_first_name", length = 120)
+    private String participantFirstName;
+
+    @Column(name = "participant_last_name", length = 120)
+    private String participantLastName;
+
     @Column(name = "scanned_at")
     private LocalDateTime scannedAt;
 
@@ -86,5 +92,21 @@ public class EventReservationItem {
 
     public void setScannedAt(LocalDateTime scannedAt) {
         this.scannedAt = scannedAt;
+    }
+
+    public String getParticipantFirstName() {
+        return participantFirstName;
+    }
+
+    public void setParticipantFirstName(String participantFirstName) {
+        this.participantFirstName = participantFirstName;
+    }
+
+    public String getParticipantLastName() {
+        return participantLastName;
+    }
+
+    public void setParticipantLastName(String participantLastName) {
+        this.participantLastName = participantLastName;
     }
 }

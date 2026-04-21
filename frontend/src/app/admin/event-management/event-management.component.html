@@ -57,6 +57,8 @@
             <th>Type</th>
             <th>Status</th>
             <th>Dates</th>
+            <th>Capacity</th>
+            <th>Participants</th>
             <th>Price</th>
             <th>Image</th>
             <th style="text-align: right;">Actions</th>
@@ -74,9 +76,15 @@
               <small class="status-label" [ngClass]="getStatusClass(ev.status)">
                 {{ ev.status }}
               </small>
+              <small class="soldout-label" *ngIf="availableSpots(ev) === 0">Sold Out</small>
             </td>
             <td class="date-cell">
-              {{ ev.startDate | date:'dd/MM/yy' }} - {{ ev.endDate | date:'dd/MM/yy' }}
+              {{ ev.startDate | date:'dd/MM/yy HH:mm' }} - {{ ev.endDate | date:'dd/MM/yy HH:mm' }}
+            </td>
+            <td class="price-cell"><strong>{{ ev.totalCapacity ?? 0 }}</strong></td>
+            <td>
+              <div><strong>{{ ev.reservedCount ?? 0 }}</strong> joined</div>
+              <small class="city-badge">{{ availableSpots(ev) }} left</small>
             </td>
             <td class="price-cell"><strong>{{ ev.price }} TN</strong></td>
             <td>
@@ -84,9 +92,15 @@
             </td>
             <td style="text-align: right;">
               <div class="action-btns">
-                <button class="btn-icon" (click)="openDetailsModal(ev)" title="View details">👁️</button>
-                <button class="btn-icon" (click)="openEditModal(ev)" title="Edit">📝</button>
-                <button class="btn-icon" (click)="deleteEvent(ev.eventId)" title="Delete">🗑️</button>
+                <button class="btn-icon icon-view" (click)="openDetailsModal(ev)" title="View details" aria-label="View details">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+                <button class="btn-icon icon-edit" (click)="openEditModal(ev)" title="Edit" aria-label="Edit">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+                </button>
+                <button class="btn-icon icon-delete" (click)="deleteEvent(ev.eventId)" title="Delete" aria-label="Delete">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                </button>
               </div>
             </td>
           </tr>
@@ -189,12 +203,12 @@
 
         <div class="row">
           <div class="form-group col">
-            <label>Start Date</label>
-            <input type="date" name="startDate" [(ngModel)]="currentEvent.startDate" class="form-input" required>
+            <label>Start Date & Time</label>
+            <input type="datetime-local" name="startDate" [(ngModel)]="currentEvent.startDate" class="form-input" required>
           </div>
           <div class="form-group col">
-            <label>End Date</label>
-            <input type="date" name="endDate" [(ngModel)]="currentEvent.endDate" class="form-input" required>
+            <label>End Date & Time</label>
+            <input type="datetime-local" name="endDate" [(ngModel)]="currentEvent.endDate" class="form-input" required>
           </div>
         </div>
 
@@ -212,6 +226,19 @@
         <div class="form-group">
           <label>Price TN</label>
           <input type="number" name="price" [(ngModel)]="currentEvent.price" class="form-input" required min="0" step="0.5">
+        </div>
+
+        <div class="form-group">
+          <label>Total Capacity</label>
+          <input
+            type="number"
+            name="totalCapacity"
+            [(ngModel)]="currentEvent.totalCapacity"
+            class="form-input"
+            required
+            min="1"
+            step="1"
+          >
         </div>
 
         <div class="form-group">
@@ -267,13 +294,19 @@
       </div>
 
       <div class="details-modal__body">
-        <div class="details-poster" [class.details-poster--placeholder]="!selectedEventDetails.imageUrl">
+        <div
+          class="details-poster"
+          [class.details-poster--placeholder]="!selectedEventDetails.imageUrl"
+          [class.details-poster--generated]="isAiGeneratedEventImage(selectedEventDetails)"
+        >
           <img
             [src]="selectedEventDetails.imageUrl || 'assets/placeholder.png'"
             alt="Event image"
             class="details-modal__image"
+            [class.details-modal__image--generated]="isAiGeneratedEventImage(selectedEventDetails)"
           >
           <ng-container *ngIf="isAiGeneratedEventImage(selectedEventDetails)">
+            <div class="details-poster__top-mask"></div>
             <div class="details-poster__scrim"></div>
             <div class="details-poster__gradient"></div>
 
@@ -284,9 +317,12 @@
             <div class="details-poster__meta">
               <h3 class="details-poster__title">{{ selectedEventDetails.title }}</h3>
               <div class="details-poster__facts">
-                <span class="details-poster__fact">
-                  <span class="details-poster__icon" aria-hidden="true">📅</span>
-                  {{ detailsPosterDateRange(selectedEventDetails) }}
+                <span class="details-poster__fact details-poster__fact--schedule">
+                  <span class="details-poster__icon" aria-hidden="true">🕒</span>
+                  <span class="details-poster__schedule">
+                    <span>{{ detailsPosterDateRange(selectedEventDetails) }}</span>
+                    <span class="details-poster__time-accent" *ngIf="detailsPosterTimeRange(selectedEventDetails) as detailsTimeRange">{{ detailsTimeRange }}</span>
+                  </span>
                 </span>
                 <span class="details-poster__fact">
                   <span class="details-poster__icon" aria-hidden="true">📍</span>
@@ -311,8 +347,15 @@
               {{ selectedEventDetails.status }}
             </span>
           </div>
-          <div><strong>Start:</strong> {{ selectedEventDetails.startDate | date:'dd/MM/yyyy' }}</div>
-          <div><strong>End:</strong> {{ selectedEventDetails.endDate | date:'dd/MM/yyyy' }}</div>
+          <div><strong>Start:</strong> {{ selectedEventDetails.startDate | date:'dd/MM/yyyy HH:mm' }}</div>
+          <div><strong>End:</strong> {{ selectedEventDetails.endDate | date:'dd/MM/yyyy HH:mm' }}</div>
+          <div><strong>Total Capacity:</strong> {{ selectedEventDetails.totalCapacity ?? 0 }}</div>
+          <div><strong>Participants:</strong> {{ selectedEventDetails.reservedCount ?? 0 }}</div>
+          <div>
+            <strong>Available:</strong>
+            <span *ngIf="availableSpots(selectedEventDetails) > 0">{{ availableSpots(selectedEventDetails) }}</span>
+            <span class="soldout-pill" *ngIf="availableSpots(selectedEventDetails) === 0">Sold Out</span>
+          </div>
           <div><strong>Price:</strong> {{ selectedEventDetails.price ?? 0 }} TN</div>
         </div>
       </div>

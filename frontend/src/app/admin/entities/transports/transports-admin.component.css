@@ -1,21 +1,13 @@
-/* ─── Container ──────────────────────────────────────── */
+﻿@import '../../admin-modal-design-system.css';
+
+/* â”€â”€â”€ Container â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .admin-container {
   padding: 1.75rem 2rem;
   max-width: 1400px;
   margin: 0 auto;
 }
 
-/* ─── Tab nav ─────────────────────────────────────────── */
-:host ::ng-deep {
-  .p-tabview .p-tabview-nav li.p-highlight .p-tabview-nav-link {
-    border-bottom-color: #f12545 !important;
-    color: #f12545 !important;
-  }
-  .p-tabview .p-tabview-nav li .p-tabview-nav-link { font-weight: 700; }
-  .p-tabview .p-tabview-panels { padding: 1.5rem 0 0; }
-}
-
-/* ─── Stats Row ──────────────────────────────────────── */
+/* â”€â”€â”€ Stats Row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .stats-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -40,15 +32,13 @@
 }
 .stat-icon.red    { background: rgba(241,37,69,0.12);   color: #f12545; }
 .stat-icon.blue   { background: rgba(96,165,250,0.12);  color: #60a5fa; }
-.stat-icon.amber  { background: rgba(251,191,36,0.12);  color: #fbbf24; }
 .stat-icon.green  { background: rgba(34,197,94,0.12);   color: #22c55e; }
-.stat-icon.purple { background: rgba(167,139,250,0.12); color: #a78bfa; }
 .stat-icon.teal   { background: rgba(34,211,238,0.12);  color: #22d3ee; }
 .stat-body { display: flex; flex-direction: column; }
 .stat-num { font-size: 1.55rem; font-weight: 800; line-height: 1; color: var(--text-color); }
 .stat-lbl { font-size: 0.73rem; color: var(--text-muted, #a8b3c7); margin-top: 2px; }
 
-/* ─── Section Header ─────────────────────────────────── */
+/* â”€â”€â”€ Section Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .section-header {
   display: flex;
   justify-content: space-between;
@@ -60,7 +50,7 @@
   color: var(--text-color); letter-spacing: -0.02em;
 }
 
-/* ─── Search Form ─────────────────────────────────────── */
+/* â”€â”€â”€ Search Form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .search-form {
   display: grid;
   grid-template-columns: 1fr auto auto;
@@ -107,7 +97,7 @@
 }
 .type-filter:focus { border-color: rgba(241,37,69,0.4); }
 
-/* ─── Table Wrap ─────────────────────────────────────── */
+/* â”€â”€â”€ Table Wrap â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .table-wrap {
   overflow: auto;
   border: 1px solid var(--glass-border, rgba(255,255,255,0.08));
@@ -140,7 +130,7 @@
 .data-table tbody tr:hover td { background: rgba(241,37,69,0.025); }
 .data-table tbody tr.inactive { opacity: 0.45; }
 
-/* ─── Cell helpers ───────────────────────────────────── */
+/* â”€â”€â”€ Cell helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .cell-main { font-weight: 600; font-size: 0.9rem; color: var(--text-color); }
 .cell-sub  { font-size: 0.78rem; color: var(--text-muted, #a8b3c7); margin-top: 2px; }
 .route-arrow { opacity: 0.35; margin: 0 6px; font-size: 0.65rem; }
@@ -148,7 +138,7 @@
 .seats-val { font-variant-numeric: tabular-nums; }
 .seats-low { color: #f87171; }
 
-/* ─── Type Badge ─────────────────────────────────────── */
+/* â”€â”€â”€ Type Badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .type-badge {
   display: inline-block;
   padding: 3px 10px;
@@ -175,7 +165,7 @@
 .type-badge.TRAIN { background: rgba(163,230,53,0.12);  color: #a3e635; border-color: rgba(163,230,53,0.25); }
 .type-badge.FERRY { background: rgba(129,140,248,0.12); color: #818cf8; border-color: rgba(129,140,248,0.25); }
 
-/* ─── Status Badge ───────────────────────────────────── */
+/* â”€â”€â”€ Status Badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .status-badge {
   display: inline-block;
   border-radius: 999px;
@@ -201,7 +191,7 @@
 }
 .status-stack { display: flex; flex-direction: column; gap: 4px; }
 
-/* ─── Seats Badges ───────────────────────────────────── */
+/* â”€â”€â”€ Seats Badges â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .seats-badge {
   display: inline-block;
   padding: 3px 9px;
@@ -214,7 +204,7 @@
 .seats-low       { background: rgba(251,191,36,0.15);  color: #fbbf24; border-color: rgba(251,191,36,0.3); }
 .seats-available { background: rgba(74,222,128,0.12);  color: #4ade80; border-color: rgba(74,222,128,0.25); }
 
-/* ─── Action Buttons ─────────────────────────────────── */
+/* â”€â”€â”€ Action Buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .actions { display: flex; gap: 7px; flex-wrap: wrap; }
 .action-btn {
   height: 32px;
@@ -242,7 +232,7 @@
 .action-btn.toggle-off { border-color: rgba(74,222,128,0.45); color: #4ade80; background: rgba(74,222,128,0.1); }
 .action-btn.delete  { border-color: rgba(248,113,113,0.45); color: #f87171; background: rgba(248,113,113,0.1); }
 
-/* ─── Empty State ────────────────────────────────────── */
+/* â”€â”€â”€ Empty State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .empty-row td {
   text-align: center;
   padding: 2.5rem !important;
@@ -250,7 +240,7 @@
   font-size: 0.9rem;
 }
 
-/* ─── Pagination ─────────────────────────────────────── */
+/* â”€â”€â”€ Pagination â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .pagination {
   display: flex;
   align-items: center;
@@ -287,7 +277,7 @@
 }
 .pg-dots { padding: 0 4px; color: var(--text-muted, #a8b3c7); font-size: 0.8rem; }
 
-/* ─── Dialog Form ────────────────────────────────────── */
+/* â”€â”€â”€ Dialog Form â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .dialog-form { padding: 0.25rem 0; }
 
 .form-grid {
@@ -335,7 +325,7 @@
   cursor: pointer;
 }
 
-/* ─── Reservation header ─────────────────────────────── */
+/* â”€â”€â”€ Reservation header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .res-header {
   display: flex; align-items: center; gap: 0.75rem;
   margin-bottom: 1rem; padding: 0.75rem 1rem;
@@ -350,7 +340,7 @@ code {
   padding: 2px 8px; border-radius: 6px;
 }
 
-/* ─── PrimeNG Dialog overrides ───────────────────────── */
+/* â”€â”€â”€ PrimeNG Dialog overrides â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :host ::ng-deep {
   .p-dialog {
     border-radius: 18px !important;
@@ -404,7 +394,7 @@ code {
   .res-table tr:last-child td { border-bottom: none; }
 }
 
-/* ─── Create Button (green) ──────────────────────────── */
+/* â”€â”€â”€ Create Button (green) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .btn-create {
   background: #1D9E75 !important;
   border-color: #1D9E75 !important;
@@ -413,7 +403,7 @@ code {
 }
 .btn-create:hover { background: #17895f !important; }
 
-/* ─── Empty State ────────────────────────────────────── */
+/* â”€â”€â”€ Empty State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -426,67 +416,22 @@ code {
 .empty-state .empty-icon { font-size: 2.5rem; opacity: 0.3; }
 .empty-state p { font-size: 0.9rem; margin: 0; }
 
-/* ─── Hints / Validation messages ───────────────────── */
+/* â”€â”€â”€ Hints / Validation messages â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .hint-error   { color: #f87171; font-size: 0.73rem; margin-top: 3px; }
 .hint-warning { color: #fbbf24; font-size: 0.73rem; margin-top: 3px; }
 .hint-success { color: #1D9E75; font-size: 0.73rem; margin-top: 3px; }
 
-/* ─── Capacity inherited box ─────────────────────────── */
-.capacity-inherited {
-  background: rgba(29,158,117,0.1);
-  border: 1px solid rgba(29,158,117,0.25);
-  border-radius: 8px;
-  padding: 6px 12px;
-  font-size: 0.78rem;
-  color: #1D9E75;
-  margin-top: 6px;
-}
-
-/* ─── Driver option in dropdown ──────────────────────── */
-.driver-option-item {
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-}
-.driver-license-small { font-size: 0.73rem; opacity: 0.5; font-family: monospace; }
-.driver-rating-small  { font-size: 0.73rem; color: #fbbf24; }
-
-/* ─── Driver avatar ──────────────────────────────────── */
-.driver-avatar-row { display: flex; align-items: center; gap: 0.6rem; }
-.driver-avatar {
-  width: 34px; height: 34px; border-radius: 50%;
-  background: linear-gradient(135deg, #f12545, #7c3aed);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.7rem; font-weight: 800; color: #fff; flex-shrink: 0;
-  text-transform: uppercase;
-}
-
-/* ─── Email link ─────────────────────────────────────── */
-.email-link { color: #60a5fa; text-decoration: none; font-size: 0.82rem; }
-.email-link:hover { text-decoration: underline; }
-
-/* ─── Rating / trips badges ──────────────────────────── */
-.rating-badge {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 0.78rem; font-weight: 700;
-  background: rgba(251,191,36,0.1); color: #fbbf24;
-  padding: 3px 8px; border-radius: 999px;
-  border: 1px solid rgba(251,191,36,0.25);
-}
-.trips-badge {
-  display: inline-block; font-size: 0.78rem;
-  color: var(--text-muted, #94a3b8);
-}
-
-/* ─── Reservation dialog extras ──────────────────────── */
+/* â”€â”€â”€ Reservation dialog extras â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .res-route { font-weight: 700; font-size: 0.95rem; }
 .res-count { margin-left: auto; font-size: 0.78rem; opacity: 0.5; }
 
-/* ─── Pulse animation ────────────────────────────────── */
+/* â”€â”€â”€ Pulse animation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @keyframes pulse {
   0%, 100% { opacity: 0.5; }
   50%       { opacity: 1; }
 }
 
-/* ─── Responsive ─────────────────────────────────────── */
+/* â”€â”€â”€ Responsive â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @media (max-width: 768px) {
   .admin-container { padding: 1rem; }
   .form-grid { grid-template-columns: 1fr; }

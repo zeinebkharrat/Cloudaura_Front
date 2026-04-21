@@ -161,9 +161,19 @@ public class ProductController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable Integer id, @RequestBody Product entity) {
+    public ResponseEntity<?> update(Authentication authentication, @PathVariable Integer id, @RequestBody Product entity) {
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String username = authentication.getName();
+        if (username == null || username.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         try {
-            return ResponseEntity.ok(productService.update(id, entity));
+            return ResponseEntity.ok(productService.update(id, entity, username));
+        } catch (ResponseStatusException ex) {
+            return ResponseEntity.status(ex.getStatusCode())
+                    .body(Map.of("error", ex.getReason() != null ? ex.getReason() : "Request rejected"));
         } catch (NoSuchElementException ex) {
             return ResponseEntity.notFound().build();
         } catch (Exception ex) {

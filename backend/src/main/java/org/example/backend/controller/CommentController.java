@@ -47,12 +47,12 @@ public class CommentController {
         Comment existingComment = commentService.retrieveComment(id);
         
         if (existingComment == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Comment not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.comment_not_found");
         }
         
         // Only allow users to update their own comments
         if (!existingComment.getAuthor().getUserId().equals(currentUser.getUserId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only edit your own comments");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "api.error.comment_edit_forbidden");
         }
         
         // Preserve author, post, parent, and timestamps
@@ -71,12 +71,12 @@ public class CommentController {
         Comment existingComment = commentService.retrieveComment(id);
         
         if (existingComment == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Comment not found");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.comment_not_found");
         }
         
         // Only allow users to delete their own comments
         if (!existingComment.getAuthor().getUserId().equals(currentUser.getUserId())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only delete your own comments");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "api.error.comment_delete_forbidden");
         }
         
         commentService.removeComment(id);
@@ -96,7 +96,7 @@ public class CommentController {
     private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.unauthorized");
         }
         
         // Extract User entity from CustomUserDetails
@@ -112,7 +112,7 @@ public class CommentController {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not authenticated"));
         }
         
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid authentication principal");
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.invalid_principal");
     }
 }
 

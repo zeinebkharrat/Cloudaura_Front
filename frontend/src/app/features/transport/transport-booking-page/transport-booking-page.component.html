@@ -4,245 +4,248 @@
     @if (editingReservationId() != null) {
       <div class="bp-edit-banner" role="status">
         <i class="pi pi-pencil" aria-hidden="true"></i>
-        <span>Updating your existing booking — confirm to save changes to this reservation only.</span>
+        <span>{{ 'TRANSPORT_BOOKING.EDIT_BANNER' | translate }}</span>
       </div>
     }
 
-    <div class="stepper-wrap">
-      @if (activeStep() === 0) {
-            <div class="step">
-              @if (transport(); as t) {
-                <div class="trip-inline">
-                  <span class="trip-emoji">{{ getTypeEmoji(t.type) }}</span>
-                  <div class="trip-detail">
-                    <span class="trip-route">{{ t.departureCityName }} → {{ t.arrivalCityName }}</span>
-                    <span class="trip-meta">{{ getTypeLabel(t.type) }} · {{ formatTime(t.departureTime) }} – {{ formatTime(t.arrivalTime) }} · {{ passengerForm.get('seats')?.value }} seat(s)</span>
-                  </div>
-                  <span class="trip-price">{{ t.price }} <small>TND</small></span>
-                </div>
-              }
+    <div class="stepper-wrap manual-stepper">
+      <div class="manual-steps" role="navigation" [attr.aria-label]="'TRANSPORT_BOOKING.STEP_PASSENGERS' | translate">
+        <span [class.active]="activeStep() >= 0">{{ 'TRANSPORT_BOOKING.STEP_PASSENGERS' | translate }}</span>
+        <span [class.active]="activeStep() >= 1">{{ 'TRANSPORT_BOOKING.STEP_PAYMENT' | translate }}</span>
+        <span [class.active]="activeStep() >= 2">{{ 'TRANSPORT_BOOKING.STEP_CONFIRMATION' | translate }}</span>
+      </div>
 
-              <div class="step-head">
-                <h2>Passenger details</h2>
-                <p>Primary traveller contact information</p>
+      @switch (activeStep()) {
+        @case (0) {
+          <div class="step">
+            @if (transport(); as t) {
+              <div class="trip-inline">
+                <span class="trip-emoji">{{ getTypeEmoji(t.type) }}</span>
+                <div class="trip-detail">
+                  <span class="trip-route">{{ t.departureCityName || '' }} → {{ t.arrivalCityName || '' }}</span>
+                  <span class="trip-meta">{{ transportTypeLabelKey(t.type) | translate }} · {{ formatTime(t.departureTime) }} – {{ formatTime(t.arrivalTime) }}{{ 'TRANSPORT_BOOKING.TRIP_META_SEP' | translate }}{{ 'TRANSPORT_BOOKING.SEAT_META' | translate: { n: passengerForm.get('seats')?.value } }}</span>
+                </div>
+                <span class="trip-price">{{ t.price | dualCurrency }}</span>
               </div>
+            }
 
-              <form [formGroup]="passengerForm" class="f">
-                <div class="f-row">
-                  <div class="f-group">
-                    <label class="f-label"><i class="pi pi-user"></i> First name</label>
-                    <div class="f-input-wrap" [class.f-error]="passengerForm.get('firstName')?.invalid && passengerForm.get('firstName')?.touched">
-                      <input pInputText formControlName="firstName" placeholder="First name" class="f-input" />
-                    </div>
-                    @if (passengerForm.get('firstName')?.invalid && passengerForm.get('firstName')?.touched) {
-                      <small class="f-err-msg">First name is required (min. 2 characters)</small>
-                    }
-                  </div>
-                  <div class="f-group">
-                    <label class="f-label"><i class="pi pi-user"></i> Last name</label>
-                    <div class="f-input-wrap" [class.f-error]="passengerForm.get('lastName')?.invalid && passengerForm.get('lastName')?.touched">
-                      <input pInputText formControlName="lastName" placeholder="Last name" class="f-input" />
-                    </div>
-                    @if (passengerForm.get('lastName')?.invalid && passengerForm.get('lastName')?.touched) {
-                      <small class="f-err-msg">Last name is required (min. 2 characters)</small>
-                    }
-                  </div>
-                </div>
-
-                <div class="f-row">
-                  <div class="f-group">
-                    <label class="f-label"><i class="pi pi-envelope"></i> Email</label>
-                    <div class="f-input-wrap" [class.f-error]="passengerForm.get('email')?.invalid && passengerForm.get('email')?.touched">
-                      <input pInputText formControlName="email" placeholder="votre@email.com" class="f-input" />
-                    </div>
-                    @if (passengerForm.get('email')?.invalid && passengerForm.get('email')?.touched) {
-                      <small class="f-err-msg">Enter a valid email address</small>
-                    }
-                  </div>
-                  <div class="f-group">
-                    <label class="f-label"><i class="pi pi-phone"></i> Phone</label>
-                    <div class="f-phone" [class.f-error]="passengerForm.get('phone')?.invalid && passengerForm.get('phone')?.touched">
-                      <span class="f-prefix">+216</span>
-                      <input pInputText formControlName="phone" placeholder="98 765 432" class="f-input" />
-                    </div>
-                    @if (passengerForm.get('phone')?.invalid && passengerForm.get('phone')?.touched) {
-                      <small class="f-err-msg">Enter 8 digits (Tunisia mobile without +216)</small>
-                    }
-                  </div>
-                </div>
-
-                <div class="f-seats">
-                  <div class="f-seats-badge">{{ passengerForm.get('seats')?.value }}</div>
-                  <span class="f-seats-txt">seat(s) reserved</span>
-                </div>
-              </form>
-
-              <div class="step-nav">
-                <span></span>
-                <button pButton label="Continue" icon="pi pi-arrow-right" iconPos="right"
-                        class="p-button-raised" (click)="goToStep2()"
-                        [disabled]="passengerForm.invalid"></button>
-              </div>
+            <div class="step-head">
+              <h2>{{ 'TRANSPORT_BOOKING.PASS_TITLE' | translate }}</h2>
+              <p>{{ 'TRANSPORT_BOOKING.PASS_SUB' | translate }}</p>
             </div>
-      }
 
-      @if (activeStep() === 1) {
-            <div class="step">
-              <div class="step-head">
-                <h2>Summary & payment</h2>
-                <p>Review details before you confirm</p>
-              </div>
-
-              <div class="sum">
-                <div class="sum-route">
-                  <div class="sum-point">
-                    <span class="sum-city">{{ transport()?.departureCityName }}</span>
-                    <span class="sum-time">{{ formatTime(transport()?.departureTime ?? '') }}</span>
+            <form [formGroup]="passengerForm" class="f">
+              <div class="f-row">
+                <div class="f-group">
+                  <label class="f-label"><i class="pi pi-user"></i> {{ 'TRANSPORT_BOOKING.LABEL_FIRST' | translate }}</label>
+                  <div class="f-input-wrap" [class.f-error]="passengerForm.get('firstName')?.invalid && passengerForm.get('firstName')?.touched">
+                    <input pInputText formControlName="firstName" [placeholder]="'TRANSPORT_BOOKING.PH_FIRST' | translate" class="f-input" />
                   </div>
-                  <div class="sum-track">
-                    <span class="sum-dot"></span>
-                    <span class="sum-line"></span>
-                    <span class="sum-emoji">{{ getTypeEmoji(transport()?.type ?? 'BUS') }}</span>
-                    <span class="sum-line"></span>
-                    <span class="sum-dot"></span>
-                  </div>
-                  <div class="sum-point sum-end">
-                    <span class="sum-city">{{ transport()?.arrivalCityName }}</span>
-                    <span class="sum-time">{{ formatTime(transport()?.arrivalTime ?? '') }}</span>
-                  </div>
-                </div>
-
-                <div class="sum-divider"></div>
-
-                <div class="sum-grid">
-                  <div class="sum-item"><span class="sum-k"><i class="pi pi-calendar"></i> Date</span><span class="sum-v">{{ formatTravelDate(store.dates().travelDate) }}</span></div>
-                  <div class="sum-item"><span class="sum-k"><i class="pi pi-user"></i> Passenger</span><span class="sum-v">{{ passengerForm.get('firstName')?.value }} {{ passengerForm.get('lastName')?.value }}</span></div>
-                  <div class="sum-item"><span class="sum-k"><i class="pi pi-users"></i> Seats</span><span class="sum-v">{{ passengerForm.get('seats')?.value }}</span></div>
-                  <div class="sum-item"><span class="sum-k"><i class="pi pi-phone"></i> Phone</span><span class="sum-v">+216 {{ passengerForm.get('phone')?.value }}</span></div>
-                </div>
-
-                <div class="sum-divider"></div>
-
-                <div class="sum-pricing">
-                  <div class="sum-pl"><span>Unit price</span><span>{{ transport()?.price }} TND</span></div>
-                  <div class="sum-pl"><span>Seats</span><span>&times; {{ passengerForm.get('seats')?.value }}</span></div>
-                  <div class="sum-pl sum-total">
-                    <span>Total</span>
-                    <span class="sum-total-val">{{ calculateTotal() }} TND</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="pay">
-                <h3 class="pay-title">Payment method</h3>
-                <div class="pay-grid">
-                  <label class="pay-opt" [class.pay-active]="paymentMethod() === 'CASH'"
-                         (click)="paymentMethod.set('CASH'); paymentMethodValue = 'CASH'">
-                    <span class="pay-radio" [class.pay-checked]="paymentMethod() === 'CASH'"></span>
-                    <i class="pi pi-wallet pay-icon"></i>
-                    <div class="pay-txt">
-                      <span class="pay-name">Cash</span>
-                      <span class="pay-desc">Pay the driver directly</span>
-                    </div>
-                  </label>
-                  <label class="pay-opt" [class.pay-active]="paymentMethod() === 'KONNECT'"
-                         (click)="paymentMethod.set('KONNECT'); paymentMethodValue = 'KONNECT'">
-                    <span class="pay-radio" [class.pay-checked]="paymentMethod() === 'KONNECT'"></span>
-                    <i class="pi pi-credit-card pay-icon"></i>
-                    <div class="pay-txt">
-                      <span class="pay-name">Konnect</span>
-                      <span class="pay-desc">Secure online payment</span>
-                    </div>
-                  </label>
-                  <label class="pay-opt" [class.pay-active]="paymentMethod() === 'STRIPE'"
-                         (click)="paymentMethod.set('STRIPE'); paymentMethodValue = 'STRIPE'">
-                    <span class="pay-radio" [class.pay-checked]="paymentMethod() === 'STRIPE'"></span>
-                    <i class="pi pi-credit-card pay-icon"></i>
-                    <div class="pay-txt">
-                      <span class="pay-name">Stripe</span>
-                      <span class="pay-desc">Stripe Checkout (hosted page)</span>
-                    </div>
-                  </label>
-                  @if (editingReservationId() === null) {
-                    <label class="pay-opt pay-paypal" [class.pay-active]="paymentMethod() === 'PAYPAL'"
-                           (click)="paymentMethod.set('PAYPAL'); paymentMethodValue = 'PAYPAL'">
-                      <span class="pay-radio" [class.pay-checked]="paymentMethod() === 'PAYPAL'"></span>
-                      <span class="paypal-mark" aria-hidden="true">P</span>
-                      <div class="pay-txt">
-                        <span class="pay-name">PayPal</span>
-                        <span class="pay-desc">Pay via PayPal (USD)</span>
-                      </div>
-                    </label>
+                  @if (passengerForm.get('firstName')?.invalid && passengerForm.get('firstName')?.touched) {
+                    <small class="f-err-msg">{{ 'TRANSPORT_BOOKING.ERR_FIRST' | translate }}</small>
                   }
                 </div>
-                @if (paymentMethod() === 'PAYPAL' && editingReservationId() === null) {
-                  <p class="paypal-note">
-                    Amount converted: {{ paypalUsdFromTnd() }} USD (reference rate 0.32 × {{ calculateTotal() }} TND)
-                  </p>
+                <div class="f-group">
+                  <label class="f-label"><i class="pi pi-user"></i> {{ 'TRANSPORT_BOOKING.LABEL_LAST' | translate }}</label>
+                  <div class="f-input-wrap" [class.f-error]="passengerForm.get('lastName')?.invalid && passengerForm.get('lastName')?.touched">
+                    <input pInputText formControlName="lastName" [placeholder]="'TRANSPORT_BOOKING.PH_LAST' | translate" class="f-input" />
+                  </div>
+                  @if (passengerForm.get('lastName')?.invalid && passengerForm.get('lastName')?.touched) {
+                    <small class="f-err-msg">{{ 'TRANSPORT_BOOKING.ERR_LAST' | translate }}</small>
+                  }
+                </div>
+              </div>
+
+              <div class="f-row">
+                <div class="f-group">
+                  <label class="f-label"><i class="pi pi-envelope"></i> {{ 'TRANSPORT_BOOKING.LABEL_EMAIL' | translate }}</label>
+                  <div class="f-input-wrap" [class.f-error]="passengerForm.get('email')?.invalid && passengerForm.get('email')?.touched">
+                    <input pInputText formControlName="email" [placeholder]="'TRANSPORT_BOOKING.PH_EMAIL' | translate" class="f-input" />
+                  </div>
+                  @if (passengerForm.get('email')?.invalid && passengerForm.get('email')?.touched) {
+                    <small class="f-err-msg">{{ 'TRANSPORT_BOOKING.ERR_EMAIL' | translate }}</small>
+                  }
+                </div>
+                <div class="f-group">
+                  <label class="f-label"><i class="pi pi-phone"></i> {{ 'TRANSPORT_BOOKING.LABEL_PHONE' | translate }}</label>
+                  <div class="f-phone" [class.f-error]="passengerForm.get('phone')?.invalid && passengerForm.get('phone')?.touched">
+                    <span class="f-prefix">+216</span>
+                    <input pInputText formControlName="phone" [placeholder]="'TRANSPORT_BOOKING.PH_PHONE' | translate" class="f-input" />
+                  </div>
+                  @if (passengerForm.get('phone')?.invalid && passengerForm.get('phone')?.touched) {
+                    <small class="f-err-msg">{{ 'TRANSPORT_BOOKING.ERR_PHONE' | translate }}</small>
+                  }
+                </div>
+              </div>
+
+              <div class="f-seats">
+                <div class="f-seats-badge">{{ passengerForm.get('seats')?.value }}</div>
+                <span class="f-seats-txt">{{ 'TRANSPORT_BOOKING.SEATS_RESERVED' | translate }}</span>
+              </div>
+            </form>
+
+            <div class="step-nav">
+              <span></span>
+              <button pButton [label]="'TRANSPORT_BOOKING.BTN_CONTINUE' | translate" icon="pi pi-arrow-right" iconPos="right"
+                      class="p-button-raised" (click)="goToStep2()"
+                      [disabled]="passengerForm.invalid"></button>
+            </div>
+          </div>
+        }
+        @case (1) {
+          <div class="step">
+            <div class="step-head">
+              <h2>{{ 'TRANSPORT_BOOKING.SUM_TITLE' | translate }}</h2>
+              <p>{{ 'TRANSPORT_BOOKING.SUM_SUB' | translate }}</p>
+            </div>
+
+            <div class="sum">
+              <div class="sum-route">
+                <div class="sum-point">
+                  <span class="sum-city">{{ transport()?.departureCityName || '' }}</span>
+                  <span class="sum-time">{{ formatTime(transport()?.departureTime ?? '') }}</span>
+                </div>
+                <div class="sum-track">
+                  <span class="sum-dot"></span>
+                  <span class="sum-line"></span>
+                  <span class="sum-emoji">{{ getTypeEmoji(transport()?.type ?? 'BUS') }}</span>
+                  <span class="sum-line"></span>
+                  <span class="sum-dot"></span>
+                </div>
+                <div class="sum-point sum-end">
+                  <span class="sum-city">{{ transport()?.arrivalCityName || '' }}</span>
+                  <span class="sum-time">{{ formatTime(transport()?.arrivalTime ?? '') }}</span>
+                </div>
+              </div>
+
+              <div class="sum-divider"></div>
+
+              <div class="sum-grid">
+                <div class="sum-item"><span class="sum-k"><i class="pi pi-calendar"></i> {{ 'TRANSPORT_BOOKING.LABEL_DATE' | translate }}</span><span class="sum-v">{{ formatTravelDate(store.dates().travelDate) }}</span></div>
+                <div class="sum-item"><span class="sum-k"><i class="pi pi-user"></i> {{ 'TRANSPORT_BOOKING.LABEL_PASSENGER' | translate }}</span><span class="sum-v">{{ passengerForm.get('firstName')?.value }} {{ passengerForm.get('lastName')?.value }}</span></div>
+                <div class="sum-item"><span class="sum-k"><i class="pi pi-users"></i> {{ 'TRANSPORT_BOOKING.LABEL_SEATS' | translate }}</span><span class="sum-v">{{ passengerForm.get('seats')?.value }}</span></div>
+                <div class="sum-item"><span class="sum-k"><i class="pi pi-phone"></i> {{ 'TRANSPORT_BOOKING.LABEL_PHONE_SUM' | translate }}</span><span class="sum-v">+216 {{ passengerForm.get('phone')?.value }}</span></div>
+              </div>
+
+              <div class="sum-divider"></div>
+
+              <div class="sum-pricing">
+                <div class="sum-pl"><span>{{ 'TRANSPORT_BOOKING.UNIT_PRICE' | translate }}</span><span>{{ (transport()?.price ?? 0) | dualCurrency }}</span></div>
+                <div class="sum-pl"><span>{{ 'TRANSPORT_BOOKING.SEATS_X' | translate }}</span><span>&times; {{ passengerForm.get('seats')?.value }}</span></div>
+                <div class="sum-pl sum-total">
+                  <span>{{ 'TRANSPORT_BOOKING.TOTAL' | translate }}</span>
+                  <span class="sum-total-val">{{ calculateTotal() | dualCurrency }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="pay">
+              <h3 class="pay-title">{{ 'TRANSPORT_BOOKING.PAY_TITLE' | translate }}</h3>
+              <div class="pay-grid">
+                <label class="pay-opt" [class.pay-active]="paymentMethod() === 'CASH'"
+                       (click)="paymentMethod.set('CASH'); paymentMethodValue = 'CASH'">
+                  <span class="pay-radio" [class.pay-checked]="paymentMethod() === 'CASH'"></span>
+                  <i class="pi pi-wallet pay-icon"></i>
+                  <div class="pay-txt">
+                    <span class="pay-name">{{ 'TRANSPORT_BOOKING.PAY_CASH' | translate }}</span>
+                    <span class="pay-desc">{{ 'TRANSPORT_BOOKING.PAY_CASH_DESC' | translate }}</span>
+                  </div>
+                </label>
+                <label class="pay-opt" [class.pay-active]="paymentMethod() === 'KONNECT'"
+                       (click)="paymentMethod.set('KONNECT'); paymentMethodValue = 'KONNECT'">
+                  <span class="pay-radio" [class.pay-checked]="paymentMethod() === 'KONNECT'"></span>
+                  <i class="pi pi-credit-card pay-icon"></i>
+                  <div class="pay-txt">
+                    <span class="pay-name">{{ 'TRANSPORT_BOOKING.PAY_KONNECT' | translate }}</span>
+                    <span class="pay-desc">{{ 'TRANSPORT_BOOKING.PAY_KONNECT_DESC' | translate }}</span>
+                  </div>
+                </label>
+                <label class="pay-opt" [class.pay-active]="paymentMethod() === 'STRIPE'"
+                       (click)="paymentMethod.set('STRIPE'); paymentMethodValue = 'STRIPE'">
+                  <span class="pay-radio" [class.pay-checked]="paymentMethod() === 'STRIPE'"></span>
+                  <i class="pi pi-credit-card pay-icon"></i>
+                  <div class="pay-txt">
+                    <span class="pay-name">{{ 'TRANSPORT_BOOKING.PAY_STRIPE' | translate }}</span>
+                    <span class="pay-desc">{{ 'TRANSPORT_BOOKING.PAY_STRIPE_DESC' | translate }}</span>
+                  </div>
+                </label>
+                @if (editingReservationId() === null) {
+                  <label class="pay-opt pay-paypal" [class.pay-active]="paymentMethod() === 'PAYPAL'"
+                         (click)="paymentMethod.set('PAYPAL'); paymentMethodValue = 'PAYPAL'">
+                    <span class="pay-radio" [class.pay-checked]="paymentMethod() === 'PAYPAL'"></span>
+                    <span class="paypal-mark" aria-hidden="true">P</span>
+                    <div class="pay-txt">
+                      <span class="pay-name">{{ 'TRANSPORT_BOOKING.PAY_PAYPAL' | translate }}</span>
+                      <span class="pay-desc">{{ 'TRANSPORT_BOOKING.PAY_PAYPAL_DESC' | translate }}</span>
+                    </div>
+                  </label>
                 }
               </div>
-
-              <div class="step-nav">
-                <button pButton label="Back" icon="pi pi-arrow-left"
-                        class="p-button-text" (click)="activeStep.set(0)"></button>
-                <button pButton [label]="confirmButtonLabel()"
-                        icon="pi pi-lock" class="p-button-raised"
-                        (click)="confirmBooking()"
-                        [loading]="loading()" [disabled]="loading()"></button>
-              </div>
-            </div>
-      }
-
-      @if (activeStep() === 2) {
-            <div class="step conf">
-              <div class="conf-icon">
-                <div class="conf-circle"><i class="pi pi-check"></i></div>
-              </div>
-              <h2 class="conf-title">Booking confirmed</h2>
-              <div class="conf-welcome-msg">
-                <span>👋</span>
-                <span>Thank you <strong>{{ authService.currentUser()?.firstName || passengerForm.get('firstName')?.value }}</strong>, your ticket is confirmed.</span>
-              </div>
-
-              @if (reservation(); as r) {
-                <div class="conf-card">
-                  <div class="conf-ref">
-                    <span class="conf-ref-label">Reference</span>
-                    <span class="conf-ref-val">{{ r.reservationRef }}</span>
-                  </div>
-                  <div class="conf-divider"></div>
-                  <div class="conf-rows">
-                    <div class="conf-row"><span>Amount</span><strong>{{ r.totalPrice }} TND</strong></div>
-                    <div class="conf-row"><span>Status</span><p-tag [value]="r.status" severity="success"></p-tag></div>
-                    <div class="conf-row"><span>Payment</span><p-tag [value]="r.paymentMethod" severity="info"></p-tag></div>
-                  </div>
-                  @if (r.status === 'CONFIRMED') {
-                    <div class="conf-divider"></div>
-                    <div class="conf-qr">
-                      <p>Show this QR code at boarding</p>
-                      <div class="conf-qr-box">
-                        @if (qrBoardingImageUrl(); as src) {
-                          <img [src]="src" alt="Boarding QR code" class="conf-qr-img" width="220" height="220" />
-                        } @else if (r.qrCodeToken) {
-                          <i class="pi pi-qrcode"></i>
-                          <small>{{ r.qrCodeToken }}</small>
-                        } @else {
-                          <span class="conf-qr-wait">Preparing QR…</span>
-                        }
-                      </div>
-                    </div>
-                  }
-                </div>
+              @if (paymentMethod() === 'PAYPAL' && editingReservationId() === null) {
+                <p class="paypal-note" [innerHTML]="'TRANSPORT_BOOKING.PAYPAL_NOTE' | translate: { usd: paypalUsdFromTnd(), tnd: calculateTotal(), rate: paypalUsdPerTndDisplay() }"></p>
               }
-
-              <div class="conf-btns">
-                <button pButton label="Home" icon="pi pi-home"
-                        class="p-button-raised"
-                        (click)="router.navigate(['/'])"></button>
-              </div>
             </div>
-      }
 
+            <div class="step-nav">
+              <button pButton [label]="'TRANSPORT_BOOKING.BTN_BACK' | translate" icon="pi pi-arrow-left"
+                      class="p-button-text" type="button" (click)="activeStep.set(0)"></button>
+              <button pButton [label]="confirmButtonLabel()"
+                      icon="pi pi-lock" class="p-button-raised" type="button"
+                      (click)="confirmBooking()"
+                      [loading]="loading()" [disabled]="loading()"></button>
+            </div>
+          </div>
+        }
+        @case (2) {
+          <div class="step conf">
+            <div class="conf-icon">
+              <div class="conf-circle"><i class="pi pi-check"></i></div>
+            </div>
+            <h2 class="conf-title">{{ 'TRANSPORT_BOOKING.CONF_TITLE' | translate }}</h2>
+            <div class="conf-welcome-msg">
+              <span>👋</span>
+              <span [innerHTML]="'TRANSPORT_BOOKING.CONF_THANKS' | translate: { name: (authService.currentUser()?.firstName || passengerForm.get('firstName')?.value || '') }"></span>
+            </div>
+
+            @if (reservation(); as r) {
+              <div class="conf-card">
+                <div class="conf-ref">
+                  <span class="conf-ref-label">{{ 'TRANSPORT_BOOKING.REF_LABEL' | translate }}</span>
+                  <span class="conf-ref-val">{{ r.reservationRef }}</span>
+                </div>
+                <div class="conf-divider"></div>
+                <div class="conf-rows">
+                  <div class="conf-row"><span>{{ 'TRANSPORT_BOOKING.AMOUNT' | translate }}</span><strong>{{ r.totalPrice | dualCurrency }}</strong></div>
+                  <div class="conf-row"><span>{{ 'TRANSPORT_BOOKING.STATUS' | translate }}</span><span class="conf-pill" [ngClass]="statusPillClass(r.status)">{{ r.statusLabel || r.status }}</span></div>
+                  <div class="conf-row"><span>{{ 'TRANSPORT_BOOKING.PAYMENT' | translate }}</span><span class="conf-pill conf-pill--pay">{{ r.paymentMethodLabel || r.paymentMethod }}</span></div>
+                </div>
+                @if (r.status === 'CONFIRMED') {
+                  <div class="conf-divider"></div>
+                  <div class="conf-qr">
+                    <p>{{ 'TRANSPORT_BOOKING.QR_HINT' | translate }}</p>
+                    <div class="conf-qr-box">
+                      @if (qrBoardingImageUrl(); as src) {
+                        <img [src]="src" [attr.alt]="'TRANSPORT_BOOKING.QR_ALT' | translate" class="conf-qr-img" width="220" height="220" />
+                      } @else if (r.qrCodeToken) {
+                        <i class="pi pi-qrcode"></i>
+                        <small>{{ r.qrCodeToken }}</small>
+                      } @else {
+                        <span class="conf-qr-wait">{{ 'TRANSPORT_BOOKING.QR_WAIT' | translate }}</span>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+
+            <div class="conf-btns">
+              <button pButton [label]="'TRANSPORT_BOOKING.BTN_HOME' | translate" icon="pi pi-home"
+                      class="p-button-raised" type="button"
+                      (click)="router.navigate(['/'])"></button>
+            </div>
+          </div>
+        }
+      }
     </div>
   </div>
 </div>
