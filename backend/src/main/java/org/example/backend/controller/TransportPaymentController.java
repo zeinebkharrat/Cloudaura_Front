@@ -8,6 +8,7 @@ import org.example.backend.dto.ApiResponse;
 import org.example.backend.dto.transport.TransportCheckoutRequest;
 import org.example.backend.dto.transport.TransportPaymentStartDto;
 import org.example.backend.dto.transport.TransportReservationResponse;
+import org.example.backend.model.TransportReservation;
 import org.example.backend.service.PaymentService;
 import org.example.backend.service.TransportReservationService;
 import org.example.backend.service.UserIdentityResolver;
@@ -53,6 +54,20 @@ public class TransportPaymentController {
             paymentService.stripeKeyPrefixForLogs());
 
         var handoff = transportReservationService.prepareTransportStripeCheckoutHandoff(body, uid);
+
+        /*
+         * Idempotent replay: same idempotency key as a booking already paid (Stripe or local).
+         * Do not open a second Checkout session — send the client to the in-app success URL.
+         */
+        if (handoff.reservation() != null
+                && handoff.reservation().getStatus() == TransportReservation.ReservationStatus.CONFIRMED
+                && handoff.localSimulationUrl() != null
+                && !handoff.localSimulationUrl().isBlank()) {
+            log.info(
+                    "Transport checkout idempotent replay: reservation {} already confirmed — returning return URL",
+                    handoff.reservation().getTransportReservationId());
+            return ApiResponse.success(Map.of("url", handoff.localSimulationUrl()));
+        }
 
         final String url;
         if (realStripe) {

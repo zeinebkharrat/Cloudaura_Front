@@ -72,12 +72,20 @@ public class ActivityService {
                 predicate = cb.and(predicate, cb.equal(root.get("city").get("cityId"), cityId));
             }
 
+            // Public UI always sends min/max from sliders; treat NULL DB price as "price not set"
+            // so rows are not excluded (SQL three-valued logic would drop NULL vs numeric bounds).
             if (minPrice != null) {
-                predicate = cb.and(predicate, cb.greaterThanOrEqualTo(root.get("price"), minPrice));
+                predicate = cb.and(predicate, cb.or(
+                    cb.isNull(root.get("price")),
+                    cb.greaterThanOrEqualTo(root.get("price"), minPrice)
+                ));
             }
 
             if (maxPrice != null) {
-                predicate = cb.and(predicate, cb.lessThanOrEqualTo(root.get("price"), maxPrice));
+                predicate = cb.and(predicate, cb.or(
+                    cb.isNull(root.get("price")),
+                    cb.lessThanOrEqualTo(root.get("price"), maxPrice)
+                ));
             }
 
             return predicate;

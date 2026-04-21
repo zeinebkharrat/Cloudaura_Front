@@ -246,8 +246,10 @@
                         placeholder="e.g. Tunis"
                         [filter]="true" filterPlaceholder="Tunis, Sousse, Hammamet…"
                         styleClass="adm-p-dropdown w-full"
+                        panelStyleClass="admin-city-dropdown-panel"
+                        scrollHeight="220px"
                         [showClear]="true"
-                        appendTo="body">
+                        [appendTo]="'body'">
             </p-dropdown>
             @if (fieldInvalid('departureCityId')) {
               <span class="adm-field-msg adm-field-msg--err" role="alert">Select a departure city</span>
@@ -269,8 +271,10 @@
                         placeholder="e.g. Sousse"
                         [filter]="true" filterPlaceholder="Sfax, Djerba, Paris…"
                         styleClass="adm-p-dropdown w-full"
+                        panelStyleClass="admin-city-dropdown-panel"
+                        scrollHeight="220px"
                         [showClear]="true"
-                        appendTo="body">
+                        [appendTo]="'body'">
             </p-dropdown>
             @if (fieldInvalid('arrivalCityId')) {
               <span class="adm-field-msg adm-field-msg--err" role="alert">Select an arrival city</span>
@@ -358,7 +362,7 @@
           <span class="adm-section-icon" aria-hidden="true"><i class="pi pi-users"></i></span>
           <div>
             <h3 class="adm-section-title" id="adm-sec-cap">Capacity</h3>
-            <p class="adm-section-hint">Available seats for this departure.</p>
+            <p class="adm-section-hint">Seats for this run — slider max is {{ capacitySliderMax() }} (taxi/car: 4, bus: 45, flight: 100).</p>
           </div>
         </div>
         <div class="adm-capacity-block"
@@ -368,11 +372,11 @@
             <span class="adm-capacity-num">{{ transportForm.get('capacity')?.value ?? '—' }}</span>
             <span class="adm-capacity-label">seats</span>
           </div>
-          <p-slider formControlName="capacity" [min]="1" [max]="capacitySliderMax" [step]="1"
+          <p-slider formControlName="capacity" [min]="1" [max]="capacitySliderMax()" [step]="1"
                     styleClass="adm-capacity-slider" [attr.aria-valuetext]="(transportForm.get('capacity')?.value ?? 0) + ' seats'">
           </p-slider>
           @if (fieldInvalid('capacity')) {
-            <span class="adm-field-msg adm-field-msg--err" role="alert">Set at least 1 seat</span>
+            <span class="adm-field-msg adm-field-msg--err" role="alert">Use 1–{{ capacitySliderMax() }} seats for this vehicle type</span>
           }
         </div>
       </section>

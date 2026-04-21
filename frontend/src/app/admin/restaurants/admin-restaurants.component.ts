@@ -37,6 +37,7 @@ export class AdminRestaurantsComponent implements OnInit, OnDestroy {
     'Fast Food',
     'Cafe',
     'Vegetarian',
+    'Sweet',
     'International',
   ];
   sort = 'restaurantId,desc';

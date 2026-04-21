@@ -1,9 +1,11 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, inject, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
 import { SkeletonModule } from 'primeng/skeleton';
+import { CurrencyService } from '../../core/services/currency.service';
 import { FlightDto } from './flight.models';
+import { effectivePriceTnd, priceUsesEstimate } from './flight-display.util';
 import { flightBadge } from './flight-status.util';
 
 @Component({
@@ -14,6 +16,8 @@ import { flightBadge } from './flight-status.util';
   styleUrl: './flight-list.component.css',
 })
 export class FlightListComponent {
+  private readonly currency = inject(CurrencyService);
+
   @Input() flights: FlightDto[] = [];
   @Input() loading = false;
   @Input() error: string | null = null;
@@ -56,5 +60,25 @@ export class FlightListComponent {
       s.arrivalIata === f.arrivalIata &&
       s.departureTime === f.departureTime
     );
+  }
+
+  /** Reacts to {@link CurrencyService.displayRevision}. */
+  priceLine(f: FlightDto): string {
+    this.currency.displayRevision();
+    const tnd = effectivePriceTnd(f, this.currency);
+    const dual = this.currency.formatDual(tnd);
+    return priceUsesEstimate(f) ? `${dual} · est.` : dual;
+  }
+
+  isBestPrice(f: FlightDto): boolean {
+    this.currency.displayRevision();
+    if (this.flights.length < 2) return false;
+    const target = effectivePriceTnd(f, this.currency);
+    let min = Infinity;
+    for (const x of this.flights) {
+      const v = effectivePriceTnd(x, this.currency);
+      if (v < min) min = v;
+    }
+    return Math.abs(target - min) < 0.02;
   }
 }

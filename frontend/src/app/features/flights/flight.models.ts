@@ -26,6 +26,9 @@ export interface FlightDto {
   departureLongitude: number | null;
   arrivalLatitude: number | null;
   arrivalLongitude: number | null;
+  /** Offer total from provider (Duffel etc.); omit for schedule-only rows (Aviationstack). */
+  totalAmount?: string | null;
+  totalCurrency?: string | null;
 }
 
 export interface FlightSuggestionResponse {

@@ -83,6 +83,49 @@
   </div>
 </section>
 
+<section *ngIf="personaMatches().length" class="persona-tunisia-section" aria-labelledby="persona-tunisia-heading">
+  <div class="persona-tunisia-bg" aria-hidden="true"></div>
+  <svg class="persona-tunisia-svg" viewBox="0 0 320 420" aria-hidden="true">
+    <defs>
+      <linearGradient id="persona-coast" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="rgba(231,0,19,0.35)" />
+        <stop offset="55%" stop-color="rgba(255,255,255,0.08)" />
+        <stop offset="100%" stop-color="rgba(255,209,102,0.18)" />
+      </linearGradient>
+    </defs>
+    <path
+      class="persona-tunisia-shape"
+      fill="url(#persona-coast)"
+      stroke="rgba(255,255,255,0.22)"
+      stroke-width="1.2"
+      d="M155 24 C118 42 92 58 76 92 C62 118 58 148 72 178 C82 198 104 218 118 248 C130 274 134 308 126 342 C118 378 104 398 134 408 C168 418 212 396 238 362 C268 322 276 274 268 228 C262 188 246 156 236 118 C226 82 218 52 188 34 C178 28 166 24 155 24 Z"
+    />
+  </svg>
+
+  <div class="persona-tunisia-inner">
+    <div class="persona-tunisia-head animate-in">
+      <span class="persona-tunisia-kicker">{{ 'HOME.PERSONA_KICKER' | translate }}</span>
+      <h2 id="persona-tunisia-heading">{{ 'HOME.PERSONA_TITLE' | translate }}</h2>
+      <p class="persona-tunisia-sub">{{ 'HOME.PERSONA_SUB' | translate }}</p>
+    </div>
+
+    <ul class="persona-tunisia-belt" role="list">
+      <li
+        *ngFor="let m of personaMatches(); let i = index"
+        class="persona-hotspot-wrap"
+        [style.animation-delay.ms]="80 + i * 55"
+      >
+        <button type="button" class="persona-hotspot" (click)="exploreMatchedCity(m.cityName)" [attr.aria-label]="m.cityName">
+          <span class="persona-ring" [style.--pct]="m.percent"></span>
+          <span class="persona-city">{{ m.cityName }}</span>
+          <span class="persona-pct">{{ m.percent }}%</span>
+          <span class="persona-hint">{{ 'HOME.PERSONA_EXPLORE' | translate }}</span>
+        </button>
+      </li>
+    </ul>
+  </div>
+</section>
+
 <section class="slider-section">
   <div class="slider-aurora" aria-hidden="true"></div>
   <div class="slider-head">

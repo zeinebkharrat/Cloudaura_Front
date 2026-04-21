@@ -104,76 +104,6 @@
   font-size: 0.88rem;
 }
 
-.filters-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 1rem 1.25rem;
-  padding: 1rem 1.15rem;
-  margin-top: 1rem;
-  margin-bottom: 0.25rem;
-  background: rgba(15, 23, 42, 0.65);
-  border: 1px solid rgba(148, 163, 184, 0.12);
-  border-radius: 14px;
-}
-
-.filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.filter-dd {
-  min-width: 160px;
-}
-
-.filter-label {
-  font-size: 0.72rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #94a3b8;
-}
-
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
-}
-
-.chip {
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  background: rgba(30, 41, 59, 0.6);
-  color: #cbd5e1;
-  font-size: 0.82rem;
-  font-weight: 600;
-  padding: 0.35rem 0.75rem;
-  border-radius: 999px;
-  cursor: pointer;
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
-}
-
-.chip:hover {
-  border-color: color-mix(in srgb, var(--tunisia-red, #f12545) 40%, rgba(148, 163, 184, 0.4));
-  color: #f8fafc;
-}
-
-.chip.active {
-  background: color-mix(in srgb, var(--tunisia-red, #f12545) 25%, rgba(30, 41, 59, 0.9));
-  border-color: color-mix(in srgb, var(--tunisia-red, #f12545) 55%, transparent);
-  color: #fff;
-}
-
-.clear-filters {
-  margin-left: auto;
-  align-self: center;
-  color: #94a3b8 !important;
-  font-size: 0.85rem !important;
-}
-
 .results-section {
   margin-top: 1.25rem;
 }
@@ -244,16 +174,3 @@
   top: 1rem;
 }
 
-::ng-deep .flights-filter-dropdown {
-  width: 100%;
-  min-width: 180px;
-}
-
-::ng-deep .flights-filter-dropdown.p-dropdown {
-  background: rgba(30, 41, 59, 0.85);
-  border-color: rgba(148, 163, 184, 0.2);
-}
-
-::ng-deep .flights-filter-dropdown .p-dropdown-label {
-  color: #e2e8f0;
-}

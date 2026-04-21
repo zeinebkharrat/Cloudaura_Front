@@ -276,9 +276,20 @@ public class AdminTransportController {
 
         int capacity;
         if (ttype == Transport.TransportType.PLANE) {
-            capacity = req.capacity() != null ? req.capacity() : 150;
+            capacity = req.capacity() != null ? req.capacity() : 100;
         } else {
             capacity = req.capacity();
+        }
+
+        int maxSeatsForType = switch (ttype) {
+            case TAXI, CAR -> 4;
+            case BUS -> 45;
+            case PLANE -> 100;
+            default -> 100;
+        };
+        if (capacity < 1 || capacity > maxSeatsForType) {
+            throw new InvalidTransportException("CAPACITY_INVALID",
+                "La capacité doit être entre 1 et " + maxSeatsForType + " pour ce type de transport");
         }
 
         Transport transport = existing != null ? existing : new Transport();

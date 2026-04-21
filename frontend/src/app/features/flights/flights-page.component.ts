@@ -14,7 +14,6 @@ import {
   tap,
 } from 'rxjs/operators';
 import { ButtonModule } from 'primeng/button';
-import { DropdownModule } from 'primeng/dropdown';
 import { InputSwitchModule } from 'primeng/inputswitch';
 import { TooltipModule } from 'primeng/tooltip';
 import { FlightService } from './flight.service';
@@ -22,14 +21,17 @@ import { FlightDto, FlightSuggestionResponse } from './flight.models';
 import { FlightSearchComponent, FlightDestinationSuggestion } from './flight-search.component';
 import { FlightListComponent } from './flight-list.component';
 import { FlightRouteMapComponent } from './flight-route-map.component';
+import { CurrencyService } from '../../core/services/currency.service';
 import { TripContextStore } from '../../core/stores/trip-context.store';
-import { Transport } from '../../core/models/travel.models';
+import { City, Transport } from '../../core/models/travel.models';
 import {
-  compareFlights,
-  matchesStatusFilter,
-  SortKey,
-  StatusFilterKey,
-} from './flight-status.util';
+  estimateDurationMinutes,
+  filterBookableFlights,
+  pricePerSeatForBooking,
+} from './flight-display.util';
+import { compareFlights } from './flight-status.util';
+import { DATA_SOURCE_TOKEN } from '../../core/adapters/data-source.adapter';
+import { tunisiaAirportIataForCity } from '../../core/utils/tunisia-airport-iata.util';
 
 @Component({
   selector: 'app-flights-page',
@@ -39,7 +41,6 @@ import {
     RouterLink,
     FormsModule,
     ButtonModule,
-    DropdownModule,
     InputSwitchModule,
     TooltipModule,
     FlightSearchComponent,
@@ -54,6 +55,8 @@ export class FlightsPageComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly tripStore = inject(TripContextStore);
+  private readonly currency = inject(CurrencyService);
+  private readonly dataSource = inject(DATA_SOURCE_TOKEN);
   private readonly destroy$ = new Subject<void>();
   private readonly destinationInput$ = new Subject<string>();
 
@@ -72,16 +75,6 @@ export class FlightsPageComponent implements OnInit, OnDestroy {
   passengers = 1;
 
   autocompleteSuggestions: FlightDestinationSuggestion[] = [];
-
-  statusFilter: StatusFilterKey = 'all';
-  airlineFilter: string | null = null;
-  sortKey: SortKey = 'departure';
-
-  readonly sortOptions = [
-    { label: 'Departure time', value: 'departure' as SortKey },
-    { label: 'Airline', value: 'airline' as SortKey },
-    { label: 'Status', value: 'status' as SortKey },
-  ];
 
   ngOnInit(): void {
     this.destinationInput$
@@ -124,17 +117,73 @@ export class FlightsPageComponent implements OnInit, OnDestroy {
       )
       .subscribe((q) => this.runSuggest(q, this.originIata));
 
-    this.route.queryParams.pipe(take(1)).subscribe((p: Params) => {
-      const dest = typeof p['destination'] === 'string' ? p['destination'].trim() : '';
-      const origin = typeof p['origin'] === 'string' ? p['origin'].trim() : '';
-      const requestedPassengers = Number.parseInt(String(p['passengers'] ?? '1'), 10);
-      this.passengers = Number.isFinite(requestedPassengers) && requestedPassengers > 0 ? requestedPassengers : 1;
-      if (dest.length >= 2) {
-        this.destinationQuery = dest;
-        this.originIata = (origin || 'TUN').toUpperCase().slice(0, 4);
-        this.runSuggest(dest, this.originIata);
+    this.dataSource
+      .getCities()
+      .pipe(take(1))
+      .subscribe((cities) => {
+        this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe((p: Params) => {
+          this.applyRouteAndStoreHydration(p, cities);
+        });
+      });
+  }
+
+  /**
+   * Prefills schedule search from `/transport` query params and/or {@link TripContextStore.transportSearchLeg}.
+   */
+  private applyRouteAndStoreHydration(p: Params, cities: City[]): void {
+    const leg = this.tripStore.transportSearchLeg();
+    let dest = typeof p['destination'] === 'string' ? p['destination'].trim() : '';
+    const originParam = typeof p['origin'] === 'string' ? p['origin'].trim() : '';
+
+    const fromId = Number.parseInt(String(p['from'] ?? ''), 10);
+    const toId = Number.parseInt(String(p['to'] ?? ''), 10);
+    const fromCity = Number.isFinite(fromId) ? cities.find((c) => c.id === fromId) ?? null : null;
+    const toCity = Number.isFinite(toId) ? cities.find((c) => c.id === toId) ?? null : null;
+    const fromCityLeg =
+      leg.fromCityId != null ? cities.find((c) => c.id === leg.fromCityId) ?? null : null;
+    const toCityLeg =
+      leg.toCityId != null ? cities.find((c) => c.id === leg.toCityId) ?? null : null;
+
+    if (dest.length < 2) {
+      if (toCity?.name?.trim()) {
+        dest = toCity.name.trim();
+      } else if (toCityLeg?.name?.trim()) {
+        dest = toCityLeg.name.trim();
       }
-    });
+    }
+
+    let nextOrigin = 'TUN';
+    if (originParam) {
+      nextOrigin = originParam.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4) || 'TUN';
+    } else {
+      const fc = fromCity ?? fromCityLeg;
+      const mapped = tunisiaAirportIataForCity(fc);
+      if (mapped) {
+        nextOrigin = mapped;
+      }
+    }
+
+    const dateFromQuery = typeof p['date'] === 'string' ? p['date'].trim() : '';
+    let travelIso = dateFromQuery || leg.travelDateIso || this.tripStore.dates().travelDate || '';
+    if (travelIso) {
+      const normalized = travelIso.includes('T') ? travelIso : `${travelIso}T12:00:00`;
+      this.tripStore.setDates({ travelDate: normalized });
+    }
+
+    let pax = Number.parseInt(String(p['passengers'] ?? ''), 10);
+    if (!Number.isFinite(pax) || pax < 1) {
+      pax = leg.passengers >= 1 ? leg.passengers : this.tripStore.pax().adults;
+    }
+    this.passengers = Math.min(20, Math.max(1, pax));
+    this.tripStore.setPassengers(this.passengers);
+
+    this.destinationQuery = dest;
+    this.originIata = nextOrigin;
+
+    if (dest.length >= 2) {
+      this.destinationInput$.next(dest);
+      this.runSuggest(dest, this.originIata);
+    }
   }
 
   ngOnDestroy(): void {
@@ -193,8 +242,19 @@ export class FlightsPageComponent implements OnInit, OnDestroy {
 
   onBookFlight(f: FlightDto): void {
     const syntheticId = -(Math.abs(this.hashCode(`${f.flightNumber}|${f.departureTime}|${f.arrivalTime}`)) + 1);
-    const durationMinutes = this.estimateDurationMinutes(f);
-    const pricePerSeat = this.estimateFlightSeatPrice(durationMinutes);
+    const durationMinutes = estimateDurationMinutes(f);
+    const pricePerSeat = pricePerSeatForBooking(f, this.passengers, this.currency);
+
+    const normIata = (code: string | null | undefined, fallback: string): string => {
+      const raw = (code ?? fallback).toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4);
+      if (raw.length >= 3) {
+        return raw;
+      }
+      const fb = fallback.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4);
+      return fb.length >= 3 ? fb : 'TUN';
+    };
+    const depIata = normIata(f.departureIata, this.lastSearchOrigin);
+    const arrIata = normIata(f.arrivalIata, this.lastSearchDestination);
 
     const selectedTransport: Transport = {
       id: syntheticId,
@@ -211,6 +271,16 @@ export class FlightsPageComponent implements OnInit, OnDestroy {
       durationMinutes,
       description: `${f.airline || 'Airline'} ${f.flightNumber || ''}`.trim(),
       isActive: true,
+      syntheticFlightOffer: {
+        operatorName: (f.airline || 'Airline').trim() || 'Airline',
+        flightCode: f.flightNumber || undefined,
+        departureIata: depIata,
+        arrivalIata: arrIata,
+        pricePerSeatTnd: pricePerSeat,
+        departureTimeIso: f.departureTime ?? undefined,
+        arrivalTimeIso: f.arrivalTime ?? undefined,
+        description: `${f.airline || 'Airline'} ${f.flightNumber || ''}`.trim(),
+      },
     };
 
     this.tripStore.selectedTransport.set(selectedTransport);
@@ -230,39 +300,9 @@ export class FlightsPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  setStatusFilter(key: StatusFilterKey): void {
-    this.statusFilter = key;
-  }
-
-  clearFilters(): void {
-    this.statusFilter = 'all';
-    this.airlineFilter = null;
-    this.sortKey = 'departure';
-  }
-
   get displayFlights(): FlightDto[] {
-    let list = [...this.apiFlights];
-    if (this.statusFilter !== 'all') {
-      list = list.filter((f) => matchesStatusFilter(f, this.statusFilter));
-    }
-    if (this.airlineFilter) {
-      list = list.filter((f) => (f.airline || '') === this.airlineFilter);
-    }
-    list.sort((a, b) => compareFlights(a, b, this.sortKey));
-    return list;
-  }
-
-  get airlineDropdownOptions(): { label: string; value: string }[] {
-    const names = new Set<string>();
-    for (const f of this.apiFlights) {
-      const a = (f.airline || '').trim();
-      if (a) {
-        names.add(a);
-      }
-    }
-    return [...names]
-      .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
-      .map((a) => ({ label: a, value: a }));
+    const list = filterBookableFlights(this.apiFlights);
+    return [...list].sort((a, b) => compareFlights(a, b, 'departure'));
   }
 
   get idleHint(): string {
@@ -273,11 +313,11 @@ export class FlightsPageComponent implements OnInit, OnDestroy {
     if (!this.hasSearched || this.loading || this.error) {
       return '';
     }
-    if (this.apiFlights.length === 0) {
-      return `No flights found from ${this.lastSearchOrigin} to ${this.lastSearchDestination}`;
-    }
     if (this.displayFlights.length === 0) {
-      return 'No flights match the selected filters.';
+      if (this.apiFlights.length > 0) {
+        return 'No upcoming flights — completed or past departures are hidden.';
+      }
+      return `No flights found from ${this.lastSearchOrigin} to ${this.lastSearchDestination}`;
     }
     return '';
   }
@@ -423,20 +463,6 @@ export class FlightsPageComponent implements OnInit, OnDestroy {
       madrid: 'MAD',
     };
     return map[key] ?? null;
-  }
-
-  private estimateDurationMinutes(f: FlightDto): number {
-    const dep = Date.parse(f.departureTime || '');
-    const arr = Date.parse(f.arrivalTime || '');
-    if (Number.isFinite(dep) && Number.isFinite(arr) && arr > dep) {
-      return Math.max(45, Math.round((arr - dep) / 60000));
-    }
-    return 95;
-  }
-
-  private estimateFlightSeatPrice(durationMinutes: number): number {
-    const base = 48 + durationMinutes * 0.36;
-    return Math.round(Math.min(180, Math.max(58, base)) * 100) / 100;
   }
 
   private hashCode(input: string): number {

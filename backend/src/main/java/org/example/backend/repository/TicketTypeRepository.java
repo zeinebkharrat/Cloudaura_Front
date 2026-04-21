@@ -8,4 +8,6 @@ import java.util.Optional;
 public interface TicketTypeRepository extends JpaRepository<TicketType, Integer> {
 
     Optional<TicketType> findFirstByEvent_EventIdOrderByTicketTypeIdAsc(Integer eventId);
+
+    void deleteByEvent_EventId(Integer eventId);
 }

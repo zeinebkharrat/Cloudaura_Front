@@ -2,6 +2,7 @@ package org.example.backend.service;
 
 import org.example.backend.model.*;
 import org.example.backend.repository.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,6 +16,9 @@ import java.util.Set;
 
 @Configuration
 public class DataInitializer {
+
+    @Value("${app.translation.enabled:true}")
+    private boolean translationEnabled;
 
     @Bean
     ApplicationRunner userSeeder(UserRepository userRepository, RoleRepository roleRepository, PasswordEncoder passwordEncoder) {
@@ -360,7 +364,9 @@ public class DataInitializer {
                 System.out.println("Seeded Transports (including Sousse -> Hammamet).");
             }
 
-            ensureArabicCityNameTranslations(cityRepository, catalogTranslationRepository);
+            if (translationEnabled) {
+                ensureArabicCityNameTranslations(cityRepository, catalogTranslationRepository);
+            }
         };
     }
 

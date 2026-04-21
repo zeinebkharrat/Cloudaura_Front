@@ -118,8 +118,6 @@ export class TransportsAdminComponent {
     { label: 'Taxi', value: 'TAXI', icon: 'pi pi-map-marker' },
   ];
 
-  readonly capacitySliderMax = 500;
-
   airlines = [
     { label: 'Tunisair',        value: 'Tunisair' },
     { label: 'Nouvelair',       value: 'Nouvelair' },
@@ -191,9 +189,45 @@ export class TransportsAdminComponent {
   }
 
   loadCities() {
-    this.http.get<any>('/api/cities').pipe(catchError(() => of({ data: [] }))).subscribe(r => {
-      this.cities.set(Array.isArray(r) ? r : r.data ?? []);
-    });
+    this.http
+      .get<unknown>('/api/cities')
+      .pipe(catchError(() => of(null)))
+      .subscribe((r) => this.cities.set(this.normalizeCityListPayload(r)));
+  }
+
+  private normalizeCityListPayload(payload: unknown): City[] {
+    if (payload == null) {
+      return [];
+    }
+    if (Array.isArray(payload)) {
+      return payload as City[];
+    }
+    if (typeof payload === 'object' && payload !== null && 'data' in payload) {
+      const data = (payload as { data?: unknown }).data;
+      if (Array.isArray(data)) {
+        return data as City[];
+      }
+    }
+    return [];
+  }
+
+  /** Business caps: taxi/car 4, bus 45, plane 100. */
+  private seatCapacityMaxForType(type: string | null | undefined): number {
+    switch (type) {
+      case 'TAXI':
+      case 'CAR':
+        return 4;
+      case 'BUS':
+        return 45;
+      case 'PLANE':
+        return 100;
+      default:
+        return 100;
+    }
+  }
+
+  capacitySliderMax(): number {
+    return this.seatCapacityMaxForType(this.transportForm.get('type')?.value);
   }
 
   loadTransports() {
@@ -246,21 +280,28 @@ export class TransportsAdminComponent {
 
     const cap = this.transportForm.get('capacity')!;
     const op = this.transportForm.get('operatorName')!;
+    const maxSeats = this.seatCapacityMaxForType(type);
 
     if (type === 'PLANE') {
       if (clearIncompatibleFields) {
         op.reset();
       }
       op.setValidators([Validators.required]);
-      cap.setValidators([Validators.required, Validators.min(1)]);
+      cap.setValidators([Validators.required, Validators.min(1), Validators.max(maxSeats)]);
     } else {
       if (clearIncompatibleFields) {
         this.transportForm.get('operatorName')!.reset();
         this.transportForm.get('flightCode')!.reset();
       }
       op.clearValidators();
-      cap.setValidators([Validators.required, Validators.min(1)]);
+      cap.setValidators([Validators.required, Validators.min(1), Validators.max(maxSeats)]);
     }
+
+    const cur = cap.value;
+    if (cur != null && Number(cur) > maxSeats) {
+      cap.setValue(maxSeats, { emitEvent: false });
+    }
+
     op.updateValueAndValidity();
     cap.updateValueAndValidity();
   }

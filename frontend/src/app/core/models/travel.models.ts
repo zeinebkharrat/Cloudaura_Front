@@ -50,6 +50,18 @@ export interface Room {
   available: boolean;
 }
 
+/** Sent with transport checkout when {@link Transport.id} is negative (flight search offer). */
+export interface SyntheticFlightOfferPayload {
+  operatorName: string;
+  flightCode?: string;
+  departureIata: string;
+  arrivalIata: string;
+  pricePerSeatTnd: number;
+  departureTimeIso?: string;
+  arrivalTimeIso?: string;
+  description?: string;
+}
+
 export interface Transport {
   id: number;
   type: TransportType;
@@ -67,6 +79,8 @@ export interface Transport {
   isActive: boolean;
   /** Client-only: translated type label for result lists (optional). */
   typeLabel?: string;
+  /** Flight-search row: server materializes a {@code Transport} when paying. */
+  syntheticFlightOffer?: SyntheticFlightOfferPayload;
 }
 
 export interface TransportTypeAvailability {
@@ -91,6 +105,8 @@ export interface TransportReservationInput {
   routeKm?: number;
   routeDurationMin?: number;
   rentalDays?: number;
+  /** Required when {@link TransportReservationInput.transportId} is negative. */
+  syntheticFlightOffer?: SyntheticFlightOfferPayload;
 }
 
 export interface TransportCheckoutPayload {
@@ -107,6 +123,23 @@ export interface TransportCheckoutPayload {
   idempotencyKey: string;
   /** Stripe Checkout presentment: TND | EUR | USD */
   presentmentCurrency?: string;
+  /** Required when {@code transportId < 0}. */
+  syntheticFlightOffer?: SyntheticFlightOfferPayload;
+}
+
+/** POST /api/transport/payments/paypal/create */
+export interface TransportPayPalCreatePayload {
+  transportId: number;
+  seats: number;
+  travelDate: string;
+  routeKm?: number;
+  routeDurationMin?: number;
+  amountTnd: number;
+  passengerFirstName?: string;
+  passengerLastName?: string;
+  passengerEmail?: string;
+  passengerPhone?: string;
+  syntheticFlightOffer?: SyntheticFlightOfferPayload;
 }
 
 /** PATCH body for updating an existing transport booking. */

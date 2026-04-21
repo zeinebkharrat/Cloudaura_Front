@@ -36,6 +36,22 @@ export class TripContextStore {
   /** Car rental duration in days (CAR pricing). */
   transportRentalDays = signal<number>(1);
 
+  /**
+   * Last input from transport "Find your ride" — used to hydrate `/transport/flights`
+   * when query params are incomplete.
+   */
+  transportSearchLeg = signal<{
+    fromCityId: number | null;
+    toCityId: number | null;
+    travelDateIso: string | null;
+    passengers: number;
+  }>({
+    fromCityId: null,
+    toCityId: null,
+    travelDateIso: null,
+    passengers: 1,
+  });
+
   constructor() {
     this.loadFromSession();
     
@@ -76,6 +92,17 @@ export class TripContextStore {
     this.transportRentalDays.set(Math.max(1, Math.floor(days)));
   }
 
+  setTransportSearchLeg(
+    patch: Partial<{
+      fromCityId: number | null;
+      toCityId: number | null;
+      travelDateIso: string | null;
+      passengers: number;
+    }>,
+  ) {
+    this.transportSearchLeg.update((prev) => ({ ...prev, ...patch }));
+  }
+
   calculateNights = computed(() => {
     const { checkIn, checkOut } = this.dates();
     if (!checkIn || !checkOut) return 0;
@@ -96,6 +123,7 @@ export class TripContextStore {
         transportRouteKm: this.transportRouteKm(),
         transportRouteDurationSec: this.transportRouteDurationSec(),
         transportRentalDays: this.transportRentalDays(),
+        transportSearchLeg: this.transportSearchLeg(),
       }));
     }
   }
@@ -122,6 +150,9 @@ export class TripContextStore {
         }
         if (parsed.transportRentalDays != null) {
           this.transportRentalDays.set(parsed.transportRentalDays);
+        }
+        if (parsed.transportSearchLeg != null) {
+          this.transportSearchLeg.set(parsed.transportSearchLeg);
         }
       }
     }

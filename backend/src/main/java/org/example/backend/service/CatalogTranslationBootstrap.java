@@ -20,6 +20,7 @@ import org.example.backend.repository.TicketTypeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @Order(50)
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "app.translation.enabled", havingValue = "true", matchIfMissing = true)
 public class CatalogTranslationBootstrap implements ApplicationRunner {
 
     private final CatalogTranslationRepository catalogTranslationRepository;

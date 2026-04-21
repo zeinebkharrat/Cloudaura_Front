@@ -63,13 +63,15 @@ import { SettingsComponent } from './settings.component';
 export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'destination-map', component: DestinationMapComponent },
-  {
-    path: 'planifier-voyage',
-    loadComponent: () =>
-      import('./trip-planning-wizard/trip-planning-wizard.component').then((m) => m.TripPlanningWizardComponent),
-  },
+  { path: 'planifier-voyage', redirectTo: '/hebergement', pathMatch: 'full' },
   { path: 'login', component: SignInComponent },
   { path: 'signin', component: SignInComponent },
+  {
+    path: 'welcome-travel-style',
+    loadComponent: () =>
+      import('./welcome-travel-style/welcome-travel-style.component').then((m) => m.WelcomeTravelStyleComponent),
+    canActivate: [authGuard],
+  },
   { path: 'signup', component: SignUpComponent },
   { path: 'forgot-password', component: ForgotPasswordComponent },
   { path: 'reset-password', component: ResetPasswordComponent },

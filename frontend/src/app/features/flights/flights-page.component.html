@@ -35,69 +35,6 @@
     (pickSuggestion)="onPickSuggestion($event)"
   />
 
-  @if (hasSearched && apiFlights.length > 0) {
-    <section class="filters-bar" aria-label="Flight filters">
-      <div class="filter-group">
-        <span class="filter-label">Status</span>
-        <div class="chips">
-          <button type="button" class="chip" [class.active]="statusFilter === 'all'" (click)="setStatusFilter('all')">
-            All
-          </button>
-          <button
-            type="button"
-            class="chip"
-            [class.active]="statusFilter === 'on_time'"
-            (click)="setStatusFilter('on_time')"
-          >
-            On time
-          </button>
-          <button
-            type="button"
-            class="chip"
-            [class.active]="statusFilter === 'delayed'"
-            (click)="setStatusFilter('delayed')"
-          >
-            Delayed
-          </button>
-          <button
-            type="button"
-            class="chip"
-            [class.active]="statusFilter === 'scheduled'"
-            (click)="setStatusFilter('scheduled')"
-          >
-            Scheduled
-          </button>
-        </div>
-      </div>
-      <div class="filter-group filter-dd">
-        <label class="filter-label" for="airlineFilter">Airline</label>
-        <p-dropdown
-          inputId="airlineFilter"
-          [options]="airlineDropdownOptions"
-          [(ngModel)]="airlineFilter"
-          placeholder="All airlines"
-          [showClear]="true"
-          optionLabel="label"
-          optionValue="value"
-          styleClass="flights-filter-dropdown"
-          [disabled]="airlineDropdownOptions.length === 0"
-        ></p-dropdown>
-      </div>
-      <div class="filter-group filter-dd">
-        <label class="filter-label" for="sortKey">Sort by</label>
-        <p-dropdown
-          inputId="sortKey"
-          [options]="sortOptions"
-          [(ngModel)]="sortKey"
-          optionLabel="label"
-          optionValue="value"
-          styleClass="flights-filter-dropdown"
-        ></p-dropdown>
-      </div>
-      <button pButton type="button" label="Clear filters" class="p-button-text clear-filters" (click)="clearFilters()"></button>
-    </section>
-  }
-
   <section class="results-section">
     <div class="results-toolbar">
       <h2 class="results-title">Results</h2>

@@ -49,6 +49,7 @@ public class PublicExploreService {
         String normalizedInput = normalize(mapLabel);
 
         List<City> allCities = cityRepository.findAll().stream()
+            .filter(city -> !city.isVirtualFlightEndpointCity())
             .filter(city -> city.getName() != null && !city.getName().isBlank())
             .toList();
 
@@ -76,6 +77,7 @@ public class PublicExploreService {
     @Transactional(readOnly = true)
     public List<CityResponse> listAllCities() {
         return cityRepository.findAll().stream()
+                .filter(c -> !c.isVirtualFlightEndpointCity())
                 .map(this::toCityResponse)
                 .toList();
     }

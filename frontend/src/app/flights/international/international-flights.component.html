@@ -1,92 +1,135 @@
-<section class="intl-page">
-  <div class="hero-copy">
-    <a routerLink="/" class="back-link">Back</a>
-    <h1 class="page-title">Vols internationaux vers la Tunisie</h1>
-    <p class="page-sub">Compare and book external flights to Tunisia in one search.</p>
-  </div>
-
-  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="intl-form" [class.intl-form-loading]="loading" novalidate>
-    <div class="form-row">
-      <div class="field field-origin">
-        <label for="origin">Origin</label>
-        <input
-          id="origin"
-          type="text"
-          formControlName="origin"
-          placeholder="e.g. CDG"
-          aria-required="true"
-        />
-        @if (hasError('origin')) {
-          <p role="alert" class="error">Origin is required.</p>
-        }
-      </div>
-
-      <div class="field field-destination">
-        <label for="destination">Destination airport</label>
-        <p-select
-          inputId="destination"
-          formControlName="destination"
-          [options]="tunisianAirports"
-          optionLabel="label"
-          optionValue="value"
-          [showClear]="false"
-          appendTo="body"
-          panelStyleClass="intl-airport-panel"
-          aria-required="true"
-        ></p-select>
-        @if (hasError('destination')) {
-          <p role="alert" class="error">Destination airport is required.</p>
-        }
-      </div>
-
-      <div class="field field-date">
-        <label for="departureDate">Departure date</label>
-        <p-datepicker
-          inputId="departureDate"
-          formControlName="departureDate"
-          [minDate]="today"
-          dateFormat="yy-mm-dd"
-          [showIcon]="true"
-          [readonlyInput]="true"
-          appendTo="body"
-          aria-required="true"
-        ></p-datepicker>
-        @if (hasError('departureDate')) {
-          <p role="alert" class="error">Departure date is required.</p>
-        }
-      </div>
-
-      <div class="field field-passengers">
-        <label for="passengers">Passengers</label>
-        <p-inputNumber
-          inputId="passengers"
-          formControlName="passengers"
-          [min]="1"
-          [max]="9"
-          [showButtons]="true"
-          buttonLayout="horizontal"
-          incrementButtonIcon="pi pi-plus"
-          decrementButtonIcon="pi pi-minus"
-          aria-required="true"
-        ></p-inputNumber>
-        @if (hasError('passengers')) {
-          <p role="alert" class="error">Passengers must be between 1 and 9.</p>
-        }
-      </div>
+<div class="transport-home intl-flight-page">
+  <section class="hero">
+    <div class="hero-glow" aria-hidden="true"></div>
+    <div class="hero-content">
+      <a routerLink="/transport" class="intl-back-link">
+        <i class="pi pi-arrow-left" aria-hidden="true"></i>
+        <span>Transport</span>
+      </a>
+      <h1 class="hero-title">International flights to Tunisia</h1>
+      <p class="hero-sub">Compare and book external flights to Tunisia in one search.</p>
     </div>
+  </section>
 
-    <button
-      pButton
-      type="submit"
-      class="intl-submit"
-      label="Search international flights"
-      [loading]="loading"
-      [disabled]="form.invalid || loading"
-    ></button>
-  </form>
+  <section class="search-section">
+    <form
+      [formGroup]="form"
+      (ngSubmit)="onSubmit()"
+      class="intl-search-card"
+      [class.intl-search-card--loading]="loading"
+      novalidate
+    >
+      <div class="search-bar intl-search-bar">
+        <div class="sb-field sb-city sb-intl-origin">
+          <span class="sb-icon"><i class="pi pi-send" aria-hidden="true"></i></span>
+          <div class="sb-inner">
+            <span class="sb-label">Origin</span>
+            <input
+              id="origin"
+              type="text"
+              formControlName="origin"
+              class="intl-text-input"
+              placeholder="e.g. CDG"
+              autocomplete="off"
+              aria-required="true"
+            />
+            @if (hasError('origin')) {
+              <p role="alert" class="field-error">Origin is required.</p>
+            }
+          </div>
+        </div>
+
+        <div class="sb-divider" aria-hidden="true"></div>
+
+        <div class="sb-field sb-city">
+          <span class="sb-icon"><i class="pi pi-map-marker" aria-hidden="true"></i></span>
+          <div class="sb-inner">
+            <span class="sb-label">Destination airport</span>
+            <p-select
+              inputId="destination"
+              formControlName="destination"
+              [options]="tunisianAirports"
+              optionLabel="label"
+              optionValue="value"
+              [showClear]="false"
+              appendTo="body"
+              styleClass="sb-dropdown"
+              panelStyleClass="intl-airport-panel transport-city-panel"
+              aria-required="true"
+            ></p-select>
+            @if (hasError('destination')) {
+              <p role="alert" class="field-error">Destination airport is required.</p>
+            }
+          </div>
+        </div>
+
+        <div class="sb-divider" aria-hidden="true"></div>
+
+        <div class="sb-field sb-date">
+          <span class="sb-icon"><i class="pi pi-calendar" aria-hidden="true"></i></span>
+          <div class="sb-inner">
+            <span class="sb-label">Departure date</span>
+            <p-datepicker
+              inputId="departureDate"
+              formControlName="departureDate"
+              [minDate]="today"
+              dateFormat="dd/mm/yy"
+              [showTime]="false"
+              [showButtonBar]="true"
+              [showIcon]="false"
+              [touchUI]="false"
+              [readonlyInput]="true"
+              [keepInvalid]="false"
+              appendTo="body"
+              styleClass="sb-calendar"
+              panelStyleClass="transport-search-calendar-panel"
+              aria-required="true"
+            ></p-datepicker>
+            @if (hasError('departureDate')) {
+              <p role="alert" class="field-error">Departure date is required.</p>
+            }
+          </div>
+        </div>
+
+        <div class="sb-divider" aria-hidden="true"></div>
+
+        <div class="sb-field sb-pax">
+          <span class="sb-icon"><i class="pi pi-users" aria-hidden="true"></i></span>
+          <div class="sb-inner">
+            <span class="sb-label">Passengers</span>
+            <div class="sb-pax-shell">
+              <p-inputNumber
+                inputId="passengers"
+                formControlName="passengers"
+                [min]="1"
+                [max]="9"
+                [showButtons]="true"
+                buttonLayout="horizontal"
+                incrementButtonIcon="pi pi-plus"
+                decrementButtonIcon="pi pi-minus"
+                [fluid]="false"
+                styleClass="sb-pax-input"
+                aria-required="true"
+              ></p-inputNumber>
+            </div>
+            @if (hasError('passengers')) {
+              <p role="alert" class="field-error">Passengers must be between 1 and 9.</p>
+            }
+          </div>
+        </div>
+      </div>
+
+      <div class="search-actions intl-search-actions">
+        <button type="submit" class="ts-cta" pRipple [disabled]="form.invalid || loading">
+          <i class="pi pi-search" aria-hidden="true"></i>
+          <span>Search international flights</span>
+        </button>
+      </div>
+    </form>
+  </section>
 
   @if (submitError) {
-    <p class="error" role="alert">{{ submitError }}</p>
+    <p class="intl-submit-error" role="alert">{{ submitError }}</p>
   }
 
   <section class="results-section" [class.results-active]="hasSearched || loading">
@@ -106,8 +149,9 @@
           [selected]="selected"
           [mapMode]="false"
           (selectFlight)="onSelectFlight($event)"
+          (bookFlight)="onBookFlight($event)"
         />
       </div>
     </div>
   </section>
-</section>
+</div>

@@ -99,7 +99,9 @@
         </div>
 
         <div class="ao-order__summary-side">
-          <span class="ao-pill" [attr.data-status]="row.status">{{ orderStatusLabel(row.status) }}</span>
+          <span class="ao-pill" [attr.data-status]="row.status">{{
+            ('ARTISAN_ORDERS.STATUS_' + (row.status || 'PENDING')) | translate
+          }}</span>
           <span class="ao-chevron" [class.ao-chevron--up]="rowExpanded(row)" aria-hidden="true">
             <i class="pi" [class.pi-chevron-down]="!rowExpanded(row)" [class.pi-chevron-up]="rowExpanded(row)"></i>
           </span>

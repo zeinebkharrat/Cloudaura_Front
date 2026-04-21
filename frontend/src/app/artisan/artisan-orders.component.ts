@@ -57,18 +57,6 @@ export class ArtisanOrdersComponent implements OnInit {
 
   readonly updatingItems = signal<Set<number>>(new Set());
 
-  orderStatusLabel(status: string | undefined | null): string {
-    const map: Record<string, string> = {
-      PENDING: 'Pending',
-      PROCESSING: 'Processing',      
-      SHIPPED: 'Shipped',
-      DELIVERED: 'Delivered',
-      CANCELLED: 'Cancelled',
-    };
-    if (status == null) return '—';
-    return map[status] ?? status;
-  }
-
   ngOnInit(): void {
     if (!this.auth.isArtisan() && !this.auth.isAdmin()) {
         this.error.set('Access denied.');

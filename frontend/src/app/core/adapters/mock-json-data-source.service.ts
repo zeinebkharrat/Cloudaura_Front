@@ -4,7 +4,6 @@ import { Observable, of, delay, map } from 'rxjs';
 import {
   DataSourceAdapter,
   TransportCheckoutResult,
-  TransportPayPalCreatePayload,
   TransportSearchParams,
 } from './data-source.adapter';
 import {
@@ -12,6 +11,7 @@ import {
   TransportRecommendation, TransportRecommendationRequest,
   TransportReservationInput, TransportReservation, TransportReservationUpdatePayload,
   TransportCheckoutPayload,
+  TransportPayPalCreatePayload,
   AccommodationReservation,
   EngineRecommendationRequest, EngineRecommendationResponse
 } from '../models/travel.models';
