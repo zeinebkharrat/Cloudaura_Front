@@ -95,6 +95,7 @@ public class TransportReservationService {
         }
 
         Transport transport = resolveTransportForReservation(req);
+        assertReservationAllowedForTransportType(transport);
         assertTransportOpenForBooking(transport, req.getNumberOfSeats());
         validateTaxiRouteKm(transport, req.getRouteKm());
 
@@ -189,6 +190,7 @@ public class TransportReservationService {
         }
 
         Transport transport = resolveTransportForCheckout(req);
+        assertReservationAllowedForTransportType(transport);
         assertTransportOpenForBooking(transport, req.getNumberOfSeats());
         validateTaxiRouteKm(transport, req.getRouteKm());
 
@@ -248,6 +250,7 @@ public class TransportReservationService {
     @Transactional
     public TransportReservation createPendingPayPalReservation(int userId, TransportPayPalCreateRequest req) {
         Transport transport = resolveTransportForPayPal(req);
+        assertReservationAllowedForTransportType(transport);
         assertTransportOpenForBooking(transport, req.getSeats());
         validateTaxiRouteKm(transport, req.getRouteKm());
 
@@ -671,6 +674,15 @@ public class TransportReservationService {
             if (routeKm == null || routeKm <= 0) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.taxi_km_required");
             }
+        }
+    }
+
+    private void assertReservationAllowedForTransportType(Transport transport) {
+        if (transport == null || transport.getType() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.transport_not_found");
+        }
+        if (transport.getType() == Transport.TransportType.TAXI || transport.getType() == Transport.TransportType.BUS) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.estimate_only_transport");
         }
     }
 

@@ -38,6 +38,7 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
         <div class="hero-content">
           <h1 class="hero-title">{{ 'TRANSPORT_SEARCH.HERO_TITLE' | translate }}</h1>
           <p class="hero-sub">{{ 'TRANSPORT_SEARCH.HERO_SUB' | translate }}</p>
+          <p class="hero-car-link"><a routerLink="/transport/cars/amadeus">{{ 'TRANSPORT_SEARCH.LINK_CAR_AMADEUS' | translate }}</a></p>
         </div>
       </section>
 
@@ -251,6 +252,12 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
       -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
     }
     .hero-sub { font-size: 1.05rem; color: var(--text-muted); margin: 0; line-height: 1.6; }
+    .hero-car-link { margin: 0.85rem 0 0; font-size: 0.88rem; }
+    .hero-car-link a {
+      color: #f12545; font-weight: 600; text-decoration: none;
+      border-bottom: 1px solid color-mix(in srgb, #f12545 40%, transparent);
+    }
+    .hero-car-link a:hover { opacity: 0.9; }
 
     /* ---- Search bar (white card light / elevated slate dark) ---- */
     /* Keep below body-appended overlays; calendar uses appendTo="body" */

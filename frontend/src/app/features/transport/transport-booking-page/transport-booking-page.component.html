@@ -25,7 +25,12 @@
                   <span class="trip-route">{{ t.departureCityName || '' }} → {{ t.arrivalCityName || '' }}</span>
                   <span class="trip-meta">{{ transportTypeLabelKey(t.type) | translate }} · {{ formatTime(t.departureTime) }} – {{ formatTime(t.arrivalTime) }}{{ 'TRANSPORT_BOOKING.TRIP_META_SEP' | translate }}{{ 'TRANSPORT_BOOKING.SEAT_META' | translate: { n: passengerForm.get('seats')?.value } }}</span>
                 </div>
-                <span class="trip-price">{{ t.price | dualCurrency }}</span>
+                <div class="trip-price-col">
+                  <span class="trip-price">{{ t.price | dualCurrency }}</span>
+                  @if (syntheticQuoteLabel(t); as quoteLbl) {
+                    <span class="trip-quote-note">{{ 'TRANSPORT_BOOKING.QUOTE_REF' | translate: { quote: quoteLbl } }}</span>
+                  }
+                </div>
               </div>
             }
 

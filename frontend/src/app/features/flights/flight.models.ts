@@ -45,3 +45,21 @@ export interface AirportResolveResponse {
   label: string | null;
   found: boolean;
 }
+
+/** Mirrors backend {@code AircraftTrackResponse} (OpenSky ADS-B). */
+export interface AircraftTrackResponse {
+  available: boolean;
+  unavailableReason: string | null;
+  icao24: string | null;
+  callsign: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  baroAltitudeMeters: number | null;
+  geoAltitudeMeters: number | null;
+  headingTrueDeg: number | null;
+  groundSpeedMps: number | null;
+  onGround: boolean | null;
+  verticalRateMps: number | null;
+  updatedAt: string | null;
+  flightStatus: string | null;
+}

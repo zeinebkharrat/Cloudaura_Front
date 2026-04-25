@@ -13,7 +13,12 @@ import {
   TransportCheckoutPayload,
   TransportPayPalCreatePayload,
   AccommodationReservation,
-  EngineRecommendationRequest, EngineRecommendationResponse
+  EngineRecommendationRequest, EngineRecommendationResponse,
+  TransportEstimateInput,
+  TransportEstimateResult,
+  AmadeusCarSearchParams,
+  AmadeusCarOffer,
+  CarBookSimulationResult,
 } from '../models/travel.models';
 
 @Injectable({ providedIn: 'root' })
@@ -95,6 +100,92 @@ export class RestApiDataSource implements DataSourceAdapter {
         return this.mapTransport(t, {});
       })
     );
+  }
+
+  estimateTransport(input: TransportEstimateInput): Observable<TransportEstimateResult> {
+    const body: Record<string, unknown> = {
+      departureCityId: input.departureCityId,
+      arrivalCityId: input.arrivalCityId,
+      travelDate: input.travelDate,
+      transportType: input.transportType,
+      seats: input.seats ?? 1,
+    };
+    if (input.userId != null) {
+      body['userId'] = input.userId;
+    }
+    if (input.routeKm != null && input.routeKm > 0) {
+      body['routeKm'] = input.routeKm;
+    }
+    if (input.routeDurationMin != null && input.routeDurationMin > 0) {
+      body['routeDurationMin'] = input.routeDurationMin;
+    }
+    if (input.rentalDays != null && input.rentalDays > 0) {
+      body['rentalDays'] = input.rentalDays;
+    }
+    return this.http.post<any>(`${this.BASE}/transports/estimate`, body).pipe(
+      map((res) => {
+        const d = res.data ?? res;
+        return {
+          transportType: String(d.transportType ?? ''),
+          departureCityId: Number(d.departureCityId),
+          arrivalCityId: Number(d.arrivalCityId),
+          travelDate: String(d.travelDate ?? ''),
+          seats: Number(d.seats ?? 1),
+          routeKm: d.routeKm != null ? Number(d.routeKm) : undefined,
+          routeDurationMin: d.routeDurationMin != null ? Number(d.routeDurationMin) : null,
+          referencePriceTnd: Number(d.referencePriceTnd ?? 0),
+          minPriceTnd: Number(d.minPriceTnd ?? 0),
+          maxPriceTnd: Number(d.maxPriceTnd ?? 0),
+          currency: String(d.currency ?? 'TND'),
+          advisoryApplied: Boolean(d.advisoryApplied),
+          demandLevel: d.demandLevel != null ? String(d.demandLevel) : undefined,
+          availabilityLevel: d.availabilityLevel != null ? String(d.availabilityLevel) : undefined,
+          reducedAvailability: Boolean(d.reducedAvailability),
+          possibleHigherPrice: Boolean(d.possibleHigherPrice),
+          advisoryMessage: d.advisoryMessage != null ? String(d.advisoryMessage) : null,
+        } satisfies TransportEstimateResult;
+      })
+    );
+  }
+
+  searchAmadeusCars(params: AmadeusCarSearchParams): Observable<AmadeusCarOffer[]> {
+    let httpParams = new HttpParams()
+      .set('location', params.location.trim().toUpperCase())
+      .set('startDate', params.startDate)
+      .set('endDate', params.endDate)
+      .set('passengers', String(params.passengers ?? 1));
+    return this.http.get<any>(`${this.BASE}/cars/search`, { params: httpParams }).pipe(
+      map((res) => {
+        const raw = res.data ?? res ?? [];
+        const arr = Array.isArray(raw) ? raw : [];
+        return arr.map((x: any) => ({
+          offerId: String(x.offerId ?? ''),
+          provider: String(x.provider ?? ''),
+          model: String(x.model ?? ''),
+          price: Number(x.price ?? 0),
+          currency: String(x.currency ?? ''),
+          location: String(x.location ?? ''),
+          transferType: x.transferType != null ? String(x.transferType) : undefined,
+          pickupDateTime: x.pickupDateTime != null ? String(x.pickupDateTime) : undefined,
+        })) as AmadeusCarOffer[];
+      })
+    );
+  }
+
+  simulateAmadeusCarBooking(offerId: string): Observable<CarBookSimulationResult> {
+    return this.http
+      .post<any>(`${this.BASE}/cars/book-simulation`, { offerId: offerId.trim() })
+      .pipe(
+        map((res) => {
+          const d = res.data ?? res;
+          return {
+            simulated: Boolean(d.simulated),
+            confirmationRef: String(d.confirmationRef ?? ''),
+            offerId: String(d.offerId ?? ''),
+            message: d.message != null ? String(d.message) : undefined,
+          } satisfies CarBookSimulationResult;
+        })
+      );
   }
 
   createTransportReservation(input: TransportReservationInput): Observable<TransportReservation> {

@@ -48,4 +48,10 @@ public class SyntheticFlightOfferDto {
 
     @Size(max = 500)
     private String description;
+
+    /** Original list price from provider (e.g. 76 EUR); informational — {@link #pricePerSeatTnd} is used for payment. */
+    private Double quoteOriginalAmount;
+
+    @Size(max = 8)
+    private String quoteOriginalCurrency;
 }

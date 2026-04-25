@@ -66,6 +66,16 @@ import { createCurrencyDisplaySyncEffect } from '../../../core/utils/currency-di
       font-weight: 800; color: var(--tunisia-red); white-space: nowrap; flex-shrink: 0;
     }
     .trip-price small { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); }
+    .trip-price-col { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
+    .trip-quote-note {
+      display: block;
+      margin-top: 0.35rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      line-height: 1.35;
+      max-width: 22rem;
+    }
 
     .stepper-wrap {
       background: var(--surface-1);
@@ -455,11 +465,13 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
     if (selected && Number.isFinite(transportIdNum) && selected.id === transportIdNum) {
       this.transport.set(selected);
       this.applySeatCapacityValidators(selected);
+      this.maybeRedirectEstimateOnly(selected);
     } else if (Number.isFinite(transportIdNum)) {
       this.dataSource.getTransportById(transportIdNum).subscribe({
         next: (t) => {
           this.transport.set(t);
           this.applySeatCapacityValidators(t);
+          this.maybeRedirectEstimateOnly(t);
           this.cdr.markForCheck();
         },
         error: () => {
@@ -473,6 +485,7 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
     } else if (selected) {
       this.transport.set(selected);
       this.applySeatCapacityValidators(selected);
+      this.maybeRedirectEstimateOnly(selected);
     }
 
     const paid = this.route.snapshot.queryParamMap.get('paid');
@@ -986,10 +999,56 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
       departureTimeIso: o.departureTimeIso ?? t.departureTime,
       arrivalTimeIso: o.arrivalTimeIso ?? t.arrivalTime,
       description: (o.description ?? t.description)?.trim(),
+      quoteOriginalAmount: o.quoteOriginalAmount,
+      quoteOriginalCurrency: o.quoteOriginalCurrency,
     };
   }
 
+  /**
+   * Taxi and bus are quote-only: deep links to /transport/:id/book must land on the estimate page.
+   */
+  private maybeRedirectEstimateOnly(t: Transport): void {
+    if (t.type !== 'TAXI' && t.type !== 'BUS') {
+      return;
+    }
+    if (this.route.snapshot.queryParamMap.get('edit')) {
+      return;
+    }
+    if (this.route.snapshot.queryParamMap.get('paid') === '1') {
+      return;
+    }
+    const q: Record<string, string> = { ...(this.route.snapshot.queryParams as Record<string, string>) };
+    q['from'] = String(t.departureCityId);
+    q['to'] = String(t.arrivalCityId);
+    q['transportType'] = t.type;
+    const td = this.store.dates().travelDate;
+    if (!q['date'] && td) {
+      q['date'] = td;
+    }
+    if (!q['passengers']) {
+      q['passengers'] = String(Math.max(1, this.store.pax().adults || 1));
+    }
+    void this.router.navigate(['/transport/estimate'], { queryParams: q });
+  }
+
   goBack() { this.router.navigate(['/transport/results'], { queryParams: this.route.snapshot.queryParams }); }
+
+  /** Provider list price (e.g. EUR); payable TND is shown via dualCurrency on {@code t.price}. */
+  syntheticQuoteLabel(t: Transport): string | null {
+    const o = t.syntheticFlightOffer;
+    if (!o?.quoteOriginalCurrency || o.quoteOriginalAmount == null) {
+      return null;
+    }
+    try {
+      return new Intl.NumberFormat(undefined, {
+        style: 'currency',
+        currency: o.quoteOriginalCurrency.trim().toUpperCase(),
+        maximumFractionDigits: 2,
+      }).format(o.quoteOriginalAmount);
+    } catch {
+      return `${o.quoteOriginalAmount} ${o.quoteOriginalCurrency}`;
+    }
+  }
 
   formatTime(dateStr: string): string {
     if (!dateStr) return '';

@@ -327,6 +327,11 @@ public class CatalogTranslationBootstrap implements ApplicationRunner {
                 "Estimated distance (km) is required for a taxi.",
                 "المسافة التقديرية بالكيلومترات مطلوبة للأجرة.");
         ensureTriple(
+                "reservation.error.estimate_only_transport",
+                "Ce mode de transport est en consultation de prix uniquement (sans réservation).",
+                "This transport mode is quote-only (no booking).",
+                "هذا النوع من النقل للاستعلام عن السعر فقط (بدون حجز).");
+        ensureTriple(
                 "reservation.error.invalid_travel_date",
                 "Format de date de voyage invalide.",
                 "Invalid travel date format.",

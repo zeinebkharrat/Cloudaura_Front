@@ -1,24 +1,24 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { Subscription, of } from 'rxjs';
-import { catchError, debounceTime, distinctUntilChanged, filter, map, switchMap, tap } from 'rxjs/operators';
 import { RippleModule } from 'primeng/ripple';
 import { DatePickerModule } from 'primeng/datepicker';
 import { InputNumberModule } from 'primeng/inputnumber';
-import { SelectModule } from 'primeng/select';
 import { Transport } from '../../core/models/travel.models';
 import { CurrencyService } from '../../core/services/currency.service';
 import { TripContextStore } from '../../core/stores/trip-context.store';
 import {
+  effectivePriceTnd,
   estimateDurationMinutes,
   filterBookableFlights,
+  parseFlightOffer,
   pricePerSeatForBooking,
 } from '../../features/flights/flight-display.util';
 import { FlightDto } from '../../features/flights/flight.models';
 import { FlightService } from '../../features/flights/flight.service';
 import { FlightListComponent } from '../../features/flights/flight-list.component';
+import { InternationalFlightLiveMapComponent } from './international-flight-live-map.component';
 
 interface TunisianAirportOption {
   label: string;
@@ -40,13 +40,13 @@ type ExternalSearchPayload = {
     RippleModule,
     DatePickerModule,
     InputNumberModule,
-    SelectModule,
     FlightListComponent,
+    InternationalFlightLiveMapComponent,
   ],
   templateUrl: './international-flights.component.html',
-  styleUrl: './international-flights.component.scss',
+  styleUrls: ['./international-flights.component.scss', '../../features/flights/live-flights-page.shared.css'],
 })
-export class InternationalFlightsComponent implements OnInit, OnDestroy {
+export class InternationalFlightsComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
@@ -65,12 +65,19 @@ export class InternationalFlightsComponent implements OnInit, OnDestroy {
     { value: 'GAF', label: 'GAF - Gafsa' },
   ];
 
+  private static readonly IATA = /^[A-Za-z]{3,4}$/;
+
   readonly form = this.fb.group({
-    origin: ['', Validators.required],
-    destination: ['TUN', Validators.required],
+    origin: ['', [Validators.required, Validators.pattern(InternationalFlightsComponent.IATA)]],
+    destination: [
+      'TUN',
+      [Validators.required, Validators.pattern(InternationalFlightsComponent.IATA)],
+    ],
     departureDate: [new Date(), Validators.required],
     passengers: [1, [Validators.required, Validators.min(1), Validators.max(9)]],
   });
+
+  sortMode: 'best' | 'duration' | 'depart' = 'best';
 
   loading = false;
   hasSearched = false;
@@ -79,7 +86,6 @@ export class InternationalFlightsComponent implements OnInit, OnDestroy {
   private lastRawResults: FlightDto[] = [];
   lastResults: FlightDto[] = [];
   selected: FlightDto | null = null;
-  private readonly subs = new Subscription();
 
   constructor() {
     const d = new Date();
@@ -111,11 +117,10 @@ export class InternationalFlightsComponent implements OnInit, OnDestroy {
       this.form.patchValue({ passengers: paxQ });
     }
 
-    this.setupDynamicSearch();
-  }
-
-  ngOnDestroy(): void {
-    this.subs.unsubscribe();
+    const initial = this.buildSearchPayload();
+    if (initial) {
+      this.runSearch(initial);
+    }
   }
 
   onSubmit(): void {
@@ -132,41 +137,6 @@ export class InternationalFlightsComponent implements OnInit, OnDestroy {
     this.runSearch(payload);
   }
 
-  private setupDynamicSearch(): void {
-    const sub = this.form.valueChanges.pipe(
-      debounceTime(550),
-      map(() => this.buildSearchPayload()),
-      filter((payload): payload is ExternalSearchPayload => !!payload),
-      distinctUntilChanged((a, b) => this.payloadKey(a) === this.payloadKey(b)),
-      tap(() => {
-        this.loading = true;
-        this.hasSearched = false;
-        this.submitError = null;
-      }),
-      switchMap((payload) => this.flightApi.searchByRoute(payload.dep, payload.arr, 25).pipe(
-        map((res) => ({ res, failed: false })),
-        catchError(() => of({ res: null, failed: true }))
-      )),
-    ).subscribe(({ res, failed }) => {
-      this.loading = false;
-      this.hasSearched = true;
-
-      if (failed || !res?.success) {
-        this.lastRawResults = [];
-        this.lastResults = [];
-        this.submitError = 'Unable to load international flights. Please try again.';
-        return;
-      }
-
-      const raw = res.data ?? [];
-      this.lastRawResults = raw;
-      this.lastResults = filterBookableFlights(raw);
-      this.submitError = null;
-    });
-
-    this.subs.add(sub);
-  }
-
   private runSearch(payload: ExternalSearchPayload): void {
     this.loading = true;
     this.hasSearched = false;
@@ -179,18 +149,21 @@ export class InternationalFlightsComponent implements OnInit, OnDestroy {
         if (!res.success) {
           this.lastRawResults = [];
           this.lastResults = [];
+          this.selected = null;
           this.submitError = 'Unable to load international flights. Please try again.';
           return;
         }
         const raw = res.data ?? [];
         this.lastRawResults = raw;
         this.lastResults = filterBookableFlights(raw);
+        this.selected = this.displayedFlights[0] ?? null;
       },
       error: () => {
         this.loading = false;
         this.hasSearched = true;
         this.lastRawResults = [];
         this.lastResults = [];
+        this.selected = null;
         this.submitError = 'Unable to load international flights. Please try again.';
       },
     });
@@ -203,13 +176,36 @@ export class InternationalFlightsComponent implements OnInit, OnDestroy {
     }
 
     return {
-      dep: origin.trim().toUpperCase(),
-      arr: destination,
+      dep: origin.trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4),
+      arr: destination.trim().toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4),
     };
   }
 
-  private payloadKey(payload: ExternalSearchPayload): string {
-    return `${payload.dep}|${payload.arr}`;
+  get travelDateForMap(): Date | null {
+    const v = this.form.get('departureDate')?.value;
+    return v instanceof Date && !Number.isNaN(v.getTime()) ? v : null;
+  }
+
+  get displayedFlights(): FlightDto[] {
+    const rows = [...this.lastResults];
+    if (this.sortMode === 'best') {
+      rows.sort((a, b) => effectivePriceTnd(a, this.currency) - effectivePriceTnd(b, this.currency));
+    } else if (this.sortMode === 'duration') {
+      rows.sort((a, b) => estimateDurationMinutes(a) - estimateDurationMinutes(b));
+    } else {
+      rows.sort((a, b) => (Date.parse(a.departureTime || '') || 0) - (Date.parse(b.departureTime || '') || 0));
+    }
+    return rows;
+  }
+
+  setSort(mode: 'best' | 'duration' | 'depart'): void {
+    this.sortMode = mode;
+  }
+
+  swapAirports(): void {
+    const o = this.form.get('origin')?.value;
+    const d = this.form.get('destination')?.value;
+    this.form.patchValue({ origin: d, destination: o });
   }
 
   onSelectFlight(f: FlightDto): void {
@@ -244,6 +240,7 @@ export class InternationalFlightsComponent implements OnInit, OnDestroy {
     const arrIata = normIata(f.arrivalIata, destFb);
     const travelIso = this.resolveTravelIsoForFlight(f);
 
+    const quote = parseFlightOffer(f);
     const selectedTransport: Transport = {
       id: syntheticId,
       type: 'PLANE',
@@ -268,6 +265,8 @@ export class InternationalFlightsComponent implements OnInit, OnDestroy {
         departureTimeIso: f.departureTime ?? undefined,
         arrivalTimeIso: f.arrivalTime ?? undefined,
         description: `${f.airline || 'Airline'} ${f.flightNumber || ''}`.trim(),
+        quoteOriginalAmount: quote?.amount,
+        quoteOriginalCurrency: quote?.currency,
       },
     };
 
@@ -340,7 +339,7 @@ export class InternationalFlightsComponent implements OnInit, OnDestroy {
   }
 
   get idleHint(): string {
-    return 'Pick route and date, then search flights.';
+    return 'Enter IATA codes and search.';
   }
 
   hasError(field: 'origin' | 'destination' | 'departureDate' | 'passengers'): boolean {

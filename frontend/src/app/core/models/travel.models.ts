@@ -60,6 +60,9 @@ export interface SyntheticFlightOfferPayload {
   departureTimeIso?: string;
   arrivalTimeIso?: string;
   description?: string;
+  /** Provider quote (e.g. 76 EUR); checkout converts to TND for payment. */
+  quoteOriginalAmount?: number;
+  quoteOriginalCurrency?: string;
 }
 
 export interface Transport {
@@ -125,6 +128,68 @@ export interface TransportCheckoutPayload {
   presentmentCurrency?: string;
   /** Required when {@code transportId < 0}. */
   syntheticFlightOffer?: SyntheticFlightOfferPayload;
+}
+
+/** POST /api/transports/estimate — taxi & bus are quote-only (no booking). */
+export interface TransportEstimateInput {
+  userId?: number;
+  departureCityId: number;
+  arrivalCityId: number;
+  /** ISO date yyyy-MM-dd (time ignored by API). */
+  travelDate: string;
+  transportType: TransportType;
+  seats?: number;
+  routeKm?: number;
+  routeDurationMin?: number;
+  rentalDays?: number;
+}
+
+export interface TransportEstimateResult {
+  transportType: string;
+  departureCityId: number;
+  arrivalCityId: number;
+  travelDate: string;
+  seats: number;
+  routeKm?: number;
+  routeDurationMin?: number | null;
+  referencePriceTnd: number;
+  minPriceTnd: number;
+  maxPriceTnd: number;
+  currency: string;
+  advisoryApplied?: boolean;
+  demandLevel?: string;
+  availabilityLevel?: string;
+  reducedAvailability?: boolean;
+  possibleHigherPrice?: boolean;
+  advisoryMessage?: string | null;
+}
+
+/** Query for GET /api/cars/search (Amadeus transfer-offers via backend). */
+export interface AmadeusCarSearchParams {
+  location: string;
+  startDate: string;
+  endDate: string;
+  passengers?: number;
+}
+
+/** One offer from Amadeus Cars & Transfers (mapped server-side). */
+export interface AmadeusCarOffer {
+  offerId: string;
+  provider: string;
+  model: string;
+  price: number;
+  currency: string;
+  location: string;
+  transferType?: string;
+  pickupDateTime?: string;
+}
+
+/** POST /api/cars/book-simulation response. */
+export interface CarBookSimulationResult {
+  simulated: boolean;
+  confirmationRef: string;
+  offerId: string;
+  message?: string;
 }
 
 /** POST /api/transport/payments/paypal/create */

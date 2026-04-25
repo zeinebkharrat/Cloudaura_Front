@@ -34,7 +34,43 @@ export function foreignAmountToTnd(amount: number, currency: string | null | und
   return null;
 }
 
-/** Prefer API offer total (any currency); otherwise estimate from leg duration. */
+/** Parsed provider total when present (search cards: show this currency as-is). */
+export function parseFlightOffer(f: FlightDto): { amount: number; currency: string } | null {
+  const rawAmt = f.totalAmount?.trim();
+  const cur = f.totalCurrency?.trim();
+  if (!rawAmt || !cur) {
+    return null;
+  }
+  const parsed = Number.parseFloat(rawAmt.replace(',', '.'));
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+  const currency = cur.toUpperCase();
+  return { amount: parsed, currency };
+}
+
+/** Human-readable price for lists: real offer currency, no TND relabeling. */
+export function formatOfferPriceDisplay(f: FlightDto): string | null {
+  const o = parseFlightOffer(f);
+  if (!o) {
+    return null;
+  }
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: o.currency,
+      maximumFractionDigits: 2,
+      minimumFractionDigits: Number.isInteger(o.amount) ? 0 : 2,
+    }).format(o.amount);
+  } catch {
+    return `${o.amount} ${o.currency}`;
+  }
+}
+
+/**
+ * Prefer API offer total converted to TND (sorting, “best price”, checkout).
+ * When the offer is already in TND, returns that amount.
+ */
 export function effectivePriceTnd(f: FlightDto, currencyService: CurrencyService): number {
   const rawAmt = f.totalAmount?.trim();
   const cur = f.totalCurrency?.trim();
@@ -42,14 +78,16 @@ export function effectivePriceTnd(f: FlightDto, currencyService: CurrencyService
     const parsed = Number.parseFloat(rawAmt.replace(',', '.'));
     if (Number.isFinite(parsed)) {
       const tnd = foreignAmountToTnd(parsed, cur, currencyService);
-      if (tnd != null) return tnd;
+      if (tnd != null) {
+        return tnd;
+      }
     }
   }
   return estimateSeatPriceTnd(estimateDurationMinutes(f));
 }
 
 export function priceUsesEstimate(f: FlightDto): boolean {
-  return !f.totalAmount?.trim();
+  return parseFlightOffer(f) == null;
 }
 
 /**

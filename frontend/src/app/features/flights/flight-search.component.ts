@@ -21,11 +21,16 @@ export class FlightSearchComponent {
   @Input() destinationQuery = '';
   @Input() originIata = 'TUN';
   @Input() suggestions: FlightDestinationSuggestion[] = [];
+  @Input() flightNumberQuery = '';
+  @Input() flightSearchDate = '';
 
   @Output() destinationQueryChange = new EventEmitter<string>();
   @Output() originIataChange = new EventEmitter<string>();
   @Output() searchSubmit = new EventEmitter<void>();
   @Output() pickSuggestion = new EventEmitter<string>();
+  @Output() flightNumberQueryChange = new EventEmitter<string>();
+  @Output() flightSearchDateChange = new EventEmitter<string>();
+  @Output() flightSearchSubmit = new EventEmitter<void>();
 
   onPick(s: FlightDestinationSuggestion): void {
     this.pickSuggestion.emit(s.pickValue);
@@ -33,5 +38,20 @@ export class FlightSearchComponent {
 
   onSearchClick(): void {
     this.searchSubmit.emit();
+  }
+
+  onFlightSearchClick(): void {
+    this.flightSearchSubmit.emit();
+  }
+
+  isFlightQueryValid(): boolean {
+    const q = (this.flightNumberQuery || '').trim();
+    if (q.length < 2) {
+      return false;
+    }
+    if (/^\d{1,4}$/.test(q)) {
+      return true;
+    }
+    return /^[A-Za-z]{2}\s*\d{1,4}$/.test(q);
   }
 }
