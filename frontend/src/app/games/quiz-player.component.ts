@@ -6,6 +6,8 @@ import { LudificationService, Quiz, QuizQuestion } from '../core/ludification.se
 import { AuthService } from '../core/auth.service';
 import { GamificationService } from '../core/gamification.service';
 import { API_BASE_URL } from '../core/api-url';
+import { AiService } from '../core/ai.service';
+
 
 @Component({
   selector: 'app-quiz-player',
@@ -21,6 +23,8 @@ export class QuizPlayerComponent implements OnInit, OnDestroy {
   private readonly auth = inject(AuthService);
   private readonly gamification = inject(GamificationService);
   private readonly translate = inject(TranslateService);
+  private readonly ai = inject(AiService);
+
 
   quiz = signal<Quiz | null>(null);
   currentQuestion = signal<number>(0);
@@ -29,6 +33,8 @@ export class QuizPlayerComponent implements OnInit, OnDestroy {
   questions = signal<Array<{ text: string; options: string[]; correct: number }>>([]);
   isLoading = signal<boolean>(true);
   loadError = signal<string | null>(null);
+  aiLoading = signal<boolean>(false);
+
 
   selectedOption = signal<number | null>(null);
 
@@ -40,6 +46,7 @@ export class QuizPlayerComponent implements OnInit, OnDestroy {
   timeStarsFinal = signal<number>(0);
   /** Partie terminée par expiration du chrono. */
   timedOut = signal<boolean>(false);
+  pointsClaimed = signal<boolean>(false);
 
   private roadmapNodeId: number | null = null;
   private roadmapRecorded = false;
@@ -168,8 +175,6 @@ export class QuizPlayerComponent implements OnInit, OnDestroy {
     this.timeStarsDisplay.set(0);
     this.remainingSeconds.set(0);
     this.isFinished.set(true);
-    this.recordRoadmapProgress();
-    this.reportStandaloneIfNeeded();
   }
 
   private clearTimer() {
@@ -254,6 +259,32 @@ export class QuizPlayerComponent implements OnInit, OnDestroy {
     }, 1200);
   }
 
+  solveWithAi(): void {
+    if (this.selectedOption() !== null || this.isFinished() || this.aiLoading()) {
+      return;
+    }
+    const question = this.questions()[this.currentQuestion()];
+    this.aiLoading.set(true);
+    
+    const prompt = `You are an expert in Tunisian culture and travel. 
+    The current quiz question is: "${question.text}"
+    Options: ${question.options.map((o, i) => `${i}: ${o}`).join(', ')}
+    Tell me the index of the correct answer. 
+    Return ONLY the index number.`;
+
+    this.ai.getCustomResponse(prompt).subscribe({
+      next: (res) => {
+        const idx = parseInt(res.trim(), 10);
+        if (!isNaN(idx) && idx >= 0 && idx < question.options.length) {
+          this.selectOption(idx);
+        }
+        this.aiLoading.set(false);
+      },
+      error: () => this.aiLoading.set(false)
+    });
+  }
+
+
   private completeQuizNormally() {
     this.clearTimer();
     const start = this.quizStartedAtMs;
@@ -262,6 +293,11 @@ export class QuizPlayerComponent implements OnInit, OnDestroy {
     this.timeStarsFinal.set(stars);
     this.timeStarsDisplay.set(stars);
     this.isFinished.set(true);
+  }
+
+  claimPoints() {
+    if (this.pointsClaimed() || !this.auth.currentUser()) return;
+    this.pointsClaimed.set(true);
     this.recordRoadmapProgress();
     this.reportStandaloneIfNeeded();
   }

@@ -98,6 +98,16 @@
             <p class="roadmap-saved">Roadmap step saved.</p>
           }
           <div class="win-actions">
+            @if (isLoggedIn() && !pointsClaimed()) {
+              <button type="button" class="btn btn-primary" (click)="claimPoints()">
+                Réclamer mes points
+              </button>
+            } @else if (pointsClaimed()) {
+              <button type="button" class="btn btn-secondary-light" disabled>
+                Points réclamés !
+              </button>
+            }
+
             @if (canProceedToNextStage()) {
               <button type="button" class="btn btn-next-stage" (click)="goToNextStage()">
                 Confirm and go to next step →

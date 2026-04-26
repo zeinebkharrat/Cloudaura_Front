@@ -1,8 +1,8 @@
-import { Component, signal, OnInit, inject } from '@angular/core';
+import { Component, signal, effect, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
+import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { LudificationService, PuzzleImage, RoadmapNode, LudoCard } from '../core/ludification.service';
+import { LudificationService, PuzzleImage, RoadmapNode, LudoCard, PointPackage } from '../core/ludification.service';
 import { AuthService } from '../core/auth.service';
 
 @Component({
@@ -24,13 +24,30 @@ export class UserGamesComponent implements OnInit {
   crosswords = signal<{ crosswordId?: number; published?: boolean }[]>([]);
   roadmapNotice = signal<string | null>(null);
 
+  unlockCosts = signal<Map<string, number>>(new Map());
+  unlockedGames = signal<Set<string>>(new Set());
+  
+  pointPackages = signal<PointPackage[]>([]);
+  buyingPackageId = signal<number | null>(null);
+
   private readonly translate = inject(TranslateService);
 
   constructor(
     private api: LudificationService,
     private router: Router,
+    private route: ActivatedRoute,
     private auth: AuthService,
-  ) {}
+  ) {
+    effect(() => {
+      if (this.auth.isAuthenticated()) {
+        this.api.getUnlockedGames().subscribe(unlocked => {
+          this.unlockedGames.set(new Set(unlocked));
+        });
+      } else {
+        this.unlockedGames.set(new Set());
+      }
+    }, { allowSignalWrites: true });
+  }
 
   /** Accès au Ludo réservé aux utilisateurs connectés (voir route `games/ludo` + authGuard). */
   isLoggedIn(): boolean {
@@ -38,6 +55,28 @@ export class UserGamesComponent implements OnInit {
   }
 
   ngOnInit() {
+    this.route.queryParams.subscribe(params => {
+      const sessionId = params['session_id'];
+      if (sessionId) {
+        this.roadmapNotice.set("Verification de l'achat en cours...");
+        this.api.verifyCheckout(sessionId).subscribe({
+          next: (res) => {
+            if (res.success) {
+               this.roadmapNotice.set(`Achat réussi ! ${res.addedPoints ?? ''} points ajoutés à votre compte.`);
+               if ((this.auth as any).fetchMe) {
+                 (this.auth as any).fetchMe().subscribe();
+               }
+               // Remove session_id from URL so it doesn't verify again on refresh
+               this.router.navigate([], { queryParams: { session_id: null, package_id: null }, queryParamsHandling: 'merge', replaceUrl: true });
+            }
+          },
+          error: (err) => {
+            this.roadmapNotice.set("La méthode de paiement n'a pas pu être vérifiée ou a déjà été validée.");
+          }
+        });
+      }
+    });
+
     this.api.getQuizzes().subscribe((list) => {
       this.quizzes.set((list ?? []).filter((q) => q.published));
     });
@@ -51,6 +90,16 @@ export class UserGamesComponent implements OnInit {
     });
     this.api.getLudoCards().subscribe((cards) => {
       this.ludoCards.set((cards ?? []).filter((c) => c.published));
+    });
+
+    this.api.getUnlockCosts().subscribe(costs => {
+      const map = new Map<string, number>();
+      costs.forEach(c => map.set(c.gameId, c.costPoints));
+      this.unlockCosts.set(map);
+    });
+
+    this.api.getPointPackages().subscribe(pkgs => {
+      this.pointPackages.set(pkgs || []);
     });
 
     this.api.getRoadmap().subscribe({
@@ -284,5 +333,97 @@ export class UserGamesComponent implements OnInit {
       return;
     }
     this.router.navigate(['/games/chef-quest']);
+  }
+
+  playChkobba(): void {
+    if (!this.isLoggedIn()) {
+      this.router.navigate(['/login']);
+      return;
+    }
+    this.router.navigate(['/games/chkobba']);
+  }
+
+  playMusic(): void {
+    if (!this.isLoggedIn()) {
+      this.router.navigate(['/login']);
+      return;
+    }
+    this.router.navigate(['/games/music']);
+  }
+
+  /** Navigate to the Karaoke game player. */
+  playKaraoke(): void {
+    if (!this.isLoggedIn()) {
+      this.router.navigate(['/login']);
+      return;
+    }
+    this.router.navigate(['/games/karaoke']);
+  }
+
+  getGameCost(gameId: string): number {
+    return this.unlockCosts().get(gameId) ?? 0;
+  }
+
+  isGameUnlocked(gameId: string): boolean {
+    if (this.getGameCost(gameId) === 0) return true;
+    return this.unlockedGames().has(gameId);
+  }
+
+  unlockGame(gameId: string, event: Event): void {
+    event.stopPropagation();
+    if (!this.isLoggedIn()) {
+      this.router.navigate(['/login']);
+      return;
+    }
+    const cost = this.getGameCost(gameId);
+    const pts = this.auth.currentUser()?.points ?? 0;
+    if (pts < cost) {
+      this.roadmapNotice.set(`Points insuffisants. Il vous faut ${cost} points pour débloquer ce jeu (vous avez ${pts} pts).`);
+      return;
+    }
+
+    this.api.unlockGame(gameId).subscribe({
+      next: (res) => {
+        if (res.success) {
+          const s = new Set(this.unlockedGames());
+          s.add(gameId);
+          this.unlockedGames.set(s);
+          // Refresh points
+          if (typeof (this.auth as any).fetchMe === 'function') {
+            (this.auth as any).fetchMe().subscribe();
+          }
+        }
+      },
+      error: () => {
+        this.roadmapNotice.set("Erreur lors du déverrouillage du jeu.");
+      }
+    });
+  }
+
+  lockCheckAndNavigate(gameId: string, routeFn: () => void): void {
+    if (!this.isGameUnlocked(gameId)) {
+      this.roadmapNotice.set(`Ce jeu est verrouillé ! Son déverrouillage coûte ${this.getGameCost(gameId)} points.`);
+      return;
+    }
+    routeFn();
+  }
+
+  buyPackage(pkg: PointPackage): void {
+    if (!this.isLoggedIn()) {
+      this.router.navigate(['/login']);
+      return;
+    }
+    this.buyingPackageId.set(pkg.id);
+    this.api.checkoutPointPackage(pkg.id).subscribe({
+      next: (res) => {
+        if (res.url) {
+          window.location.href = res.url; // Redirect to Stripe Checkout
+        }
+      },
+      error: () => {
+        this.buyingPackageId.set(null);
+        this.roadmapNotice.set("Erreur de connexion à la boutique de paiement sécurisé.");
+      }
+    });
   }
 }

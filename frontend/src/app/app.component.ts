@@ -10,7 +10,7 @@ import { NotificationService } from './core/notification.service';
 import { LoginRequiredPromptService } from './core/login-required-prompt.service';
 import { SignInComponent } from './sign-in.component';
 import { SignUpComponent } from './sign-up.component';
-import { GamificationBadgeEntry, GamificationService } from './core/gamification.service';
+import { DailyChallengeRow, GamificationBadgeEntry, GamificationService } from './core/gamification.service';
 import { ReservationNotificationItem, ReservationNotificationsService } from './core/reservation-notifications.service';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { LanguageService } from './core/services/language.service';
@@ -29,6 +29,8 @@ interface NavbarTourStep {
   imageKey: string;
   pose: 'left' | 'right' | 'top' | 'think' | 'gotit';
 }
+import { AiService } from './core/ai.service';
+
 
 @Component({
   selector: 'app-root',
@@ -60,6 +62,7 @@ export class AppComponent implements OnInit {
   readonly notifier = inject(NotificationService);
   readonly loginPrompt = inject(LoginRequiredPromptService);
   readonly backgroundAudio = inject(BackgroundAudioService);
+  private readonly ai = inject(AiService);
 
   isDarkMode = signal(true);
   isUserMenuOpen = signal(false);
@@ -760,6 +763,31 @@ export class AppComponent implements OnInit {
   closeChallengesPopup(): void {
     this.isChallengesPopupOpen.set(false);
   }
+
+  readonly challengeAiHelp = signal<Record<number, string>>({});
+  readonly challengeAiLoading = signal<Record<number, boolean>>({});
+
+  getAiHelp(challenge: DailyChallengeRow): void {
+    if (this.challengeAiHelp()[challenge.challengeId]) {
+      // Toggle off if already shown
+      const next = { ...this.challengeAiHelp() };
+      delete next[challenge.challengeId];
+      this.challengeAiHelp.set(next);
+      return;
+    }
+
+    this.challengeAiLoading.update(prev => ({ ...prev, [challenge.challengeId]: true }));
+    this.ai.getHelpForChallenge(challenge).subscribe({
+      next: (help: string) => {
+        this.challengeAiHelp.update(prev => ({ ...prev, [challenge.challengeId]: help }));
+        this.challengeAiLoading.update(prev => ({ ...prev, [challenge.challengeId]: false }));
+      },
+      error: () => {
+        this.challengeAiLoading.update(prev => ({ ...prev, [challenge.challengeId]: false }));
+      }
+    });
+  }
+
 
   private loadGamificationSummary(): void {
     const userId = this.currentUser()?.id;

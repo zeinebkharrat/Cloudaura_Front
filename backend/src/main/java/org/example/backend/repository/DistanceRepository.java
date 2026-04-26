@@ -10,4 +10,6 @@ import java.util.Optional;
 public interface DistanceRepository extends JpaRepository<Distance, Long> {
     Optional<Distance> findByFromCity_CityIdAndToCity_CityId(Integer fromCityId, Integer toCityId);
     boolean existsByFromCity_CityIdAndToCity_CityId(Integer fromCityId, Integer toCityId);
+
+    void deleteByFromCity_CityIdOrToCity_CityId(Integer fromCityId, Integer toCityId);
 }

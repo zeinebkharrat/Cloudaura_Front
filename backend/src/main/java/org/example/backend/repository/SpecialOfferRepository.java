@@ -13,4 +13,6 @@ public interface SpecialOfferRepository extends JpaRepository<SpecialOffer, Inte
     @Query("SELECT s FROM SpecialOffer s WHERE s.city.cityId = :cityId " +
            "AND s.startDate <= :now AND s.endDate >= :now")
     List<SpecialOffer> findActiveOffersByCity(@Param("cityId") int cityId, @Param("now") LocalDateTime now);
+
+    void deleteByCityCityId(Integer cityId);
 }

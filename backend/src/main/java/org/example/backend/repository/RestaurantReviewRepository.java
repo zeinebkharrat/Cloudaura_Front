@@ -17,6 +17,8 @@ public interface RestaurantReviewRepository extends JpaRepository<RestaurantRevi
 
     long countByRestaurantRestaurantId(Integer restaurantId);
 
+    void deleteByRestaurantCityCityId(Integer cityId);
+
     @Query("select avg(r.stars) from RestaurantReview r where r.restaurant.restaurantId = :restaurantId")
     Double averageStarsByRestaurantId(@Param("restaurantId") Integer restaurantId);
 }

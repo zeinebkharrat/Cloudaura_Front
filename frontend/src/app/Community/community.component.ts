@@ -31,6 +31,7 @@ import { tunisiaGeoJson } from '../tunisia-map';
 import { GOVERNORATE_LABEL_EN, GOVERNORATE_LABEL_FR } from '../tunisia-governorate-labels';
 import { CommunityStoriesComponent } from './community-stories.component';
 import { TranslateModule } from '@ngx-translate/core';
+import { EventService } from '../event.service';
 
 const MINI_TUNISIA_MAP_NAME = 'TunisiaMiniPreview';
 const MINI_TUNISIA_MAP_NAME_PROP = '_echartsRegionId';
@@ -109,6 +110,7 @@ export class CommunityComponent {
   private readonly followService = inject(FollowService);
   private readonly savedPostService = inject(SavedPostService);
   private readonly giphyService = inject(GiphyService);
+  private readonly eventService = inject(EventService);
   public readonly authService = inject(AuthService);
   private readonly chatService = inject(ChatService);
   private readonly router = inject(Router);
@@ -119,6 +121,7 @@ export class CommunityComponent {
   readonly likes = signal<LikeEntity[]>([]);
   readonly comments = signal<Comment[]>([]);
   readonly medias = signal<PostMedia[]>([]);
+  readonly eventImageById = signal<Map<number, string>>(new Map());
   readonly likeStatuses = signal<Map<number, boolean>>(new Map());
   readonly likeUserNicknames = signal<Map<number, string[]>>(new Map());
   readonly likeUsersByPost = signal<Map<number, UserRef[]>>(new Map());
@@ -297,6 +300,7 @@ export class CommunityComponent {
         this.likes.set(likes || []);
         this.comments.set(comments || []);
         this.medias.set(medias || []);
+        this.preloadEventImages(posts || []);
         void this.refreshSuggestions();
         void this.refreshLeaderboard();
         this.resetVisiblePostsLimit();
@@ -312,6 +316,42 @@ export class CommunityComponent {
         this.loadError.set('Error loading feed');
         this.feedLoaded.set(true);
       },
+    });
+  }
+
+  private preloadEventImages(posts: Post[]): void {
+    const eventIds = Array.from(
+      new Set(
+        posts
+          .filter((post) => this.isEventAnnouncementPost(post) && post.linkedEventId != null)
+          .map((post) => Number(post.linkedEventId))
+          .filter((id) => Number.isInteger(id) && id > 0)
+      )
+    );
+
+    if (eventIds.length === 0) {
+      return;
+    }
+
+    this.eventService.getEvents().pipe(
+      catchError((err) => {
+        console.warn('Failed to load event images for community posts:', err);
+        return of([]);
+      })
+    ).subscribe((events) => {
+      const next = new Map<number, string>();
+      const wanted = new Set(eventIds);
+
+      for (const event of events) {
+        const id = Number(event?.eventId);
+        const url = this.normalizeMediaUrl(event?.imageUrl ?? null);
+        if (!Number.isInteger(id) || id <= 0 || !wanted.has(id) || !url) {
+          continue;
+        }
+        next.set(id, url);
+      }
+
+      this.eventImageById.set(next);
     });
   }
 
@@ -2021,6 +2061,20 @@ export class CommunityComponent {
     });
   }
 
+  onPostMediaClick(post: Post, index: number, event: Event): void {
+    event.stopPropagation();
+    if (this.isEventAnnouncementPost(post)) {
+      this.openEventFromPost(post, event);
+      return;
+    }
+
+    if (post.postId == null) {
+      return;
+    }
+
+    this.openMediaLightbox(post.postId, index);
+  }
+
   getHashtagsFromText(source?: string | null): string[] {
     return this.extractHashtags(source);
   }
@@ -2058,6 +2112,23 @@ export class CommunityComponent {
   }
 
   private normalizeProfileImageUrl(url?: string | null): string | null {
+    const raw = (url ?? '').trim();
+    if (!raw) {
+      return null;
+    }
+    if (/^https?:\/\//i.test(raw)) {
+      return raw;
+    }
+    if (raw.startsWith('/')) {
+      return raw;
+    }
+    if (raw.startsWith('uploads/')) {
+      return `/${raw}`;
+    }
+    return `/${raw.replace(/^\/+/, '')}`;
+  }
+
+  private normalizeMediaUrl(url?: string | null): string | null {
     const raw = (url ?? '').trim();
     if (!raw) {
       return null;
@@ -2206,10 +2277,36 @@ export class CommunityComponent {
   }
 
   getMediaForPost(postId: number): PostMedia[] {
-    return this.medias()
+    const baseMedia = this.medias()
       .filter((m) => m.post?.postId === postId)
       .slice()
       .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+
+    const post = this.findPostById(postId);
+    if (!post || !this.isEventAnnouncementPost(post) || post.linkedEventId == null) {
+      return baseMedia;
+    }
+
+    const linkedEventId = Number(post.linkedEventId);
+    const eventImageUrl = this.eventImageById().get(linkedEventId);
+    if (!eventImageUrl) {
+      return baseMedia;
+    }
+
+    const alreadyPresent = baseMedia.some((media) => this.normalizeMediaUrl(media.fileUrl) === eventImageUrl);
+    if (alreadyPresent) {
+      return baseMedia;
+    }
+
+    const eventMedia: PostMedia = {
+      mediaId: -(postId * 1000 + linkedEventId),
+      post: { postId },
+      fileUrl: eventImageUrl,
+      mediaType: 'IMAGE',
+      orderIndex: -1,
+    };
+
+    return [eventMedia, ...baseMedia];
   }
 
   getImageMediaForPost(postId: number): PostMedia[] {

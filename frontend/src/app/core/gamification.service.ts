@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
-export type LudificationGameKind = 'QUIZ' | 'CROSSWORD' | 'PUZZLE' | 'LUDO' | 'ROADMAP_NODE';
+export type LudificationGameKind = 'QUIZ' | 'CROSSWORD' | 'PUZZLE' | 'LUDO' | 'ROADMAP_NODE' | 'KARAOKE' | 'GOVERNORATE_GUESS' | 'EL_JEM_QUEST' | 'CHEF_QUEST' | 'CHKOBBA' | 'MUSIC';
 
 export interface GamificationBadgeEntry {
   badgeId: number;
@@ -10,8 +10,6 @@ export interface GamificationBadgeEntry {
   description?: string | null;
   iconUrl?: string | null;
   earnedAt?: string | null;
-  tournamentId?: number | null;
-  tournamentTitle?: string | null;
 }
 
 export interface GamificationMe {
@@ -31,48 +29,35 @@ export interface DailyChallengeRow {
   completed?: boolean;
 }
 
-export interface TournamentRoundRow {
-  roundId?: number;
-  sequenceOrder: number;
-  gameKind: LudificationGameKind;
-  gameId: number;
-  roundStartsAt?: string | null;
-  roundEndsAt?: string | null;
-}
 
-export interface ActiveTournament {
-  tournamentId: number;
-  title: string;
-  description?: string | null;
-  startsAt?: string | null;
-  endsAt?: string | null;
-  status: string;
-  winnerBadgeId?: number | null;
-  winnerBadgeName?: string | null;
-  rounds: TournamentRoundRow[];
-}
 
 export interface AdminBadge {
   badgeId: number;
   name: string;
   description?: string | null;
   iconUrl?: string | null;
+  targetGameId?: string | null;
+  targetGameKind?: LudificationGameKind | null;
 }
 
 export interface AdminDailyChallenge extends DailyChallengeRow {
   active?: boolean;
 }
 
-export interface AdminTournament {
-  tournamentId: number;
-  title: string;
-  description?: string | null;
-  startsAt?: string | null;
-  endsAt?: string | null;
-  status: string;
-  winnerBadge?: AdminBadge | null;
-  rounds: TournamentRoundRow[];
+export interface AdminGameUnlockCost {
+  gameId: string;
+  costPoints: number;
 }
+
+export interface AdminPointPackage {
+  id?: number;
+  name: string;
+  pointsAmount: number;
+  price: number;
+  active: boolean;
+}
+
+
 
 export interface GamificationReportPayload {
   gameKind: LudificationGameKind;
@@ -95,9 +80,7 @@ export class GamificationService {
     return this.http.get<DailyChallengeRow[]>(`${this.base}/challenges/today`);
   }
 
-  activeTournaments(): Observable<ActiveTournament[]> {
-    return this.http.get<ActiveTournament[]>(`${this.base}/tournaments/active`);
-  }
+
 
   reportGame(body: GamificationReportPayload): Observable<void> {
     return this.http.post<void>(`${this.base}/report-game`, body);
@@ -107,13 +90,13 @@ export class GamificationService {
     return this.http.get<AdminBadge[]>(`${this.adminBase}/badges`);
   }
 
-  adminCreateBadge(payload: { name: string; description?: string | null; iconUrl?: string | null }): Observable<AdminBadge> {
+  adminCreateBadge(payload: { name: string; description?: string | null; iconUrl?: string | null; targetGameId?: string | null; targetGameKind?: LudificationGameKind | null }): Observable<AdminBadge> {
     return this.http.post<AdminBadge>(`${this.adminBase}/badges`, payload);
   }
 
   adminUpdateBadge(
     id: number,
-    payload: { name: string; description?: string | null; iconUrl?: string | null }
+    payload: { name: string; description?: string | null; iconUrl?: string | null; targetGameId?: string | null; targetGameKind?: LudificationGameKind | null }
   ): Observable<AdminBadge> {
     return this.http.put<AdminBadge>(`${this.adminBase}/badges/${id}`, payload);
   }
@@ -138,29 +121,39 @@ export class GamificationService {
     return this.http.delete<void>(`${this.adminBase}/daily-challenges/${id}`);
   }
 
-  adminListTournaments(): Observable<AdminTournament[]> {
-    return this.http.get<AdminTournament[]>(`${this.adminBase}/tournaments`);
-  }
 
-  adminCreateTournament(payload: Record<string, unknown>): Observable<AdminTournament> {
-    return this.http.post<AdminTournament>(`${this.adminBase}/tournaments`, payload);
-  }
-
-  adminGoLiveTournament(id: number): Observable<{ status: string; tournamentId: number }> {
-    return this.http.post<{ status: string; tournamentId: number }>(`${this.adminBase}/tournaments/${id}/go-live`, {});
-  }
-
-  adminFinalizeTournament(id: number): Observable<{ status: string; tournamentId: number }> {
-    return this.http.post<{ status: string; tournamentId: number }>(`${this.adminBase}/tournaments/${id}/finalize`, {});
-  }
-
-  adminDeleteTournament(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.adminBase}/tournaments/${id}`);
-  }
 
   adminUploadBadgeIcon(file: File): Observable<{ imageUrl: string }> {
     const fd = new FormData();
     fd.append('file', file);
     return this.http.post<{ imageUrl: string }>(`/api/products/upload-image`, fd);
+  }
+
+  adminListUnlockCosts(): Observable<AdminGameUnlockCost[]> {
+    return this.http.get<AdminGameUnlockCost[]>(`${this.adminBase}/unlock-costs`);
+  }
+
+  adminSaveUnlockCost(payload: { gameId: string; costPoints: number }): Observable<AdminGameUnlockCost> {
+    return this.http.post<AdminGameUnlockCost>(`${this.adminBase}/unlock-costs`, payload);
+  }
+
+  adminDeleteUnlockCost(gameId: string): Observable<void> {
+    return this.http.delete<void>(`${this.adminBase}/unlock-costs/${gameId}`);
+  }
+
+  adminListPointPackages(): Observable<AdminPointPackage[]> {
+    return this.http.get<AdminPointPackage[]>(`${this.adminBase}/point-packages`);
+  }
+
+  adminCreatePointPackage(payload: AdminPointPackage): Observable<AdminPointPackage> {
+    return this.http.post<AdminPointPackage>(`${this.adminBase}/point-packages`, payload);
+  }
+
+  adminUpdatePointPackage(id: number, payload: AdminPointPackage): Observable<AdminPointPackage> {
+    return this.http.put<AdminPointPackage>(`${this.adminBase}/point-packages/${id}`, payload);
+  }
+
+  adminDeletePointPackage(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.adminBase}/point-packages/${id}`);
   }
 }

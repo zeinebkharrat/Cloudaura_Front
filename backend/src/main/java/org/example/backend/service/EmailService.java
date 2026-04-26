@@ -32,6 +32,7 @@ public class EmailService {
     private final InternetAddress shopFromAddress;
     private final String frontendBaseUrl;
     private final String welcomeImagePath;
+    private final QrCodeService qrCodeService;
 
     public EmailService(
             JavaMailSender userMailSender,
@@ -41,11 +42,13 @@ public class EmailService {
             @Value("${app.shop.mail.from.name:YallaTN}") String shopFromName,
             @Value("${app.shop.mail.from.address:${app.shop.mail.username:no-reply@localhost}}") String shopFromEmail,
             @Value("${app.frontend.base-url:http://localhost:4200}") String frontendBaseUrl,
-            @Value("${app.mail.welcome-image-path:}") String welcomeImagePath) {
+            @Value("${app.mail.welcome-image-path:}") String welcomeImagePath,
+            QrCodeService qrCodeService) {
         this.userMailSender = userMailSender;
         this.shopMailSender = shopMailSender;
         this.frontendBaseUrl = normalizeBaseUrl(frontendBaseUrl);
         this.welcomeImagePath = welcomeImagePath;
+        this.qrCodeService = qrCodeService;
         this.userFromAddress = buildFrom(userFromEmail, userFromName, "YallaTN+");
         this.shopFromAddress = buildFrom(shopFromEmail, shopFromName, "YallaTN");
     }
@@ -792,15 +795,12 @@ public class EmailService {
             String eventTitle,
             String venue,
             java.util.Date startDate,
-            Integer reservationId,
             List<String> qrTokens,
-            List<String> participantNames,
-            byte[] primaryQrPng) {
+            List<String> participantNames) {
 
         String displayName = (firstName == null || firstName.isBlank()) ? "traveler" : firstName;
         String safeEventTitle = escapeHtml(eventTitle == null ? "Event" : eventTitle);
         String safeVenue = escapeHtml(venue == null ? "TBA" : venue);
-        String safeReservation = escapeHtml(String.valueOf(reservationId));
         String eventDateTime = formatEventDateTime(startDate);
 
         String ticketDetailsHtml = "";
@@ -808,33 +808,34 @@ public class EmailService {
         int ticketsCount = qrTokens == null ? 0 : qrTokens.size();
         if (ticketsCount > 0) {
             StringBuilder b = new StringBuilder();
-            b.append("<ul style=\"padding-left:18px;color:#3a4d67;\">");
+            b.append("<div style=\"display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;\">");
             for (int i = 0; i < ticketsCount; i++) {
                 String token = qrTokens.get(i);
                 String participant = (participantNames != null && i < participantNames.size())
                         ? participantNames.get(i)
                         : ("Participant " + (i + 1));
-                b.append("<li style=\"margin:6px 0;\"><strong>Ticket #")
+            String cid = "event-ticket-qr-" + i;
+            b.append("<div style=\"border:1px solid #e6eef7;border-radius:12px;padding:10px;background:#ffffff;\">")
+                .append("<div style=\"font-weight:700;color:#1f2937;margin-bottom:4px;\">Ticket #")
                         .append(i + 1)
-                        .append("</strong> - Participant: ")
+                .append("</div><div style=\"margin-bottom:4px;color:#334155;\">Participant: ")
                         .append(escapeHtml(participant))
-                        .append(" - Reservation ID: ")
-                        .append(safeReservation)
-                        .append("<br/><span style=\"font-family:monospace;\">QR: ")
+                .append("</div><div style=\"margin:8px 0;text-align:center;\"><img src=\"cid:")
+                .append(cid)
+                .append("\" alt=\"QR Code\" style=\"width:170px;height:170px;border:1px solid #e6eef7;border-radius:10px;padding:6px;background:#fff;\"/></div>")
+                .append("<div style=\"font-family:monospace;color:#475569;word-break:break-all;\">QR: ")
                         .append(escapeHtml(token))
-                        .append("</span></li>");
+                .append("</div></div>");
 
                 ticketDetailsPlain.append("Ticket #")
                         .append(i + 1)
-                        .append(" - Participant: ")
+                .append(" - Participant: ")
                         .append(participant)
-                        .append(" - Reservation ID: ")
-                        .append(reservationId)
                         .append(" - QR: ")
                         .append(token)
                         .append("\n");
             }
-            b.append("</ul>");
+            b.append("</div>");
             ticketDetailsHtml = b.toString();
         }
 
@@ -856,9 +857,6 @@ public class EmailService {
                                     <p style="margin:0;color:#3a4d67;"><strong>Event:</strong> %s</p>
                                     <p style="margin:6px 0;color:#3a4d67;"><strong>Venue:</strong> %s</p>
                                     <p style="margin:6px 0;color:#3a4d67;"><strong>Date &amp; Time:</strong> %s</p>
-                                    <div style="margin:16px 0;text-align:center;">
-                                        <img src="cid:event-ticket-qr" alt="QR Code" style="width:210px;height:210px;border:1px solid #e6eef7;border-radius:10px;padding:8px;background:#fff;"/>
-                                    </div>
                                     <p style="margin:0 0 8px;color:#3a4d67;"><strong>Your tickets:</strong></p>
                                     %s
                                 </td></tr>
@@ -893,9 +891,18 @@ public class EmailService {
             helper.setSubject("YallaTN+ - Ticket confirmation");
             helper.setText(plain, html);
 
-            if (primaryQrPng != null && primaryQrPng.length > 0) {
-                InputStreamSource source = () -> new ByteArrayInputStream(primaryQrPng);
-                helper.addInline("event-ticket-qr", source, "image/png");
+            if (qrTokens != null) {
+                for (int i = 0; i < qrTokens.size(); i++) {
+                    String token = qrTokens.get(i);
+                    if (token == null || token.isBlank()) {
+                        continue;
+                    }
+                    byte[] qrPng = qrCodeService.generateQrPng(token, 220);
+                    String cid = "event-ticket-qr-" + i;
+                    InputStreamSource source = () -> new ByteArrayInputStream(qrPng);
+                    helper.addInline(cid, source, "image/png");
+                    helper.addAttachment("ticket-" + (i + 1) + ".png", new ByteArrayResource(qrPng), "image/png");
+                }
             }
 
             userMailSender.send(message);

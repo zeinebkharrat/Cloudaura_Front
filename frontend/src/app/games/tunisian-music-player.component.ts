@@ -1,5 +1,6 @@
-import { Component, OnInit, signal, OnDestroy } from '@angular/core';
+import { Component, OnInit, signal, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { LudificationService } from '../core/ludification.service';
 
 interface Instrument {
   id: string;
@@ -875,6 +876,8 @@ interface Instrument {
   `]
 })
 export class TunisianMusicPlayerComponent implements OnInit, OnDestroy {
+  private ludification = inject(LudificationService);
+
   instruments: Instrument[] = [
     {
       id: 'darbuka',
@@ -1251,6 +1254,12 @@ export class TunisianMusicPlayerComponent implements OnInit, OnDestroy {
   }
 
   goBack() {
+    this.ludification.reportStandaloneGame({
+      gameKind: 'MUSIC',
+      gameId: 1,
+      score: 100,
+      maxScore: 100
+    }).subscribe();
     window.history.back();
   }
 }

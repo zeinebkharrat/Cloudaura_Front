@@ -11,6 +11,8 @@ import java.util.List;
 public interface AccommodationRepository extends JpaRepository<Accommodation, Integer> {
     List<Accommodation> findByCity_CityId(int cityId);
 
+       void deleteByCity_CityId(Integer cityId);
+
     List<Accommodation> findByTypeAndCity_CityId(Accommodation.AccommodationType type, int cityId);
 
     List<Accommodation> findByPricePerNightBetween(double min, double max);

@@ -1,5 +1,6 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { LudificationService } from '../core/ludification.service';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { trigger, transition, style, animate, state } from '@angular/animations';
@@ -718,6 +719,7 @@ interface Ingredient {
   ]
 })
 export class ChefQuestPlayerComponent implements OnInit, OnDestroy {
+  private ludification = inject(LudificationService);
   gameState: 'start' | 'playing' | 'victory' | 'fail' = 'start';
   allRecipes: BackendRecipe[] = [];
   selectedIngredients: Set<string> = new Set();
@@ -884,6 +886,13 @@ export class ChefQuestPlayerComponent implements OnInit, OnDestroy {
       this.finalDishUrl = matched.finalDishImageUrl;
       this.points = matched.rewardPoints;
       this.gameState = 'victory';
+      this.ludification.reportStandaloneGame({
+        gameKind: 'CHEF_QUEST',
+        gameId: 1,
+        score: this.points,
+        maxScore: this.points
+      }).subscribe();
+
     } else {
       this.gameState = 'fail';
     }

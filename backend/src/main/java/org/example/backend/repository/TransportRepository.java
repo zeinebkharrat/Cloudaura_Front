@@ -120,4 +120,6 @@ public interface TransportRepository extends JpaRepository<Transport, Integer> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE Transport t SET t.isActive = false WHERE t.transportId IN :ids AND t.isActive = true")
     int deactivateByIdIn(@Param("ids") Collection<Integer> ids);
+
+    void deleteByDepartureCity_CityIdOrArrivalCity_CityId(Integer departureCityId, Integer arrivalCityId);
 }

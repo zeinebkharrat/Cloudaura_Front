@@ -50,6 +50,13 @@
             <div class="validation-msg-toast" [class.success]="validationMessage()?.success">
               <span class="icon">{{ validationMessage()?.success ? '✓' : '⚠' }}</span>
               {{ validationMessage()?.text }}
+              @if (validationMessage()?.success) {
+                @if (!pointsClaimed()) {
+                  <button type="button" class="btn-primary" style="margin-left:auto; background: linear-gradient(135deg, #10b981, #059669);" (click)="claimPoints()">Réclamer mes points</button>
+                } @else {
+                  <button type="button" class="btn-secondary" style="margin-left:auto; opacity: 0.7;" disabled>Points réclamés !</button>
+                }
+              }
             </div>
           }
 

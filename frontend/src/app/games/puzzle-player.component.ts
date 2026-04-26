@@ -41,6 +41,7 @@ export class PuzzlePlayerComponent implements OnInit {
   readonly draggingPieceId = signal<number | null>(null);
   readonly dragOverSlotIndex = signal<number | null>(null);
   readonly rejectHint = signal<string | null>(null);
+  readonly pointsClaimed = signal(false);
 
   constructor(
     private readonly route: ActivatedRoute,
@@ -312,7 +313,6 @@ export class PuzzlePlayerComponent implements OnInit {
 
     if (this.bankPieces().length === 0) {
       this.won.set(true);
-      this.recordRoadmapProgress();
     }
     this.onDragEnd();
   }
@@ -355,5 +355,23 @@ export class PuzzlePlayerComponent implements OnInit {
       backgroundSize: `${g * 100}% ${g * 100}%`,
       backgroundPosition: `${(col / (g - 1)) * 100}% ${(row / (g - 1)) * 100}%`,
     };
+  }
+
+  claimPoints(): void {
+    if (this.pointsClaimed()) return;
+    this.pointsClaimed.set(true);
+    if (this.hasLinkedRoadmap()) {
+      this.recordRoadmapProgress();
+    } else {
+      const id = this.puzzle()?.puzzleId;
+      if (id) {
+        this.api.reportStandaloneGame({
+          gameKind: 'PUZZLE',
+          gameId: id,
+          score: 1,
+          maxScore: 1
+        }).subscribe();
+      }
+    }
   }
 }

@@ -117,4 +117,6 @@ public interface TransportReservationRepository extends JpaRepository<TransportR
            + "OR (r.travelDate IS NULL AND (t IS NULL OR t.departureTime IS NULL) "
            + "AND r.createdAt IS NOT NULL AND r.createdAt <= :cutoff)")
     List<Integer> findIdsEligibleForAutoDelete(@Param("cutoff") LocalDateTime cutoff);
+
+       void deleteByTransportDepartureCityCityIdOrTransportArrivalCityCityId(Integer departureCityId, Integer arrivalCityId);
 }

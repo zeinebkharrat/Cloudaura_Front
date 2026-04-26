@@ -11,4 +11,6 @@ public interface EventReservationRepository extends JpaRepository<EventReservati
 	long countByUserUserId(Integer userId);
 
 	void deleteByEvent_EventId(Integer eventId);
+
+	void deleteByEventCityCityId(Integer cityId);
 }

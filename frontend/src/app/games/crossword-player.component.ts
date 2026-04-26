@@ -48,9 +48,10 @@ export class CrosswordPlayerComponent implements OnInit {
   gridCells = signal<CrosswordCell[][]>([]);
   horizontalClues = signal<CrosswordClue[]>([]);
   verticalClues = signal<CrosswordClue[]>([]);
-  validationMessage = signal<{ text: string; success: boolean } | null>(null);
+  validationMessage = signal<{ text: string; success: boolean; score?: number; max?: number } | null>(null);
   isLoading = signal(true);
   loadError = signal<string | null>(null);
+  pointsClaimed = signal(false);
   
   // Track current direction to help auto-advance
   currentDirection = 'H';
@@ -248,8 +249,7 @@ export class CrosswordPlayerComponent implements OnInit {
     }
 
     if (correct === total) {
-      this.validationMessage.set({ text: 'All answers correct! Well done 🎉', success: true });
-      this.recordRoadmapProgress(correct, total);
+      this.validationMessage.set({ text: 'All answers correct! Well done 🎉', success: true, score: correct, max: total });
     } else if (isComplete) {
       this.validationMessage.set({ text: `Certaines lettres sont incorrectes (${correct}/${total}).`, success: false });
     } else {
@@ -335,5 +335,28 @@ export class CrosswordPlayerComponent implements OnInit {
     this.gridCells.set(board);
     this.horizontalClues.set(horizontal);
     this.verticalClues.set(vertical);
+  }
+
+  claimPoints(): void {
+    if (this.pointsClaimed() || !this.auth.currentUser()) return;
+    this.pointsClaimed.set(true);
+
+    const val = this.validationMessage();
+    const score = val?.score ?? 0;
+    const max = val?.max ?? 1;
+
+    if (this.roadmapNodeId) {
+      this.recordRoadmapProgress(score, max);
+    } else {
+      const id = this.crossword()?.crosswordId;
+      if (id) {
+        this.api.reportStandaloneGame({
+          gameKind: 'CROSSWORD',
+          gameId: id,
+          score: score,
+          maxScore: max
+        }).subscribe();
+      }
+    }
   }
 }

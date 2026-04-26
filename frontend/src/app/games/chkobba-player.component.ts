@@ -2,6 +2,8 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { trigger, transition, style, animate, query, stagger } from '@angular/animations';
 import { RouterModule } from '@angular/router';
+import { LudificationService } from '../core/ludification.service';
+import { inject } from '@angular/core';
 
 interface Card {
   id: string;
@@ -553,6 +555,7 @@ interface GameState {
   ]
 })
 export class ChkobbaPlayerComponent implements OnInit, OnDestroy {
+  private ludification = inject(LudificationService);
   tableBg = '/chkobba_bg.png';
   state: GameState = this.getInitialState();
   finalPoints = { karta: 0, dinariResult: 0, dinaryet: 0, sabeat: 0 };
@@ -856,6 +859,12 @@ export class ChkobbaPlayerComponent implements OnInit, OnDestroy {
   endGame() {
     this.calculatePoints();
     this.state.isGameOver = true;
+    this.ludification.reportStandaloneGame({
+      gameKind: 'CHKOBBA',
+      gameId: 1, // Unique game
+      score: this.totalScore,
+      maxScore: 20 // Approx max
+    }).subscribe();
   }
 
   calculatePoints() {

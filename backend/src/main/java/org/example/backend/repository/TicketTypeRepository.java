@@ -10,4 +10,6 @@ public interface TicketTypeRepository extends JpaRepository<TicketType, Integer>
     Optional<TicketType> findFirstByEvent_EventIdOrderByTicketTypeIdAsc(Integer eventId);
 
     void deleteByEvent_EventId(Integer eventId);
+
+    void deleteByEventCityCityId(Integer cityId);
 }

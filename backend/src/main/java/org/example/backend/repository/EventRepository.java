@@ -13,6 +13,8 @@ public interface EventRepository extends JpaRepository<Event, Integer> {
     // Find events by city for better filtering in the UI
     List<Event> findByCityCityId(Integer cityId);
 
+    void deleteByCityCityId(Integer cityId);
+
     // Find by type (e.g., "Festival", "Hiking")
     List<Event> findByEventType(String eventType);
 

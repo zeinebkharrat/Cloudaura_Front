@@ -1,3 +1,4 @@
 package org.example.backend.dto.gamification;
 
-public record BadgeRequest(String name, String description, String iconUrl) {}
+import org.example.backend.model.LudificationGameKind;
+public record BadgeRequest(String name, String description, String iconUrl, String targetGameId, LudificationGameKind targetGameKind) {}

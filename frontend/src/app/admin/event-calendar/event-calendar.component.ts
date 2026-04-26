@@ -47,13 +47,42 @@ export class EventCalendarComponent implements OnInit {
       this.calendarOptions.events = data.map(ev => ({
         id: ev.eventId?.toString(),
         title: ev.title,
-        start: ev.startDate,
-        end: ev.endDate,
+        // In month grid, force all events to render as colored day blocks (not plain time text).
+        start: this.toEventDateOnly(ev.startDate),
+        end: this.toExclusiveEndDateOnly(ev.startDate, ev.endDate),
+        allDay: true,
+        display: 'block',
         backgroundColor: this.getEventColor(ev.eventType),
-        borderColor: 'transparent',
+        borderColor: this.getEventColor(ev.eventType),
+        textColor: '#ffffff',
         extendedProps: { ...ev }
       }));
     });
+  }
+
+  private toEventDateOnly(value: any): string {
+    if (!value) {
+      return this.todayIso;
+    }
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) {
+      return this.todayIso;
+    }
+    return this.toIsoDate(d);
+  }
+
+  /** FullCalendar uses exclusive `end` for all-day events, so add 1 day to include the last day. */
+  private toExclusiveEndDateOnly(startValue: any, endValue: any): string {
+    const start = new Date(startValue ?? endValue ?? new Date());
+    const end = new Date(endValue ?? startValue ?? new Date());
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      const fallback = new Date();
+      fallback.setDate(fallback.getDate() + 1);
+      return this.toIsoDate(fallback);
+    }
+    const max = end.getTime() >= start.getTime() ? end : start;
+    max.setDate(max.getDate() + 1);
+    return this.toIsoDate(max);
   }
 
   private toIsoDate(value: Date): string {
@@ -151,7 +180,13 @@ export class EventCalendarComponent implements OnInit {
   }
 
   getEventColor(type: string): string {
-    const colors: any = { 'CULTURAL': '#6366f1', 'SPORT': '#f59e0b', 'FESTIVAL': '#ec4899', 'TECH': '#10b981' };
-    return colors[type] || '#3b82f6';
+    const t = (type ?? '').toUpperCase();
+    const colors: Record<string, string> = {
+      CULTURAL: '#6366f1',
+      SPORT: '#f59e0b',
+      FESTIVAL: '#ec4899',
+      TECH: '#10b981'
+    };
+    return colors[t] || '#3b82f6';
   }
 }

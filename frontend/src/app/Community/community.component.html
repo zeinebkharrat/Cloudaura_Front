@@ -280,11 +280,6 @@
             [attr.data-post-id]="post.postId"
             [class.post-card--location-hover]="isLocationHoverVisible(post.postId!)"
             [class.post-card--event-announcement]="isEventAnnouncementPost(post)"
-            [class.post-card--clickable]="isEventAnnouncementPost(post)"
-            [attr.role]="isEventAnnouncementPost(post) ? 'button' : null"
-            [attr.tabindex]="isEventAnnouncementPost(post) ? 0 : null"
-            (click)="isEventAnnouncementPost(post) && openEventFromPost(post, $event)"
-            (keydown.enter)="isEventAnnouncementPost(post) && openEventFromPost(post, $event)"
           >
             <header class="post-header">
               <div class="post-author">
@@ -433,14 +428,23 @@
                     <ng-container *ngIf="m.fileUrl">
                       <div
                         class="media-item post-media-item"
+                        [class.post-media-item--event]="isEventAnnouncementPost(post)"
                         [class.post-media-item--collapsed]="isCollapsedImageTile(post.postId!, i)"
-                        (click)="openMediaLightbox(post.postId!, i)"
+                        (click)="onPostMediaClick(post, i, $event)"
                       >
                         <img
                           class="media-image"
                           [src]="m.fileUrl"
                           [alt]="'Post media ' + post.postId"
                         />
+                        <button
+                          type="button"
+                          class="post-media-book-btn"
+                          *ngIf="isEventAnnouncementPost(post)"
+                          (click)="openEventFromPost(post, $event)"
+                        >
+                          Book now
+                        </button>
                         <div class="post-media-item__overlay" *ngIf="isCollapsedImageTile(post.postId!, i)">
                           +{{ getRemainingImagesCount(post.postId!) }}
                         </div>

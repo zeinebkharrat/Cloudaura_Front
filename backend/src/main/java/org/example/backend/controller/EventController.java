@@ -348,20 +348,14 @@ public class EventController {
             String emailError = "";
             try {
                 if (currentUser.getEmail() != null && !currentUser.getEmail().isBlank()) {
-                    String primaryToken = qrTokens.isEmpty()
-                            ? String.valueOf(res.getEventReservationId())
-                            : qrTokens.get(0);
-                    byte[] qrPng = qrCodeService.generateQrPng(primaryToken, 260);
                     emailService.sendEventTicketConfirmation(
                             currentUser.getEmail(),
                             currentUser.getFirstName(),
                             event.getTitle(),
                             event.getVenue(),
                             event.getStartDate(),
-                            res.getEventReservationId(),
                             qrTokens,
-                                participantLabels,
-                            qrPng
+                                participantLabels
                     );
                     emailSent = true;
                 }
@@ -671,18 +665,14 @@ public class EventController {
             String emailError = "";
             try {
                 if (current.getEmail() != null && !current.getEmail().isBlank()) {
-                    String primaryToken = qrTokens.isEmpty() ? String.valueOf(res.getEventReservationId()) : qrTokens.get(0);
-                    byte[] qrPng = qrCodeService.generateQrPng(primaryToken, 260);
                     emailService.sendEventTicketConfirmation(
                             current.getEmail(),
                             current.getFirstName(),
                             res.getEvent() != null ? res.getEvent().getTitle() : "Event",
                             res.getEvent() != null ? res.getEvent().getVenue() : "TBA",
                             res.getEvent() != null ? res.getEvent().getStartDate() : null,
-                            res.getEventReservationId(),
                             qrTokens,
-                                participantLabels,
-                            qrPng
+                                participantLabels
                     );
                             emailSent = true;
                 }

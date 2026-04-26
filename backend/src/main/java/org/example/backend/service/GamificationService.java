@@ -17,8 +17,6 @@ public class GamificationService {
     private final BadgeRepository badgeRepository;
     private final DailyChallengeRepository dailyChallengeRepository;
     private final UserDailyChallengeCompletionRepository dailyCompletionRepository;
-    private final TournamentRepository tournamentRepository;
-    private final TournamentParticipationRepository participationRepository;
     private final UserBadgeRepository userBadgeRepository;
 
     public GamificationService(
@@ -27,16 +25,12 @@ public class GamificationService {
             BadgeRepository badgeRepository,
             DailyChallengeRepository dailyChallengeRepository,
             UserDailyChallengeCompletionRepository dailyCompletionRepository,
-            TournamentRepository tournamentRepository,
-            TournamentParticipationRepository participationRepository,
             UserBadgeRepository userBadgeRepository) {
         this.pointsService = pointsService;
         this.userRepository = userRepository;
         this.badgeRepository = badgeRepository;
         this.dailyChallengeRepository = dailyChallengeRepository;
         this.dailyCompletionRepository = dailyCompletionRepository;
-        this.tournamentRepository = tournamentRepository;
-        this.participationRepository = participationRepository;
         this.userBadgeRepository = userBadgeRepository;
     }
 
@@ -46,7 +40,7 @@ public class GamificationService {
         int pts = computeGamePoints(score, maxScore);
         pointsService.addPoints(user, pts);
         tryDailyChallengesFromNode(user, node);
-        addTournamentScoreFromNode(user, node, score, maxScore);
+        tryAwardBadgesFromNode(user, node);
     }
 
     /** Standalone game (direct URL, no roadmap step). */
@@ -55,7 +49,7 @@ public class GamificationService {
         int pts = computeGamePoints(score, maxScore);
         pointsService.addPoints(user, pts);
         tryDailyChallengesStandalone(user, kind, gameId);
-        addTournamentScoreStandalone(user, kind, gameId, score, maxScore);
+        tryAwardBadgesStandalone(user, kind, gameId);
     }
 
     private static int computeGamePoints(Integer score, Integer maxScore) {
@@ -135,6 +129,10 @@ public class GamificationService {
                 yield c.getTargetId().equals(node.getPuzzleId());
             }
             case LUDO -> false;
+            case KARAOKE -> false;
+
+            case GOVERNORATE_GUESS, EL_JEM_QUEST, CHEF_QUEST, CHKOBBA, MUSIC -> false;
+
         };
     }
 
@@ -148,66 +146,37 @@ public class GamificationService {
         return gameId != null && c.getTargetId().equals(gameId);
     }
 
-    private void addTournamentScoreFromNode(User user, RoadmapNode node, Integer score, Integer maxScore) {
-        Date now = new Date();
-        List<Tournament> live = tournamentRepository.findLiveAt(TournamentStatus.LIVE, now);
-        int delta = score != null && maxScore != null && maxScore > 0 ? (100 * score) / maxScore : 10;
-        for (Tournament t : live) {
-            for (TournamentRound r : t.getRounds()) {
-                if (roundMatchesNode(r, node)) {
-                    addParticipationScore(user, t, delta);
-                }
+    private void tryAwardBadgesFromNode(User user, RoadmapNode node) {
+        // A roadmap node can be many types of games
+        if (node.getQuiz() != null) {
+            tryAwardBadgesStandalone(user, LudificationGameKind.QUIZ, node.getQuiz().getQuizId());
+        }
+        if (node.getCrossword() != null) {
+            tryAwardBadgesStandalone(user, LudificationGameKind.CROSSWORD, node.getCrossword().getCrosswordId());
+        }
+        if (node.getPuzzleId() != null) {
+            tryAwardBadgesStandalone(user, LudificationGameKind.PUZZLE, node.getPuzzleId());
+        }
+        // Also check if the node itself is linked
+        tryAwardBadgesStandalone(user, LudificationGameKind.ROADMAP_NODE, node.getNodeId());
+    }
+
+    private void tryAwardBadgesStandalone(User user, LudificationGameKind kind, Integer gameId) {
+        if (gameId == null) return;
+        List<Badge> eligible = badgeRepository.findByTargetGameIdAndTargetGameKind(String.valueOf(gameId), kind.name());
+        for (Badge b : eligible) {
+            if (!userBadgeRepository.existsByUser_UserIdAndBadge_BadgeId(user.getUserId(), b.getBadgeId())) {
+                awardBadge(user, b);
             }
         }
     }
 
-    private void addTournamentScoreStandalone(
-            User user, LudificationGameKind kind, Integer gameId, Integer score, Integer maxScore) {
-        Date now = new Date();
-        List<Tournament> live = tournamentRepository.findLiveAt(TournamentStatus.LIVE, now);
-        int delta = score != null && maxScore != null && maxScore > 0 ? (100 * score) / maxScore : 10;
-        for (Tournament t : live) {
-            for (TournamentRound r : t.getRounds()) {
-                if (r.getGameKind() == kind && r.getGameId() != null && r.getGameId().equals(gameId)) {
-                    addParticipationScore(user, t, delta);
-                }
-            }
-        }
-    }
-
-    private static boolean roundMatchesNode(TournamentRound r, RoadmapNode node) {
-        return switch (r.getGameKind()) {
-            case ROADMAP_NODE -> r.getGameId() != null && r.getGameId().equals(node.getNodeId());
-            case QUIZ ->
-                    node.getQuiz() != null
-                            && r.getGameId() != null
-                            && r.getGameId().equals(node.getQuiz().getQuizId());
-            case CROSSWORD ->
-                    node.getCrossword() != null
-                            && r.getGameId() != null
-                            && r.getGameId().equals(node.getCrossword().getCrosswordId());
-            case PUZZLE ->
-                    node.getPuzzleId() != null
-                            && r.getGameId() != null
-                            && r.getGameId().equals(node.getPuzzleId());
-            case LUDO -> false;
-        };
-    }
-
-    private void addParticipationScore(User user, Tournament t, int delta) {
-        TournamentParticipation p =
-                participationRepository
-                        .findByTournament_TournamentIdAndUser_UserId(t.getTournamentId(), user.getUserId())
-                        .orElseGet(
-                                () -> {
-                                    TournamentParticipation row = new TournamentParticipation();
-                                    row.setTournament(tournamentRepository.getReferenceById(t.getTournamentId()));
-                                    row.setUser(userRepository.getReferenceById(user.getUserId()));
-                                    row.setTotalScore(0);
-                                    return participationRepository.save(row);
-                                });
-        p.setTotalScore((p.getTotalScore() == null ? 0 : p.getTotalScore()) + delta);
-        participationRepository.save(p);
+    private void awardBadge(User user, Badge badge) {
+        UserBadge ub = new UserBadge();
+        ub.setUser(userRepository.getReferenceById(user.getUserId()));
+        ub.setBadge(badgeRepository.getReferenceById(badge.getBadgeId()));
+        ub.setEarnedAt(new Date());
+        userBadgeRepository.save(ub);
     }
 
     @Transactional(readOnly = true)
@@ -225,54 +194,13 @@ public class GamificationService {
                                     m.put("description", b.getDescription());
                                     m.put("iconUrl", b.getIconUrl());
                                     m.put("earnedAt", ub.getEarnedAt());
-                                    if (ub.getTournament() != null) {
-                                        m.put("tournamentId", ub.getTournament().getTournamentId());
-                                        m.put("tournamentTitle", ub.getTournament().getTitle());
-                                    }
                                     return m;
                                 })
                         .toList();
         return Map.of("points", pts, "badges", badges);
     }
 
-    @Transactional
-    public void finalizeTournament(Integer tournamentId) {
-        Tournament t =
-                tournamentRepository
-                        .findById(tournamentId)
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        List<TournamentParticipation> ranking =
-                participationRepository.findByTournament_TournamentIdOrderByTotalScoreDesc(tournamentId);
-        if (!ranking.isEmpty()) {
-            TournamentParticipation top = ranking.get(0);
-            t.setWinnerUser(top.getUser());
-            if (t.getWinnerBadge() != null) {
-                awardTournamentBadge(top.getUser(), t.getWinnerBadge(), t);
-            }
-        }
-        t.setStatus(TournamentStatus.FINISHED);
-        tournamentRepository.save(t);
-    }
 
-    private void awardTournamentBadge(User user, Badge badge, Tournament tournament) {
-        if (userBadgeRepository.existsByUser_UserIdAndBadge_BadgeIdAndTournament_TournamentId(
-                user.getUserId(), badge.getBadgeId(), tournament.getTournamentId())) {
-            return;
-        }
-        UserBadge ub = new UserBadge();
-        ub.setUser(userRepository.getReferenceById(user.getUserId()));
-        ub.setBadge(badgeRepository.getReferenceById(badge.getBadgeId()));
-        ub.setTournament(tournament);
-        userBadgeRepository.save(ub);
-    }
-
-    @Transactional(readOnly = true)
-    public List<Map<String, Object>> listActiveTournaments() {
-        Date now = new Date();
-        return tournamentRepository.findLiveAt(TournamentStatus.LIVE, now).stream()
-                .map(this::toTournamentMap)
-                .toList();
-    }
 
     @Transactional(readOnly = true)
     public List<Map<String, Object>> todayChallenges(User user) {
@@ -303,31 +231,9 @@ public class GamificationService {
         return m;
     }
 
-    private Map<String, Object> toTournamentMap(Tournament t) {
-        Map<String, Object> m = new LinkedHashMap<>();
-        m.put("tournamentId", t.getTournamentId());
-        m.put("title", t.getTitle());
-        m.put("description", t.getDescription());
-        m.put("startsAt", t.getStartsAt());
-        m.put("endsAt", t.getEndsAt());
-        m.put("status", t.getStatus().name());
-        if (t.getWinnerBadge() != null) {
-            m.put("winnerBadgeId", t.getWinnerBadge().getBadgeId());
-            m.put("winnerBadgeName", t.getWinnerBadge().getName());
-        }
-        List<Map<String, Object>> rounds = new ArrayList<>();
-        t.getRounds().stream()
-                .sorted(Comparator.comparing(TournamentRound::getSequenceOrder))
-                .forEach(
-                        r -> {
-                            Map<String, Object> rm = new LinkedHashMap<>();
-                            rm.put("roundId", r.getRoundId());
-                            rm.put("sequenceOrder", r.getSequenceOrder());
-                            rm.put("gameKind", r.getGameKind().name());
-                            rm.put("gameId", r.getGameId());
-                            rounds.add(rm);
-                        });
-        m.put("rounds", rounds);
-        return m;
+
+
+    public void deductPoints(User user, int amount) {
+        pointsService.addPoints(user, -amount);
     }
 }

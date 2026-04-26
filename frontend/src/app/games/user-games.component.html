@@ -78,7 +78,7 @@
             <svg class="node-connector" viewBox="0 0 100 60" preserveAspectRatio="none">
               <path d="M 12 0 C 12 30, 88 30, 88 60"
                     fill="none"
-                    [attr.stroke]="isNodeCompleted(i) ? '#0ea5e9' : '#374151'"
+                    [attr.stroke]="isNodeCompleted(i) ? 'var(--mediterranean-blue)' : 'var(--border-soft)'"
                     stroke-width="8"
                     stroke-linecap="round"
                     [attr.stroke-dasharray]="!isNodeCompleted(i) ? '8 8' : 'none'" />
@@ -88,7 +88,7 @@
             <svg class="node-connector" viewBox="0 0 100 60" preserveAspectRatio="none">
               <path d="M 88 0 C 88 30, 12 30, 12 60"
                     fill="none"
-                    [attr.stroke]="isNodeCompleted(i) ? '#0ea5e9' : '#374151'"
+                    [attr.stroke]="isNodeCompleted(i) ? 'var(--mediterranean-blue)' : 'var(--border-soft)'"
                     stroke-width="8"
                     stroke-linecap="round"
                     [attr.stroke-dasharray]="!isNodeCompleted(i) ? '8 8' : 'none'" />
@@ -111,80 +111,147 @@
     <div class="puzzle-grid">
       <!-- 1. Puzzles -->
       @for (p of puzzles(); track p.puzzleId) {
-        <button class="puzzle-card" (click)="playPuzzle(p.puzzleId)">
+        <button class="puzzle-card" (click)="lockCheckAndNavigate('PUZZLE_' + p.puzzleId, playPuzzle.bind(this, p.puzzleId))">
           <div class="game-category-badge">PUZZLE</div>
           <img [src]="p.imageDataUrl" [alt]="p.title" />
           <div class="puzzle-card__meta">
             <h3>{{ p.title }}</h3>
-            @if (isLoggedIn()) { <span>Jouer →</span> } @else { <span class="ludo-signin-hint">Connexion requise →</span> }
+            @if (!isGameUnlocked('PUZZLE_' + p.puzzleId)) {
+              <span class="ludo-signin-hint">Verrouillé ({{ getGameCost('PUZZLE_' + p.puzzleId) }} pts)</span>
+              <button class="unlock-btn btn-primary" (click)="unlockGame('PUZZLE_' + p.puzzleId, $event)" style="font-size: 0.8rem; padding: 4px 8px; margin-top: 4px;">🔓 Déverrouiller</button>
+            } @else if (isLoggedIn()) {
+              <span>Jouer →</span>
+            } @else {
+              <span class="ludo-signin-hint">Connexion requise →</span>
+            }
           </div>
         </button>
       }
 
       <!-- 2. Governorate Guess -->
-      <button type="button" class="puzzle-card" (click)="playGovernorateGuess()">
+      <button type="button" class="puzzle-card" (click)="lockCheckAndNavigate('GOVERNORATE_GUESS', playGovernorateGuess.bind(this))">
         <div class="game-category-badge">EXPLORATION</div>
         <div class="ludo-cover">🗺️</div>
 
         <div class="puzzle-card__meta">
           <h3>{{ 'GAMES_HUB.GOVERNORATE_GUESS' | translate }}</h3>
           <p class="puzzle-card__blurb">{{ 'GAMES_HUB.GOVERNORATE_GUESS_DESC' | translate }}</p>
-          @if (isLoggedIn()) { <span>Jouer →</span> } @else { <span class="ludo-signin-hint">Connexion requise →</span> }
+          @if (!isGameUnlocked('GOVERNORATE_GUESS')) {
+            <span class="ludo-signin-hint">Verrouillé ({{ getGameCost('GOVERNORATE_GUESS') }} pts)</span>
+            <button class="unlock-btn btn-primary" (click)="unlockGame('GOVERNORATE_GUESS', $event)" style="font-size: 0.8rem; padding: 4px 8px; margin-top: 4px;">🔓 Déverrouiller</button>
+          } @else if (isLoggedIn()) {
+            <span>Jouer →</span>
+          } @else {
+            <span class="ludo-signin-hint">Connexion requise →</span>
+          }
         </div>
       </button>
 
       <!-- 3. El Jem Quest -->
-      <button type="button" class="puzzle-card" (click)="playElJemQuest()">
+      <button type="button" class="puzzle-card" (click)="lockCheckAndNavigate('EL_JEM_QUEST', playElJemQuest.bind(this))">
         <div class="game-category-badge">AVENTURE 3D</div>
         <img class="puzzle-card__hero" src="/assets/games/el-jem-start.png" alt="El Jem" width="640" height="360" />
         <div class="puzzle-card__meta">
           <h3>{{ 'GAMES_HUB.EL_JEM_QUEST' | translate }}</h3>
           <p class="puzzle-card__blurb">{{ 'GAMES_HUB.EL_JEM_QUEST_DESC' | translate }}</p>
-          @if (isLoggedIn()) { <span>Jouer →</span> } @else { <span class="ludo-signin-hint">Connexion requise →</span> }
+          @if (!isGameUnlocked('EL_JEM_QUEST')) {
+            <span class="ludo-signin-hint">Verrouillé ({{ getGameCost('EL_JEM_QUEST') }} pts)</span>
+            <button class="unlock-btn btn-primary" (click)="unlockGame('EL_JEM_QUEST', $event)" style="font-size: 0.8rem; padding: 4px 8px; margin-top: 4px;">🔓 Déverrouiller</button>
+          } @else if (isLoggedIn()) {
+            <span>Jouer →</span>
+          } @else {
+            <span class="ludo-signin-hint">Connexion requise →</span>
+          }
         </div>
       </button>
 
       <!-- 4. Ludo Tunisia -->
-      <button type="button" class="puzzle-card" (click)="playLudo()">
+      <button type="button" class="puzzle-card" (click)="lockCheckAndNavigate('LUDO', playLudo.bind(this))">
         <div class="game-category-badge">PLATEAU</div>
         <div class="ludo-cover">🎲</div>
         <div class="puzzle-card__meta">
           <h3>{{ 'GAMES_HUB.LUDO_BOARD_TITLE' | translate }}</h3>
           <p class="puzzle-card__blurb">{{ 'GAMES_HUB.LUDO_DESC' | translate }}</p>
-          @if (isLoggedIn()) { <span>Jouer →</span> } @else { <span class="ludo-signin-hint">Connexion requise →</span> }
+          @if (!isGameUnlocked('LUDO')) {
+            <span class="ludo-signin-hint">Verrouillé ({{ getGameCost('LUDO') }} pts)</span>
+            <button class="unlock-btn btn-primary" (click)="unlockGame('LUDO', $event)" style="font-size: 0.8rem; padding: 4px 8px; margin-top: 4px;">🔓 Déverrouiller</button>
+          } @else if (isLoggedIn()) {
+            <span>Jouer →</span>
+          } @else {
+            <span class="ludo-signin-hint">Connexion requise →</span>
+          }
         </div>
       </button>
 
       <!-- 5. Cloud Chef -->
-      <button type="button" class="puzzle-card" (click)="playChefQuest()">
+      <button type="button" class="puzzle-card" (click)="lockCheckAndNavigate('CHEF_QUEST', playChefQuest.bind(this))">
         <div class="game-category-badge">CUISINE</div>
         <div class="ludo-cover">🍳</div>
         <div class="puzzle-card__meta">
           <h3>{{ 'GAMES_HUB.CHEF_QUEST' | translate }}</h3>
           <p class="puzzle-card__blurb">{{ 'GAMES_HUB.CHEF_QUEST_DESC' | translate }}</p>
-          @if (isLoggedIn()) { <span>Jouer →</span> } @else { <span class="ludo-signin-hint">Connexion requise →</span> }
+          @if (!isGameUnlocked('CHEF_QUEST')) {
+            <span class="ludo-signin-hint">Verrouillé ({{ getGameCost('CHEF_QUEST') }} pts)</span>
+            <button class="unlock-btn btn-primary" (click)="unlockGame('CHEF_QUEST', $event)" style="font-size: 0.8rem; padding: 4px 8px; margin-top: 4px;">🔓 Déverrouiller</button>
+          } @else if (isLoggedIn()) {
+             <span>Jouer →</span>
+          } @else {
+             <span class="ludo-signin-hint">Connexion requise →</span>
+          }
         </div>
       </button>
 
       <!-- 6. Chkobba -->
-      <button type="button" class="puzzle-card" [routerLink]="['/games/chkobba']">
+      <button type="button" class="puzzle-card" (click)="lockCheckAndNavigate('CHKOBBA', playChkobba.bind(this))">
         <div class="game-category-badge">TRADITION</div>
         <div class="ludo-cover" style="background: linear-gradient(135deg, #16a34a, #15803d);">🪕</div>
         <div class="puzzle-card__meta">
           <h3>{{ 'GAMES_HUB.CHKOBBA' | translate }}</h3>
           <p class="puzzle-card__blurb">{{ 'GAMES_HUB.CHKOBBA_DESC' | translate }}</p>
-          @if (isLoggedIn()) { <span>Jouer →</span> } @else { <span class="ludo-signin-hint">Connexion requise →</span> }
+          @if (!isGameUnlocked('CHKOBBA')) {
+            <span class="ludo-signin-hint">Verrouillé ({{ getGameCost('CHKOBBA') }} pts)</span>
+            <button class="unlock-btn btn-primary" (click)="unlockGame('CHKOBBA', $event)" style="font-size: 0.8rem; padding: 4px 8px; margin-top: 4px;">🔓 Déverrouiller</button>
+          } @else if (isLoggedIn()) {
+             <span>Jouer →</span>
+          } @else {
+             <span class="ludo-signin-hint">Connexion requise →</span>
+          }
         </div>
       </button>
 
       <!-- 7. Rythmes de Tunisie -->
-      <button type="button" class="puzzle-card" [routerLink]="['/games/music']">
+      <button type="button" class="puzzle-card" (click)="lockCheckAndNavigate('MUSIC', playMusic.bind(this))">
         <div class="game-category-badge">MUSIQUE</div>
         <div class="ludo-cover" style="background: linear-gradient(135deg, #f59e0b, #d97706);">🎻</div>
         <div class="puzzle-card__meta">
           <h3>{{ 'GAMES_HUB.MUSIC' | translate }}</h3>
           <p class="puzzle-card__blurb">{{ 'GAMES_HUB.MUSIC_DESC' | translate }}</p>
-          @if (isLoggedIn()) { <span>Jouer →</span> } @else { <span class="ludo-signin-hint">Connexion requise →</span> }
+          @if (!isGameUnlocked('MUSIC')) {
+            <span class="ludo-signin-hint">Verrouillé ({{ getGameCost('MUSIC') }} pts)</span>
+            <button class="unlock-btn btn-primary" (click)="unlockGame('MUSIC', $event)" style="font-size: 0.8rem; padding: 4px 8px; margin-top: 4px;">🔓 Déverrouiller</button>
+          } @else if (isLoggedIn()) {
+             <span>Jouer →</span>
+          } @else {
+             <span class="ludo-signin-hint">Connexion requise →</span>
+          }
+        </div>
+      </button>
+
+      <!-- 8. Yalla Karaoke -->
+      <button type="button" class="puzzle-card" (click)="lockCheckAndNavigate('KARAOKE', playKaraoke.bind(this))">
+        <div class="game-category-badge">KARAOKÉ</div>
+        <div class="ludo-cover" style="background: linear-gradient(135deg, #6366f1, #4f46e5);">🎤</div>
+        <div class="puzzle-card__meta">
+          <h3>Yalla Karaoke</h3>
+          <p class="puzzle-card__blurb">Chantez vos tubes tunisiens préférés et testez votre voix !</p>
+          @if (!isGameUnlocked('KARAOKE')) {
+            <span class="ludo-signin-hint">Verrouillé ({{ getGameCost('KARAOKE') }} pts)</span>
+            <button class="unlock-btn btn-primary" (click)="unlockGame('KARAOKE', $event)" style="font-size: 0.8rem; padding: 4px 8px; margin-top: 4px;">🔓 Déverrouiller</button>
+          } @else if (isLoggedIn()) {
+             <span>Jouer →</span>
+          } @else {
+             <span class="ludo-signin-hint">Connexion requise →</span>
+          }
         </div>
       </button>
       @if (ludoCards().length > 0) {
@@ -198,7 +265,30 @@
           </div>
         }
       }
-
     </div>
   </div>
+
+  @if (isLoggedIn() && pointPackages().length > 0) {
+    <div class="store-section">
+      <h2>Points Store</h2>
+      <p>Acquire more points to unlock premium games securely via Stripe.</p>
+
+      <div class="packages-grid">
+        @for (pkg of pointPackages(); track pkg.id) {
+          <div class="package-card">
+            <div class="package-icon">🪙</div>
+            <h3>{{ pkg.name }}</h3>
+            <p class="package-points">+ {{ pkg.pointsAmount }} pts</p>
+            <p class="package-price">{{ pkg.price | currency:'USD' }}</p>
+            <button 
+              class="btn-primary" 
+              (click)="buyPackage(pkg)" 
+              [disabled]="buyingPackageId() === pkg.id">
+              {{ buyingPackageId() === pkg.id ? 'Processing...' : 'Buy Now' }}
+            </button>
+          </div>
+        }
+      </div>
+    </div>
+  }
 </div>

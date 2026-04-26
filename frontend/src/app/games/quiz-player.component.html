@@ -40,7 +40,16 @@
 
       @if (!isFinished() && questions().length > 0) {
         <div class="qp-body">
-          <h2 class="q-text">{{ questions()[currentQuestion()].text }}</h2>
+          <div class="q-header">
+            <h2 class="q-text">{{ questions()[currentQuestion()].text }}</h2>
+            <button type="button" class="btn-ai-solve" (click)="solveWithAi()" [disabled]="aiLoading() || selectedOption() !== null">
+              @if (aiLoading()) {
+                <i class="pi pi-spin pi-spinner"></i>
+              } @else {
+                ✨ AI Solve
+              }
+            </button>
+          </div>
           <div class="q-options">
             @for (opt of questions()[currentQuestion()].options; track opt; let i = $index) {
               <button
@@ -98,6 +107,11 @@
             }
           </h2>
           <p class="qr-desc">Quiz <strong>{{ quiz()?.title }}</strong></p>
+          @if (!pointsClaimed()) {
+            <button class="btn-primary" (click)="claimPoints()" style="margin-right: 10px; background: linear-gradient(135deg, #10b981, #059669)">Réclamer mes points</button>
+          } @else {
+            <button class="btn-secondary" style="margin-right: 10px; opacity: 0.7" disabled>Points réclamés !</button>
+          }
           <button class="btn-primary" (click)="backToHub()">Retour aux jeux</button>
         </div>
       }

@@ -5,11 +5,27 @@ import org.example.backend.dto.CityRequest;
 import org.example.backend.dto.CityResponse;
 import org.example.backend.exception.ResourceNotFoundException;
 import org.example.backend.model.City;
+import org.example.backend.repository.AccommodationRepository;
+import org.example.backend.repository.AccommodationReviewRepository;
+import org.example.backend.repository.ActivityReservationRepository;
 import org.example.backend.repository.ActivityRepository;
 import org.example.backend.repository.ActivityMediaRepository;
+import org.example.backend.repository.ActivityReviewRepository;
 import org.example.backend.repository.CityMediaRepository;
 import org.example.backend.repository.CityRepository;
+import org.example.backend.repository.DistanceRepository;
+import org.example.backend.repository.EventRepository;
+import org.example.backend.repository.EventReservationRepository;
 import org.example.backend.repository.RestaurantRepository;
+import org.example.backend.repository.RestaurantMenuImageRepository;
+import org.example.backend.repository.RestaurantReviewRepository;
+import org.example.backend.repository.ReservationRepository;
+import org.example.backend.repository.RoomRepository;
+import org.example.backend.repository.SpecialOfferRepository;
+import org.example.backend.repository.TicketTypeRepository;
+import org.example.backend.repository.TransportRepository;
+import org.example.backend.repository.TransportReservationRepository;
+import org.example.backend.repository.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -23,6 +39,22 @@ public class CityService {
 
     private final CityRepository cityRepository;
     private final CityMediaRepository cityMediaRepository;
+    private final UserRepository userRepository;
+    private final DistanceRepository distanceRepository;
+    private final SpecialOfferRepository specialOfferRepository;
+    private final TransportReservationRepository transportReservationRepository;
+    private final ReservationRepository reservationRepository;
+    private final TransportRepository transportRepository;
+    private final EventReservationRepository eventReservationRepository;
+    private final TicketTypeRepository ticketTypeRepository;
+    private final EventRepository eventRepository;
+    private final AccommodationReviewRepository accommodationReviewRepository;
+    private final RoomRepository roomRepository;
+    private final AccommodationRepository accommodationRepository;
+    private final RestaurantMenuImageRepository restaurantMenuImageRepository;
+    private final RestaurantReviewRepository restaurantReviewRepository;
+    private final ActivityReservationRepository activityReservationRepository;
+    private final ActivityReviewRepository activityReviewRepository;
     private final ActivityMediaRepository activityMediaRepository;
     private final RestaurantRepository restaurantRepository;
     private final ActivityRepository activityRepository;
@@ -77,10 +109,44 @@ public class CityService {
     @Transactional
     public void delete(Integer id) {
         City city = findCity(id);
-        cityMediaRepository.deleteByCityCityId(city.getCityId());
-        activityMediaRepository.deleteByActivityCityCityId(city.getCityId());
-        restaurantRepository.deleteByCityCityId(city.getCityId());
-        activityRepository.deleteByCityCityId(city.getCityId());
+        Integer cityId = city.getCityId();
+
+        // Preserve users while removing city links.
+        userRepository.clearCityByCityId(cityId);
+
+        // Delete transport-related reservations before deleting transports.
+        transportReservationRepository.deleteByTransportDepartureCityCityIdOrTransportArrivalCityCityId(cityId, cityId);
+        reservationRepository.deleteByTransportDepartureCityCityIdOrTransportArrivalCityCityId(cityId, cityId);
+
+        // Delete event-related children before events.
+        eventReservationRepository.deleteByEventCityCityId(cityId);
+        ticketTypeRepository.deleteByEventCityCityId(cityId);
+        eventRepository.deleteByCityCityId(cityId);
+
+        // Delete accommodation-related children before accommodations.
+        accommodationReviewRepository.deleteByAccommodationCityCityId(cityId);
+        reservationRepository.deleteByRoomAccommodationCityCityId(cityId);
+        roomRepository.deleteByAccommodationCityCityId(cityId);
+        accommodationRepository.deleteByCity_CityId(cityId);
+
+        // Delete restaurant-related children before restaurants.
+        restaurantMenuImageRepository.deleteByRestaurantCityCityId(cityId);
+        restaurantReviewRepository.deleteByRestaurantCityCityId(cityId);
+        restaurantRepository.deleteByCityCityId(cityId);
+
+        // Delete activity-related children before activities.
+        activityReservationRepository.deleteByActivityCityCityId(cityId);
+        activityReviewRepository.deleteByActivityCityCityId(cityId);
+        activityMediaRepository.deleteByActivityCityCityId(cityId);
+        activityRepository.deleteByCityCityId(cityId);
+
+        // Delete direct city-linked content.
+        transportRepository.deleteByDepartureCity_CityIdOrArrivalCity_CityId(cityId, cityId);
+        distanceRepository.deleteByFromCity_CityIdOrToCity_CityId(cityId, cityId);
+        specialOfferRepository.deleteByCityCityId(cityId);
+        cityMediaRepository.deleteByCityCityId(cityId);
+
+        // passport_city_stamp and passport_photo are handled by DB constraints.
         cityRepository.delete(city);
     }
 

@@ -36,6 +36,8 @@ public interface ActivityReservationRepository extends JpaRepository<ActivityRes
 
 	void deleteByActivityActivityId(Integer activityId);
 
+	void deleteByActivityCityCityId(Integer cityId);
+
 	@Query("""
 		select ar
 		from ActivityReservation ar

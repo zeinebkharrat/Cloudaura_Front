@@ -13,6 +13,8 @@ public interface RoomRepository extends JpaRepository<Room, Integer> {
     List<Room> findByAccommodation_AccommodationId(int accommodationId);
     List<Room> findByAccommodation_AccommodationIdAndRoomType(int accId, Room.RoomType roomType);
 
+       void deleteByAccommodationCityCityId(Integer cityId);
+
     @Query("SELECT r FROM Room r WHERE r.accommodation.accommodationId = :accId " +
            "AND r.roomId NOT IN (" +
            "  SELECT res.room.roomId FROM Reservation res " +

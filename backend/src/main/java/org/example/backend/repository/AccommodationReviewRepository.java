@@ -17,6 +17,8 @@ public interface AccommodationReviewRepository extends JpaRepository<Accommodati
 
     long countByAccommodationAccommodationId(Integer accommodationId);
 
+    void deleteByAccommodationCityCityId(Integer cityId);
+
     @Query("select avg(r.stars) from AccommodationReview r where r.accommodation.accommodationId = :accommodationId")
     Double averageStarsByAccommodationId(@Param("accommodationId") Integer accommodationId);
 }

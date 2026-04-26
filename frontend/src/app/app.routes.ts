@@ -59,6 +59,8 @@ import { ServicesActivitiesComponent } from './explore/services-activities.compo
 import { ArtisanOrdersComponent } from './artisan/artisan-orders.component';
 import { FavoritesComponent } from './shop/favorites.component';
 import { SettingsComponent } from './settings.component';
+import { KaraokePlayerComponent } from './games/karaoke-player.component';
+import { AdminKaraokeComponent } from './games/admin-karaoke.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -91,6 +93,11 @@ export const routes: Routes = [
 
   { path: 'virtual-tour', component: VirtualTourPageComponent },
   { path: 'jeux', redirectTo: 'games', pathMatch: 'full' },
+  {
+    path: 'games/karaoke',
+    component: KaraokePlayerComponent,
+    canActivate: [authGuard]
+  },
   { path: 'games', component: UserGamesComponent },
   { path: 'games/quiz/:id', component: QuizPlayerComponent, canActivate: [authGuard] },
   { path: 'games/crossword/:id', component: CrosswordPlayerComponent, canActivate: [authGuard] },
@@ -133,6 +140,7 @@ export const routes: Routes = [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       { path: 'dashboard', component: AdminDashboardComponent },
       { path: 'games', component: AdminGamesComponent },
+      { path: 'karaoke', component: AdminKaraokeComponent },
       { path: 'gamification', component: AdminGamificationComponent },
       { path: 'events', component: EventManagementComponent },
       { path: 'events/dashboard', component: EventManagementComponent },

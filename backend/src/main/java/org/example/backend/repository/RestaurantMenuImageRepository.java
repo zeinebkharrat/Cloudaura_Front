@@ -9,4 +9,6 @@ public interface RestaurantMenuImageRepository extends JpaRepository<RestaurantM
 
     @Query("select coalesce(max(img.displayOrder), 0) from RestaurantMenuImage img where img.restaurant.restaurantId = :restaurantId")
     int findMaxDisplayOrderByRestaurantId(@Param("restaurantId") Integer restaurantId);
+
+    void deleteByRestaurantCityCityId(Integer cityId);
 }

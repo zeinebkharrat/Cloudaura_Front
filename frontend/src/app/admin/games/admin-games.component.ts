@@ -14,6 +14,7 @@ import {
   LudoCard,
 } from '../../core/ludification.service';
 import { ChefQuestService } from '../../games/chef-quest.service';
+import { KaraokeService, KaraokeSong } from '../../core/karaoke.service';
 
 @Component({
   selector: 'app-admin-games',
@@ -25,13 +26,14 @@ import { ChefQuestService } from '../../games/chef-quest.service';
 export class AdminGamesComponent implements OnInit {
   private readonly http = inject(HttpClient);
 
-  activeTab = signal<'QUIZ' | 'CROSSWORD' | 'ROADMAP' | 'PUZZLE' | 'LUDO' | 'CHEF'>('QUIZ');
+  activeTab = signal<'QUIZ' | 'CROSSWORD' | 'ROADMAP' | 'PUZZLE' | 'LUDO' | 'CHEF' | 'KARAOKE'>('QUIZ');
   
   quizzes = signal<Quiz[]>([]);
   crosswords = signal<Crossword[]>([]);
   roadmaps = signal<RoadmapNode[]>([]);
   puzzles = signal<PuzzleImage[]>([]);
   ludoCards = signal<LudoCard[]>([]);
+  karaokeSongs = signal<any[]>([]);
   
   // Chef Quest Data
   chefRecipes = signal<any[]>([]);
@@ -60,12 +62,16 @@ export class AdminGamesComponent implements OnInit {
     category: 'GENERAL',
     published: true,
   });
+  newKaraoke = signal<Partial<KaraokeSong>>({ title: '', artist: '', audioUrl: '', instrumentalUrl: '', lyricsJson: '[]', published: false });
+  isGeneratingKaraoke = signal<boolean>(false);
+  rawLyricsInput = '';
 
   // Chef Quest New Items
   newChefIngredient = signal<any>({ name: '', iconUrl: '', x: 50, y: 50 });
   newChefRecipe = signal<any>({ title: '', description: '', rewardPoints: 1000, ingredients: [], bgImageUrl: 'assets/images/chef_bg.png', finalDishImageUrl: '' });
   
   private chefService = inject(ChefQuestService);
+  private karaokeService = inject(KaraokeService);
   
   constructor(private api: LudificationService) {}
 
@@ -91,9 +97,12 @@ export class AdminGamesComponent implements OnInit {
     // Load Chef Quest Data
     this.chefService.getRecipes().subscribe(d => this.chefRecipes.set(d));
     this.chefService.getIngredients().subscribe(d => this.chefIngredients.set(d));
+    
+    // Load Karaoke Data
+    this.karaokeService.getAllSongs().subscribe(d => this.karaokeSongs.set(d));
   }
   
-  setTab(tab: 'QUIZ' | 'CROSSWORD' | 'ROADMAP' | 'PUZZLE' | 'LUDO' | 'CHEF') {
+  setTab(tab: 'QUIZ' | 'CROSSWORD' | 'ROADMAP' | 'PUZZLE' | 'LUDO' | 'CHEF' | 'KARAOKE') {
     this.activeTab.set(tab); this.creationMode.set(false);
   }
 
@@ -127,6 +136,8 @@ export class AdminGamesComponent implements OnInit {
     } else if (this.activeTab() === 'CHEF') {
       this.newChefIngredient.set({ name: '', iconUrl: '', x: 50, y: 50 });
       this.newChefRecipe.set({ title: '', description: '', rewardPoints: 1000, ingredients: [], bgImageUrl: 'assets/images/chef_bg.png' });
+    } else if (this.activeTab() === 'KARAOKE') {
+      this.newKaraoke.set({ title: '', artist: '', audioUrl: '', lyricsJson: '[]', published: false });
     }
   }
 
@@ -174,6 +185,8 @@ export class AdminGamesComponent implements OnInit {
         this.newChefIngredient.set({ ...item });
         this.newChefRecipe.set({ title: '', description: '', rewardPoints: 1000, ingredients: [], bgImageUrl: 'assets/images/chef_bg.png', finalDishImageUrl: '' }); 
       }
+    } else if (this.activeTab() === 'KARAOKE') {
+      this.newKaraoke.set({ ...item });
     }
   }
 
@@ -251,6 +264,7 @@ export class AdminGamesComponent implements OnInit {
     });
     input.value = '';
   }
+
 
   /** Force un multiple de 3 pour le chrono (3 tiers = 3 étoiles côté joueur). */
   snapQuizTimeSeconds(): void {
@@ -520,10 +534,20 @@ export class AdminGamesComponent implements OnInit {
       } else {
         alert('Please fill in a valid Title for the Recipe or Name for the Ingredient.');
       }
+    } else if (this.activeTab() === 'KARAOKE') {
+      const song = this.newKaraoke();
+      if (!song.title || !song.artist) {
+        alert('Title and Artist are required.');
+        return;
+      }
+      this.karaokeService.saveSong(song as KaraokeSong).subscribe(() => {
+        this.refreshAll();
+        this.closeCreate();
+      });
     }
   }
 
-  deleteItem(id: number | undefined, type: 'QUIZ' | 'CROSSWORD' | 'ROADMAP' | 'PUZZLE' | 'LUDO' | 'CHEF', subType?: 'ING' | 'REC') {
+  deleteItem(id: number | undefined, type: 'QUIZ' | 'CROSSWORD' | 'ROADMAP' | 'PUZZLE' | 'LUDO' | 'CHEF' | 'KARAOKE', subType?: 'ING' | 'REC') {
     if(!id) return;
     if (type === 'QUIZ') this.api.deleteQuiz(id).subscribe(() => this.refreshAll());
     if (type === 'CROSSWORD') this.api.deleteCrossword(id).subscribe(() => this.refreshAll());
@@ -537,6 +561,7 @@ export class AdminGamesComponent implements OnInit {
         this.chefService.deleteRecipe(id).subscribe(() => this.refreshAll());
       }
     }
+    if (type === 'KARAOKE') this.karaokeService.deleteSong(id).subscribe(() => this.refreshAll());
   }
 
   onPuzzleFileSelected(event: Event): void {
@@ -597,6 +622,84 @@ export class AdminGamesComponent implements OnInit {
     } else {
       this.newChefRecipe.set({ ...this.newChefRecipe(), title: ' ' }); // Trigger recipe mode
     }
+  }
+
+  generateKaraokeWithAI() {
+    const song = this.newKaraoke();
+    if (!song.title || !song.artist) {
+      alert('Titre et Artiste requis.');
+      return;
+    }
+    this.isGeneratingKaraoke.set(true);
+    
+    // On passe title, artist et éventuellement les paroles brutes
+    this.http.post<{ lyrics: string }>('/api/games/karaoke/admin/generate-lyrics', {
+      title: song.title,
+      artist: song.artist,
+      lyricsText: this.rawLyricsInput
+    }).subscribe({
+      next: (res) => {
+        this.newKaraoke.set({ ...song, lyricsJson: res.lyrics });
+        this.isGeneratingKaraoke.set(false);
+        this.rawLyricsInput = ''; 
+      },
+      error: (err) => {
+        console.error(err);
+        alert('Erreur lors de la génération (Vérifiez la console).');
+        this.isGeneratingKaraoke.set(false);
+      }
+    });
+  }
+
+  transcribeWithWhisper() {
+    const song = this.newKaraoke();
+    if (!song.audioUrl) {
+      alert('Veuillez d\'abord uploader un fichier audio.');
+      return;
+    }
+    
+    this.isGeneratingKaraoke.set(true);
+    this.http.post<{ lyrics: string }>('/api/games/karaoke/admin/transcribe', {
+      audioUrl: song.audioUrl,
+      title: song.title,
+      artist: song.artist
+    }).subscribe({
+      next: (res) => {
+        this.newKaraoke.set({ ...song, lyricsJson: res.lyrics });
+        alert('Transcription Whisper v3 terminée avec succès !');
+        this.isGeneratingKaraoke.set(false);
+      },
+      error: (err) => {
+        console.error(err);
+        alert('Erreur de transcription : ' + (err.error?.message || err.statusText));
+        this.isGeneratingKaraoke.set(false);
+      }
+    });
+  }
+
+  uploadKaraokeAudio(event: any, type: 'vocal' | 'instrumental' = 'vocal') {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('subDir', 'audio');
+
+    this.http.post<any>('http://localhost:9091/api/public/uploads/audio', formData)
+      .subscribe({
+        next: (res) => {
+          if (type === 'vocal') {
+            this.newKaraoke.update(k => ({ ...k, audioUrl: res.url }));
+          } else {
+            this.newKaraoke.update(k => ({ ...k, instrumentalUrl: res.url }));
+          }
+          alert(`Fichier ${type} uploadé avec succès !`);
+        },
+        error: (err) => {
+          console.error(err);
+          alert('Erreur lors de l\'upload de l\'audio.');
+        }
+      });
   }
 }
 
