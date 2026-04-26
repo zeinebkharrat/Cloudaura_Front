@@ -233,7 +233,7 @@
   padding: 0.68rem 0.7rem;
   border: 1px solid var(--border-soft);
   border-radius: 0.78rem;
-  background: #fff;
+  background: var(--surface-1);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 

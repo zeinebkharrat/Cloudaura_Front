@@ -58,7 +58,7 @@
 
         <label class="crafts-filter-field">
           <span>Category</span>
-          <select [ngModel]="selectedCategory()" (ngModelChange)="selectedCategory.set($event)">
+          <select class="ui-list-select" [ngModel]="selectedCategory()" (ngModelChange)="selectedCategory.set($event)">
             <option [value]="null">All categories</option>
             <option value="BIJOUX">💎 Bijoux</option>
             <option value="TEXTILE">🧵 Textile</option>
@@ -71,7 +71,7 @@
 
         <label class="crafts-filter-field" *ngIf="!isArtisan()">
           <span>City</span>
-          <select [ngModel]="selectedCityId()" (ngModelChange)="onCityChange($event)">
+          <select class="ui-list-select" [ngModel]="selectedCityId()" (ngModelChange)="onCityChange($event)">
             <option [value]="null">All cities</option>
             <option *ngFor="let c of cities()" [value]="c.cityId">{{ c.name }}</option>
           </select>
@@ -515,7 +515,7 @@
               <!-- Catégorie -->
               <div class="form-group">
                 <label class="form-label">{{ 'FEATURE_CATALOG.FORM_CATEGORY' | translate }} <span class="required">*</span></label>
-                <select [(ngModel)]="newProduct().category" name="category" required class="form-select">
+                <select [(ngModel)]="newProduct().category" name="category" required class="form-select ui-list-select">
                   <option value="">{{ 'FEATURE_CATALOG.FORM_SELECT' | translate }}</option>
                   <option value="BIJOUX">{{ 'FEATURE_CATALOG.CAT.BIJOUX' | translate }}</option>
                   <option value="TEXTILE">{{ 'FEATURE_CATALOG.CAT.TEXTILE' | translate }}</option>
@@ -529,7 +529,7 @@
               <!-- Statut -->
               <div class="form-group">
                 <label class="form-label">{{ 'FEATURE_CATALOG.FORM_STATUS' | translate }}</label>
-                <select [(ngModel)]="newProduct().status" name="status" class="form-select">
+                <select [(ngModel)]="newProduct().status" name="status" class="form-select ui-list-select">
                   <option value="PENDING">{{ 'FEATURE_CATALOG.STATUS_OPT_PENDING' | translate }}</option>
                   <option value="DRAFT">{{ 'FEATURE_CATALOG.STATUS_OPT_DRAFT' | translate }}</option>
                   <option *ngIf="auth.hasRole('ROLE_ADMIN')" value="PUBLISHED">{{ 'FEATURE_CATALOG.STATUS_OPT_PUBLISHED' | translate }}</option>

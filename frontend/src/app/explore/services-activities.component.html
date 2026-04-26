@@ -12,7 +12,7 @@
 
         <label class="filter-field" [class.filter-detected]="voiceDetectedFilters().city">
           <span>City</span>
-          <select [ngModel]="selectedCityId()" (ngModelChange)="onCityFilterChange($event)">
+          <select class="ui-list-select" [ngModel]="selectedCityId()" (ngModelChange)="onCityFilterChange($event)">
             <option value="all">{{ 'EXPLORE_SERVICES_ACTIVITIES.ALL_CITIES' | translate }}</option>
             @for (city of cities(); track city.cityId) {
               <option [ngValue]="city.cityId">{{ city.name }}</option>
@@ -72,7 +72,7 @@
               </svg>
             </button>
           </div>
-          <select [ngModel]="sort()" (ngModelChange)="onSortChange($event)">
+          <select class="ui-list-select" [ngModel]="sort()" (ngModelChange)="onSortChange($event)">
             <option value="activityId,desc">{{ 'EXPLORE_SERVICES_ACTIVITIES.SORT_NEWEST' | translate }}</option>
             <option value="name,asc">{{ 'EXPLORE_SERVICES_ACTIVITIES.SORT_NAME' | translate }}</option>
             <option value="price,asc">{{ 'EXPLORE_SERVICES_ACTIVITIES.SORT_PRICE_ASC' | translate }}</option>

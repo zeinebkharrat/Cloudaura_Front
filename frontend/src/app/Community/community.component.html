@@ -33,7 +33,7 @@
         <label class="composer-chip location-chip">
           <img src="icones/location-pin.svg" alt="" class="composer-loc-icon" width="18" height="18" />
           <select
-            class="composer-location-select"
+            class="composer-location-select ui-list-select"
             [value]="newPostLocation()"
             (change)="newPostLocation.set($any($event.target).value)"
           >
@@ -495,7 +495,7 @@
                     <label class="field-label">
                       <span>{{ 'COMMUNITY.PLACE' | translate }}</span>
                       <select
-                        class="form-select"
+                        class="form-select ui-list-select"
                         [value]="editPostLocation()"
                         (change)="editPostLocation.set($any($event.target).value)"
                       >
@@ -509,7 +509,7 @@
                     <label class="field-label">
                       <span>{{ 'COMMUNITY.VISIBILITY' | translate }}</span>
                       <select
-                        class="form-select"
+                        class="form-select ui-list-select"
                         [value]="editPostVisibility()"
                         (change)="editPostVisibility.set($any($event.target).value)"
                       >
