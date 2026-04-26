@@ -1,0 +1,44 @@
+{
+  "api_url": "http://127.0.0.1:5050/api/recommend",
+  "total_requests": 20,
+  "metrics": {
+    "http_success_pct": 100.0,
+    "top1_acc_pct": 10.0,
+    "top2_acc_pct": 15.0,
+    "top3_acc_pct": 20.0,
+    "top5_acc_pct": 35.0,
+    "mrr_pct": 17.6667,
+    "ndcg5_pct": 21.8957,
+    "mean_expected_rank": 650.35,
+    "expected_city_mean_score_pct": 7.8564,
+    "mean_top1_confidence_pct": 24.8609,
+    "region_alignment_pct": 68.4211,
+    "top1_prediction_coverage_pct": 30.0,
+    "latency_p50_ms": 313.0612,
+    "latency_mean_ms": 315.7996,
+    "latency_p95_ms": 351.7681
+  },
+  "per_region": {
+    "any": {
+      "count": 1,
+      "top1_acc_pct": 0.0,
+      "top5_acc_pct": 100.0
+    },
+    "center": {
+      "count": 7,
+      "top1_acc_pct": 28.5714,
+      "top5_acc_pct": 42.8571
+    },
+    "north": {
+      "count": 6,
+      "top1_acc_pct": 0.0,
+      "top5_acc_pct": 33.3333
+    },
+    "south": {
+      "count": 6,
+      "top1_acc_pct": 0.0,
+      "top5_acc_pct": 16.6667
+    }
+  },
+  "errors": []
+}

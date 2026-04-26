@@ -988,6 +988,14 @@ h1, h2, h3, h4, h5, h6 {
   color: #0f172a !important;
 }
 
+/* Inline datepicker input (transport + live flights): avoid default white field on dark theme */
+:root[data-theme='dark'] .p-datepicker .p-inputtext {
+  background: transparent !important;
+  border-color: transparent !important;
+  color: var(--text-color) !important;
+  box-shadow: none !important;
+}
+
 /* ---------- Tooltip ---------- */
 .p-tooltip .p-tooltip-text {
   background: #1a2332 !important;

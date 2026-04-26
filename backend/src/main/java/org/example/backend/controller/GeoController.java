@@ -110,12 +110,12 @@ public class GeoController {
 
         Optional<City> exact = cityRepository.findByName(locationName);
         if (exact.isPresent()) {
-            return exact.filter(c -> !c.isVirtualFlightEndpointCity());
+            return exact.filter(c -> !c.isExcludedFromPublicCityCatalog());
         }
 
         String normalized = locationName.toLowerCase().trim();
         List<City> all = cityRepository.findAll().stream()
-                .filter(c -> !c.isVirtualFlightEndpointCity())
+                .filter(c -> !c.isExcludedFromPublicCityCatalog())
                 .toList();
         return all.stream()
                 .filter(c -> c.getName() != null)

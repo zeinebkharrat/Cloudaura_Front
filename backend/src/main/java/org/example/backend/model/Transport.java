@@ -71,7 +71,9 @@ public class Transport {
         if (type == TransportType.PLANE && (operatorName == null || operatorName.isBlank())) {
             throw new IllegalStateException("La compagnie aérienne est obligatoire pour un avion");
         }
-        if (departureCity != null && arrivalCity != null &&
+        // Allow same cities for CAR type (pickup and return at same location)
+        // For other types, departure and arrival cities must be different
+        if (type != TransportType.CAR && departureCity != null && arrivalCity != null &&
             departureCity.getCityId().equals(arrivalCity.getCityId())) {
             throw new IllegalStateException("La ville de départ et d'arrivée doivent être différentes");
         }

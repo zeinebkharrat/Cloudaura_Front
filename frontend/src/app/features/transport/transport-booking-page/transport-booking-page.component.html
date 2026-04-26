@@ -244,9 +244,9 @@
             }
 
             <div class="conf-btns">
-              <button pButton [label]="'TRANSPORT_BOOKING.BTN_HOME' | translate" icon="pi pi-home"
+              <button pButton [label]="'TRANSPORT_BOOKING.BTN_MY_BOOKINGS' | translate" icon="pi pi-list"
                       class="p-button-raised" type="button"
-                      (click)="router.navigate(['/'])"></button>
+                      (click)="router.navigate(['/mes-reservations'], { queryParams: { tab: 'transport' } })"></button>
             </div>
           </div>
         }

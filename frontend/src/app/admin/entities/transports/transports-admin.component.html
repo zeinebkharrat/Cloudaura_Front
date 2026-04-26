@@ -1,4 +1,12 @@
 <div class="admin-container">
+  @if (transportApiBanner(); as banner) {
+    <div class="transport-api-banner" role="alert">
+      <span class="transport-api-banner__text">{{ banner }}</span>
+      <button type="button" class="transport-api-banner__dismiss" (click)="dismissTransportApiBanner()" aria-label="Dismiss">
+        <i class="pi pi-times"></i>
+      </button>
+    </div>
+  }
 
   <!-- Stats Row -->
   <div class="stats-row">
@@ -34,17 +42,13 @@
 
   <div class="section-header">
     <h2>Transport management</h2>
-    <button pButton label="+ New transport" class="btn-create" (click)="openTransportDialog()"></button>
+    <button pButton label="+ New flight" class="btn-create" (click)="openTransportDialog()"></button>
   </div>
 
   <div class="search-form">
     <input class="search-input" type="text"
            [ngModel]="transportSearch()" (ngModelChange)="onTransportSearch($event)"
-           placeholder="Search type, city, airline, price, status…" />
-    <select class="type-filter" [ngModel]="filterTypeValue()" (ngModelChange)="onTypeFilter($event)">
-      <option value="">All types</option>
-      <option *ngFor="let t of transportTypes" [value]="t.value">{{ t.label }}</option>
-    </select>
+           placeholder="Search city, airline, flight code, price, status…" />
     <button class="search-btn" (click)="clearTransportSearch()">
       <i class="pi pi-refresh"></i> Clear
     </button>
@@ -62,7 +66,7 @@
     } @else if (pagedTransports().length === 0) {
       <div class="empty-state">
         <i class="pi pi-car empty-icon"></i>
-        <p>{{ transportSearch() || filterTypeValue() ? 'No transport matches your search.' : 'No transport found.' }}</p>
+        <p>{{ transportSearch() ? 'No flight matches your search.' : 'No flights in the catalogue yet.' }}</p>
       </div>
     } @else {
       <table class="data-table">
@@ -107,7 +111,7 @@
                   </span>
                 }
               </td>
-              <td><span class="price-val">{{ t.price | currency:'TND':'symbol':'1.2-2' }}</span></td>
+              <td><span class="price-val">{{ (t.price ?? 0) | currency:'TND':'symbol':'1.2-2' }}</span></td>
               <td>
                 @if (t.type === 'PLANE') {
                   <div class="cell-main"><i class="pi pi-send" style="margin-right:4px;font-size:0.75rem;opacity:0.6;"></i>{{ t.operatorName || '—' }}</div>
@@ -183,6 +187,7 @@
           [style]="{ width: 'min(92vw, 640px)', maxWidth: '100%' }"
           styleClass="adm-modal-dialog"
           [focusOnShow]="true"
+          (onHide)="onTransportDialogHide()"
           [attr.aria-label]="selectedTransport() ? 'Edit transport' : 'New transport'">
   <ng-template pTemplate="header">
     <div class="adm-dlg-head">
@@ -190,8 +195,8 @@
       <div class="adm-dlg-head-main">
         <span class="adm-dlg-icon-wrap" aria-hidden="true"><i class="pi pi-compass"></i></span>
         <div>
-          <h2 class="adm-dlg-title" id="adm-transport-dialog-title">{{ selectedTransport() ? 'Edit route' : 'New transport' }}</h2>
-          <p class="adm-dlg-subtitle">Define schedule, pricing, and capacity for this offer.</p>
+          <h2 class="adm-dlg-title" id="adm-transport-dialog-title">{{ selectedTransport() ? 'Edit route' : 'New flight' }}</h2>
+          <p class="adm-dlg-subtitle">Scheduled flight catalogue (bus/taxi on the public site are estimates only).</p>
         </div>
       </div>
     </div>
@@ -206,20 +211,14 @@
           <span class="adm-section-icon" aria-hidden="true"><i class="pi pi-th-large"></i></span>
           <div>
             <h3 class="adm-section-title" id="adm-sec-type">Transport type</h3>
-            <p class="adm-section-hint">Choose how passengers travel on this route.</p>
+            <p class="adm-section-hint">Admin catalogue is flights only. Bus and taxi on the public site use estimates, not this list.</p>
           </div>
         </div>
         <div class="adm-type-chips" role="group" aria-label="Transport type">
-          @for (t of transportTypes; track t.value) {
-            <button type="button"
-                    class="adm-chip"
-                    [class.adm-chip--active]="transportForm.get('type')?.value === t.value"
-                    [attr.aria-pressed]="transportForm.get('type')?.value === t.value"
-                    (click)="selectTransportType(t.value)">
-              <i [class]="t.icon" aria-hidden="true"></i>
-              <span>{{ t.label }}</span>
-            </button>
-          }
+          <span class="adm-chip adm-chip--active adm-chip--static" aria-current="true">
+            <i class="pi pi-send" aria-hidden="true"></i>
+            <span>Flight</span>
+          </span>
         </div>
       </section>
 
@@ -362,7 +361,7 @@
           <span class="adm-section-icon" aria-hidden="true"><i class="pi pi-users"></i></span>
           <div>
             <h3 class="adm-section-title" id="adm-sec-cap">Capacity</h3>
-            <p class="adm-section-hint">Seats for this run — slider max is {{ capacitySliderMax() }} (taxi/car: 4, bus: 45, flight: 100).</p>
+            <p class="adm-section-hint">Seats for this flight — up to {{ capacitySliderMax() }}.</p>
           </div>
         </div>
         <div class="adm-capacity-block"
@@ -436,7 +435,7 @@
   <ng-template pTemplate="footer">
     <div class="adm-dlg-footer">
       <button type="button" class="adm-btn adm-btn--secondary"
-              (click)="showTransportDialog = false">
+              (click)="closeTransportDialog()">
         <i class="pi pi-times" aria-hidden="true"></i>
         Cancel
       </button>
@@ -444,7 +443,7 @@
               (click)="saveTransport()"
               [disabled]="transportForm.invalid">
         <i class="pi pi-check" aria-hidden="true"></i>
-        {{ selectedTransport() ? 'Save changes' : 'Create transport' }}
+        {{ selectedTransport() ? 'Save changes' : 'Create flight' }}
       </button>
     </div>
   </ng-template>

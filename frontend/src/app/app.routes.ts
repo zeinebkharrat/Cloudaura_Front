@@ -163,6 +163,13 @@ export const routes: Routes = [
             (m) => m.TransportsAdminComponent,
           ),
       },
+      {
+        path: 'rental-fleet',
+        loadComponent: () =>
+          import('./admin/entities/rental-fleet/rental-fleet-admin.component').then(
+            (m) => m.RentalFleetAdminComponent,
+          ),
+      },
       { path: 'crafts', redirectTo: 'products', pathMatch: 'full' },
       { path: 'settings', redirectTo: 'dashboard', pathMatch: 'full' },
     ],

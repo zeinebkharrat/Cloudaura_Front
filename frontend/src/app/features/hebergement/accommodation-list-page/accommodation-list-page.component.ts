@@ -5,9 +5,6 @@ import {
   signal,
   ChangeDetectionStrategy,
   computed,
-  HostListener,
-  viewChild,
-  ElementRef,
   DestroyRef,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -21,8 +18,9 @@ import { FormsModule, ReactiveFormsModule, FormControl, FormGroup } from '@angul
 import { debounceTime, distinctUntilChanged } from 'rxjs';
 import { DualCurrencyPipe } from '../../../core/pipes/dual-currency.pipe';
 import { createCurrencyDisplaySyncEffect } from '../../../core/utils/currency-display-sync';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslateModule } from '@ngx-translate/core';
 import { LanguageService } from '../../../core/services/language.service';
+import { GovernorateCityPickerComponent } from '../../../shared/components/governorate-city-picker/governorate-city-picker.component';
 
 @Component({
   standalone: true,
@@ -35,6 +33,7 @@ import { LanguageService } from '../../../core/services/language.service';
     ReactiveFormsModule,
     DualCurrencyPipe,
     TranslateModule,
+    GovernorateCityPickerComponent,
   ],
   template: `
     <div class="page-wrap">
@@ -69,28 +68,16 @@ import { LanguageService } from '../../../core/services/language.service';
 
           <form [formGroup]="filterForm">
             
-            <!-- City Selector -->
+            <!-- City Selector (same component as transport car rental) -->
             <div class="filter-block">
-              <label class="filter-label"><img src="/icones/city.png" alt="" class="filter-label-icon" /> {{ 'HEBERG.LIST.CITY' | translate }}</label>
-              <div class="city-picker-root" #cityPickerRoot>
-                <button type="button" class="city-picker-trigger" [class.open]="cityOpen()"
-                        (click)="toggleCityMenu($event)" [attr.aria-expanded]="cityOpen()">
-                  <span class="city-picker-label">{{ cityLabel() }}</span>
-                  <span class="city-picker-chevron" [class.up]="cityOpen()" aria-hidden="true"></span>
-                </button>
-                @if (cityOpen()) {
-                  <div class="city-picker-panel" role="listbox" [attr.aria-label]="'HEBERG.LIST.CITIES_ARIA' | translate">
-                    <button type="button" role="option" class="city-picker-option"
-                            [class.active]="cityFilterId() === 0"
-                            (click)="selectCity(0, $event)">{{ 'HEBERG.LIST.ALL_CITIES' | translate }}</button>
-                    @for (city of cities(); track city.id) {
-                      <button type="button" role="option" class="city-picker-option"
-                              [class.active]="cityFilterId() === city.id"
-                              (click)="selectCity(city.id, $event)">{{ city.name }}</button>
-                    }
-                  </div>
-                }
-              </div>
+              <app-governorate-city-picker
+                [cities]="cities()"
+                [selectedId]="cityFilterId()"
+                (selectedIdChange)="onCityPickerChange($event)"
+                [fieldLabelKey]="'HEBERG.LIST.CITY'"
+                [allOptionLabelKey]="'HEBERG.LIST.ALL_CITIES'"
+                [panelAriaLabelKey]="'HEBERG.LIST.CITIES_ARIA'"
+              />
             </div>
 
             <!-- Type -->
@@ -311,102 +298,6 @@ import { LanguageService } from '../../../core/services/language.service';
     .filter-select:focus { border-color: var(--tunisia-red); }
     .filter-select option { background: var(--surface-1); color: var(--text-color); }
 
-    /* City picker — custom list + styled scroll */
-    .city-picker-root { position: relative; width: 100%; }
-    .city-picker-trigger {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      background: var(--input-bg);
-      border: 1px solid var(--border-soft);
-      border-radius: 10px;
-      padding: 10px 12px;
-      color: var(--text-color);
-      font-size: 0.9rem;
-      cursor: pointer;
-      outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    .city-picker-trigger:hover { border-color: color-mix(in srgb, var(--tunisia-red) 35%, var(--border-soft)); }
-    .city-picker-trigger.open {
-      border-color: var(--tunisia-red);
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--tunisia-red) 18%, transparent);
-    }
-    .city-picker-label { text-align: left; flex: 1; }
-    .city-picker-chevron {
-      width: 0; height: 0;
-      border-left: 5px solid transparent;
-      border-right: 5px solid transparent;
-      border-top: 6px solid var(--text-muted);
-      transition: transform 0.2s;
-      flex-shrink: 0;
-    }
-    .city-picker-chevron.up { transform: rotate(180deg); border-top-color: var(--tunisia-red); }
-    .city-picker-panel {
-      position: absolute;
-      left: 0;
-      right: 0;
-      top: calc(100% + 6px);
-      z-index: 40;
-      max-height: min(280px, 55vh);
-      overflow-y: auto;
-      overflow-x: hidden;
-      scrollbar-width: thin;
-      scrollbar-color: var(--tunisia-red) var(--surface-2);
-      background: linear-gradient(180deg, var(--surface-1) 0%, var(--surface-2) 100%);
-      border: 1px solid color-mix(in srgb, var(--tunisia-red) 22%, var(--border-soft));
-      border-radius: 12px;
-      padding: 6px;
-      box-shadow: var(--shadow-card);
-      animation: cityPanelIn 0.2s ease-out;
-    }
-    @keyframes cityPanelIn {
-      from { opacity: 0; transform: translateY(-6px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .city-picker-panel::-webkit-scrollbar { width: 8px; }
-    .city-picker-panel::-webkit-scrollbar-track {
-      background: var(--surface-2);
-      border-radius: 10px;
-      margin: 4px 0;
-    }
-    .city-picker-panel::-webkit-scrollbar-thumb {
-      background: linear-gradient(180deg, var(--tunisia-red), color-mix(in srgb, var(--tunisia-red) 65%, #000));
-      border-radius: 10px;
-      border: 2px solid transparent;
-      background-clip: padding-box;
-    }
-    .city-picker-panel::-webkit-scrollbar-thumb:hover {
-      background: linear-gradient(180deg, color-mix(in srgb, var(--tunisia-red) 90%, #fff), var(--tunisia-red));
-      background-clip: padding-box;
-    }
-    .city-picker-option {
-      display: block;
-      width: 100%;
-      text-align: left;
-      padding: 10px 12px;
-      margin: 2px 0;
-      border: none;
-      border-radius: 8px;
-      background: transparent;
-      color: var(--text-color);
-      font-size: 0.88rem;
-      cursor: pointer;
-      transition: background 0.15s, color 0.15s, transform 0.12s;
-    }
-    .city-picker-option:hover {
-      background: color-mix(in srgb, var(--tunisia-red) 12%, var(--surface-2));
-      color: var(--text-color);
-      transform: translateX(2px);
-    }
-    .city-picker-option.active {
-      background: color-mix(in srgb, var(--tunisia-red) 18%, var(--surface-1));
-      color: var(--tunisia-red);
-      font-weight: 600;
-    }
-
     /* Type Chips */
     .type-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
     .chip {
@@ -591,17 +482,13 @@ export class AccommodationListPageComponent implements OnInit {
   store = inject(TripContextStore);
   dataSource = inject(DATA_SOURCE_TOKEN);
   router = inject(Router);
-  private translate = inject(TranslateService);
   private language = inject(LanguageService);
   private destroyRef = inject(DestroyRef);
-
-  cityPickerRoot = viewChild<ElementRef<HTMLElement>>('cityPickerRoot');
 
   loading = signal(true);
   cities = signal<City[]>([]);
   accommodations = signal<Accommodation[]>([]);
   activeCityId = signal<number>(0);
-  cityOpen = signal(false);
   /** Synced with filter cityId for template bindings (computed + OnPush). */
   cityFilterId = signal(0);
 
@@ -617,15 +504,6 @@ export class AccommodationListPageComponent implements OnInit {
     return this.cities().find((c) => c.id === Number(id));
   });
 
-  cityLabel = computed(() => {
-    void this.language.currentLang();
-    const n = this.cityFilterId();
-    if (!n) {
-      return this.translate.instant('HEBERG.LIST.ALL_CITIES');
-    }
-    return this.cities().find((c) => c.id === n)?.name ?? this.translate.instant('HEBERG.LIST.ALL_CITIES');
-  });
-
   constructor() {
     this.language.langChangedDebounced$
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -635,24 +513,8 @@ export class AccommodationListPageComponent implements OnInit {
       });
   }
 
-  @HostListener('document:click', ['$event'])
-  onDocumentClick(ev: MouseEvent): void {
-    const root = this.cityPickerRoot()?.nativeElement;
-    if (!this.cityOpen() || !root) return;
-    if (!root.contains(ev.target as Node)) {
-      this.cityOpen.set(false);
-    }
-  }
-
-  toggleCityMenu(ev: MouseEvent): void {
-    ev.stopPropagation();
-    this.cityOpen.update((o) => !o);
-  }
-
-  selectCity(id: number, ev: MouseEvent): void {
-    ev.stopPropagation();
+  onCityPickerChange(id: number): void {
     this.filterForm.patchValue({ cityId: id });
-    this.cityOpen.set(false);
   }
 
   ngOnInit() {
@@ -714,7 +576,6 @@ export class AccommodationListPageComponent implements OnInit {
   }
 
   resetFilters() {
-    this.cityOpen.set(false);
     this.filterForm.reset({ cityId: 0, type: '', maxPrice: 800, minRating: 0 });
   }
 

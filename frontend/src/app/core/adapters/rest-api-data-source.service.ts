@@ -150,10 +150,16 @@ export class RestApiDataSource implements DataSourceAdapter {
 
   searchAmadeusCars(params: AmadeusCarSearchParams): Observable<AmadeusCarOffer[]> {
     let httpParams = new HttpParams()
-      .set('location', params.location.trim().toUpperCase())
       .set('startDate', params.startDate)
       .set('endDate', params.endDate)
       .set('passengers', String(params.passengers ?? 1));
+    if (params.cityId != null && params.cityId !== undefined) {
+      httpParams = httpParams.set('cityId', String(params.cityId));
+    }
+    const loc = (params.location ?? '').trim();
+    if (loc.length > 0) {
+      httpParams = httpParams.set('location', loc);
+    }
     return this.http.get<any>(`${this.BASE}/cars/search`, { params: httpParams }).pipe(
       map((res) => {
         const raw = res.data ?? res ?? [];
