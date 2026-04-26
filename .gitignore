@@ -21,19 +21,6 @@ backend/.mvn/
 *.war
 *.ear
 
-# Media/Uploads (these should ideally be in Git LFS or excluded)
-uploads/
-frontend/public/cuisine/
-frontend/public/mezwed/
-*.mp4
-*.zip
-*.docx
-*.pdf
-*.mp3
-*.m4a
-*.wav
-
-
 # Local Config
 backend/src/main/resources/application-local.properties
 frontend/src/environments/environment.local.ts
