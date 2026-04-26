@@ -1264,6 +1264,21 @@
   transition: transform 0.4s ease;
 }
 
+.pd-gallery__zoom {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-size: 220%;
+  transition: opacity 0.16s ease;
+  z-index: 2;
+}
+
+.pd-gallery__zoom--active {
+  opacity: 1;
+}
+
 /* Nav arrows */
 .pd-gallery__nav {
   position: absolute;
@@ -1319,6 +1334,13 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   z-index: 4;
+}
+
+@media (hover: none), (pointer: coarse) {
+  .pd-gallery__zoom,
+  .pd-gallery__zoom--active {
+    opacity: 0 !important;
+  }
 }
 
 /* Thumbnail strip */

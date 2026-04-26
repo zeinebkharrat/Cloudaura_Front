@@ -639,8 +639,17 @@
           [src]="catalogImageUrl(getGalleryImages(item)[detailImageIndex].url)"
           [alt]="item.name"
           class="pd-gallery__img"
+          (mouseenter)="onDetailImageHoverStart()"
+          (mousemove)="onDetailImageHoverMove($event)"
+          (mouseleave)="onDetailImageHoverEnd()"
           onerror="this.src=''"
         />
+        <div
+          class="pd-gallery__zoom"
+          [class.pd-gallery__zoom--active]="detailZoomActive()"
+          [style.background-image]="'url(' + catalogImageUrl(getGalleryImages(item)[detailImageIndex].url) + ')'"
+          [style.background-position]="detailZoomBackgroundPosition()"
+        ></div>
         <!-- Nav arrows -->
         <button *ngIf="getGalleryImages(item).length > 1"
           type="button" class="pd-gallery__nav pd-gallery__nav--prev"

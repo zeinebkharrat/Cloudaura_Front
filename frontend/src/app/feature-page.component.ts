@@ -295,14 +295,39 @@ export class FeaturePageComponent implements OnInit {
   readonly showProductDetails = signal(false);
   readonly selectedItem = signal<CatalogProduct | null>(null);
   detailImageIndex = 0;
+  readonly detailZoomActive = signal(false);
+  readonly detailZoomBackgroundPosition = signal('50% 50%');
 
   openProductDetails(p: CatalogProduct): void {
     this.detailSelectedColor.set(null);
     this.detailSelectedSize.set(null);
     this.detailImageIndex = 0;
+    this.detailZoomActive.set(false);
+    this.detailZoomBackgroundPosition.set('50% 50%');
     this.selectedItem.set(p);
     this.showProductDetails.set(true);
     this.maybePreselectVariant(p);
+  }
+
+  onDetailImageHoverStart(): void {
+    this.detailZoomActive.set(true);
+  }
+
+  onDetailImageHoverMove(event: MouseEvent): void {
+    const target = event.currentTarget as HTMLElement | null;
+    if (!target) {
+      return;
+    }
+    const rect = target.getBoundingClientRect();
+    const x = (event.clientX - rect.left) / rect.width;
+    const y = (event.clientY - rect.top) / rect.height;
+    const nx = Math.min(1, Math.max(0, x));
+    const ny = Math.min(1, Math.max(0, y));
+    this.detailZoomBackgroundPosition.set(`${(nx * 100).toFixed(2)}% ${(ny * 100).toFixed(2)}%`);
+  }
+
+  onDetailImageHoverEnd(): void {
+    this.detailZoomActive.set(false);
   }
 
   /** PrimeNG dialog visibility — keep signal + cleanup in sync when the dialog closes. */
@@ -339,6 +364,8 @@ export class FeaturePageComponent implements OnInit {
   closeProductDetails(): void {
     this.showProductDetails.set(false);
     this.detailImageIndex = 0;
+    this.detailZoomActive.set(false);
+    this.detailZoomBackgroundPosition.set('50% 50%');
     this.detailSelectedColor.set(null);
     this.detailSelectedSize.set(null);
     const item = this.selectedItem();
@@ -356,12 +383,16 @@ export class FeaturePageComponent implements OnInit {
     const n = this.getGalleryImages(p).length;
     if (n <= 1) return;
     this.detailImageIndex = (this.detailImageIndex - 1 + n) % n;
+    this.detailZoomActive.set(false);
+    this.detailZoomBackgroundPosition.set('50% 50%');
   }
 
   detailImageNext(p: CatalogProduct): void {
     const n = this.getGalleryImages(p).length;
     if (n <= 1) return;
     this.detailImageIndex = (this.detailImageIndex + 1) % n;
+    this.detailZoomActive.set(false);
+    this.detailZoomBackgroundPosition.set('50% 50%');
   }
 
   onCityChange(id: any): void {
