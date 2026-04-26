@@ -25,17 +25,6 @@
     <div class="location-row">
       <span class="loc-dot"></span>
       <span>{{ accommodation.cityName || 'Tunisia' }}</span>
-      @if (accommodation.cityRegion) {
-        <span class="region-tag">{{ accommodation.cityRegion }}</span>
-      }
-    </div>
-
-    <div class="amenity-row">
-      <span class="amenity-chip"><i class="pi pi-wifi amenity-pi" aria-hidden="true"></i> Wi‑Fi</span>
-      <span class="amenity-chip"><i class="pi pi-car amenity-pi" aria-hidden="true"></i> Parking</span>
-      @if (accommodation.rating >= 4) {
-        <span class="amenity-chip"><i class="pi pi-database amenity-pi" aria-hidden="true"></i> Pool</span>
-      }
     </div>
 
     <div class="card-footer">

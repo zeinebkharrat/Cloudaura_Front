@@ -33,6 +33,9 @@ public class TranslationService {
     private final ObjectMapper objectMapper;
     private final TranslationCacheRepository translationCacheRepository;
 
+    @Value("${app.translation.enabled:true}")
+    private boolean translationEnabled;
+
     @Value("${app.translate.mymemory-url:https://api.mymemory.translated.net/get}")
     private String mymemoryUrl;
 
@@ -84,6 +87,9 @@ public class TranslationService {
      * the original text when translation is skipped or fails.
      */
     public String safeTranslate(String text, String targetLang) {
+        if (!translationEnabled) {
+            return text;
+        }
         if (text == null || text.isBlank()) {
             return text;
         }
@@ -115,6 +121,9 @@ public class TranslationService {
      * sent to MyMemory and are returned unchanged.
      */
     public String translate(String text, String sourceLang, String targetLang) throws Exception {
+        if (!translationEnabled) {
+            return text == null ? "" : text;
+        }
         if (text == null || text.isBlank()) {
             return "";
         }

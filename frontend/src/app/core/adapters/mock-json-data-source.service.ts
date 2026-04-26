@@ -4,7 +4,6 @@ import { Observable, of, delay, map } from 'rxjs';
 import {
   DataSourceAdapter,
   TransportCheckoutResult,
-  TransportPayPalCreatePayload,
   TransportSearchParams,
 } from './data-source.adapter';
 import {
@@ -12,8 +11,14 @@ import {
   TransportRecommendation, TransportRecommendationRequest,
   TransportReservationInput, TransportReservation, TransportReservationUpdatePayload,
   TransportCheckoutPayload,
+  TransportPayPalCreatePayload,
   AccommodationReservation,
-  EngineRecommendationRequest, EngineRecommendationResponse
+  EngineRecommendationRequest, EngineRecommendationResponse,
+  TransportEstimateInput,
+  TransportEstimateResult,
+  AmadeusCarSearchParams,
+  AmadeusCarOffer,
+  CarBookSimulationResult,
 } from '../models/travel.models';
 
 @Injectable({ providedIn: 'root' })
@@ -67,6 +72,34 @@ export class MockJsonDataSource implements DataSourceAdapter {
       }),
       delay(500)
     );
+  }
+
+  estimateTransport(input: TransportEstimateInput): Observable<TransportEstimateResult> {
+    const km = input.routeKm != null && input.routeKm > 0 ? input.routeKm : 50;
+    const seats = Math.max(1, input.seats ?? 1);
+    const base =
+      input.transportType === 'TAXI'
+        ? Math.max(3.5, 2.0 + km * 0.3 + 30 * 0.05)
+        : Math.max(1.5, 1.2 + km * 0.028 + 30 * 0.0065) * seats;
+    const rounded = Math.round(base * 100) / 100;
+    const result: TransportEstimateResult = {
+      transportType: input.transportType,
+      departureCityId: input.departureCityId,
+      arrivalCityId: input.arrivalCityId,
+      travelDate: input.travelDate,
+      seats,
+      routeKm: input.routeKm,
+      routeDurationMin: input.routeDurationMin ?? null,
+      referencePriceTnd: rounded,
+      minPriceTnd: rounded,
+      maxPriceTnd: Math.round(rounded * 1.15 * 100) / 100,
+      currency: 'TND',
+      advisoryApplied: false,
+      reducedAvailability: false,
+      possibleHigherPrice: false,
+      advisoryMessage: null,
+    };
+    return of(result).pipe(delay(400));
   }
 
   createTransportCheckoutSession(payload: TransportCheckoutPayload): Observable<TransportCheckoutResult> {
@@ -285,6 +318,29 @@ export class MockJsonDataSource implements DataSourceAdapter {
       recommendationReason: `Recommandation basee sur votre preference pour ${request.preference}`,
       combinationSuggestion: 'Taxi vers la station + Louage pour economiser 30%'
     }).pipe(delay(1000));
+  }
+
+  searchAmadeusCars(params: AmadeusCarSearchParams): Observable<AmadeusCarOffer[]> {
+    const offer: AmadeusCarOffer = {
+      offerId: 'MOCK-OFFER-1',
+      provider: 'Mock Mobility',
+      model: 'SUV · mock data',
+      price: 120,
+      currency: 'EUR',
+      location: `${params.location} → City center`,
+      transferType: 'PRIVATE',
+      pickupDateTime: `${params.startDate}T10:00:00`,
+    };
+    return of([offer]).pipe(delay(500));
+  }
+
+  simulateAmadeusCarBooking(offerId: string): Observable<CarBookSimulationResult> {
+    return of({
+      simulated: true,
+      confirmationRef: 'YTN-CAR-MOCK-001',
+      offerId: offerId || 'MOCK',
+      message: 'Mock booking simulation.',
+    }).pipe(delay(300));
   }
 
   getEngineRecommendations(_request: EngineRecommendationRequest): Observable<EngineRecommendationResponse> {

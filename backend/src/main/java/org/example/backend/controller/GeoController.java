@@ -109,10 +109,14 @@ public class GeoController {
         if (locationName == null || locationName.isBlank()) return Optional.empty();
 
         Optional<City> exact = cityRepository.findByName(locationName);
-        if (exact.isPresent()) return exact;
+        if (exact.isPresent()) {
+            return exact.filter(c -> !c.isVirtualFlightEndpointCity());
+        }
 
         String normalized = locationName.toLowerCase().trim();
-        List<City> all = cityRepository.findAll();
+        List<City> all = cityRepository.findAll().stream()
+                .filter(c -> !c.isVirtualFlightEndpointCity())
+                .toList();
         return all.stream()
                 .filter(c -> c.getName() != null)
                 .filter(c -> {

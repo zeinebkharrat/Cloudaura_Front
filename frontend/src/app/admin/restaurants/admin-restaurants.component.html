@@ -55,7 +55,6 @@
             <th>City</th>
             <th>Cuisine</th>
             <th>Description</th>
-            <th>Rating</th>
             <th class="actions-head">Actions</th>
           </tr>
         </thead>
@@ -73,13 +72,6 @@
               <td>{{ restaurant.cityName }}</td>
               <td>{{ restaurant.cuisineType || '—' }}</td>
               <td><div class="desc-cell">{{ (restaurant.description || '—') | slice:0:100 }}{{ restaurant.description && restaurant.description.length > 100 ? '…' : '' }}</div></td>
-              <td>
-                @if (getRestaurantReviewAverage(restaurant.restaurantId) != null) {
-                  {{ getRestaurantReviewAverage(restaurant.restaurantId) | number:'1.2-2' }}
-                } @else {
-                  —
-                }
-              </td>
               <td class="actions table-actions">
                 <button class="btn icon-btn icon-view" (click)="openDetails(restaurant)" title="View details" aria-label="View details">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -157,15 +149,6 @@
             }
           </select>
         </label>
-        @if (editingId) {
-          <label>
-            Rating
-            <input type="number" min="0" max="5" step="0.1" [(ngModel)]="form.rating" (ngModelChange)="clearFieldError('rating')" [class.input-invalid]="fieldErrors.rating" />
-            @if (fieldErrors.rating) {
-              <small class="field-error">{{ fieldErrors.rating }}</small>
-            }
-          </label>
-        }
         <label class="span-2">
           Description
           <textarea rows="3" [(ngModel)]="form.description" placeholder="Short description for visitors"></textarea>
@@ -303,23 +286,9 @@
           </div>
           <h3>{{ detailsRestaurant.name }}</h3>
           <p>{{ detailsRestaurant.description || 'No description available.' }}</p>
-          <div class="rating-line">
-            <div class="stars" aria-label="restaurant rating stars">
-              @for (state of starStates(getRestaurantReviewAverage(detailsRestaurant.restaurantId)); track $index) {
-                <span [class.filled]="state === 'full'">★</span>
-              }
-            </div>
-            @if (getRestaurantReviewAverage(detailsRestaurant.restaurantId) != null) {
-              <strong>{{ getRestaurantReviewAverage(detailsRestaurant.restaurantId) | number:'1.2-2' }}/5</strong>
-              <small>({{ getRestaurantReviewCount(detailsRestaurant.restaurantId) }} reviews)</small>
-            } @else {
-              <strong>No reviews</strong>
-            }
-          </div>
           <div class="details-meta-grid">
             <div><strong>City:</strong> {{ detailsRestaurant.cityName }}</div>
             <div><strong>Cuisine:</strong> {{ detailsRestaurant.cuisineType || '—' }}</div>
-            <div><strong>Rating:</strong> {{ detailsRestaurant.rating ?? '—' }}</div>
             <div><strong>Phone:</strong> {{ detailsRestaurant.phoneNumber || '—' }}</div>
             <div><strong>Address:</strong> {{ detailsRestaurant.address || '—' }}</div>
             <div><strong>Latitude:</strong> {{ detailsRestaurant.latitude ?? '—' }}</div>

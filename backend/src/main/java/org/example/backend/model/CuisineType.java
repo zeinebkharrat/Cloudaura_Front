@@ -1,6 +1,8 @@
 package org.example.backend.model;
 
+import java.text.Normalizer;
 import java.util.Arrays;
+import java.util.Locale;
 
 public enum CuisineType {
     TUNISIAN("Tunisian"),
@@ -16,6 +18,7 @@ public enum CuisineType {
     FAST_FOOD("Fast Food"),
     CAFE("Cafe"),
     VEGETARIAN("Vegetarian"),
+    SWEET("Sweet"),
     INTERNATIONAL("International");
 
     private final String label;
@@ -59,6 +62,9 @@ public enum CuisineType {
             case "streetfood" -> {
                 return STREET_FOOD;
             }
+            case "sucre", "sweet", "dessert", "patisserie", "pâtisserie", "gateau", "gâteau" -> {
+                return SWEET;
+            }
             default -> {
             }
         }
@@ -70,6 +76,11 @@ public enum CuisineType {
     }
 
     private static String normalize(String value) {
-        return value == null ? "" : value.trim().toLowerCase().replace("-", " ").replace("_", " ").replaceAll("\\s+", " ");
+        if (value == null) {
+            return "";
+        }
+        String folded =
+                Normalizer.normalize(value.trim(), Normalizer.Form.NFD).replaceAll("\\p{M}+", "");
+        return folded.toLowerCase(Locale.ROOT).replace("-", " ").replace("_", " ").replaceAll("\\s+", " ");
     }
 }

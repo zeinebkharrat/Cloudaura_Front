@@ -3,8 +3,8 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter, withInMemoryScrolling } from '@angular/router';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { MessageService, ConfirmationService } from 'primeng/api';
-import { TranslateLoader, TranslateService, provideTranslateService } from '@ngx-translate/core';
-import { TRANSLATE_HTTP_LOADER_CONFIG, TranslateHttpLoader } from '@ngx-translate/http-loader';
+import { TranslateService, provideTranslateService } from '@ngx-translate/core';
+import { provideTranslateHttpLoader } from '@ngx-translate/http-loader';
 
 import { routes } from './app.routes';
 import { authInterceptor } from './auth.interceptor';
@@ -22,20 +22,14 @@ export const appConfig: ApplicationConfig = {
     { provide: DATA_SOURCE_TOKEN, useClass: RestApiDataSource },
     MessageService,
     ConfirmationService,
-    {
-      provide: TRANSLATE_HTTP_LOADER_CONFIG,
-      useValue: {
+    provideTranslateService({
+      loader: provideTranslateHttpLoader({
         prefix: '/assets/i18n/',
         suffix: '.json',
-      },
-    },
-    provideTranslateService({
-      loader: {
-        provide: TranslateLoader,
-        useClass: TranslateHttpLoader,
-      },
-      fallbackLang: 'en',
+      }),
+      defaultLanguage: 'en',
       extend: true,
+      useDefaultLang: true,
     }),
     {
       provide: APP_INITIALIZER,

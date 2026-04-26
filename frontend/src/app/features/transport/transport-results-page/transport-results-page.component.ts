@@ -41,8 +41,6 @@ import { TranslateService } from '@ngx-translate/core';
           <span class="rp-badge rp-badge-accent">{{ getTypeEmoji(queryParams.transportType) }} {{ transportTypeLabelKey(queryParams.transportType) | translate }}</span>
         </div>
 
-        <p class="rp-fare-note">{{ fareCalculationNote(queryParams.transportType) }}</p>
-
         <button class="rp-back" pRipple (click)="goBack()">
           <i class="pi pi-arrow-left"></i>
           <span>{{ 'TRANSPORT_RESULTS.BACK_EDIT' | translate }}</span>
@@ -51,6 +49,12 @@ import { TranslateService } from '@ngx-translate/core';
 
       <!-- Results -->
       <section class="rp-body">
+        @if (isEstimateOnlyMode()) {
+          <p class="rp-estimate-strip" role="status">
+            <i class="pi pi-info-circle"></i>
+            <span>{{ 'TRANSPORT_RESULTS.ESTIMATE_ONLY_STRIP' | translate }}</span>
+          </p>
+        }
         @if (loading()) {
           <!-- Skeleton Loaders -->
           <div class="rp-list">
@@ -121,17 +125,18 @@ import { TranslateService } from '@ngx-translate/core';
                 <div class="tc-bottom">
                   <div class="tc-details">
                     <span class="tc-seats"><i class="pi pi-users"></i> {{ 'TRANSPORT_RESULTS.SEATS' | translate: { n: (t.availableSeats ?? t.capacity) } }}</span>
-                    @if (t.type === 'BUS' || t.type === 'TAXI') {
-                      <span class="tc-estimate"><i class="pi pi-info-circle"></i> Prix indicatif</span>
-                    }
                   </div>
 
-                  <div class="tc-action">
-                    <div class="tc-price">
-                      <span class="tc-amount">{{ formatPrice(effectivePrice(t)) }}</span>
-                      <span class="tc-currency">TND</span>
-                    </div>
-                    <button pButton [label]="'TRANSPORT_RESULTS.BTN_BOOK' | translate" icon="pi pi-arrow-right"
+                  <div class="tc-action" [class.tc-action--estimate-only]="isEstimateOnlyMode()">
+                    @if (!isEstimateOnlyMode()) {
+                      <div class="tc-price">
+                        <span class="tc-amount">{{ displayPrice(t) }}</span>
+                        <span class="tc-currency">TND</span>
+                      </div>
+                    }
+                    <button pButton
+                            [label]="(isEstimateOnlyMode() ? 'TRANSPORT_RESULTS.BTN_ESTIMATE' : 'TRANSPORT_RESULTS.BTN_BOOK') | translate"
+                            [icon]="isEstimateOnlyMode() ? 'pi pi-calculator' : 'pi pi-arrow-right'"
                             iconPos="right" class="p-button-sm p-button-raised"></button>
                   </div>
                 </div>
@@ -182,16 +187,18 @@ import { TranslateService } from '@ngx-translate/core';
       background: rgba(241,37,69,0.1); border-color: rgba(241,37,69,0.3);
       opacity: 1; font-weight: 600; color: #f12545;
     }
-    .rp-fare-note {
-      margin: 0.85rem auto 0;
-      max-width: 740px;
-      font-size: 0.82rem;
-      color: var(--text-muted, #a8b3c7);
-      line-height: 1.45;
-    }
 
     /* ---- Body ---- */
     .rp-body { max-width: 820px; margin: 0 auto; padding: 0 1.5rem; }
+    .rp-estimate-strip {
+      display: flex; align-items: flex-start; gap: 0.5rem;
+      margin: 0 0 1.25rem; padding: 0.75rem 1rem;
+      border-radius: 12px;
+      font-size: 0.86rem; line-height: 1.45; color: var(--text-color);
+      background: color-mix(in srgb, #0ea5e9 10%, var(--surface-1));
+      border: 1px solid color-mix(in srgb, #0ea5e9 28%, var(--glass-border));
+    }
+    .rp-estimate-strip .pi { color: #0ea5e9; flex-shrink: 0; margin-top: 2px; }
     .rp-count {
       font-size: 0.85rem; color: var(--text-muted, #a8b3c7);
       margin-bottom: 1.25rem; text-align: center;
@@ -269,19 +276,9 @@ import { TranslateService } from '@ngx-translate/core';
       display: flex; align-items: center; gap: 0.35rem;
       font-size: 0.82rem; color: var(--text-muted, #a8b3c7);
     }
-    .tc-estimate {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      font-size: 0.78rem;
-      color: var(--text-muted, #a8b3c7);
-      background: rgba(241,37,69,0.08);
-      border: 1px solid rgba(241,37,69,0.18);
-      border-radius: 999px;
-      padding: 0.2rem 0.55rem;
-    }
 
     .tc-action { display: flex; align-items: center; gap: 1rem; flex-shrink: 0; }
+    .tc-action--estimate-only { justify-content: flex-end; }
     .tc-price { display: flex; align-items: baseline; gap: 4px; }
     .tc-amount {
       font-family: 'Outfit', sans-serif;
@@ -323,6 +320,7 @@ import { TranslateService } from '@ngx-translate/core';
       .tc-time { font-size: 1.4rem; }
       .tc-bottom { flex-direction: column; gap: 1rem; align-items: flex-start; }
       .tc-action { width: 100%; justify-content: space-between; }
+      .tc-action.tc-action--estimate-only { justify-content: flex-end; }
     }
 
     :host ::ng-deep .p-tag { font-size: 0.78rem; padding: 0.3rem 0.75rem; }
@@ -342,7 +340,7 @@ export class TransportResultsPageComponent implements OnInit {
   queryParams: any = {};
 
   sortedResults = computed(() => {
-    return [...this.allResults()].sort((a, b) => this.effectivePrice(a) - this.effectivePrice(b));
+    return [...this.allResults()].sort((a, b) => this.displayPrice(a) - this.displayPrice(b));
   });
 
   departureCityName = computed(() => {
@@ -389,10 +387,27 @@ export class TransportResultsPageComponent implements OnInit {
     });
   }
 
+  isEstimateOnlyMode(): boolean {
+    const t = (this.queryParams.transportType ?? '').toString().toUpperCase();
+    return t === 'TAXI' || t === 'BUS';
+  }
+
   onSelect(transport: Transport) {
+    if (transport.type === 'TAXI' || transport.type === 'BUS') {
+      void this.router.navigate(['/transport/estimate'], {
+        queryParams: {
+          from: this.queryParams.from,
+          to: this.queryParams.to,
+          date: this.queryParams.date,
+          transportType: this.queryParams.transportType ?? transport.type,
+          passengers: this.queryParams.passengers ?? '1',
+        },
+      });
+      return;
+    }
     this.store.selectedTransport.set({
       ...transport,
-      price: this.effectivePrice(transport),
+      price: this.displayUnitPrice(transport),
     });
     this.router.navigate(['/transport', transport.id, 'book'], {
       queryParams: this.queryParams
@@ -436,68 +451,6 @@ export class TransportResultsPageComponent implements OnInit {
     return h > 0 ? `${h}h${m > 0 ? String(m).padStart(2, '0') : ''}` : `${m}min`;
   }
 
-  formatPrice(price: number): string {
-    if (!Number.isFinite(price)) {
-      return '0.00';
-    }
-    return price.toFixed(2);
-  }
-
-  effectivePrice(t: Transport): number {
-    if (!t) {
-      return 0;
-    }
-    if (t.type !== 'TAXI') {
-      return t.price;
-    }
-
-    const km = Math.max(0, this.store.transportRouteKm() ?? 0);
-    if (km <= 0) {
-      return t.price;
-    }
-
-    const durationMin = this.taxiDurationMinutesForPricing(km, t.durationMinutes ?? 0);
-    let fare = 0.9 + (km * 0.6) + (durationMin * 0.15);
-    if (this.isNightTrip(this.queryParams?.date)) {
-      fare *= 1.5;
-    }
-    return Math.round(Math.max(2.0, fare) * 100) / 100;
-  }
-
-  private taxiDurationMinutesForPricing(km: number, fallbackDurationMin: number): number {
-    const sec = this.store.transportRouteDurationSec();
-    if (sec != null && sec > 0) {
-      return Math.max(0, Math.round(sec / 60));
-    }
-    if (fallbackDurationMin > 0) {
-      return fallbackDurationMin;
-    }
-    return Math.max(3, Math.round((km / 45) * 60));
-  }
-
-  private isNightTrip(raw: string | undefined): boolean {
-    if (!raw) {
-      return false;
-    }
-    const d = new Date(raw);
-    if (Number.isNaN(d.getTime())) {
-      return false;
-    }
-    const h = d.getHours();
-    return h >= 21 || h < 5;
-  }
-
-  fareCalculationNote(type: string | undefined): string {
-    const normalized = (type ?? '').toUpperCase();
-    if (normalized === 'TAXI') {
-      return 'Taxi: tarif estimatif calcule selon la formule tunisienne (prise en charge + distance + temps), avec majoration possible la nuit. Le montant final reste approximatif.';
-    }
-    if (normalized === 'BUS') {
-      return 'Bus: tarif estimatif interurbain calcule sur la distance (prix/km avec minimum). Le montant affiche reste approximatif.';
-    }
-    return 'Les prix affiches sont indicatifs et peuvent varier selon la date, la disponibilite et les conditions operationnelles.';
-  }
-
   transportTypeLabelKey(raw: string | undefined): string {
     const u = (raw ?? 'BUS').toString().toUpperCase();
     return `TRANSPORT.TYPE.${u}`;
@@ -511,10 +464,91 @@ export class TransportResultsPageComponent implements OnInit {
     return map[type] ?? '';
   }
 
-  getTypeSeverity(type: string): 'success' | 'info' | 'secondary' | 'warn' | 'danger' | 'contrast' | undefined {
-    const map: Record<string, 'success' | 'info' | 'secondary' | 'warn' | 'danger' | 'contrast'> = {
-      BUS: 'success', VAN: 'info', TAXI: 'warn', PLANE: 'danger', CAR: 'secondary'
+  getTypeSeverity(type: string): 'success' | 'warn' | 'danger' | undefined {
+    const map: Record<string, 'success' | 'warn' | 'danger'> = {
+      BUS: 'success',
+      VAN: 'warn',
+      TAXI: 'warn',
+      PLANE: 'danger',
+      CAR: 'success',
     };
     return map[type];
+  }
+
+  private passengerCount(): number {
+    const seats = Number.parseInt(this.queryParams.passengers, 10);
+    return Number.isFinite(seats) && seats > 0 ? seats : 1;
+  }
+
+  private routeKm(): number {
+    return this.store.transportRouteKm() ?? 0;
+  }
+
+  private routeDurationMin(fallbackDurationMin: number): number {
+    const fromStore = this.store.transportRouteDurationMin();
+    if (fromStore != null && fromStore > 0) {
+      return fromStore;
+    }
+    if (fallbackDurationMin > 0) {
+      return fallbackDurationMin;
+    }
+    const km = this.routeKm();
+    if (km <= 0) {
+      return 0;
+    }
+    return Math.round((km / 60) * 60);
+  }
+
+  private isNightTravel(): boolean {
+    const travelDate = this.store.dates().travelDate;
+    if (!travelDate) {
+      return false;
+    }
+    const d = new Date(travelDate);
+    if (Number.isNaN(d.getTime())) {
+      return false;
+    }
+    const h = d.getHours();
+    return h >= 22 || h < 6;
+  }
+
+  private displayUnitPrice(t: Transport): number {
+    const seats = this.passengerCount();
+    if (t.type === 'TAXI') {
+      return this.displayPrice(t);
+    }
+    if (t.type === 'CAR') {
+      const days = Math.max(1, this.store.transportRentalDays() ?? 1);
+      return Math.round((this.displayPrice(t) / days) * 100) / 100;
+    }
+    return Math.round((this.displayPrice(t) / seats) * 100) / 100;
+  }
+
+  displayPrice(t: Transport): number {
+    const seats = this.passengerCount();
+    const km = this.routeKm();
+    const durationMin = this.routeDurationMin(t.durationMinutes ?? 0);
+
+    if (t.type === 'TAXI') {
+      let fare = 2 + km * 0.30 + durationMin * 0.05;
+      if (this.isNightTravel()) {
+        fare *= 1.1;
+      }
+      return Math.round(Math.max(3.5, fare) * 100) / 100;
+    }
+
+    if (t.type === 'BUS') {
+      const perSeat = Math.max(1.5, 1.2 + km * 0.028 + durationMin * 0.0065);
+      return Math.round(perSeat * seats * 100) / 100;
+    }
+
+    if (t.type === 'CAR') {
+      const days = Math.max(1, this.store.transportRentalDays() ?? 1);
+      const daily = Math.max(35, (t.price || 52) * 0.5);
+      const extraKm = Math.max(0, km - days * 160);
+      return Math.round((daily * days + extraKm * 0.07) * 100) / 100;
+    }
+
+    return Math.round(seats * t.price * 100) / 100;
   }
 }

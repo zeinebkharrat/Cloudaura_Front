@@ -50,7 +50,11 @@ public class AccommodationReservationService {
     private record SavedStay(Reservation reservation, int nights, double discount) {}
 
     public boolean isStripeAccommodationPaymentsEnabled() {
-        return StripeSecretKeys.isStripeSecretConfigured(StripeSecretKeys.normalize(stripeApiKey));
+        return StripeSecretKeys.isStripeSecretConfigured(resolveStripeApiKey());
+    }
+
+    private String resolveStripeApiKey() {
+        return StripeSecretKeys.resolveEffective(stripeApiKey, System.getenv("STRIPE_SECRET_KEY"));
     }
 
     @Transactional
@@ -103,7 +107,7 @@ public class AccommodationReservationService {
         if (!isStripeAccommodationPaymentsEnabled()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Stripe n'est pas activé.");
         }
-        Stripe.apiKey = StripeSecretKeys.normalize(stripeApiKey);
+        Stripe.apiKey = resolveStripeApiKey();
         try {
             Session session = Session.retrieve(sessionId);
             String pay = session.getPaymentStatus();
@@ -188,6 +192,7 @@ public class AccommodationReservationService {
                 .checkOutDate(req.getCheckOut().atStartOfDay())
                 .status(ReservationStatus.PENDING)
                 .totalPrice(totalPrice)
+            .guestCount(req.getGuestCount() != null && req.getGuestCount() > 0 ? req.getGuestCount() : 1)
                 .room(room)
                 .user(user)
                 .build();
@@ -291,6 +296,7 @@ public class AccommodationReservationService {
                 .reservationId(r.getReservationId())
                 .accommodationId(accId)
                 .roomId(roomId)
+            .guestCount(r.getGuestCount())
                 .status(r.getStatus().name())
                 .checkIn(r.getCheckInDate().toLocalDate())
                 .checkOut(r.getCheckOutDate().toLocalDate())

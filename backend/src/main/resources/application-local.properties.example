@@ -32,3 +32,12 @@ STREAM_CHAT_API_KEY=
 STREAM_CHAT_SECRET=
 RECAPTCHA_SECRET=
 RECAPTCHA_SITE_KEY=
+
+# Amadeus (car / transfer search — see CarRentalController). Enable only with real test keys.
+# AMADEUS_ENABLED=true
+# AMADEUS_API_KEY=
+# AMADEUS_API_SECRET=
+# AMADEUS_BASE_URL=https://test.api.amadeus.com
+
+# OpenSky (optional bearer — higher credit limits for /flights/* and /tracks/*)
+# OPENSKY_BEARER_TOKEN=

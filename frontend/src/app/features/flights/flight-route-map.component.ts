@@ -11,6 +11,7 @@ import {
 import { CommonModule } from '@angular/common';
 import * as L from 'leaflet';
 import { FlightDto } from './flight.models';
+import { flightBadge } from './flight-status.util';
 
 /**
  * Leaflet map: great-circle style preview between departure and arrival using backend-supplied coordinates.
@@ -27,6 +28,30 @@ import { FlightDto } from './flight.models';
       }
       @if (!flight) {
         <div class="map-overlay muted">Select a flight and tap “Show on map”.</div>
+      }
+      @if (flight && hasCoords) {
+        <div class="map-meta" aria-live="polite">
+          <div class="map-meta-row">
+            <span class="map-meta-airline">{{ flight.airline }}</span>
+            <span class="map-meta-fn">{{ flight.flightNumber }}</span>
+            <span
+              class="map-meta-status"
+              [ngClass]="{
+                'map-meta-status--ok': statusSeverity() === 'success',
+                'map-meta-status--warn': statusSeverity() === 'warn',
+                'map-meta-status--bad': statusSeverity() === 'danger',
+                'map-meta-status--muted': statusSeverity() === 'secondary',
+              }"
+              >{{ statusLabel() }}</span
+            >
+          </div>
+          <div class="map-meta-route">
+            {{ flight.departureIata || '—' }} → {{ flight.arrivalIata || '—' }}
+            @if (rawStatus()) {
+              <span class="map-meta-raw">({{ rawStatus() }})</span>
+            }
+          </div>
+        </div>
       }
     </div>
   `,
@@ -60,6 +85,71 @@ import { FlightDto } from './flight.models';
       .map-overlay.muted {
         color: #94a3b8;
       }
+      .map-meta {
+        position: absolute;
+        left: 0.65rem;
+        right: 0.65rem;
+        bottom: 0.65rem;
+        z-index: 6;
+        padding: 0.55rem 0.75rem;
+        border-radius: 12px;
+        background: color-mix(in srgb, var(--surface-1, #1e293b) 88%, transparent);
+        border: 1px solid var(--glass-border, rgba(148, 163, 184, 0.22));
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+        pointer-events: none;
+      }
+      .map-meta-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.4rem 0.65rem;
+      }
+      .map-meta-airline {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--text-muted, #94a3b8);
+      }
+      .map-meta-fn {
+        font-family: 'Outfit', system-ui, sans-serif;
+        font-size: 0.95rem;
+        font-weight: 800;
+        color: var(--text-color, #f8fafc);
+        letter-spacing: -0.02em;
+      }
+      .map-meta-status {
+        font-size: 0.72rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        padding: 0.2rem 0.5rem;
+        border-radius: 999px;
+        margin-left: auto;
+      }
+      .map-meta-status--ok {
+        background: color-mix(in srgb, #22c55e 18%, transparent);
+        color: #86efac;
+      }
+      .map-meta-status--warn {
+        background: color-mix(in srgb, #f59e0b 20%, transparent);
+        color: #fcd34d;
+      }
+      .map-meta-status--bad {
+        background: color-mix(in srgb, #ef4444 20%, transparent);
+        color: #fecaca;
+      }
+      .map-meta-status--muted {
+        background: color-mix(in srgb, var(--text-muted) 22%, transparent);
+        color: var(--text-color, #e2e8f0);
+      }
+      .map-meta-route {
+        margin-top: 0.35rem;
+        font-size: 0.78rem;
+        color: var(--text-muted, #94a3b8);
+      }
+      .map-meta-raw {
+        text-transform: capitalize;
+        opacity: 0.9;
+      }
     `,
   ],
 })
@@ -80,6 +170,28 @@ export class FlightRouteMapComponent implements AfterViewInit, OnChanges, OnDest
     if (changes['flight'] && this.map) {
       this.draw();
     }
+  }
+
+  statusLabel(): string {
+    const f = this.flight;
+    if (!f) return '';
+    return flightBadge(f).label;
+  }
+
+  statusSeverity(): 'success' | 'warn' | 'danger' | 'secondary' {
+    const f = this.flight;
+    if (!f) return 'secondary';
+    return flightBadge(f).severity;
+  }
+
+  rawStatus(): string {
+    const f = this.flight;
+    if (!f?.status) return '';
+    const raw = f.status.trim();
+    if (!raw) return '';
+    const label = this.statusLabel().toLowerCase();
+    if (raw.toLowerCase() === label) return '';
+    return raw.replace(/_/g, ' ');
   }
 
   ngOnDestroy(): void {

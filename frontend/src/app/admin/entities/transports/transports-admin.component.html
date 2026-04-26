@@ -241,27 +241,15 @@
               Departure
             </label>
             <p-dropdown inputId="adm-dep-city"
-                        [options]="cityOptions()" formControlName="departureCityId"
+                        [options]="cities()" formControlName="departureCityId"
                         optionLabel="name" optionValue="cityId"
-                        placeholder=""
-                        [filter]="false"
+                        placeholder="e.g. Tunis"
+                        [filter]="true" filterPlaceholder="Tunis, Sousse, Hammamet…"
                         styleClass="adm-p-dropdown w-full"
+                        panelStyleClass="admin-city-dropdown-panel"
+                        scrollHeight="220px"
                         [showClear]="true"
-                        panelStyleClass="adm-city-dropdown-panel"
-                        appendTo="body">
-              <ng-template pTemplate="item" let-city>
-                <div class="adm-city-option">
-                  <span class="adm-city-option__name">{{ city.name }}</span>
-                  <small class="adm-city-option__meta">{{ city.region }}</small>
-                </div>
-              </ng-template>
-              <ng-template pTemplate="selectedItem" let-city>
-                @if (city) {
-                  <div class="adm-city-selected">{{ city.name }}</div>
-                } @else {
-                  <span class="adm-city-selected adm-city-selected--placeholder"></span>
-                }
-              </ng-template>
+                        [appendTo]="'body'">
             </p-dropdown>
             @if (fieldInvalid('departureCityId')) {
               <span class="adm-field-msg adm-field-msg--err" role="alert">Select a departure city</span>
@@ -278,27 +266,15 @@
               Arrival
             </label>
             <p-dropdown inputId="adm-arr-city"
-                        [options]="cityOptions()" formControlName="arrivalCityId"
+                        [options]="cities()" formControlName="arrivalCityId"
                         optionLabel="name" optionValue="cityId"
-                        placeholder=""
-                        [filter]="false"
+                        placeholder="e.g. Sousse"
+                        [filter]="true" filterPlaceholder="Sfax, Djerba, Paris…"
                         styleClass="adm-p-dropdown w-full"
+                        panelStyleClass="admin-city-dropdown-panel"
+                        scrollHeight="220px"
                         [showClear]="true"
-                        panelStyleClass="adm-city-dropdown-panel"
-                        appendTo="body">
-              <ng-template pTemplate="item" let-city>
-                <div class="adm-city-option">
-                  <span class="adm-city-option__name">{{ city.name }}</span>
-                  <small class="adm-city-option__meta">{{ city.region }}</small>
-                </div>
-              </ng-template>
-              <ng-template pTemplate="selectedItem" let-city>
-                @if (city) {
-                  <div class="adm-city-selected">{{ city.name }}</div>
-                } @else {
-                  <span class="adm-city-selected adm-city-selected--placeholder"></span>
-                }
-              </ng-template>
+                        [appendTo]="'body'">
             </p-dropdown>
             @if (fieldInvalid('arrivalCityId')) {
               <span class="adm-field-msg adm-field-msg--err" role="alert">Select an arrival city</span>
@@ -324,19 +300,8 @@
               <i class="pi pi-calendar adm-label-ico" aria-hidden="true"></i>
               Departure time
             </label>
-            <p-datepicker inputId="adm-dep-time"
-                          formControlName="departureTime"
-                          [showTime]="true"
-                          [hourFormat]="'24'"
-                          [showIcon]="true"
-                          iconDisplay="input"
-                          dateFormat="dd/mm/yy"
-                          panelStyleClass="adm-calendar-panel"
-                          styleClass="adm-datetime-picker w-full"
-                          inputStyleClass="adm-input"
-                          [appendTo]="'body'"
-                          placeholder="">
-            </p-datepicker>
+            <input pInputText type="datetime-local" id="adm-dep-time" formControlName="departureTime"
+                   class="adm-input" autocomplete="off" (change)="onTimeChange()" />
             @if (fieldInvalid('departureTime')) {
               <span class="adm-field-msg adm-field-msg--err" role="alert">Required</span>
             }
@@ -348,19 +313,8 @@
               <i class="pi pi-calendar-plus adm-label-ico" aria-hidden="true"></i>
               Arrival time
             </label>
-            <p-datepicker inputId="adm-arr-time"
-                          formControlName="arrivalTime"
-                          [showTime]="true"
-                          [hourFormat]="'24'"
-                          [showIcon]="true"
-                          iconDisplay="input"
-                          dateFormat="dd/mm/yy"
-                          panelStyleClass="adm-calendar-panel"
-                          styleClass="adm-datetime-picker w-full"
-                          inputStyleClass="adm-input"
-                          [appendTo]="'body'"
-                          placeholder="">
-            </p-datepicker>
+            <input pInputText type="datetime-local" id="adm-arr-time" formControlName="arrivalTime"
+                   class="adm-input" autocomplete="off" (change)="onTimeChange()" />
             @if (fieldInvalid('arrivalTime')) {
               <span class="adm-field-msg adm-field-msg--err" role="alert">Required</span>
             }
@@ -408,7 +362,7 @@
           <span class="adm-section-icon" aria-hidden="true"><i class="pi pi-users"></i></span>
           <div>
             <h3 class="adm-section-title" id="adm-sec-cap">Capacity</h3>
-            <p class="adm-section-hint">Available seats for this departure.</p>
+            <p class="adm-section-hint">Seats for this run — slider max is {{ capacitySliderMax() }} (taxi/car: 4, bus: 45, flight: 100).</p>
           </div>
         </div>
         <div class="adm-capacity-block"
@@ -416,17 +370,13 @@
              [class.adm-field--ok]="fieldValid('capacity')">
           <div class="adm-capacity-value">
             <span class="adm-capacity-num">{{ transportForm.get('capacity')?.value ?? '—' }}</span>
-            <span class="adm-capacity-label">seats (max {{ capacitySliderMax }})</span>
+            <span class="adm-capacity-label">seats</span>
           </div>
-          <p-slider formControlName="capacity" [min]="1" [max]="capacitySliderMax" [step]="1"
+          <p-slider formControlName="capacity" [min]="1" [max]="capacitySliderMax()" [step]="1"
                     styleClass="adm-capacity-slider" [attr.aria-valuetext]="(transportForm.get('capacity')?.value ?? 0) + ' seats'">
           </p-slider>
-          @if (transportForm.get('capacity')?.hasError('max')) {
-            <span class="adm-field-msg adm-field-msg--err" role="alert">
-              Maximum for {{ getTypeLabel(transportForm.get('type')?.value) }} is {{ capacitySliderMax }} seats
-            </span>
-          } @else if (fieldInvalid('capacity')) {
-            <span class="adm-field-msg adm-field-msg--err" role="alert">Set at least 1 seat</span>
+          @if (fieldInvalid('capacity')) {
+            <span class="adm-field-msg adm-field-msg--err" role="alert">Use 1–{{ capacitySliderMax() }} seats for this vehicle type</span>
           }
         </div>
       </section>

@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { AuthService } from './core/auth.service';
 
@@ -46,6 +46,12 @@ export class HomeAssistantWidgetComponent {
   private readonly authService = inject(AuthService);
   private previousAuthToken: string | null = null;
   private clientSessionId = '';
+
+  readonly currentUser = this.authService.currentUser;
+  readonly assistantGuideName = computed(() => (this.isFemaleAccount() ? 'Zina' : 'Hamma'));
+  readonly assistantGuideImage = computed(() =>
+    this.isFemaleAccount() ? 'assets/zina_welcome3.png' : 'assets/guide_welcome.png'
+  );
 
   readonly isOpen = signal(false);
   readonly loading = signal(false);
@@ -295,5 +301,14 @@ export class HomeAssistantWidgetComponent {
 
   private isValidClientSessionId(value: string | null): value is string {
     return !!value && /^[A-Za-z0-9._-]{8,128}$/.test(value);
+  }
+
+  private isFemaleAccount(): boolean {
+    const raw = this.currentUser()?.gender;
+    if (raw == null) {
+      return false;
+    }
+    const normalized = String(raw).trim().toLowerCase();
+    return normalized === 'female' || normalized === 'femme' || normalized === 'f';
   }
 }

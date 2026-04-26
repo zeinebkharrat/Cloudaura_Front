@@ -16,6 +16,15 @@ interface EncryptResult {
   iv: string;
 }
 
+/** Thrown when the peer has never uploaded a public key (e.g. never logged in after E2EE was added). */
+export class ReceiverHasNoE2eeKeyError extends Error {
+  override readonly name = 'ReceiverHasNoE2eeKeyError';
+  constructor() {
+    super('Receiver has no registered E2EE public key');
+    Object.setPrototypeOf(this, new.target.prototype);
+  }
+}
+
 @Injectable({ providedIn: 'root' })
 export class ChatE2eeService {
   private readonly http = inject(HttpClient);
@@ -67,6 +76,9 @@ export class ChatE2eeService {
     }
 
     const receiverPublicKey = await this.getReceiverPublicKey(receiverId);
+    if (!receiverPublicKey) {
+      throw new ReceiverHasNoE2eeKeyError();
+    }
     const senderPublicKey = await this.getOwnPublicKey(senderId);
 
     // Generate a one-time AES key per message for forward secrecy at message granularity.
@@ -222,13 +234,14 @@ export class ChatE2eeService {
     return isEncryptedV2Payload(payload) || isEncryptedV1Payload(payload);
   }
 
-  private async getReceiverPublicKey(userId: number): Promise<CryptoKey> {
+  /** Null if the user has not registered a key yet (`PUT /chatroom/keys/me` after login). */
+  private async getReceiverPublicKey(userId: number): Promise<CryptoKey | null> {
     const response = await firstValueFrom(
       this.http.get<E2eePublicKeyResponse>(`${this.baseUrl}/chatroom/keys/${userId}`)
     );
 
-    if (!response.publicKey) {
-      throw new Error('Receiver has no registered E2EE public key');
+    if (!response.publicKey?.trim()) {
+      return null;
     }
 
     return crypto.subtle.importKey(

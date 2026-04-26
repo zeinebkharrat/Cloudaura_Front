@@ -47,7 +47,7 @@ import org.springframework.transaction.support.TransactionTemplate;
  * }</pre>
  */
 @Component
-@ConditionalOnProperty(name = "app.seeder.translations.enabled", havingValue = "true")
+@ConditionalOnProperty(name = {"app.seeder.translations.enabled", "app.translation.enabled"}, havingValue = "true")
 @RequiredArgsConstructor
 @Slf4j
 public class TranslationSeeder implements ApplicationRunner {

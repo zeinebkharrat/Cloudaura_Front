@@ -98,9 +98,45 @@
 .card-top {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.75rem;
   margin-bottom: 1rem;
+}
+
+.card-top-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  max-width: 58%;
+}
+
+.flight-price {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #f8fafc;
+  font-family: 'Outfit', system-ui, sans-serif;
+  text-align: right;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.best-price-pill {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #fff;
+  background: linear-gradient(135deg, #ff4b4b, #f12545);
+  padding: 0.2rem 0.45rem;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(241, 37, 69, 0.35);
+}
+
+.flight-card.best-price {
+  border-color: rgba(241, 37, 69, 0.35);
+  box-shadow: 0 0 0 1px rgba(241, 37, 69, 0.12);
 }
 
 .airline-block {

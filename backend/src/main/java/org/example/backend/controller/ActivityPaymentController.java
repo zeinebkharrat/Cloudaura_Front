@@ -209,12 +209,13 @@ public class ActivityPaymentController {
         assertReservationOwner(reservation, authentication);
         assertConfirmedReservation(reservation);
 
-        String content = ensureReceiptPdfUrl(reservation);
+        String content = activityReceiptLinkService.buildPublicPdfUrl(reservation.getActivityReservationId());
         byte[] qr = qrCodeService.generateQrPng(content, 320);
 
         return ResponseEntity.ok()
             .contentType(MediaType.IMAGE_PNG)
-            .header(HttpHeaders.CACHE_CONTROL, "max-age=86400")
+            .header(HttpHeaders.CACHE_CONTROL, "no-store, no-cache, must-revalidate, max-age=0")
+            .header("Pragma", "no-cache")
             .body(qr);
     }
 
@@ -301,20 +302,22 @@ public class ActivityPaymentController {
                         <head>
                             <meta charset="utf-8" />
                             <meta name="viewport" content="width=device-width, initial-scale=1" />
-                            <title>YallaTN Receipt</title>
+                            <title>YallaTN Activity Receipt</title>
                             <style>
-                                body { margin:0; font-family: Arial, sans-serif; background:#eef3f8; color:#1b2a3a; }
+                                body { margin:0; font-family: Helvetica, Arial, sans-serif; background:#eef3f8; color:#1f2a37; }
                                 .wrap { max-width: 680px; margin: 0 auto; padding: 20px 14px; }
-                                .card { background:#fff; border-radius: 16px; overflow:hidden; border:1px solid #d6e2ee; }
-                                .head { background:#103a56; color:#fff; padding:14px 16px; }
+                                .card { background:#fff; border-radius: 18px; overflow:hidden; border:1px solid #d4e0ec; }
+                                .head { background: linear-gradient(135deg, #113b57 0%, #16607e 55%, #1b7596 100%); color:#fff; padding:16px 18px; }
                                 .head h1 { margin:0; font-size:20px; }
-                                .sub { margin-top:6px; opacity:.9; font-size:13px; }
-                                .hero { width:100%%; height:220px; display:block; }
+                                .sub { margin-top:6px; opacity:.95; font-size:12px; color:#eaf4fc; }
+                                .hero { width:100%%; height:220px; display:block; object-fit:cover; border-bottom:1px solid #dbe6f0; }
                                 .hero-fallback { height:220px; background:#1b4965; color:#fff; font-weight:700; text-align:center; line-height:220px; }
-                                .body { padding:16px; }
-                                .meta { margin:0 0 14px; font-size:14px; }
+                                .body { padding:18px 20px 20px; }
+                                .badge { background:#fff2f5; border:1px solid #ffc8d4; padding:9px 10px; margin:0 0 14px; border-radius:10px; text-align:center; color:#c51f47; font-weight:700; }
+                                .meta { margin:0 0 14px; font-size:14px; line-height:1.6; }
                                 .meta strong { color:#0f2f45; }
                                 .btn { display:inline-block; background:#f12545; color:#fff; text-decoration:none; padding:12px 16px; border-radius:10px; font-weight:700; }
+                                .foot { background:#f8fafc; border-top:1px solid #dbe6f0; color:#56718b; font-size:11px; text-align:center; padding:10px; }
                             </style>
                         </head>
                         <body>
@@ -322,13 +325,15 @@ public class ActivityPaymentController {
                                 <div class="card">
                                     <div class="head">
                                         <h1>YallaTN+ Payment Receipt</h1>
-                                        <div class="sub">Scan successful. Download your PDF confirmation.</div>
+                                        <div class="sub">Scan successful. You are viewing the HTML receipt page.</div>
                                     </div>
                                     %s
                                     <div class="body">
+                                        <div class="badge">Payment confirmed</div>
                                         <p class="meta"><strong>Activity:</strong> %s<br/><strong>City:</strong> %s<br/><strong>Address:</strong> %s</p>
-                                        <a class="btn" href="%s">Download PDF</a>
+                                        <a class="btn" href="%s">Open / Download PDF</a>
                                     </div>
+                                    <div class="foot">YallaTN+ | Tunisia travel experiences</div>
                                 </div>
                             </div>
                         </body>

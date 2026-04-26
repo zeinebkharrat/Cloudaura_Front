@@ -137,18 +137,14 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
                   <strong>{{ nightCount() }} {{ 'ACCOMM.NIGHTS_UNIT' | translate }}</strong>
                 </div>
                 <div class="summary-row">
+                  <span>{{ 'ACCOMM.SUM_GUESTS' | translate }}</span>
+                  <strong>{{ store.pax().adults }} {{ 'ACCOMM.GUESTS_UNIT' | translate }}</strong>
+                </div>
+                <div class="summary-row">
                   <span>{{ 'ACCOMM.SUM_ROOM' | translate }}</span>
                   <strong>{{ selectedRoomLabel() }}</strong>
                 </div>
                 <hr class="sum-divider">
-                <div class="summary-row price-row">
-                  <span>{{ quoteNightly() | dualCurrency }} {{ 'ACCOMM.X_NIGHTS' | translate: { n: nightCount() } }}</span>
-                  <span>{{ baseTotal() | dualCurrency }}</span>
-                </div>
-                <div class="summary-row price-row">
-                  <span>{{ 'ACCOMM.TAXES_PCT' | translate }}</span>
-                  <span>{{ taxAmount() | dualCurrency }}</span>
-                </div>
                 <div class="summary-row total-row">
                   <strong>{{ 'ACCOMM.TOTAL_DUE' | translate }}</strong>
                   <strong class="total-amount">{{ grandTotal() | dualCurrency }}</strong>
@@ -206,7 +202,7 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
               <p class="conf-email">{{ 'ACCOMM.CONF_EMAIL_SENT' | translate: { email: guestForm.value.email ?? '' } }}</p>
               <div class="conf-actions">
                 <button class="btn-ghost" (click)="router.navigate(['/'])"><img src="icones/home.png" alt="" class="btn-ico" width="18" height="18" /> {{ 'ACCOMM.BTN_HOME' | translate }}</button>
-                <button class="btn-primary" (click)="router.navigate(['/transport'])"><img src="icones/autobus.png" alt="" class="btn-ico" width="18" height="18" /> {{ 'ACCOMM.BTN_TRANSPORT' | translate }}</button>
+                <button class="btn-primary" (click)="router.navigate(['/transport'])"><img src="icones/bus.png" alt="" class="btn-ico" width="18" height="18" /> {{ 'ACCOMM.BTN_TRANSPORT' | translate }}</button>
               </div>
             </div>
           }
@@ -316,12 +312,13 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
     /* Summary Box */
     .summary-box { background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: 14px; padding: 1.5rem; margin-bottom: 1.5rem; }
-    .summary-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 0.9rem; color: var(--text-muted); }
+    .summary-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 0.85rem; padding: 8px 0; font-size: 0.9rem; color: var(--text-muted); }
     .summary-row strong { color: var(--text-color); }
     .sum-divider { border: none; border-top: 1px solid var(--border-soft); margin: 8px 0; }
     .price-row span { color: var(--text-muted); }
     .total-row { margin-top: 4px; font-size: 1.05rem; }
-    .total-amount { color: var(--tunisia-red); font-size: 1.4rem; }
+    .total-row strong:last-child { text-align: right; white-space: nowrap; }
+    .total-amount { color: var(--tunisia-red); font-size: 1.4rem; line-height: 1.1; }
 
     /* Payment */
     .payment-section { margin-bottom: 2rem; }
@@ -382,9 +379,9 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
     .date-val { font-size: 0.95rem; color: var(--text-color); font-weight: 600; }
     .nights-block { font-size: 1.4rem; font-weight: 800; color: var(--tunisia-red); text-align: center; display: flex; flex-direction: column; align-items: center; }
     .nights-block span { font-size: 0.7rem; color: var(--text-muted); font-weight: 400; }
-    .stay-total { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-top: 1px solid var(--border-soft); }
+    .stay-total { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 0.85rem; padding: 1rem 1.5rem; border-top: 1px solid var(--border-soft); }
     .stay-total span { color: var(--text-muted); font-size: 0.9rem; }
-    .stay-total strong { color: var(--tunisia-red); font-size: 1.3rem; }
+    .stay-total strong { color: var(--tunisia-red); font-size: 1.3rem; text-align: right; white-space: nowrap; line-height: 1.1; }
 
     /* Guarantees */
     .guarantees { background: var(--surface-1); border: 1px solid var(--border-soft); border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; gap: 12px; box-shadow: var(--shadow-soft); }
@@ -542,13 +539,14 @@ export class AccommodationBookingPageComponent implements OnInit {
       return { id: locked };
     }
     const quoted = this.store.accommodationQuoteRoomId();
-    if (quoted != null && (!acc.rooms || acc.rooms.length === 0)) {
-      return { id: quoted };
-    }
+    const guests = this.store.pax().adults;
     if (quoted != null && acc.rooms?.some((r) => r.id === quoted && r.available !== false)) {
-      return { id: quoted };
+      const r = acc.rooms!.find((x) => x.id === quoted)!;
+      if ((r.capacity ?? 0) >= guests) {
+        return { id: quoted };
+      }
     }
-    return this.pickRoom(acc);
+    return this.pickRoom(acc, guests);
   }
 
   nextStep() {
@@ -614,6 +612,15 @@ export class AccommodationBookingPageComponent implements OnInit {
       return;
     }
 
+    const guests = this.store.pax().adults;
+    if (guests < 1 || guests > 20) {
+      void this.alerts.warning(
+        this.translate.instant('ACCOMM.WARN_GUESTS_COUNT_TITLE'),
+        this.translate.instant('ACCOMM.WARN_GUESTS_COUNT_TEXT')
+      );
+      return;
+    }
+
     const editId = this.editingReservationId();
     if (editId != null) {
       this.loading.set(true);
@@ -664,7 +671,7 @@ export class AccommodationBookingPageComponent implements OnInit {
       .createAccommodationCheckoutSession({
         roomId: roomPick.id,
         userId: user.id,
-        guestCount: 1,
+        guestCount: guests,
         checkIn: ci.slice(0, 10),
         checkOut: co.slice(0, 10),
         offerId: null,
@@ -722,10 +729,11 @@ export class AccommodationBookingPageComponent implements OnInit {
   }
 
   /** Picks a bookable room for the API (requires real roomId from backend). */
-  private pickRoom(acc: Accommodation): { id: number } | null {
+  private pickRoom(acc: Accommodation, guestCount: number): { id: number } | null {
     const rooms = acc.rooms ?? [];
     if (rooms.length === 0) return null;
-    const pool = rooms.filter((r) => r.available !== false);
+    const fits = rooms.filter((r) => r.available !== false && (r.capacity ?? 0) >= guestCount);
+    const pool = fits.length > 0 ? fits : rooms.filter((r) => r.available !== false);
     const candidates = pool.length > 0 ? pool : rooms;
     const sorted = [...candidates].sort((a, b) => (a.price ?? acc.pricePerNight) - (b.price ?? acc.pricePerNight));
     const chosen = sorted[0];

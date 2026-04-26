@@ -41,6 +41,7 @@ public class RestaurantService {
         return list(q, cityId, null, pageable);
     }
 
+    @Transactional(readOnly = true)
     public Page<RestaurantResponse> list(String q, Integer cityId, String cuisineType, Pageable pageable) {
         final CuisineType cuisineFilterEnum = parseCuisineOrNull(cuisineType, false);
 
@@ -71,6 +72,7 @@ public class RestaurantService {
         return restaurantRepository.findAll(spec, pageable).map(this::toResponse);
     }
 
+    @Transactional(readOnly = true)
     public RestaurantResponse getById(Integer id) {
         return toResponse(findRestaurant(id));
     }

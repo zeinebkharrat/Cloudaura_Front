@@ -25,7 +25,12 @@
                   <span class="trip-route">{{ t.departureCityName || '' }} → {{ t.arrivalCityName || '' }}</span>
                   <span class="trip-meta">{{ transportTypeLabelKey(t.type) | translate }} · {{ formatTime(t.departureTime) }} – {{ formatTime(t.arrivalTime) }}{{ 'TRANSPORT_BOOKING.TRIP_META_SEP' | translate }}{{ 'TRANSPORT_BOOKING.SEAT_META' | translate: { n: passengerForm.get('seats')?.value } }}</span>
                 </div>
-                <span class="trip-price">{{ unitPriceForDisplay() | dualCurrency }}</span>
+                <div class="trip-price-col">
+                  <span class="trip-price">{{ t.price | dualCurrency }}</span>
+                  @if (syntheticQuoteLabel(t); as quoteLbl) {
+                    <span class="trip-quote-note">{{ 'TRANSPORT_BOOKING.QUOTE_REF' | translate: { quote: quoteLbl } }}</span>
+                  }
+                </div>
               </div>
             }
 
@@ -94,14 +99,6 @@
         }
         @case (1) {
           <div class="step">
-            <div class="stripe-branding">
-              <img src="assets/logo/yallatn-logo.png" alt="YallaTN" class="stripe-branding-logo" />
-              <div class="stripe-branding-copy">
-                <p class="stripe-branding-kicker">YallaTN</p>
-                <h3>Récapitulatif et paiement sécurisé</h3>
-              </div>
-            </div>
-
             <div class="step-head">
               <h2>{{ 'TRANSPORT_BOOKING.SUM_TITLE' | translate }}</h2>
               <p>{{ 'TRANSPORT_BOOKING.SUM_SUB' | translate }}</p>
@@ -137,33 +134,12 @@
 
               <div class="sum-divider"></div>
 
-              @if (paymentMethod() === 'STRIPE') {
-                <div class="stripe-currency-box">
-                  <label for="stripeCurrency">Devise de paiement Stripe</label>
-                  <select
-                    id="stripeCurrency"
-                    class="stripe-currency-select"
-                    [value]="currency.selectedCode()"
-                    (change)="onStripeCurrencyChange(($any($event.target).value))">
-                    @for (c of stripeCurrencies; track c) {
-                      <option [value]="c">{{ c }}</option>
-                    }
-                  </select>
-                  @if (isStripeTndSelected()) {
-                    <p class="stripe-currency-note">
-                      Le TND n'est pas facturable directement via Stripe Checkout. Le paiement sera débité en EUR avec conversion en temps réel.
-                    </p>
-                  }
-                </div>
-                <div class="sum-divider"></div>
-              }
-
               <div class="sum-pricing">
-                <div class="sum-pl"><span>{{ 'TRANSPORT_BOOKING.UNIT_PRICE' | translate }}</span><span>{{ paymentMethod() === 'STRIPE' ? stripeUnitPriceDisplay() : (unitPriceForDisplay() | dualCurrency) }}</span></div>
+                <div class="sum-pl"><span>{{ 'TRANSPORT_BOOKING.UNIT_PRICE' | translate }}</span><span>{{ (transport()?.price ?? 0) | dualCurrency }}</span></div>
                 <div class="sum-pl"><span>{{ 'TRANSPORT_BOOKING.SEATS_X' | translate }}</span><span>&times; {{ passengerForm.get('seats')?.value }}</span></div>
                 <div class="sum-pl sum-total">
                   <span>{{ 'TRANSPORT_BOOKING.TOTAL' | translate }}</span>
-                  <span class="sum-total-val">{{ paymentMethod() === 'STRIPE' ? stripeTotalDisplay() : (calculateTotal() | dualCurrency) }}</span>
+                  <span class="sum-total-val">{{ calculateTotal() | dualCurrency }}</span>
                 </div>
               </div>
             </div>
@@ -178,6 +154,15 @@
                   <div class="pay-txt">
                     <span class="pay-name">{{ 'TRANSPORT_BOOKING.PAY_CASH' | translate }}</span>
                     <span class="pay-desc">{{ 'TRANSPORT_BOOKING.PAY_CASH_DESC' | translate }}</span>
+                  </div>
+                </label>
+                <label class="pay-opt" [class.pay-active]="paymentMethod() === 'KONNECT'"
+                       (click)="paymentMethod.set('KONNECT'); paymentMethodValue = 'KONNECT'">
+                  <span class="pay-radio" [class.pay-checked]="paymentMethod() === 'KONNECT'"></span>
+                  <i class="pi pi-credit-card pay-icon"></i>
+                  <div class="pay-txt">
+                    <span class="pay-name">{{ 'TRANSPORT_BOOKING.PAY_KONNECT' | translate }}</span>
+                    <span class="pay-desc">{{ 'TRANSPORT_BOOKING.PAY_KONNECT_DESC' | translate }}</span>
                   </div>
                 </label>
                 <label class="pay-opt" [class.pay-active]="paymentMethod() === 'STRIPE'"

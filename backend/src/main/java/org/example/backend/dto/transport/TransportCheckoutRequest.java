@@ -2,6 +2,7 @@ package org.example.backend.dto.transport;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -16,6 +17,9 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class TransportCheckoutRequest {
 
+    /**
+     * Positive: persisted transport. Negative: flight-search offer — requires {@link #syntheticFlightOffer}.
+     */
     @NotNull
     private Integer transportId;
 
@@ -58,4 +62,8 @@ public class TransportCheckoutRequest {
 
     /** Optional Stripe Checkout presentment: {@code tnd}, {@code eur}, or {@code usd}. */
     private String presentmentCurrency;
+
+    /** Required when {@code transportId < 0} (international / API flight row). */
+    @Valid
+    private SyntheticFlightOfferDto syntheticFlightOffer;
 }

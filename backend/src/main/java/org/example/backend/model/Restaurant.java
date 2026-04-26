@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
+import org.hibernate.annotations.BatchSize;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,7 +23,7 @@ public class Restaurant {
     @ManyToOne @JoinColumn(name="city_id")
     private City city;
     private String name;
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = CuisineTypeConverter.class)
     @Column(name = "cuisine_type")
     private CuisineType cuisineType;
     private Double rating;
@@ -34,8 +35,9 @@ public class Restaurant {
     private Double longitude;
     private String imageUrl;
 
-    @OneToMany(mappedBy = "restaurant", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OneToMany(mappedBy = "restaurant", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @OrderBy("displayOrder ASC, menuImageId ASC")
+    @BatchSize(size = 24)
     @JsonIgnoreProperties("restaurant")
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
