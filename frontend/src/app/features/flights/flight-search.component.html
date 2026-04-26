@@ -47,5 +47,46 @@
         (click)="onSearchClick()"
       ></button>
     </div>
+
+    <div class="panel-divider" aria-hidden="true"></div>
+
+    <div class="fields-stack flight-by-number">
+      <h3 class="sub-block-title">Search by flight number</h3>
+      <p class="sub-block-hint">Airline + number (e.g. TU712) or 1–4 digits; date is UTC (provider).</p>
+      <div class="field-row">
+        <div class="field-block field-grow">
+          <label class="field-label" for="flight-num">Flight</label>
+          <input
+            pInputText
+            id="flight-num"
+            class="field-input"
+            [ngModel]="flightNumberQuery"
+            (ngModelChange)="flightNumberQueryChange.emit($event)"
+            placeholder="e.g. TU712"
+            autocomplete="off"
+          />
+        </div>
+        <div class="field-block field-date">
+          <label class="field-label" for="flight-date">Date (UTC)</label>
+          <input
+            id="flight-date"
+            type="date"
+            class="field-input field-input-date"
+            [ngModel]="flightSearchDate"
+            (ngModelChange)="flightSearchDateChange.emit($event)"
+          />
+        </div>
+        <button
+          pButton
+          type="button"
+          label="Find flights"
+          icon="pi pi-send"
+          class="search-btn search-btn-secondary"
+          [loading]="loading"
+          [disabled]="loading || !isFlightQueryValid()"
+          (click)="onFlightSearchClick()"
+        ></button>
+      </div>
+    </div>
   </div>
 </div>

@@ -97,6 +97,10 @@
             <div class="sb-urole">{{ user()?.roles?.join(', ') }}</div>
           </div>
         </button>
+        <button class="logout-btn home-btn" (click)="goHome()" id="admin-home-btn">
+          <i class="pi pi-home"></i>
+          Home
+        </button>
         <button class="logout-btn" (click)="logout()" id="admin-logout-btn">
           <i class="pi pi-sign-out"></i>
           Sign out
@@ -111,6 +115,9 @@
         <i class="pi pi-arrow-right"></i>
       </button>
     }
-    <router-outlet />
+
+    <section class="sb-content">
+      <router-outlet />
+    </section>
   </main>
 </div>

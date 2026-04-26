@@ -46,6 +46,7 @@ public class GeminiCommunityImageTaggingService {
     );
         private static final Pattern RETRY_DELAY_SECONDS_PATTERN = Pattern.compile("\\\"retryDelay\\\"\\s*:\\s*\\\"(\\d+)s\\\"");
         private static final long DEFAULT_RETRY_DELAY_SECONDS = 60L;
+        private static final long FORBIDDEN_COOLDOWN_SECONDS = 3600L;
 
     private static final List<String> ALLOWED_CATEGORIES = List.of(
             "dessert", "food", "beach", "mountain", "forest", "desert", "sea", "lake", "river", "waterfall",
@@ -57,7 +58,7 @@ public class GeminiCommunityImageTaggingService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    @Value("${app.gemini.api-key:}")
+    @Value("${gemini.api.key.community:${GEMINI_API_KEY_COMMUNITY:}}")
     private String geminiApiKey;
 
     @Value("${gemini.api.model.community:${GEMINI_API_MODEL_COMMUNITY:gemini-1.5-flash-latest}}")
@@ -123,6 +124,10 @@ public class GeminiCommunityImageTaggingService {
                         }
                     } catch (HttpClientErrorException.NotFound notFound) {
                         log.debug("Gemini model {} is unavailable on API {}", model, apiVersion);
+                    } catch (HttpClientErrorException.Forbidden forbidden) {
+                        geminiCooldownUntil = Instant.now().plusSeconds(FORBIDDEN_COOLDOWN_SECONDS);
+                        log.warn("Gemini returned 403 (invalid or leaked API key). Auto-tagging paused for {}s", FORBIDDEN_COOLDOWN_SECONDS);
+                        return List.of();
                     } catch (HttpClientErrorException.TooManyRequests tooManyRequests) {
                         long retrySeconds = extractRetryDelaySeconds(tooManyRequests);
                         geminiCooldownUntil = Instant.now().plusSeconds(retrySeconds);

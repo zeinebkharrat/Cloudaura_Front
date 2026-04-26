@@ -49,7 +49,7 @@ export class CurrencyService {
   }
 
   /**
-   * Example: {@code 120 TND (~ 35 €)} when the user prefers EUR; {@code 120 TND} when TND is selected.
+    * Example: {@code 120 TND ~ 35 €} when the user prefers EUR; {@code 120 TND} when TND is selected.
    */
   formatDual(amountTnd: number): string {
     const roundedTnd = this.roundMoney(amountTnd);
@@ -64,7 +64,7 @@ export class CurrencyService {
     }
     const converted = this.roundMoney(amountTnd * rate);
     const sym = SYMBOLS[pref];
-    return `${tndPart} (~ ${this.formatNumber(converted)} ${sym})`;
+    return `${tndPart} ~ ${this.formatNumber(converted)} ${sym}`;
   }
 
   refreshRatesFromServer(): void {

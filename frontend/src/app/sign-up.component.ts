@@ -271,6 +271,10 @@ export class SignUpComponent implements OnDestroy {
       this.formError.set('Only Tunisian users can request the artisan role.');
       return;
     }
+    if (raw.becomeArtisan && !isTunisia) {
+      this.formError.set('Only Tunisian users can request the artisan role.');
+      return;
+    }
 
     let captchaToken: string | null = null;
     if (this.captchaEnabled() && !this.captchaV3()) {

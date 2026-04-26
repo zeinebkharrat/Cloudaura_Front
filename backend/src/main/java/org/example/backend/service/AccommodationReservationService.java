@@ -43,7 +43,6 @@ public class AccommodationReservationService {
     private final UserRepository userRepository;
     private final SpecialOfferRepository specialOfferRepository;
     private final UserNotificationService userNotificationService;
-    private final ReservationTranslationHelper reservationLabels;
 
     @Value("${stripe.api.key:disabled}")
     private String stripeApiKey;
@@ -51,7 +50,11 @@ public class AccommodationReservationService {
     private record SavedStay(Reservation reservation, int nights, double discount) {}
 
     public boolean isStripeAccommodationPaymentsEnabled() {
-        return StripeSecretKeys.isStripeSecretConfigured(StripeSecretKeys.normalize(stripeApiKey));
+        return StripeSecretKeys.isStripeSecretConfigured(resolveStripeApiKey());
+    }
+
+    private String resolveStripeApiKey() {
+        return StripeSecretKeys.resolveEffective(stripeApiKey, System.getenv("STRIPE_SECRET_KEY"));
     }
 
     @Transactional
@@ -76,7 +79,7 @@ public class AccommodationReservationService {
     public AccommodationStripeCheckoutHandoff prepareAccommodationStripeCheckout(
             AccommodationReservationRequest req, int authenticatedUserId) {
         if (req.getUserId() != authenticatedUserId) {
-            throw new AccessDeniedException("reservation.error.access_not_owner");
+            throw new AccessDeniedException("Not your reservation");
         }
         SavedStay s = persistNewReservation(req);
         Reservation saved = s.reservation();
@@ -102,24 +105,24 @@ public class AccommodationReservationService {
     @Transactional
     public AccommodationReservationResponse confirmAccommodationStripeSession(String sessionId, int userId) {
         if (!isStripeAccommodationPaymentsEnabled()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.stripe_not_enabled_accommodation");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Stripe n'est pas activé.");
         }
-        Stripe.apiKey = StripeSecretKeys.normalize(stripeApiKey);
+        Stripe.apiKey = resolveStripeApiKey();
         try {
             Session session = Session.retrieve(sessionId);
             String pay = session.getPaymentStatus();
             if (pay == null || !"paid".equalsIgnoreCase(pay)) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.stripe_payment_incomplete");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Paiement Stripe non complété.");
             }
             String rid =
                     session.getMetadata() != null ? session.getMetadata().get("accommodationReservationId") : null;
             if (rid == null || rid.isBlank()) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.stripe_invalid_accommodation_session");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Session Stripe invalide.");
             }
             int reservationId = Integer.parseInt(rid.trim());
             Reservation res = reservationRepository
                     .findByIdWithAssociations(reservationId)
-                    .orElseThrow(() -> new ResourceNotFoundException("reservation.error.reservation_not_found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Réservation introuvable."));
             assertAccommodationOwner(res, userId);
             if (res.getStatus() == ReservationStatus.CONFIRMED) {
                 int nights = (int) ChronoUnit.DAYS.between(res.getCheckInDate(), res.getCheckOutDate());
@@ -139,22 +142,21 @@ public class AccommodationReservationService {
             int nights = (int) ChronoUnit.DAYS.between(updated.getCheckInDate(), updated.getCheckOutDate());
             return mapToResponse(updated, nights, 0);
         } catch (NumberFormatException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.stripe_metadata_invalid");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Métadonnées Stripe invalides.");
         } catch (StripeException e) {
             log.error("Stripe accommodation session retrieve failed", e);
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "reservation.error.stripe_verify_failed");
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Impossible de valider la session Stripe.");
         }
     }
 
     private SavedStay persistNewReservation(AccommodationReservationRequest req) {
         if (req.getCheckIn().isAfter(req.getCheckOut())) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "reservation.error.checkin_before_checkout");
+            throw new IllegalArgumentException("La date d'arrivée doit être avant la date de départ.");
         }
 
         Room room = roomRepository
                 .findById(req.getRoomId())
-                .orElseThrow(() -> new ResourceNotFoundException("reservation.error.room_not_found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Chambre introuvable."));
 
         LocalDateTime checkIn = req.getCheckIn().atStartOfDay();
         LocalDateTime checkOut = req.getCheckOut().atStartOfDay();
@@ -166,12 +168,12 @@ public class AccommodationReservationService {
         int rid = room.getRoomId();
         boolean roomListed = available.stream().anyMatch(r -> Objects.equals(r.getRoomId(), rid));
         if (!roomListed) {
-            throw new RoomNotAvailableException("reservation.error.room_unavailable_dates");
+            throw new RoomNotAvailableException("La chambre n'est plus disponible pour ces dates.");
         }
 
         User user = userRepository
                 .findById(req.getUserId())
-                .orElseThrow(() -> new ResourceNotFoundException("reservation.error.user_not_found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Utilisateur introuvable."));
 
         long nights = ChronoUnit.DAYS.between(req.getCheckIn(), req.getCheckOut());
         double totalPrice = room.getPrice() * nights;
@@ -180,7 +182,7 @@ public class AccommodationReservationService {
         if (req.getOfferId() != null) {
             SpecialOffer offer = specialOfferRepository
                     .findById(req.getOfferId())
-                    .orElseThrow(() -> new ResourceNotFoundException("reservation.error.offer_not_found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Offre introuvable."));
             discount = totalPrice * (offer.getDiscountPercentage() / 100.0);
             totalPrice -= discount;
         }
@@ -190,6 +192,7 @@ public class AccommodationReservationService {
                 .checkOutDate(req.getCheckOut().atStartOfDay())
                 .status(ReservationStatus.PENDING)
                 .totalPrice(totalPrice)
+            .guestCount(req.getGuestCount() != null && req.getGuestCount() > 0 ? req.getGuestCount() : 1)
                 .room(room)
                 .user(user)
                 .build();
@@ -206,27 +209,26 @@ public class AccommodationReservationService {
                 + r.getReservationId() + "&accommodationId=" + accId;
     }
 
-    private void assertAccommodationOwner(Reservation res, int userId) {
+    private static void assertAccommodationOwner(Reservation res, int userId) {
         if (res.getUser() == null || !res.getUser().getUserId().equals(userId)) {
-            throw new AccessDeniedException("reservation.error.access_not_owner");
+            throw new AccessDeniedException("Not your reservation");
         }
     }
 
     @Transactional
     public AccommodationReservationResponse cancelReservation(int id, int userId) {
-        Reservation res = reservationRepository
-                .findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("reservation.error.reservation_not_found"));
+        Reservation res = reservationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Réservation introuvable."));
         if (res.getUser() == null || !res.getUser().getUserId().equals(userId)) {
-            throw new AccessDeniedException("reservation.error.access_not_owner");
+            throw new AccessDeniedException("Not your reservation");
         }
         if (res.getStatus() == ReservationStatus.CANCELLED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.already_cancelled_stay");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Déjà annulée.");
         }
         if (res.getStatus() == ReservationStatus.CONFIRMED) {
             long hoursUntilCheckIn = ChronoUnit.HOURS.between(LocalDateTime.now(), res.getCheckInDate());
             if (hoursUntilCheckIn < 24) {
-                throw new CancellationNotAllowedException("reservation.error.cancellation_window");
+                throw new CancellationNotAllowedException("Annulation impossible moins de 24h avant l'arrivée.");
             }
         }
 
@@ -245,26 +247,23 @@ public class AccommodationReservationService {
 
     @Transactional
     public AccommodationReservationResponse updateReservation(int reservationId, int userId, AccommodationReservationUpdateRequest req) {
-        Reservation res = reservationRepository
-                .findById(reservationId)
-                .orElseThrow(() -> new ResourceNotFoundException("reservation.error.reservation_not_found"));
+        Reservation res = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Réservation introuvable."));
         if (res.getUser() == null || !res.getUser().getUserId().equals(userId)) {
-            throw new AccessDeniedException("reservation.error.access_not_owner");
+            throw new AccessDeniedException("Not your reservation");
         }
         if (res.getStatus() == ReservationStatus.CANCELLED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.stay_cancelled");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Réservation annulée.");
         }
         if (res.getRoom() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.stay_no_room");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Réservation sans chambre.");
         }
 
         if (req.getCheckIn() == null || req.getCheckOut() == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "reservation.error.checkin_checkout_required");
+            throw new IllegalArgumentException("checkIn et checkOut sont requis.");
         }
         if (!req.getCheckIn().isBefore(req.getCheckOut())) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "reservation.error.checkin_before_checkout");
+            throw new IllegalArgumentException("La date d'arrivée doit être avant la date de départ.");
         }
 
         LocalDateTime ci = req.getCheckIn().atStartOfDay();
@@ -273,7 +272,7 @@ public class AccommodationReservationService {
         long conflicts = reservationRepository.countOverlappingExcept(
                 res.getRoom().getRoomId(), reservationId, ci, co);
         if (conflicts > 0) {
-            throw new RoomNotAvailableException("reservation.error.date_overlap_room");
+            throw new RoomNotAvailableException("Ces dates chevauchent une autre réservation pour cette chambre.");
         }
 
         long nights = ChronoUnit.DAYS.between(req.getCheckIn(), req.getCheckOut());
@@ -293,40 +292,22 @@ public class AccommodationReservationService {
                 ? room.getAccommodation().getAccommodationId()
                 : null;
         Integer roomId = room != null ? room.getRoomId() : null;
-        String accNameRaw =
-                room != null && room.getAccommodation() != null && room.getAccommodation().getName() != null
-                        ? room.getAccommodation().getName()
-                        : null;
-        String accName = accId != null
-                ? reservationLabels.accommodationName(accId, accNameRaw != null ? accNameRaw : "")
-                : (accNameRaw != null ? accNameRaw : null);
-        String roomTypeCode = room != null && room.getRoomType() != null ? room.getRoomType().name() : null;
-        String roomTypeLabel =
-                roomTypeCode != null ? reservationLabels.roomTypeLabel(roomTypeCode) : null;
-        String cityName = null;
-        if (room != null && room.getAccommodation() != null && room.getAccommodation().getCity() != null) {
-            var city = room.getAccommodation().getCity();
-            Integer cid = city.getCityId();
-            String rawCity = city.getName() != null ? city.getName() : "";
-            cityName = cid != null ? reservationLabels.cityName(cid, rawCity) : rawCity;
-        }
         return AccommodationReservationResponse.builder()
                 .reservationId(r.getReservationId())
                 .accommodationId(accId)
                 .roomId(roomId)
-                .status(r.getStatus() != null ? r.getStatus().name() : ReservationStatus.PENDING.name())
-                .statusLabel(reservationLabels.statusLabel(r.getStatus()))
+            .guestCount(r.getGuestCount())
+                .status(r.getStatus().name())
                 .checkIn(r.getCheckInDate().toLocalDate())
                 .checkOut(r.getCheckOutDate().toLocalDate())
                 .nights(nights)
                 .totalPrice(r.getTotalPrice())
                 .discountApplied(discount)
-                .accommodationName(accName)
-                .nameLabel(accName)
-                .roomType(roomTypeCode)
-                .roomTypeLabel(roomTypeLabel)
-                .cityName(cityName)
-                .cityLabel(cityName)
+                .accommodationName(room != null ? room.getAccommodation().getName() : null)
+                .roomType(room != null ? room.getRoomType().name() : null)
+                .cityName(room != null && room.getAccommodation().getCity() != null
+                        ? room.getAccommodation().getCity().getName()
+                        : null)
                 .build();
     }
 }

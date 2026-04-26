@@ -26,8 +26,31 @@ export class TripContextStore {
   /** Driving route distance (km) for taxi pricing / Stripe checkout. */
   transportRouteKm = signal<number | null>(null);
   transportRouteDurationSec = signal<number | null>(null);
+  transportRouteDurationMin = computed(() => {
+    const sec = this.transportRouteDurationSec();
+    if (sec == null || sec <= 0) {
+      return null;
+    }
+    return Math.max(1, Math.round(sec / 60));
+  });
   /** Car rental duration in days (CAR pricing). */
   transportRentalDays = signal<number>(1);
+
+  /**
+   * Last input from transport "Find your ride" — used to hydrate `/transport/flights`
+   * when query params are incomplete.
+   */
+  transportSearchLeg = signal<{
+    fromCityId: number | null;
+    toCityId: number | null;
+    travelDateIso: string | null;
+    passengers: number;
+  }>({
+    fromCityId: null,
+    toCityId: null,
+    travelDateIso: null,
+    passengers: 1,
+  });
 
   constructor() {
     this.loadFromSession();
@@ -50,6 +73,11 @@ export class TripContextStore {
     this.pax.set(pax);
   }
 
+  setPassengers(passengers: number) {
+    const adults = Math.max(1, Math.floor(passengers || 1));
+    this.pax.set({ adults, children: this.pax().children });
+  }
+
   setAccommodationRoomQuote(category: AccommodationRoomCategory, roomId: number | null) {
     this.accommodationRoomCategory.set(category);
     this.accommodationQuoteRoomId.set(roomId);
@@ -62,6 +90,17 @@ export class TripContextStore {
 
   setTransportRentalDays(days: number) {
     this.transportRentalDays.set(Math.max(1, Math.floor(days)));
+  }
+
+  setTransportSearchLeg(
+    patch: Partial<{
+      fromCityId: number | null;
+      toCityId: number | null;
+      travelDateIso: string | null;
+      passengers: number;
+    }>,
+  ) {
+    this.transportSearchLeg.update((prev) => ({ ...prev, ...patch }));
   }
 
   calculateNights = computed(() => {
@@ -84,6 +123,7 @@ export class TripContextStore {
         transportRouteKm: this.transportRouteKm(),
         transportRouteDurationSec: this.transportRouteDurationSec(),
         transportRentalDays: this.transportRentalDays(),
+        transportSearchLeg: this.transportSearchLeg(),
       }));
     }
   }
@@ -110,6 +150,9 @@ export class TripContextStore {
         }
         if (parsed.transportRentalDays != null) {
           this.transportRentalDays.set(parsed.transportRentalDays);
+        }
+        if (parsed.transportSearchLeg != null) {
+          this.transportSearchLeg.set(parsed.transportSearchLeg);
         }
       }
     }

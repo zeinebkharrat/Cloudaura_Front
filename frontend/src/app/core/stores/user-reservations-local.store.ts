@@ -52,6 +52,16 @@ export class UserReservationsLocalStore {
     this.writeJson(this.hebergementKey(), list);
   }
 
+  pruneTransport(keep: (reservation: TransportReservation) => boolean): void {
+    const list = this.readTransport().filter(keep);
+    this.writeJson(this.transportKey(), list);
+  }
+
+  pruneAccommodation(keep: (reservation: AccommodationReservation) => boolean): void {
+    const list = this.readAccommodation().filter(keep);
+    this.writeJson(this.hebergementKey(), list);
+  }
+
   mergeTransport(server: TransportReservation[]): TransportReservation[] {
     const local = this.readTransport();
     const key = (r: TransportReservation) =>

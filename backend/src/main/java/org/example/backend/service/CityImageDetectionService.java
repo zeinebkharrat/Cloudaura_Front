@@ -450,6 +450,9 @@ public class CityImageDetectionService {
             if (city.getName() == null || city.getName().isBlank()) {
                 continue;
             }
+            if (city.isVirtualFlightEndpointCity()) {
+                continue;
+            }
 
             String cityName = normalize(city.getName());
             String regionName = normalize(city.getRegion());
@@ -491,6 +494,9 @@ public class CityImageDetectionService {
 
         for (City city : cities) {
             if (city.getName() == null || city.getName().isBlank()) {
+                continue;
+            }
+            if (city.isVirtualFlightEndpointCity()) {
                 continue;
             }
 

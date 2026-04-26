@@ -7,9 +7,7 @@ import { ExploreService } from './explore.service';
 import { City, Restaurant, VoiceTranscriptionResponse } from './explore.models';
 import { VoiceSearchService } from './voice-search.service';
 import { parseRestaurantVoiceQuery } from './voice-query.parser';
-import { Subscription } from 'rxjs';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { LanguageService } from '../core/services/language.service';
+import { TranslateModule } from '@ngx-translate/core';
 
 @Component({
   selector: 'app-services-restaurants',
@@ -43,16 +41,13 @@ export class ServicesRestaurantsComponent implements OnInit, OnDestroy {
   voiceDetectedFilters = signal({ city: false, cuisine: false });
 
   private searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-  private langSub: Subscription | null = null;
 
   pageNumbers = computed(() => Array.from({ length: this.totalPages() }, (_, index) => index));
 
   constructor(
     private readonly exploreService: ExploreService,
     private readonly voiceSearchService: VoiceSearchService,
-    private readonly http: HttpClient,
-    private readonly translate: TranslateService,
-    private readonly language: LanguageService
+    private readonly http: HttpClient
   ) {}
 
   ngOnInit(): void {
@@ -60,16 +55,9 @@ export class ServicesRestaurantsComponent implements OnInit, OnDestroy {
     this.loadCities();
     this.loadCuisineOptions();
     this.loadRestaurants();
-    this.langSub = this.language.langChanged$.subscribe(() => {
-      this.page.set(0);
-      this.loadCuisineOptions();
-      this.loadRestaurants();
-    });
   }
 
   ngOnDestroy(): void {
-    this.langSub?.unsubscribe();
-    this.langSub = null;
     if (this.searchDebounceTimer) {
       clearTimeout(this.searchDebounceTimer);
     }
@@ -305,7 +293,7 @@ export class ServicesRestaurantsComponent implements OnInit, OnDestroy {
       },
       error: (err) => {
         this.loading.set(false);
-        this.error.set(err?.error?.message ?? this.translate.instant('EXPLORE_SERVICES_RESTAURANTS.ERR_LOAD_RESTAURANTS'));
+        this.error.set(err?.error?.message ?? 'Unable to load restaurants');
       },
     });
   }

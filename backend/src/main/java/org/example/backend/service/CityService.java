@@ -29,8 +29,13 @@ public class CityService {
 
     public Page<CityResponse> list(String q, Pageable pageable) {
         Specification<City> spec = (root, query, cb) -> {
+            var predicate = cb.or(
+                cb.isNull(root.get("region")),
+                cb.notEqual(cb.lower(cb.coalesce(root.get("region"), "")), "airport")
+            );
+
             if (q == null || q.isBlank()) {
-                return cb.conjunction();
+                return predicate;
             }
             String like = "%" + q.trim().toLowerCase() + "%";
 
@@ -38,10 +43,13 @@ public class CityService {
             Expression<String> safeRegion = cb.lower(cb.coalesce(root.get("region"), ""));
             Expression<String> safeDescription = cb.lower(cb.coalesce(root.get("description").as(String.class), ""));
 
-            return cb.or(
-                cb.like(safeName, like),
-                cb.like(safeRegion, like),
-                cb.like(safeDescription, like)
+            return cb.and(
+                predicate,
+                cb.or(
+                    cb.like(safeName, like),
+                    cb.like(safeRegion, like),
+                    cb.like(safeDescription, like)
+                )
             );
         };
 

@@ -44,7 +44,6 @@ public class ActivityReservationService {
     private final ActivityReservationRepository reservationRepository;
     private final UserRepository userRepository;
     private final UserNotificationService userNotificationService;
-    private final ReservationTranslationHelper reservationLabels;
 
     @Transactional
     public ActivityReservationResponse create(Integer activityId, CreateActivityReservationRequest request) {
@@ -73,22 +72,25 @@ public class ActivityReservationService {
         try {
             date = LocalDate.parse(request.getReservationDate());
         } catch (DateTimeException ex) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.reservation_date_iso");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservationDate doit être au format ISO yyyy-MM-dd");
         }
 
         if (date.isBefore(LocalDate.now())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.reservation_date_future");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La date de réservation doit être aujourd'hui ou plus tard");
         }
 
         Integer numberOfPeople = request.getNumberOfPeople();
         if (numberOfPeople == null || numberOfPeople < 1) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.number_of_people");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "numberOfPeople doit être >= 1");
         }
 
         if (isQuotaEnabledOnDate(activity, date)) {
             int remainingPlaces = remainingPlaces(activity, date);
             if (numberOfPeople > remainingPlaces) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "reservation.error.quota_exceeded");
+                throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Plus de places disponibles pour cette date. Places restantes: " + Math.max(remainingPlaces, 0)
+                );
             }
         }
 
@@ -111,40 +113,36 @@ public class ActivityReservationService {
             .atOffset(ZoneOffset.UTC)
             .toLocalDate();
 
-        var act = reservation.getActivity();
-        int aid = act.getActivityId();
-        String actName = reservationLabels.activityName(aid, act.getName() != null ? act.getName() : "");
-        var city = act.getCity();
-        Integer cid = city != null ? city.getCityId() : null;
-        String cityRaw = city != null && city.getName() != null ? city.getName() : "";
-        String cityDisp = cid != null ? reservationLabels.cityName(cid, cityRaw) : cityRaw;
+        String activityName = reservation.getActivity().getName();
+        Integer cityId = reservation.getActivity().getCity() != null ? reservation.getActivity().getCity().getCityId() : null;
+        String cityName = reservation.getActivity().getCity() != null ? reservation.getActivity().getCity().getName() : null;
+        String statusLabel = reservation.getStatus() != null ? reservation.getStatus().name() : null;
 
         return new ActivityReservationResponse(
             reservation.getActivityReservationId(),
-            aid,
-            actName,
+            reservation.getActivity().getActivityId(),
+            activityName,
             date.toString(),
             reservation.getNumberOfPeople(),
             reservation.getTotalPrice(),
             reservation.getStatus(),
-            reservationLabels.statusLabel(reservation.getStatus()),
-            cid,
-            cityDisp,
-            actName
+            statusLabel,
+            cityId,
+            cityName,
+            activityName
         );
     }
 
     @Transactional(readOnly = true)
     public List<ActivityAvailabilityDayResponse> availability(Integer activityId, LocalDate from, int days, int participants) {
-        Activity activity = activityRepository
-            .findById(activityId)
-            .orElseThrow(() -> new ResourceNotFoundException("reservation.error.activity_not_found"));
+        Activity activity = activityRepository.findById(activityId)
+            .orElseThrow(() -> new ResourceNotFoundException("Activité introuvable: " + activityId));
 
         if (days < 1 || days > 120) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.days_range");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "days doit être entre 1 et 120");
         }
         if (participants < 1) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.participants_min");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "participants doit être >= 1");
         }
 
         LocalDate start = from != null ? from : LocalDate.now();
@@ -236,30 +234,24 @@ public class ActivityReservationService {
             .toLocalDate();
 
         User user = reservation.getUser();
-        var act = reservation.getActivity();
-        int aid = act.getActivityId();
-        String actName = reservationLabels.activityName(aid, act.getName() != null ? act.getName() : "");
-        var city = act.getCity();
-        Integer cityId = city != null ? city.getCityId() : null;
-        String cityRaw = city != null && city.getName() != null ? city.getName() : "";
-        String cityName =
-                cityId != null ? reservationLabels.cityName(cityId, cityRaw) : cityRaw;
-
+        String activityName = reservation.getActivity().getName();
+        String cityName = reservation.getActivity().getCity().getName();
+        String statusLabel = reservation.getStatus() != null ? reservation.getStatus().name() : null;
         return new ActivityReservationListItemResponse(
             reservation.getActivityReservationId(),
-            aid,
-            actName,
-            cityId,
+            reservation.getActivity().getActivityId(),
+            activityName,
+            reservation.getActivity().getCity().getCityId(),
             cityName,
             date.toString(),
             reservation.getNumberOfPeople(),
             reservation.getTotalPrice(),
             reservation.getStatus(),
-            reservationLabels.statusLabel(reservation.getStatus()),
+            statusLabel,
             user != null ? user.getUserId() : null,
             user != null ? user.getUsername() : null,
             user != null ? user.getEmail() : null,
-            actName,
+            activityName,
             cityName
         );
     }
@@ -301,7 +293,7 @@ public class ActivityReservationService {
     private User currentAuthenticatedUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "reservation.error.auth_required");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authentification requise");
         }
 
         String username = authentication.getName();

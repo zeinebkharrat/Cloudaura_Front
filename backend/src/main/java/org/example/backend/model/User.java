@@ -49,6 +49,9 @@ public class User {
     /** MEDIUMTEXT (≈16 Mo) — URLs longues ou data URLs base64 pour la photo de profil. */
     @Column(columnDefinition = "MEDIUMTEXT")
     private String profileImageUrl;
+    /** Optional cover image shown in profile settings header. */
+    @Column(columnDefinition = "MEDIUMTEXT")
+    private String coverImageUrl;
     private String nationality;
     private String gender;
     private LocalDate dateOfBirth;
@@ -226,6 +229,14 @@ public class User {
 
     public void setProfileImageUrl(String profileImageUrl) {
         this.profileImageUrl = profileImageUrl;
+    }
+
+    public String getCoverImageUrl() {
+        return coverImageUrl;
+    }
+
+    public void setCoverImageUrl(String coverImageUrl) {
+        this.coverImageUrl = coverImageUrl;
     }
 
     public String getNationality() {

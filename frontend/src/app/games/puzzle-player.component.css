@@ -1,6 +1,6 @@
 .puzzle-page {
   min-height: 100vh;
-  padding: 100px 16px 30px;
+  padding: 40px 16px 30px;
   background: linear-gradient(165deg, #2d2419 0%, #1a1510 45%, #0f0d0a 100%);
   color: #f8fafc;
   font-family: Inter, sans-serif;

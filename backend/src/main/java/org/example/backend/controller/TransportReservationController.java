@@ -5,6 +5,7 @@ import org.example.backend.dto.transport.TransportReservationRequest;
 import org.example.backend.dto.transport.TransportReservationResponse;
 import org.example.backend.dto.transport.TransportReservationUpdateRequest;
 import org.example.backend.service.TransportReservationService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +19,7 @@ public class TransportReservationController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<TransportReservationResponse> create(@RequestBody TransportReservationRequest request) {
+    public ApiResponse<TransportReservationResponse> create(@Valid @RequestBody TransportReservationRequest request) {
         return ApiResponse.success(reservationService.createReservation(request));
     }
 

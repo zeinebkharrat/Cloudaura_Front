@@ -14,6 +14,18 @@
       <button type="submit" [disabled]="isLoading()">Search</button>
     </form>
 
+    <div class="users-toolbar">
+      <p class="muted">{{ users().length }} user(s)</p>
+      <label class="users-page-size">
+        Per page
+        <select [value]="usersPageSize()" (change)="onUsersPageSizeChange($any($event.target).value)">
+          <option value="10">10</option>
+          <option value="20">20</option>
+          <option value="50">50</option>
+        </select>
+      </label>
+    </div>
+
     @if (actionError()) {
       <div class="msg error">{{ actionError() }}</div>
     }
@@ -40,7 +52,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (user of users(); track user.id) {
+            @for (user of paginatedUsers(); track user.id) {
               <tr>
                 <td>
                   <div class="user-cell">
@@ -49,8 +61,8 @@
                   </div>
                 </td>
                 <td>{{ user.email }}</td>
-                <td>{{ user.nationality || 'N/A' }}</td>
-                <td>{{ user.cityName || '-' }}</td>
+                <td>{{ displayOrFallback(user.nationality, 'N/A') }}</td>
+                <td>{{ displayOrFallback(user.cityName, '-') }}</td>
                 <td>
                   <span class="role-pill">{{ user.roles.join(', ') }}</span>
                 </td>
@@ -66,6 +78,13 @@
                 </td>
                 <td>
                   <div class="actions">
+                    <button type="button" class="action-btn view" title="View profile" (click)="openUserDetailsPopup(user)" [disabled]="isSaving()">
+                      <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                      <span>View</span>
+                    </button>
                     <button type="button" class="action-btn edit" title="Edit" (click)="openEditPopup(user)" [disabled]="isSaving()">
                       <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <path d="M12 20h9" />
@@ -114,5 +133,17 @@
         </table>
       }
     </div>
+
+    @if (users().length > usersPageSize()) {
+      <footer class="pager users-pager">
+        <button type="button" class="secondary" (click)="previousUsersPage()" [disabled]="usersPage() === 0 || isLoading()">
+          Previous
+        </button>
+        <span>Page {{ usersPage() + 1 }} / {{ usersTotalPages() }}</span>
+        <button type="button" class="secondary" (click)="nextUsersPage()" [disabled]="usersPage() >= usersTotalPages() - 1 || isLoading()">
+          Next
+        </button>
+      </footer>
+    }
   </article>
 </section>

@@ -66,8 +66,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/public/activities/*/reservations").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/public/activities/*/reservations/checkout").authenticated()
                         .requestMatchers("/api/public/activity-reservations/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/public/accommodations/*/reviews").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/public/restaurants/*/reviews").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/public/activities/*/reviews").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/public/accommodations/*/reviews/mine").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/public/restaurants/*/reviews/mine").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/public/activities/*/reviews/mine").authenticated()
                         .requestMatchers("/api/public/my/**").authenticated()
@@ -75,6 +77,9 @@ public class SecurityConfig {
                         .requestMatchers("/public/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/cities/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/transports/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/transports/estimate").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/cars/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/cars/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/flights", "/api/flights/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/currency/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/translate").permitAll()
@@ -91,6 +96,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/ludification/roadmap/progress").authenticated()
                         .requestMatchers("/api/ludification/roadmap/nodes/*/can-play").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/ludification/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/chef-quest/**").permitAll()
+                        .requestMatchers("/api/chef-quest/admin/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/ludification/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/ludification/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/ludification/**").hasAuthority("ROLE_ADMIN")
@@ -157,7 +164,7 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of(allowedOrigins.split(",")));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Chat-Session-Id"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

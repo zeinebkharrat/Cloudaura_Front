@@ -25,6 +25,7 @@ public class CityController {
     @GetMapping
     public ApiResponse<List<LocalizedCityResponse>> getAll(@RequestParam(defaultValue = "fr") String lang) {
         List<LocalizedCityResponse> rows = cityRepository.findAll().stream()
+                .filter(c -> !c.isVirtualFlightEndpointCity())
                 .map(c -> LocalizedCityResponse.from(c, lang, catalogTranslationService))
                 .toList();
         return ApiResponse.success(rows);

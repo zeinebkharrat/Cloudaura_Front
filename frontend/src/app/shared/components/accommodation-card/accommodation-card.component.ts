@@ -1,19 +1,49 @@
-import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  EventEmitter,
+  Input,
+  OnChanges,
+  Output,
+  SimpleChanges,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Accommodation } from '../../../core/models/travel.models';
-import { DualCurrencyPipe } from '../../../core/pipes/dual-currency.pipe';
 import { TranslateModule } from '@ngx-translate/core';
 import { createCurrencyDisplaySyncEffect } from '../../../core/utils/currency-display-sync';
+
+/** Curated hotel / resort photos (Unsplash) used when the API returns no photo. */
+const HOTEL_PLACEHOLDER_IMAGES: readonly string[] = [
+  'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=75',
+  'https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=800&q=75',
+  'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=800&q=75',
+  'https://images.unsplash.com/photo-1520250497591-112acf2f40ce?auto=format&fit=crop&w=800&q=75',
+  'https://images.unsplash.com/photo-1596436889106-bc7b90b7098a?auto=format&fit=crop&w=800&q=75',
+  'https://images.unsplash.com/photo-1564501049412-61c2a3083791?auto=format&fit=crop&w=800&q=75',
+];
 
 @Component({
   selector: 'app-accommodation-card',
   standalone: true,
-  imports: [CommonModule, DualCurrencyPipe, TranslateModule],
+  imports: [CommonModule, TranslateModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="hotel-card" (click)="select.emit()">
-      <!-- Image Area with gradient overlay -->
-      <div class="card-visual" [style.background]="getGradient()">
+      <div class="card-visual">
+        @if (!coverFailed) {
+          <img
+            class="card-cover"
+            [src]="coverImageUrl()"
+            alt=""
+            loading="lazy"
+            decoding="async"
+            (error)="onCoverError()"
+          />
+        } @else {
+          <div class="card-cover-fallback" [style.background]="getGradient()"></div>
+        }
+        <div class="card-visual-overlay" aria-hidden="true"></div>
         <div class="visual-content">
           <span class="type-pill">
             <img class="type-pill-icon" [src]="typeIconSrc(accommodation.type)" alt="" width="18" height="18" />
@@ -23,7 +53,6 @@ import { createCurrencyDisplaySyncEffect } from '../../../core/utils/currency-di
             <img class="visual-icon-img" [src]="typeIconSrc(accommodation.type)" alt="" />
           </div>
         </div>
-        <!-- Rating badge -->
         <div class="rating-badge" [class.excellent]="accommodation.rating >= 4.5"
              [class.good]="accommodation.rating >= 3.5 && accommodation.rating < 4.5">
           <span class="rating-stars">{{ getStars(accommodation.rating) }}</span>
@@ -51,7 +80,7 @@ import { createCurrencyDisplaySyncEffect } from '../../../core/utils/currency-di
         <!-- Footer -->
         <div class="card-footer">
           <div class="price-block">
-            <span class="price-dual">{{ accommodation.pricePerNight | dualCurrency }}</span>
+            <span class="price-dual">{{ accommodation.pricePerNight | number: '1.0-2' }} TND</span>
             <span class="price-currency"><small>{{ 'HEBERG.CARD.NIGHT' | translate }}</small></span>
           </div>
           <button class="btn-voir">
@@ -85,6 +114,27 @@ import { createCurrencyDisplaySyncEffect } from '../../../core/utils/currency-di
       position: relative;
       display: flex;
       overflow: hidden;
+      background: #1a0a2e;
+    }
+    .card-cover {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 0;
+    }
+    .card-cover-fallback {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+    }
+    .card-visual-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background: linear-gradient(180deg, rgba(0, 0, 0, 0.42) 0%, transparent 42%, rgba(0, 0, 0, 0.5) 100%);
     }
     .visual-content {
       position: absolute;
@@ -134,7 +184,7 @@ import { createCurrencyDisplaySyncEffect } from '../../../core/utils/currency-di
       display: flex;
       align-items: center;
       gap: 6px;
-      z-index: 2;
+      z-index: 3;
     }
     .rating-badge.excellent { background: rgba(241,37,69,0.8); }
     .rating-badge.good { background: rgba(255,152,0,0.7); }
@@ -248,11 +298,37 @@ import { createCurrencyDisplaySyncEffect } from '../../../core/utils/currency-di
     .hotel-card:hover .arrow { transform: translateX(3px); }
   `]
 })
-export class AccommodationCardComponent {
+export class AccommodationCardComponent implements OnChanges {
   private readonly _currencyDisplaySync = createCurrencyDisplaySyncEffect();
 
   @Input() accommodation!: Accommodation;
   @Output() select = new EventEmitter<void>();
+
+  /** Set when remote image fails to load; falls back to gradient. */
+  coverFailed = false;
+
+  constructor(private readonly cdr: ChangeDetectorRef) {}
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['accommodation']) {
+      this.coverFailed = false;
+    }
+  }
+
+  onCoverError(): void {
+    this.coverFailed = true;
+    this.cdr.markForCheck();
+  }
+
+  coverImageUrl(): string {
+    const raw = (this.accommodation.mainPhotoUrl || this.accommodation.imageUrl || '').trim();
+    if (raw) {
+      return raw;
+    }
+    const id = this.accommodation.id > 0 ? this.accommodation.id : 1;
+    const idx = id % HOTEL_PLACEHOLDER_IMAGES.length;
+    return HOTEL_PLACEHOLDER_IMAGES[idx];
+  }
 
   typeIconSrc(type: string): string {
     if (type === 'HOTEL') return 'icones/hotel.png';

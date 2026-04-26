@@ -5,10 +5,12 @@ import com.stripe.exception.StripeException;
 import com.stripe.model.checkout.Session;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -17,20 +19,25 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.backend.dto.transport.SyntheticFlightOfferDto;
 import org.example.backend.dto.transport.TransportCheckoutRequest;
 import org.example.backend.dto.transport.TransportPayPalCreateRequest;
 import org.example.backend.dto.transport.TransportStripeCheckoutHandoff;
 import org.example.backend.dto.transport.TransportReservationRequest;
 import org.example.backend.dto.transport.TransportReservationResponse;
 import org.example.backend.dto.transport.TransportReservationUpdateRequest;
+import org.example.backend.exception.CancellationNotAllowedException;
 import org.example.backend.exception.NoSeatsAvailableException;
 import org.example.backend.exception.ResourceNotFoundException;
+import org.example.backend.model.City;
 import org.example.backend.model.Transport;
 import org.example.backend.model.TransportReservation;
 import org.example.backend.model.User;
+import org.example.backend.repository.CityRepository;
 import org.example.backend.repository.TransportRepository;
 import org.example.backend.repository.TransportReservationRepository;
 import org.example.backend.repository.UserRepository;
+import org.example.backend.service.flight.TunisiaAirportIataGovernorateMap;
 import org.example.backend.util.StripeSecretKeys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -46,6 +53,7 @@ public class TransportReservationService {
 
     private final TransportReservationRepository reservationRepository;
     private final TransportRepository transportRepository;
+    private final CityRepository cityRepository;
     private final UserRepository userRepository;
     private final TransportPricingService transportPricingService;
     private final IPaypalService paypalService;
@@ -62,6 +70,11 @@ public class TransportReservationService {
 
     @Transactional
     public TransportReservationResponse createReservation(TransportReservationRequest req) {
+        return createReservationForUser(req, req.getUserId());
+    }
+
+    @Transactional
+    public TransportReservationResponse createReservationForUser(TransportReservationRequest req, int authenticatedUserId) {
         String pmRaw = req.getPaymentMethod() == null ? "" : req.getPaymentMethod().trim();
         if ("STRIPE".equalsIgnoreCase(pmRaw)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.use_checkout_for_stripe");
@@ -73,7 +86,7 @@ public class TransportReservationService {
         if (reservationRepository.existsByIdempotencyKey(req.getIdempotencyKey())) {
             return reservationRepository
                     .findByIdempotencyKey(req.getIdempotencyKey())
-                    .map(transportReservationMapper::toResponse)
+                .map(transportReservationMapper::toResponse)
                     .orElseThrow(
                             () ->
                                     new ResponseStatusException(
@@ -81,19 +94,23 @@ public class TransportReservationService {
                                             "reservation.error.idempotency_corrupt"));
         }
 
-        Transport transport = transportRepository
-                .findById(req.getTransportId())
-                .orElseThrow(() -> new ResourceNotFoundException("reservation.error.transport_not_found"));
+        Transport transport = resolveTransportForReservation(req);
+        assertReservationAllowedForTransportType(transport);
         assertTransportOpenForBooking(transport, req.getNumberOfSeats());
         validateTaxiRouteKm(transport, req.getRouteKm());
 
         User user = userRepository
-                .findById(req.getUserId())
+            .findById(authenticatedUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("reservation.error.user_not_found"));
 
         LocalDateTime travelDate = resolveTravelDateTime(req.getTravelDate(), transport.getDepartureTime());
         double total = transportPricingService.computeTotalTnd(
-                transport, req.getNumberOfSeats(), req.getRouteKm(), req.getRentalDays());
+            transport,
+            req.getNumberOfSeats(),
+            req.getRouteKm(),
+            req.getRouteDurationMin(),
+            req.getRentalDays(),
+            travelDate);
 
         TransportReservation reservation = TransportReservation.builder()
                 .status(TransportReservation.ReservationStatus.PENDING)
@@ -123,11 +140,11 @@ public class TransportReservationService {
         TransportReservation saved = reservationRepository.save(reservation);
         userNotificationService.notifyReservation(
             user.getUserId(),
-            "TRANSPORT",
-            saved.getTransportReservationId(),
-            "Transport reservation created",
-            "Your transport reservation " + safeRef(saved.getReservationRef()) + " was created.",
-            "/mes-reservations"
+            "TRANSPORT", 
+            saved.getTransportReservationId(), 
+            "Transport reservation created", 
+            "Your transport reservation " + safeRef(saved.getReservationRef()) + " was created.", 
+            "/mes-reservations" 
         );
         if (saved.getPaymentMethod() == TransportReservation.PaymentMethod.KONNECT
                 && saved.getStatus() == TransportReservation.ReservationStatus.CONFIRMED) {
@@ -150,7 +167,8 @@ public class TransportReservationService {
             TransportReservation existing = existingOpt.get();
             assertReservationOwner(existing, authenticatedUserId);
             if (existing.getStatus() == TransportReservation.ReservationStatus.CONFIRMED) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "reservation.error.already_confirmed_checkout");
+                double total = existing.getTotalPrice() != null ? existing.getTotalPrice() : 0.0;
+                return new TransportStripeCheckoutHandoff(buildLocalPaymentReturnUrl(existing), existing, total);
             }
             if (!isStripeTransportPaymentsEnabled()) {
                 applyPaidAndConfirmed(existing);
@@ -171,9 +189,8 @@ public class TransportReservationService {
             return new TransportStripeCheckoutHandoff(null, existing, total);
         }
 
-        Transport transport = transportRepository
-                .findById(req.getTransportId())
-                .orElseThrow(() -> new ResourceNotFoundException("reservation.error.transport_not_found"));
+        Transport transport = resolveTransportForCheckout(req);
+        assertReservationAllowedForTransportType(transport);
         assertTransportOpenForBooking(transport, req.getNumberOfSeats());
         validateTaxiRouteKm(transport, req.getRouteKm());
 
@@ -183,7 +200,12 @@ public class TransportReservationService {
 
         LocalDateTime travelDate = resolveTravelDateTime(req.getTravelDate(), transport.getDepartureTime());
         double total = transportPricingService.computeTotalTnd(
-                transport, req.getNumberOfSeats(), req.getRouteKm(), req.getRentalDays());
+            transport,
+            req.getNumberOfSeats(),
+            req.getRouteKm(),
+            req.getRouteDurationMin(),
+            req.getRentalDays(),
+            travelDate);
 
         TransportReservation reservation = TransportReservation.builder()
                 .status(TransportReservation.ReservationStatus.PENDING)
@@ -227,15 +249,21 @@ public class TransportReservationService {
 
     @Transactional
     public TransportReservation createPendingPayPalReservation(int userId, TransportPayPalCreateRequest req) {
-        Transport transport = transportRepository
-                .findById(req.getTransportId())
-                .orElseThrow(() -> new ResourceNotFoundException("reservation.error.transport_not_found"));
+        Transport transport = resolveTransportForPayPal(req);
+        assertReservationAllowedForTransportType(transport);
         assertTransportOpenForBooking(transport, req.getSeats());
         validateTaxiRouteKm(transport, req.getRouteKm());
 
         Integer rentalDays = transport.getType() == Transport.TransportType.CAR ? 1 : null;
+        LocalDateTime travelDate = resolveTravelDateTime(req.getTravelDate(), transport.getDepartureTime());
         double serverTotal =
-                transportPricingService.computeTotalTnd(transport, req.getSeats(), req.getRouteKm(), rentalDays);
+            transportPricingService.computeTotalTnd(
+                transport,
+                req.getSeats(),
+                req.getRouteKm(),
+                req.getRouteDurationMin(),
+                rentalDays,
+                travelDate);
         if (Math.abs(serverTotal - req.getAmountTnd()) > 0.05) {
             log.warn(
                     "PayPal amount mismatch: client amountTnd={} serverTotal={} transportId={}",
@@ -248,8 +276,6 @@ public class TransportReservationService {
         User user = userRepository
                 .findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("reservation.error.user_not_found"));
-
-        LocalDateTime travelDate = resolveTravelDateTime(req.getTravelDate(), transport.getDepartureTime());
 
         String fn = req.getPassengerFirstName() != null && !req.getPassengerFirstName().isBlank()
                 ? req.getPassengerFirstName().trim()
@@ -310,7 +336,7 @@ public class TransportReservationService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.not_paypal_reservation");
         }
         if (res.getStatus() == TransportReservation.ReservationStatus.CONFIRMED) {
-            log.info("PayPal capture skipped (already CONFIRMED): reservationId={}", reservationId);
+            log.info("PayPal capture skipped (already CONFIRMED): reservationId={}", reservationId); 
             return transportReservationMapper.toResponse(res);
         }
 
@@ -403,7 +429,7 @@ public class TransportReservationService {
         if (!isStripeTransportPaymentsEnabled()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.stripe_disabled");
         }
-        Stripe.apiKey = StripeSecretKeys.normalize(stripeApiKey);
+        Stripe.apiKey = StripeSecretKeys.resolveEffective(stripeApiKey, System.getenv("STRIPE_SECRET_KEY"));
         try {
             Session session = Session.retrieve(sessionId);
             String pay = session.getPaymentStatus();
@@ -453,7 +479,13 @@ public class TransportReservationService {
                 .orElseThrow(() -> new ResourceNotFoundException("reservation.error.reservation_not_found"));
         assertReservationOwner(res, userId);
         if (res.getStatus() == TransportReservation.ReservationStatus.CANCELLED) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.already_cancelled");
+            return transportReservationMapper.toResponse(res);
+        }
+
+        LocalDateTime startAt = resolveTransportStartDateTime(res); 
+        LocalDateTime cancellationDeadline = LocalDateTime.now().plusHours(24);
+        if (startAt != null && startAt.isBefore(cancellationDeadline)) {
+            throw new CancellationNotAllowedException("reservation.error.cancellation_window_transport");
         }
 
         res.setStatus(TransportReservation.ReservationStatus.CANCELLED);
@@ -466,16 +498,17 @@ public class TransportReservationService {
 
     @Transactional(readOnly = true)
     public List<TransportReservationResponse> getUserReservations(int userId) {
-        return reservationRepository.findByUser_UserId(userId).stream()
+        return reservationRepository.findByUserIdWithAssociations(userId).stream()
                 .filter(r -> r.getStatus() != TransportReservation.ReservationStatus.CANCELLED)
                 .sorted(Comparator.comparing(
                         TransportReservation::getCreatedAt,
                         Comparator.nullsLast(Comparator.reverseOrder())))
                 .flatMap(r -> {
                     try {
-                        return Stream.of(transportReservationMapper.toResponse(r));
-                    } catch (ResourceNotFoundException e) {
-                        log.warn("Skip transport reservation {}: {}", r.getTransportReservationId(), e.getMessage());
+                        return Stream.of(transportReservationMapper.toResponse(r)); 
+                    } catch (Exception e) {
+                        log.warn("Skip transport reservation {} due to mapping/load error: {}",
+                                r.getTransportReservationId(), e.getMessage());
                         return Stream.empty();
                     }
                 })
@@ -575,7 +608,8 @@ public class TransportReservationService {
      * (leading/trailing whitespace and UTF-8 BOM are stripped so valid keys are not misclassified).
      */
     public boolean isStripeTransportPaymentsEnabled() {
-        return StripeSecretKeys.isStripeSecretConfigured(StripeSecretKeys.normalize(stripeApiKey));
+        String effective = StripeSecretKeys.resolveEffective(stripeApiKey, System.getenv("STRIPE_SECRET_KEY"));
+        return StripeSecretKeys.isStripeSecretConfigured(effective);
     }
 
     public void sendTransportConfirmationWhatsApp(TransportReservation reservation) {
@@ -590,8 +624,11 @@ public class TransportReservationService {
             TransportReservation full =
                     reservationRepository.findByIdWithAssociations(res.getTransportReservationId()).orElse(res);
             String msg = transportWhatsAppMessageBuilder.buildConfirmationMessage(full);
+                String toPhone = (full.getPassengerPhone() != null && !full.getPassengerPhone().isBlank())
+                    ? full.getPassengerPhone()
+                    : (full.getUser() != null ? full.getUser().getPhone() : null);
             twilioWhatsAppService.sendWhatsApp(
-                    full.getUser() != null ? full.getUser().getPhone() : null, msg);
+                    toPhone, msg);
         } catch (Exception e) {
             log.warn("WhatsApp confirmation skipped: {}", e.getMessage());
         }
@@ -640,6 +677,15 @@ public class TransportReservationService {
         }
     }
 
+    private void assertReservationAllowedForTransportType(Transport transport) {
+        if (transport == null || transport.getType() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.transport_not_found");
+        }
+        if (transport.getType() == Transport.TransportType.TAXI || transport.getType() == Transport.TransportType.BUS) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.estimate_only_transport");
+        }
+    }
+
     private LocalDateTime resolveTravelDateTime(String travelDateIso, LocalDateTime fallback) {
         if (travelDateIso == null || travelDateIso.isBlank()) {
             return fallback;
@@ -649,7 +695,11 @@ public class TransportReservationService {
             if (t.contains("T")) {
                 return LocalDateTime.parse(t, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
             }
-            return LocalDate.parse(t, DateTimeFormatter.ISO_LOCAL_DATE).atStartOfDay();
+            LocalDate date = LocalDate.parse(t, DateTimeFormatter.ISO_LOCAL_DATE);
+            if (fallback != null) {
+                return LocalDateTime.of(date, fallback.toLocalTime());
+            }
+            return date.atStartOfDay();
         } catch (DateTimeParseException e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.invalid_travel_date");
         }
@@ -662,10 +712,177 @@ public class TransportReservationService {
         }
     }
 
-    private static String safeRef(String reservationRef) {
-        if (reservationRef == null || reservationRef.isBlank()) {
-            return "";
+    private String safeRef(String reservationRef) {
+        return reservationRef == null || reservationRef.isBlank() ? "(n/a)" : reservationRef;
+    }
+
+    private Transport resolveTransportForCheckout(TransportCheckoutRequest req) {
+        return resolveTransportByIdAndOffer(req.getTransportId(), req.getSyntheticFlightOffer(), req.getTravelDate());
+    }
+
+    private Transport resolveTransportForPayPal(TransportPayPalCreateRequest req) {
+        return resolveTransportByIdAndOffer(req.getTransportId(), req.getSyntheticFlightOffer(), req.getTravelDate());
+    }
+
+    private Transport resolveTransportForReservation(TransportReservationRequest req) {
+        return resolveTransportByIdAndOffer(req.getTransportId(), req.getSyntheticFlightOffer(), req.getTravelDate());
+    }
+
+    private Transport resolveTransportByIdAndOffer(
+            Integer transportId, SyntheticFlightOfferDto offer, String travelDate) {
+        if (transportId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.transport_not_found");
         }
-        return "(" + reservationRef.trim() + ")";
+        if (transportId > 0) {
+            return transportRepository
+                    .findById(transportId)
+                    .orElseThrow(() -> new ResourceNotFoundException("reservation.error.transport_not_found"));
+        }
+        if (transportId < 0) {
+            if (offer == null) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "reservation.error.synthetic_flight_offer_required");
+            }
+            return materializeSyntheticPlaneFromOffer(offer, travelDate);
+        }
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.transport_not_found");
+    }
+
+    private Transport materializeSyntheticPlaneFromOffer(SyntheticFlightOfferDto offer, String travelDateParam) {
+        String di = offer.getDepartureIata().trim().toUpperCase(Locale.ROOT);
+        String ai = offer.getArrivalIata().trim().toUpperCase(Locale.ROOT);
+        if (di.equals(ai)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.same_airport_route");
+        }
+        City depCity = resolveCityForAirport(di);
+        City arrCity = resolveCityForAirport(ai);
+
+        LocalDateTime dep =
+                parseOfferEndpointDateTime(offer.getDepartureTimeIso(), travelDateParam, LocalDateTime.now());
+        LocalDateTime arr =
+                parseOfferEndpointDateTime(offer.getArrivalTimeIso(), travelDateParam, dep.plusHours(2));
+        if (!arr.isAfter(dep)) {
+            arr = dep.plusHours(2);
+        }
+
+        double price = offer.getPricePerSeatTnd() != null ? offer.getPricePerSeatTnd() : 0.0;
+        if (price <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.price_invalid");
+        }
+        String op = offer.getOperatorName() != null ? offer.getOperatorName().trim() : "";
+        if (op.isEmpty()) {
+            op = "Airline";
+        }
+        String desc = offer.getDescription();
+        if (desc == null || desc.isBlank()) {
+            desc = "Flight " + di + " → " + ai;
+        }
+        if (desc.length() > 2000) {
+            desc = desc.substring(0, 2000);
+        }
+        String fc = offer.getFlightCode();
+        if (fc != null && fc.length() > 20) {
+            fc = fc.substring(0, 20);
+        }
+
+        Transport t =
+                Transport.builder()
+                        .type(Transport.TransportType.PLANE)
+                        .departureCity(depCity)
+                        .arrivalCity(arrCity)
+                        .departureTime(dep)
+                        .arrivalTime(arr)
+                        .capacity(180)
+                        .price(price)
+                        .operatorName(op)
+                        .flightCode(fc != null && !fc.isBlank() ? fc.trim() : null)
+                        .description(desc)
+                        .isActive(true)
+                        .createdAt(LocalDateTime.now())
+                        .build();
+        return transportRepository.save(t);
+    }
+
+    private City resolveCityForAirport(String iataCode) {
+        if (iataCode == null || iataCode.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.invalid_airport_code");
+        }
+        String iata = iataCode.trim().toUpperCase(Locale.ROOT);
+        Optional<String> gov = TunisiaAirportIataGovernorateMap.governorateNameForIata(iata);
+        if (gov.isPresent()) {
+            return cityRepository
+                    .findFirstByNameIgnoreCase(gov.get())
+                    .orElseThrow(
+                            () ->
+                                    new ResponseStatusException(
+                                            HttpStatus.INTERNAL_SERVER_ERROR, "reservation.error.city_not_seeded"));
+        }
+        return ensureInternationalAirportCity(iata);
+    }
+
+    private City ensureInternationalAirportCity(String iata) {
+        String label = "Airport " + iata;
+        Optional<City> existing = cityRepository.findFirstByNameIgnoreCase(label);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+        City c = new City();
+        c.setName(label);
+        c.setRegion("International");
+        c.setDescription("Auto-created airport anchor for flight checkout (" + iata + ").");
+        c.setHasAirport(true);
+        c.setHasBusStation(false);
+        c.setHasTrainStation(false);
+        c.setHasPort(false);
+        return cityRepository.save(c);
+    }
+
+    private LocalDateTime parseOfferEndpointDateTime(
+            String iso, String travelDateFallback, LocalDateTime fallbackHint) {
+        LocalDateTime fromIso = tryParseFlightIso(iso);
+        if (fromIso != null) {
+            return fromIso;
+        }
+        if (travelDateFallback != null && !travelDateFallback.isBlank()) {
+            return resolveTravelDateTime(travelDateFallback, fallbackHint);
+        }
+        if (fallbackHint != null) {
+            return fallbackHint;
+        }
+        return LocalDateTime.now();
+    }
+
+    private LocalDateTime tryParseFlightIso(String iso) {
+        if (iso == null || iso.isBlank()) {
+            return null;
+        }
+        String t = iso.trim();
+        try {
+            return LocalDateTime.parse(t, DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        } catch (DateTimeParseException ignored) {
+        }
+        try {
+            return OffsetDateTime.parse(t).toLocalDateTime();
+        } catch (DateTimeParseException ignored) {
+        }
+        try {
+            return LocalDateTime.parse(t, DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm"));
+        } catch (DateTimeParseException e) {
+            return null;
+        }
+    }
+
+    private LocalDateTime resolveTransportStartDateTime(TransportReservation reservation) {
+        if (reservation == null) {
+            return null;
+        }
+        // Use booked departure datetime first (reservation-level), then fallback to transport schedule.
+        if (reservation.getTravelDate() != null) {
+            return reservation.getTravelDate();
+        }
+        if (reservation.getTransport() != null && reservation.getTransport().getDepartureTime() != null) {
+            return reservation.getTransport().getDepartureTime();
+        }
+        return null;
     }
 }

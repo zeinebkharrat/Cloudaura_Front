@@ -5,6 +5,7 @@ import org.example.backend.i18n.LanguageUtil;
 import org.example.backend.model.CatalogTranslation;
 import org.example.backend.repository.CatalogTranslationRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,8 +21,14 @@ public class CatalogTranslationService {
 
     private final CatalogTranslationRepository repository;
 
+    @Value("${app.translation.enabled:true}")
+    private boolean translationEnabled;
+
     @Transactional(readOnly = true)
     public Optional<String> find(String translationKey, String lang) {
+        if (!translationEnabled) {
+            return Optional.empty();
+        }
         if (ApiRequestLang.isCatalogResolutionDisabled()) {
             return Optional.empty();
         }
@@ -38,6 +45,9 @@ public class CatalogTranslationService {
      */
     @Transactional(readOnly = true)
     public String resolve(String translationKey, String lang, String fallback) {
+        if (!translationEnabled) {
+            return fallback != null ? fallback : "";
+        }
         if (ApiRequestLang.isCatalogResolutionDisabled()) {
             return fallback != null ? fallback : "";
         }

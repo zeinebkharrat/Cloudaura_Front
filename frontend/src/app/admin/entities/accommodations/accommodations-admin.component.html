@@ -342,7 +342,9 @@
                 filterPlaceholder="Tunis, Sousse, Hammamet…"
                 [showClear]="true"
                 styleClass="adm-p-dropdown w-full"
-                appendTo="body"
+                panelStyleClass="admin-city-dropdown-panel"
+                scrollHeight="220px"
+                [appendTo]="'body'"
               >
               </p-dropdown>
               @if (accFieldInvalid('cityId')) {

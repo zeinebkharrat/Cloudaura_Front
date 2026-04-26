@@ -1,0 +1,201 @@
+<div class="flights-page intl-flight-page live-page live-flights-page">
+  <header class="live-header">
+    <div class="live-header-row">
+      <a routerLink="/transport" class="live-back">
+        <i class="pi pi-arrow-left" aria-hidden="true"></i>
+        <span>Transport</span>
+      </a>
+      <div class="live-brand">
+        <span class="live-brand-icon" aria-hidden="true">
+          <i class="pi pi-send"></i>
+        </span>
+        <div>
+          <h1 class="live-title">Live flights</h1>
+          <p class="live-sub">Search worldwide routes — live map when ADS-B data is available.</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="search-section">
+    <form
+      [formGroup]="form"
+      (ngSubmit)="onSubmit()"
+      class="intl-search-card live-search-card"
+      [class.intl-search-card--loading]="loading"
+      novalidate
+    >
+      <div class="trip-tabs" role="tablist">
+        <button type="button" class="trip-tab trip-tab--active">One-way</button>
+        <button type="button" class="trip-tab" disabled title="Coming soon">Round-trip</button>
+        <button type="button" class="trip-tab" disabled title="Coming soon">Multi-city</button>
+      </div>
+
+      <div class="search-bar intl-search-bar live-search-row">
+        <div class="sb-field sb-city sb-intl-origin">
+          <span class="sb-icon"><i class="pi pi-send" aria-hidden="true"></i></span>
+          <div class="sb-inner">
+            <span class="sb-label">From</span>
+            <input
+              id="origin"
+              type="text"
+              formControlName="origin"
+              class="intl-text-input"
+              placeholder="CDG"
+              maxlength="4"
+              autocomplete="off"
+              aria-required="true"
+            />
+            @if (hasError('origin')) {
+              <p role="alert" class="field-error">Origin IATA required (3 letters).</p>
+            }
+          </div>
+        </div>
+
+        <button type="button" class="swap-airports" (click)="swapAirports()" title="Swap airports" aria-label="Swap departure and arrival">
+          <i class="pi pi-refresh" aria-hidden="true"></i>
+        </button>
+
+        <div class="sb-field sb-city">
+          <span class="sb-icon"><i class="pi pi-map-marker" aria-hidden="true"></i></span>
+          <div class="sb-inner">
+            <span class="sb-label">To</span>
+            <input
+              id="destination"
+              type="text"
+              formControlName="destination"
+              class="intl-text-input"
+              placeholder="TUN"
+              maxlength="4"
+              list="intl-airport-hints"
+              autocomplete="off"
+              aria-required="true"
+            />
+            <datalist id="intl-airport-hints">
+              @for (a of tunisianAirports; track a.value) {
+                <option [value]="a.value">{{ a.label }}</option>
+              }
+            </datalist>
+            @if (hasError('destination')) {
+              <p role="alert" class="field-error">Destination IATA required.</p>
+            }
+          </div>
+        </div>
+
+        <div class="sb-divider" aria-hidden="true"></div>
+
+        <div class="sb-field sb-date">
+          <span class="sb-icon"><i class="pi pi-calendar" aria-hidden="true"></i></span>
+          <div class="sb-inner">
+            <span class="sb-label">Depart</span>
+            <p-datepicker
+              inputId="departureDate"
+              formControlName="departureDate"
+              [minDate]="today"
+              dateFormat="dd/mm/yy"
+              [showTime]="false"
+              [showButtonBar]="true"
+              [showIcon]="true"
+              [touchUI]="false"
+              [readonlyInput]="true"
+              [keepInvalid]="false"
+              appendTo="body"
+              styleClass="sb-calendar live-datepicker"
+              panelStyleClass="transport-search-calendar-panel"
+              aria-required="true"
+            ></p-datepicker>
+            @if (hasError('departureDate')) {
+              <p role="alert" class="field-error">Date required.</p>
+            }
+          </div>
+        </div>
+
+        <div class="sb-divider" aria-hidden="true"></div>
+
+        <div class="sb-field sb-pax">
+          <span class="sb-icon"><i class="pi pi-users" aria-hidden="true"></i></span>
+          <div class="sb-inner">
+            <span class="sb-label">Pax</span>
+            <div class="sb-pax-shell">
+              <p-inputNumber
+                inputId="passengers"
+                formControlName="passengers"
+                [min]="1"
+                [max]="9"
+                [showButtons]="true"
+                buttonLayout="horizontal"
+                incrementButtonIcon="pi pi-plus"
+                decrementButtonIcon="pi pi-minus"
+                [fluid]="false"
+                styleClass="sb-pax-input"
+                aria-required="true"
+              ></p-inputNumber>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="search-actions intl-search-actions">
+        <button type="submit" class="ts-cta" pRipple [disabled]="form.invalid || loading">
+          <span>Search flights</span>
+          <i class="pi pi-arrow-right" aria-hidden="true"></i>
+        </button>
+      </div>
+    </form>
+  </section>
+
+  @if (submitError) {
+    <p class="intl-submit-error" role="alert">{{ submitError }}</p>
+  }
+
+  <section class="results-section" [class.results-active]="hasSearched || loading">
+    <div class="results-toolbar live-toolbar">
+      <div>
+        <h2 class="results-title">Best options</h2>
+        <p class="results-count">{{ displayedFlights.length }} results</p>
+      </div>
+      <div class="toolbar-actions">
+        <label class="sort-wrap">
+          <span class="sort-label">Sort</span>
+          <select class="sort-select" [value]="sortMode" (change)="setSort($any($event.target).value)">
+            <option value="best">Best price</option>
+            <option value="duration">Duration</option>
+            <option value="depart">Departure time</option>
+          </select>
+        </label>
+        <span class="filters-pill" title="More filters coming soon">Filters</span>
+      </div>
+    </div>
+
+    <div class="content-split live-split">
+      <div class="list-col">
+        <app-flight-list
+          [flights]="displayedFlights"
+          [loading]="loading"
+          [error]="submitError"
+          [emptyMessage]="listEmptyMessage"
+          [idleHint]="idleHint"
+          [hasSearched]="hasSearched"
+          [selected]="selected"
+          [mapMode]="true"
+          (selectFlight)="onSelectFlight($event)"
+          (bookFlight)="onBookFlight($event)"
+        />
+      </div>
+      <aside class="map-col">
+        <app-international-flight-live-map
+          [flight]="selected"
+          [depIata]="form.get('origin')?.value || ''"
+          [arrIata]="form.get('destination')?.value || ''"
+          [travelDate]="travelDateForMap"
+        />
+        <div class="live-foot">
+          <div class="live-foot-card">
+            <i class="pi pi-clock" aria-hidden="true"></i>
+            <p>List prices use the provider currency. TND for payment is computed at booking.</p>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </section>
+</div>

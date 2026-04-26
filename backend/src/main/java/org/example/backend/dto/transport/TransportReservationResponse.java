@@ -46,6 +46,10 @@ public class TransportReservationResponse {
     private String transportTypeLabel;
     /** Localized transport mode for display. */
     private String typeLabel;
+    /** Planned departure time from transport entity. */
+    private LocalDateTime departureTime;
+    /** Planned arrival time from transport entity. */
+    private LocalDateTime arrivalTime;
     private LocalDateTime createdAt;
     /** Payload encoded in the boarding QR (JSON); set when status is CONFIRMED. */
     private String qrCodeToken;

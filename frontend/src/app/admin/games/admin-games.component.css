@@ -235,6 +235,42 @@ input:checked + .slider:before { transform: translateX(24px); }
 .g-input.sm { padding: 8px 12px; font-size: 0.9rem; flex: 1; }
 .btn-mini { font-size: 0.8rem; padding: 4px 8px; }
 
+/* Chef Quest Admin */
+.chef-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 15px;
+}
+
+.ing-admin-card {
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+  transition: transform 0.2s;
+}
+
+.ing-admin-card:hover {
+  transform: translateY(-3px);
+  border-color: #00f2ff;
+}
+
+.ing-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.chef-creation-tabs .tab.sm {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  background: rgba(255,255,255,0.05);
+}
+
+.chef-ing-selector label:hover {
+  color: #00f2ff;
+}
+
 .puzzle-thumb {
   width: 100%;
   max-height: 180px;

@@ -14,10 +14,6 @@ import { RestApiDataSource } from './core/adapters/rest-api-data-source.service'
 import { LanguageService } from './core/services/language.service';
 import { appI18nInitializer } from './core/i18n/app-i18n.initializer';
 
-export function translateHttpLoaderFactory(http: HttpClient): TranslateHttpLoader {
-  return new TranslateHttpLoader(http, '/assets/i18n/', '.json');
-}
-
 export const appConfig: ApplicationConfig = {
   providers: [
     provideZoneChangeDetection({ eventCoalescing: true }),
@@ -29,7 +25,7 @@ export const appConfig: ApplicationConfig = {
     provideTranslateService({
       loader: {
         provide: TranslateLoader,
-        useFactory: translateHttpLoaderFactory,
+        useFactory: (http: HttpClient) => new TranslateHttpLoader(http, '/assets/i18n/', '.json'),
         deps: [HttpClient],
       },
       defaultLanguage: 'en',

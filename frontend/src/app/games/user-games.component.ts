@@ -261,4 +261,28 @@ export class UserGamesComponent implements OnInit {
     }
     this.router.navigate(['/games/ludo']);
   }
+
+  playGovernorateGuess(): void {
+    if (!this.isLoggedIn()) {
+      this.router.navigate(['/login']);
+      return;
+    }
+    this.router.navigate(['/games/governorate-guess']);
+  }
+
+  playElJemQuest(): void {
+    if (!this.isLoggedIn()) {
+      this.router.navigate(['/login']);
+      return;
+    }
+    this.router.navigate(['/games/el-jem-quest']);
+  }
+
+  playChefQuest(): void {
+    if (!this.isLoggedIn()) {
+      this.router.navigate(['/login']);
+      return;
+    }
+    this.router.navigate(['/games/chef-quest']);
+  }
 }

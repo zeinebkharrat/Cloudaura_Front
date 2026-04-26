@@ -57,6 +57,12 @@ public class EventController {
     @Value("${app.frontend.base-url:http://localhost:4200}")
     private String frontendBaseUrl;
 
+    @Value("${stripe.checkout.currency:usd}")
+    private String stripeCheckoutCurrency;
+
+    @Value("${stripe.transport.tnd-to-presentment:0.32}")
+    private double stripeTndToPresentment;
+
     @Value("${stripe.api.key:${STRIPE_SECRET_KEY:}}")
     private String stripeApiKey;
 
@@ -456,10 +462,13 @@ public class EventController {
             reservationRepository.save(res);
 
             String base = normalizeFrontendBase();
-            Object prefObj = data.get("presentmentCurrency");
-            String presentmentPref = prefObj != null ? prefObj.toString().trim() : null;
-            String currency = paymentService.resolvePresentmentCurrency(presentmentPref);
-            long unitAmountMinor = paymentService.stripeMinorUnits(ticketPrice, presentmentPref);
+            String currency = stripeCheckoutCurrency == null || stripeCheckoutCurrency.isBlank()
+                    ? "usd"
+                    : stripeCheckoutCurrency.trim().toLowerCase();
+            long unitAmountMinor =
+                    "tnd".equals(currency)
+                        ? Math.round(ticketPrice * 100.0)
+                        : Math.round(ticketPrice * stripeTndToPresentment * 100.0);
             if (unitAmountMinor < 1) {
                 return ResponseEntity.badRequest().body("amount too small for Stripe");
             }
@@ -497,7 +506,7 @@ public class EventController {
             try {
                 session = Session.create(params);
             } catch (StripeException exCreate) {
-                if ("tnd".equals(currency) && PaymentService.isStripePresentmentCurrencyRejected(exCreate)) {
+                if ("tnd".equals(currency) && paymentService.isStripePresentmentCurrencyRejected(exCreate)) {
                     long eurUnitMinor = paymentService.stripeMinorUnits(ticketPrice, "eur");
                     long eurTotalMinor = eurUnitMinor * (long) requestedTickets;
                     paymentService.assertTransportStripeChargeable(eurTotalMinor, "eur");

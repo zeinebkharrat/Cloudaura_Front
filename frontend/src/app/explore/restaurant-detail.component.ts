@@ -5,7 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import * as L from 'leaflet';
 import { ExploreService } from './explore.service';
-import { PublicReview, ReviewSummary, Restaurant } from './explore.models';
+import { PublicReview, Restaurant, RestaurantMenuImage, ReviewSummary } from './explore.models';
 import { AuthService } from '../core/auth.service';
 import Swal from 'sweetalert2';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
@@ -32,6 +32,8 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
   reviews: PublicReview[] = [];
   reviewPage = 0;
   readonly reviewSize = 6;
+  menuSpreadIndex = 0;
+  menuFlipDirection: 'forward' | 'backward' | null = null;
   reviewSubmitting = false;
   reviewForm = {
     stars: 5,
@@ -43,6 +45,10 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
   private map?: L.Map;
   private cityMarker?: L.CircleMarker;
   private viewReady = false;
+  private readonly menuFlipDurationMs = 900;
+  private readonly menuFlipSwitchMs = 460;
+  private menuFlipSwitchTimer?: ReturnType<typeof setTimeout>;
+  private menuFlipResetTimer?: ReturnType<typeof setTimeout>;
 
   ngAfterViewInit(): void {
     this.viewReady = true;
@@ -56,6 +62,7 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
     this.exploreService.getRestaurantDetails(id).subscribe({
       next: (res) => {
         this.restaurant = res;
+        this.menuSpreadIndex = 0;
         if (res.imageUrl) {
           this.heroImage = res.imageUrl;
         }
@@ -92,6 +99,7 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.clearMenuFlipTimers();
     if (this.map) {
       this.map.remove();
     }
@@ -154,7 +162,85 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
   goBack(): void {
     this.location.back();
   }
+  get menuPages(): RestaurantMenuImage[] {
+    return this.restaurant?.menuImages ?? [];
+  }
 
+  get menuSpreads(): Array<{ left: RestaurantMenuImage | null; right: RestaurantMenuImage | null }> {
+    const spreads: Array<{ left: RestaurantMenuImage | null; right: RestaurantMenuImage | null }> = [];
+    for (let index = 0; index < this.menuPages.length; index += 2) {
+      spreads.push({
+        left: this.menuPages[index] ?? null,
+        right: this.menuPages[index + 1] ?? null,
+      });
+    }
+    return spreads;
+  }
+
+  get currentMenuSpread(): { left: RestaurantMenuImage | null; right: RestaurantMenuImage | null } | null {
+    const spreads = this.menuSpreads;
+    if (spreads.length === 0) {
+      return null;
+    }
+
+    const safeIndex = Math.min(this.menuSpreadIndex, spreads.length - 1);
+    return spreads[safeIndex] ?? null;
+  }
+
+  get canGoPrevious(): boolean {
+    return this.menuSpreadIndex > 0;
+  }
+
+  get canGoNext(): boolean {
+    return this.menuSpreadIndex + 1 < this.menuSpreads.length;
+  }
+
+  onMenuPageClick(side: 'left' | 'right'): void {
+    if (side === 'right') {
+      this.nextMenuSpread();
+      return;
+    }
+    this.previousMenuSpread();
+  }
+
+  previousMenuSpread(): void {
+    if (!this.canGoPrevious || this.menuFlipDirection) {
+      return;
+    }
+
+    this.runMenuFlip('backward', () => {
+      this.menuSpreadIndex--;
+    });
+  }
+
+  nextMenuSpread(): void {
+    if (!this.canGoNext || this.menuFlipDirection) {
+      return;
+    }
+
+    this.runMenuFlip('forward', () => {
+      this.menuSpreadIndex++;
+    });
+  }
+
+  goToMenuSpread(index: number): void {
+    if (index < 0 || index >= this.menuSpreads.length || this.menuFlipDirection) {
+      return;
+    }
+
+    if (index === this.menuSpreadIndex) {
+      return;
+    }
+
+    const direction: 'forward' | 'backward' = index > this.menuSpreadIndex ? 'forward' : 'backward';
+    this.runMenuFlip(direction, () => {
+      this.menuSpreadIndex = index;
+    });
+  }
+  menuPageNumber(side: 'left' | 'right'): number {
+    const firstPage = this.menuSpreadIndex * 2 + 1;
+    return side === 'left' ? firstPage : firstPage + 1;
+  }
   ratingValue(): number {
     return this.reviewSummary.averageStars || 0;
   }
@@ -316,6 +402,30 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
     });
   }
 
+  private runMenuFlip(direction: 'forward' | 'backward', updateSpread: () => void): void {
+    this.clearMenuFlipTimers();
+    this.menuFlipDirection = direction;
+
+    this.menuFlipSwitchTimer = setTimeout(() => {
+      updateSpread();
+    }, this.menuFlipSwitchMs);
+
+    this.menuFlipResetTimer = setTimeout(() => {
+      this.menuFlipDirection = null;
+      this.clearMenuFlipTimers();
+    }, this.menuFlipDurationMs);
+  }
+
+  private clearMenuFlipTimers(): void {
+    if (this.menuFlipSwitchTimer) {
+      clearTimeout(this.menuFlipSwitchTimer);
+      this.menuFlipSwitchTimer = undefined;
+    }
+    if (this.menuFlipResetTimer) {
+      clearTimeout(this.menuFlipResetTimer);
+      this.menuFlipResetTimer = undefined;
+    }
+  }
   openDirectionsFromCurrentPosition(): void {
     if (!this.restaurant?.latitude || !this.restaurant?.longitude) {
       return;
@@ -344,5 +454,6 @@ export class RestaurantDetailComponent implements AfterViewInit, OnDestroy {
     );
   }
 }
+
 
 

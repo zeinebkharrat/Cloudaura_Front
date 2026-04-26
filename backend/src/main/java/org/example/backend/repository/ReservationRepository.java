@@ -14,6 +14,7 @@ import java.util.Optional;
 @Repository
 public interface ReservationRepository extends JpaRepository<Reservation, Integer> {
     List<Reservation> findByUser_UserId(int userId);
+        long countByUser_UserId(Integer userId);
     List<Reservation> findByRoom_RoomIdAndStatus(int roomId, ReservationStatus status);
     List<Reservation> findByStatusAndCheckOutDateBefore(ReservationStatus status, LocalDateTime now);
     void deleteByRoom_RoomId(int roomId);
@@ -48,4 +49,9 @@ public interface ReservationRepository extends JpaRepository<Reservation, Intege
             @Param("roomId") int roomId,
             @Param("checkIn") LocalDateTime checkIn,
             @Param("checkOut") LocalDateTime checkOut);
+
+    @Query("SELECT r.reservationId FROM Reservation r "
+            + "WHERE (r.checkOutDate IS NOT NULL AND r.checkOutDate <= :cutoff) "
+            + "OR (r.checkOutDate IS NULL AND r.checkInDate IS NOT NULL AND r.checkInDate <= :cutoff)")
+    List<Integer> findIdsEligibleForAutoDelete(@Param("cutoff") LocalDateTime cutoff);
 }

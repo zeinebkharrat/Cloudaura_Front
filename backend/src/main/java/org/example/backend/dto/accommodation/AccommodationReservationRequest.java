@@ -10,6 +10,7 @@ import java.time.LocalDate;
 public class AccommodationReservationRequest {
     private int roomId;
     private int userId;
+    private Integer guestCount;
     private LocalDate checkIn;
     private LocalDate checkOut;
     private Integer offerId;

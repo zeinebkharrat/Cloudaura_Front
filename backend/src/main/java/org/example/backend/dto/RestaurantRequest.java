@@ -14,6 +14,8 @@ public class RestaurantRequest {
     private Double rating;
     private String description;
     private String address;
+    @NotBlank(message = "Le numéro de téléphone du restaurant est obligatoire")
+    private String phoneNumber;
     private Double latitude;
     private Double longitude;
     private String imageUrl;

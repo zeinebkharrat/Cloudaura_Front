@@ -19,6 +19,7 @@ public record UserSummaryResponse(
         String status,
         Boolean artisanRequestPending,
         String profileImageUrl,
+        String coverImageUrl,
         Integer points,
         Double monthlyScore,
         Double lifetimeScore

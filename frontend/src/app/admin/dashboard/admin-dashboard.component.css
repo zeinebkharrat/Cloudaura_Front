@@ -1,10 +1,12 @@
 :host {
-  --bg-1: #f8fbff;
-  --bg-2: #edf4fb;
-  --panel: rgba(255, 255, 255, 0.88);
-  --panel-border: rgba(148, 163, 184, 0.26);
-  --txt: #0f172a;
-  --muted: #64748b;
+  --bg-1: color-mix(in srgb, var(--surface-card, #ffffff) 94%, var(--bg-color, #f8fbff));
+  --bg-2: color-mix(in srgb, var(--surface-2, #edf4fb) 80%, var(--bg-color, #f8fbff));
+  --panel: color-mix(in srgb, var(--surface-card, #ffffff) 90%, transparent);
+  --panel-border: var(--surface-border, rgba(148, 163, 184, 0.26));
+  --txt: var(--text-color, #0f172a);
+  --muted: var(--text-muted, #64748b);
+  --soft-text: color-mix(in srgb, var(--text-color, #0f172a) 72%, var(--text-muted, #64748b));
+  --subtle-surface: color-mix(in srgb, var(--surface-card, #ffffff) 80%, transparent);
   --blue: #0284c7;
   --teal: #0f766e;
   --amber: #d97706;
@@ -284,7 +286,7 @@
   display: flex;
   justify-content: space-between;
   font-size: 0.82rem;
-  color: #334155;
+  color: var(--soft-text);
 }
 
 .bar-track {
@@ -314,7 +316,7 @@
   border: 1px solid rgba(148, 163, 184, 0.24);
   border-radius: 12px;
   padding: 10px;
-  background: rgba(255, 255, 255, 0.7);
+  background: var(--subtle-surface);
   display: grid;
   gap: 2px;
 }
@@ -378,7 +380,7 @@
   place-items: center;
   color: var(--muted);
   font-size: 0.85rem;
-  background: rgba(255, 255, 255, 0.45);
+  background: color-mix(in srgb, var(--surface-card, #ffffff) 56%, transparent);
 }
 
 .feed-layout {
@@ -436,7 +438,7 @@
 
 .txt-sub {
   font-size: 0.8rem;
-  color: #475569;
+  color: var(--soft-text);
 }
 
 .time {
@@ -447,6 +449,44 @@
 .feed-empty {
   margin: 0;
   color: var(--muted);
+}
+
+:host-context([data-theme='dark']) {
+  --bg-1: color-mix(in srgb, #0b1220 86%, var(--surface-card, #161922));
+  --bg-2: color-mix(in srgb, #0f172a 80%, var(--surface-2, #273449));
+  --panel: color-mix(in srgb, var(--surface-card, #161922) 92%, #0b1220);
+  --subtle-surface: color-mix(in srgb, var(--surface-card, #161922) 88%, transparent);
+}
+
+:host-context([data-theme='dark']) .dash {
+  box-shadow: 0 22px 44px rgba(2, 6, 23, 0.46);
+}
+
+:host-context([data-theme='dark']) .glass-card {
+  box-shadow: 0 14px 28px rgba(2, 6, 23, 0.38);
+}
+
+:host-context([data-theme='dark']) .period-filter {
+  background: rgba(14, 165, 233, 0.12);
+  border-color: rgba(14, 165, 233, 0.32);
+}
+
+:host-context([data-theme='dark']) .period-btn {
+  color: #7dd3fc;
+}
+
+:host-context([data-theme='dark']) .status-row {
+  color: color-mix(in srgb, var(--text-color) 78%, var(--text-muted));
+}
+
+:host-context([data-theme='dark']) .inventory-grid div {
+  border-color: color-mix(in srgb, var(--surface-border) 92%, transparent);
+}
+
+:host-context([data-theme='dark']) .dash-error {
+  background: rgba(127, 29, 29, 0.36);
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.35);
 }
 
 @media (max-width: 1200px) {

@@ -18,6 +18,7 @@ public class AccommodationReservationResponse {
     private String statusLabel;
     private LocalDate checkIn;
     private LocalDate checkOut;
+    private Integer guestCount;
     private int nights;
     private double totalPrice;
     private double discountApplied;

@@ -21,7 +21,6 @@ import org.example.backend.repository.ActivityReservationRepository;
 import org.example.backend.service.ActivityReceiptLinkService;
 import org.example.backend.service.ActivityReceiptPdfService;
 import org.example.backend.service.ActivityReservationService;
-import org.example.backend.service.PaymentService;
 import org.example.backend.service.QrCodeService;
 import org.example.backend.service.UserIdentityResolver;
 import org.example.backend.service.UserNotificationService;
@@ -54,10 +53,12 @@ public class ActivityPaymentController {
     private final QrCodeService qrCodeService;
     private final UserIdentityResolver userIdentityResolver;
     private final UserNotificationService userNotificationService;
-    private final PaymentService paymentService;
 
     @Value("${app.frontend.base-url:http://localhost:4200}")
     private String frontendBaseUrl;
+
+    @Value("${stripe.checkout.currency:usd}")
+    private String stripeCheckoutCurrency;
 
     @Value("${stripe.api.key:${STRIPE_SECRET_KEY:}}")
     private String stripeApiKey;
@@ -84,14 +85,15 @@ public class ActivityPaymentController {
             }
 
             double totalPrice = reservation.getTotalPrice() != null ? reservation.getTotalPrice() : 0.0;
-            String currency = paymentService.resolvePresentmentCurrency(request.getPresentmentCurrency());
-            long unitAmountMinor = paymentService.stripeMinorUnits(totalPrice, request.getPresentmentCurrency());
+            long unitAmountMinor = Math.round(totalPrice * 100);
             if (unitAmountMinor < 1) {
                 return ResponseEntity.badRequest().body("Total amount must be greater than 0 for Stripe payment.");
             }
-            paymentService.assertTransportStripeChargeable(unitAmountMinor, currency);
 
             String base = normalizeFrontendBase();
+            String currency = stripeCheckoutCurrency == null || stripeCheckoutCurrency.isBlank()
+                ? "usd"
+                : stripeCheckoutCurrency.trim().toLowerCase();
 
             String activityName = activity.getName() != null && !activity.getName().isBlank()
                 ? activity.getName().trim()
@@ -115,35 +117,7 @@ public class ActivityPaymentController {
                     .build())
                 .build();
 
-            Session session;
-            try {
-                session = Session.create(params);
-            } catch (StripeException exCreate) {
-                if ("tnd".equals(currency) && PaymentService.isStripePresentmentCurrencyRejected(exCreate)) {
-                    long eurMinor = paymentService.stripeMinorUnits(totalPrice, "eur");
-                    paymentService.assertTransportStripeChargeable(eurMinor, "eur");
-                    SessionCreateParams paramsEur = SessionCreateParams.builder()
-                            .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
-                            .setMode(SessionCreateParams.Mode.PAYMENT)
-                            .setClientReferenceId(String.valueOf(reservation.getActivityReservationId()))
-                            .setSuccessUrl(base + "/activities/payment-success?session_id={CHECKOUT_SESSION_ID}")
-                            .setCancelUrl(base + "/activities/" + activity.getActivityId())
-                            .addLineItem(SessionCreateParams.LineItem.builder()
-                                    .setQuantity(1L)
-                                    .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
-                                            .setCurrency("eur")
-                                            .setUnitAmount(eurMinor)
-                                            .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
-                                                    .setName("Activity booking: " + activityName)
-                                                    .build())
-                                            .build())
-                                    .build())
-                            .build();
-                    session = Session.create(paramsEur);
-                } else {
-                    throw exCreate;
-                }
-            }
+            Session session = Session.create(params);
             String url = session.getUrl();
             if (url == null || url.isBlank()) {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Stripe did not return a checkout URL");

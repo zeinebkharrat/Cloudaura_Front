@@ -21,7 +21,7 @@ import { ConversationResponse, MessageResponse, TypingEvent } from '../chat.type
 import { Router } from '@angular/router';
 import { AppAlertsService } from '../../core/services/app-alerts.service';
 import { isBackendLoginRedirectError } from '../../api-error.util';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
+import { TranslateModule } from '@ngx-translate/core';
 
 interface StoryReplyPayload {
   kind: string;
@@ -48,7 +48,6 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
   private readonly router = inject(Router);
   private readonly alerts = inject(AppAlertsService);
   private readonly injector = inject(Injector);
-  private readonly translate = inject(TranslateService);
 
   @ViewChild('messagesContainer') messagesContainer!: ElementRef;
   @ViewChild('messageInput') messageInput!: ElementRef;
@@ -379,33 +378,24 @@ export class ChatBubbleComponent implements OnInit, OnDestroy, AfterViewChecked 
   getTypingText(): string {
     const users = Array.from(this.typingUsers().values());
     if (users.length === 0) return '';
-    if (users.length === 1) {
-      return this.translate.instant('COMMUNITY.CHAT_TYPING_ONE', { name: users[0].username });
-    }
-    return this.translate.instant('COMMUNITY.CHAT_TYPING_MANY', { count: users.length });
+    if (users.length === 1) return `${users[0].username} écrit...`;
+    return `Plusieurs écrivent...`;
   }
 
   formatMessageTime(dateString: string | null): string {
     if (!dateString) return '';
     const date = new Date(dateString);
-    return date.toLocaleTimeString(this.chatDateLocale(), { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
   conversationPreview(conv: ConversationResponse): string {
     if (conv.unreadCount === 1) {
-      return this.translate.instant('COMMUNITY.CHAT_PREVIEW_ONE');
+      return 'Sent you one message';
     }
     if (conv.unreadCount > 1) {
-      return this.translate.instant('COMMUNITY.CHAT_PREVIEW_MANY', { count: conv.unreadCount });
+      return `Sent you ${conv.unreadCount} messages`;
     }
-    return this.translate.instant('COMMUNITY.CHAT_PREVIEW_NONE');
-  }
-
-  private chatDateLocale(): string {
-    const lang = (this.translate.currentLang || 'en').toLowerCase();
-    if (lang.startsWith('ar')) return 'ar';
-    if (lang.startsWith('fr')) return 'fr-FR';
-    return 'en-GB';
+    return 'No new messages';
   }
 
   formatVoiceDuration(sec?: number | null): string {

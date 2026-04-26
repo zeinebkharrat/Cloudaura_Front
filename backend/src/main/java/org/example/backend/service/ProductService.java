@@ -1,7 +1,11 @@
 package org.example.backend.service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.stream.Collectors;
 import org.example.backend.dto.ProductCatalogItem;
 import org.example.backend.i18n.CatalogKeyUtil;
@@ -200,10 +204,22 @@ public class ProductService {
      * {@code Product.user} after the session closes (open-in-view=false).
      */
     @Transactional
-    public ProductCatalogItem update(Integer id, Product entityDetails) {
+    public ProductCatalogItem update(Integer id, Product entityDetails, String username) {
+        User actor = userRepository.findFirstByUsernameIgnoreCaseOrderByUserIdAsc(username)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+
+        boolean isAdmin = actor.getRoles().stream().anyMatch(role -> "ROLE_ADMIN".equals(role.getName()));
+
         Product existing = productRepository
                 .findByIdWithSeller(id)
                 .orElseThrow(() -> new NoSuchElementException("Product not found with id: " + id));
+
+        if (!isAdmin) {
+            Integer ownerId = existing.getUser() != null ? existing.getUser().getUserId() : null;
+            if (ownerId == null || !ownerId.equals(actor.getUserId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not allowed to update this craft");
+            }
+        }
 
         existing.setName(entityDetails.getName());
         existing.setDescription(entityDetails.getDescription());
@@ -213,18 +229,51 @@ public class ProductService {
         existing.setStock(entityDetails.getStock());
         existing.setStatus(entityDetails.getStatus());
 
-        existing.getVariants().clear();
-        if (entityDetails.getVariants() != null) {
-            for (ProductVariant src : entityDetails.getVariants()) {
-                ProductVariant v = new ProductVariant();
-                v.setSize(src.getSize());
-                v.setColor(src.getColor());
-                v.setStock(src.getStock());
-                v.setPriceOverride(src.getPriceOverride());
-                v.setProduct(existing);
-                existing.getVariants().add(v);
+        Map<Integer, ProductVariant> existingVariantsById = new HashMap<>();
+        for (ProductVariant v : existing.getVariants()) {
+            if (v.getVariantId() != null) {
+                existingVariantsById.put(v.getVariantId(), v);
             }
         }
+
+        Set<Integer> incomingVariantIds = new HashSet<>();
+        if (entityDetails.getVariants() != null) {
+            for (ProductVariant src : entityDetails.getVariants()) {
+                Integer incomingId = src.getVariantId();
+                ProductVariant target = null;
+
+                if (incomingId != null && incomingId > 0) {
+                    target = existingVariantsById.get(incomingId);
+                    if (target != null) {
+                        incomingVariantIds.add(incomingId);
+                    }
+                }
+
+                if (target == null) {
+                    target = new ProductVariant();
+                    target.setProduct(existing);
+                    existing.getVariants().add(target);
+                }
+
+                target.setSize(src.getSize());
+                target.setColor(src.getColor());
+                target.setStock(src.getStock());
+                target.setPriceOverride(src.getPriceOverride());
+            }
+        }
+
+        // Remove only variants that are no longer sent AND are not referenced by historical order_items.
+        existing.getVariants().removeIf(v -> {
+            Integer variantId = v.getVariantId();
+            if (variantId == null) {
+                return false;
+            }
+            if (incomingVariantIds.contains(variantId)) {
+                return false;
+            }
+            long references = orderItemRepository.countByVariant_VariantId(variantId);
+            return references == 0;
+        });
 
         existing.getImages().clear();
         if (entityDetails.getImages() != null) {

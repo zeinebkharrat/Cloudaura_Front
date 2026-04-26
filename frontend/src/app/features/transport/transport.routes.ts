@@ -6,6 +6,7 @@ import { TransportBookingPageComponent } from './transport-booking-page/transpor
 import { TransportAiRecommendationComponent } from './transport-ai-recommendation/transport-ai-recommendation.component';
 import { TransportPaymentReturnComponent } from './transport-payment-return/transport-payment-return.component';
 import { TransportPaymentCancelComponent } from './transport-payment-cancel/transport-payment-cancel.component';
+import { TransportEstimatePageComponent } from './transport-estimate-page/transport-estimate-page.component';
 
 export const TRANSPORT_ROUTES: Routes = [
   {
@@ -20,6 +21,15 @@ export const TRANSPORT_ROUTES: Routes = [
   {
     path: 'results',
     component: TransportResultsPageComponent,
+  },
+  {
+    path: 'estimate',
+    component: TransportEstimatePageComponent,
+  },
+  {
+    path: 'cars/amadeus',
+    loadComponent: () =>
+      import('./car-rental-amadeus-page/car-rental-amadeus-page.component').then((m) => m.CarRentalAmadeusPageComponent),
   },
   {
     path: 'form',

@@ -56,6 +56,22 @@ public class RestaurantController {
         return ResponseEntity.status(HttpStatus.CREATED).body(restaurantService.uploadImage(id, file));
     }
 
+    @PostMapping(value = "/{id}/menu-images", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<RestaurantResponse> uploadMenuImages(
+        @PathVariable Integer id,
+        @RequestParam("files") MultipartFile[] files
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(restaurantService.uploadMenuImages(id, files));
+    }
+
+    @DeleteMapping("/{restaurantId}/menu-images/{menuImageId}")
+    public RestaurantResponse deleteMenuImage(
+        @PathVariable Integer restaurantId,
+        @PathVariable Integer menuImageId
+    ) {
+        return restaurantService.deleteMenuImage(restaurantId, menuImageId);
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         restaurantService.delete(id);

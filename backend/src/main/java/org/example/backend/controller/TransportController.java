@@ -1,9 +1,12 @@
 package org.example.backend.controller;
 
 import org.example.backend.dto.ApiResponse;
+import org.example.backend.dto.transport.TransportEstimateRequest;
+import org.example.backend.dto.transport.TransportEstimateResponse;
 import org.example.backend.dto.transport.TransportSearchRequest;
 import org.example.backend.dto.transport.TransportSearchResponse;
 import org.example.backend.model.Transport;
+import org.example.backend.service.TransportEstimateService;
 import org.example.backend.service.TransportService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -18,6 +21,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class TransportController {
     private final TransportService transportService;
+    private final TransportEstimateService transportEstimateService;
 
     @GetMapping("/search")
     public ApiResponse<List<TransportSearchResponse>> search(
@@ -51,5 +55,10 @@ public class TransportController {
         return ApiResponse.success(Arrays.stream(Transport.TransportType.values())
                 .map(Enum::name)
                 .collect(Collectors.toList()));
+    }
+
+    @PostMapping("/estimate")
+    public ApiResponse<TransportEstimateResponse> estimate(@RequestBody TransportEstimateRequest request) {
+        return ApiResponse.success(transportEstimateService.estimate(request));
     }
 }

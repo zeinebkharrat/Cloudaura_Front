@@ -11,6 +11,9 @@ import org.example.backend.dto.RestaurantResponse;
 import org.example.backend.dto.publicapi.ActivityAvailabilityDayResponse;
 import org.example.backend.dto.publicapi.ActivityReservationResponse;
 import org.example.backend.dto.publicapi.CityImageDetectionResponse;
+import org.example.backend.dto.publicapi.ChatbotQueryRequest;
+import org.example.backend.dto.publicapi.ChatbotQueryResponse;
+import org.example.backend.dto.publicapi.ChatbotConversationResponse;
 import org.example.backend.dto.publicapi.CityResolveResponse;
 import org.example.backend.dto.publicapi.CreateActivityReservationRequest;
 import org.example.backend.dto.publicapi.CreatePublicReviewRequest;
@@ -25,6 +28,8 @@ import org.example.backend.service.PublicExploreService;
 import org.example.backend.service.PublicReviewService;
 import org.example.backend.service.RestaurantService;
 import org.example.backend.service.CityImageDetectionService;
+import org.example.backend.service.ChatbotAssistantService;
+import org.example.backend.service.ChatbotConversationMemoryService;
 import org.example.backend.service.VoiceTranscriptionService;
 import org.springframework.http.MediaType;
 import org.springframework.data.domain.PageRequest;
@@ -51,6 +56,8 @@ public class PublicExploreController {
     private final PublicReviewService publicReviewService;
     private final VoiceTranscriptionService voiceTranscriptionService;
     private final CityImageDetectionService cityImageDetectionService;
+    private final ChatbotAssistantService chatbotAssistantService;
+    private final ChatbotConversationMemoryService chatbotConversationMemoryService;
 
     @GetMapping("/cities/resolve")
     public CityResolveResponse resolveCityByName(@RequestParam String name) {
@@ -71,6 +78,45 @@ public class PublicExploreController {
         }
     }
 
+    @PostMapping("/chatbot/query")
+    public ChatbotQueryResponse chatbotQuery(
+        @Valid @RequestBody ChatbotQueryRequest request,
+        @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+        @RequestHeader(value = "X-Chat-Session-Id", required = false) String clientSessionId
+    ) {
+        List<String> conversation = chatbotConversationMemoryService.resolveConversation(
+            authorizationHeader,
+            clientSessionId,
+            request.conversation()
+        );
+
+        ChatbotQueryResponse response = chatbotAssistantService.answer(request.question(), conversation);
+        chatbotConversationMemoryService.appendExchange(
+            authorizationHeader,
+            clientSessionId,
+            request.question(),
+            response.answer()
+        );
+        return response;
+    }
+
+    @GetMapping("/chatbot/history")
+    public ChatbotConversationResponse chatbotHistory(
+        @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+        @RequestHeader(value = "X-Chat-Session-Id", required = false) String clientSessionId
+    ) {
+        List<String> conversation = chatbotConversationMemoryService.getConversation(authorizationHeader, clientSessionId);
+        return new ChatbotConversationResponse(conversation);
+    }
+
+    @DeleteMapping("/chatbot/history")
+    public void clearChatbotHistory(
+        @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+        @RequestHeader(value = "X-Chat-Session-Id", required = false) String clientSessionId
+    ) {
+        chatbotConversationMemoryService.clearConversation(authorizationHeader, clientSessionId);
+    }
+
     @GetMapping("/cities/all")
     public List<CityResponse> listAllCities() {
         return publicExploreService.listAllCities();
@@ -84,6 +130,35 @@ public class PublicExploreController {
     @GetMapping("/restaurants/{restaurantId}")
     public RestaurantResponse getRestaurantDetails(@PathVariable Integer restaurantId) {
         return restaurantService.getById(restaurantId);
+    }
+
+    @GetMapping("/accommodations/{accommodationId}/reviews")
+    public PublicReviewPageResponse listAccommodationReviews(
+        @PathVariable Integer accommodationId,
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size,
+        @RequestParam(defaultValue = "createdAt,desc") String sort
+    ) {
+        Pageable pageable = buildPageable(page, size, sort);
+        return publicReviewService.listAccommodationReviews(accommodationId, pageable);
+    }
+
+    @PostMapping("/accommodations/{accommodationId}/reviews")
+    public PublicReviewResponse upsertAccommodationReview(
+        @PathVariable Integer accommodationId,
+        @Valid @RequestBody CreatePublicReviewRequest request
+    ) {
+        return publicReviewService.upsertAccommodationReview(accommodationId, request);
+    }
+
+    @DeleteMapping("/accommodations/{accommodationId}/reviews/mine")
+    public void deleteAccommodationReview(@PathVariable Integer accommodationId) {
+        publicReviewService.deleteAccommodationReview(accommodationId);
+    }
+
+    @GetMapping("/accommodations/{accommodationId}/reviews/summary")
+    public ReviewSummaryResponse accommodationReviewSummary(@PathVariable Integer accommodationId) {
+        return publicReviewService.summaryForAccommodation(accommodationId);
     }
 
     @GetMapping("/restaurants")

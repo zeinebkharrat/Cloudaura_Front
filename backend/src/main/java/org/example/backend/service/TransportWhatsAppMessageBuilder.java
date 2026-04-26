@@ -96,15 +96,59 @@ public class TransportWhatsAppMessageBuilder {
             return String.format(
                     Locale.FRENCH,
                     "⏰ Rappel YallaTN+%n"
-                            + "Votre transport part dans 1 heure !%n"
-                            + "🚌 %s → %s à %s%n"
+                        + "Départ après 1 h (prévu à %s)%n"
+                        + "🚌 %s → %s%n"
                             + "Référence : TR-%s",
+                    hhmm,
                     fromCity,
                     toCity,
-                    hhmm,
                     refSuffix);
         } catch (Exception e) {
             log.warn("buildReminderMessage failed: {}", e.getMessage());
+            return "";
+        }
+    }
+
+    public String buildBookingCreatedMessage(TransportReservation reservation) {
+        try {
+            if (reservation == null) {
+                return "";
+            }
+            String reference =
+                    reservation.getReservationRef() != null && !reservation.getReservationRef().isBlank()
+                            ? reservation.getReservationRef()
+                            : "TR-" + reservation.getTransportReservationId();
+            String fromCity = "";
+            String toCity = "";
+            Transport t = reservation.getTransport();
+            if (t != null) {
+                if (t.getDepartureCity() != null && t.getDepartureCity().getName() != null) {
+                    fromCity = t.getDepartureCity().getName();
+                }
+                if (t.getArrivalCity() != null && t.getArrivalCity().getName() != null) {
+                    toCity = t.getArrivalCity().getName();
+                }
+            }
+            LocalDateTime travel = reservation.getTravelDate();
+            if (travel == null) {
+                travel = LocalDateTime.now();
+            }
+            String hhmm = travel.format(TIME_FMT);
+            int seats = reservation.getNumberOfSeats() != null ? reservation.getNumberOfSeats() : 0;
+            return String.format(
+                    Locale.FRENCH,
+                    "📩 Réservation transport reçue%n"
+                            + "Référence : %s%n"
+                            + "🚌 %s → %s à %s%n"
+                            + "👥 %d passager(s)%n"
+                            + "Nous vous enverrons la confirmation de paiement dès validation.",
+                    reference,
+                    fromCity,
+                    toCity,
+                    hhmm,
+                    seats);
+        } catch (Exception e) {
+            log.warn("buildBookingCreatedMessage failed: {}", e.getMessage());
             return "";
         }
     }

@@ -26,6 +26,9 @@ export interface FlightDto {
   departureLongitude: number | null;
   arrivalLatitude: number | null;
   arrivalLongitude: number | null;
+  /** Offer total from provider (Duffel etc.); omit for schedule-only rows (Aviationstack). */
+  totalAmount?: string | null;
+  totalCurrency?: string | null;
 }
 
 export interface FlightSuggestionResponse {
@@ -41,4 +44,22 @@ export interface AirportResolveResponse {
   iata: string | null;
   label: string | null;
   found: boolean;
+}
+
+/** Mirrors backend {@code AircraftTrackResponse} (OpenSky ADS-B). */
+export interface AircraftTrackResponse {
+  available: boolean;
+  unavailableReason: string | null;
+  icao24: string | null;
+  callsign: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  baroAltitudeMeters: number | null;
+  geoAltitudeMeters: number | null;
+  headingTrueDeg: number | null;
+  groundSpeedMps: number | null;
+  onGround: boolean | null;
+  verticalRateMps: number | null;
+  updatedAt: string | null;
+  flightStatus: string | null;
 }

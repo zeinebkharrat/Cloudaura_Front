@@ -50,6 +50,21 @@ export interface Room {
   available: boolean;
 }
 
+/** Sent with transport checkout when {@link Transport.id} is negative (flight search offer). */
+export interface SyntheticFlightOfferPayload {
+  operatorName: string;
+  flightCode?: string;
+  departureIata: string;
+  arrivalIata: string;
+  pricePerSeatTnd: number;
+  departureTimeIso?: string;
+  arrivalTimeIso?: string;
+  description?: string;
+  /** Provider quote (e.g. 76 EUR); checkout converts to TND for payment. */
+  quoteOriginalAmount?: number;
+  quoteOriginalCurrency?: string;
+}
+
 export interface Transport {
   id: number;
   type: TransportType;
@@ -67,6 +82,8 @@ export interface Transport {
   isActive: boolean;
   /** Client-only: translated type label for result lists (optional). */
   typeLabel?: string;
+  /** Flight-search row: server materializes a {@code Transport} when paying. */
+  syntheticFlightOffer?: SyntheticFlightOfferPayload;
 }
 
 export interface TransportTypeAvailability {
@@ -89,7 +106,10 @@ export interface TransportReservationInput {
   idempotencyKey: string;
   travelDate?: string;
   routeKm?: number;
+  routeDurationMin?: number;
   rentalDays?: number;
+  /** Required when {@link TransportReservationInput.transportId} is negative. */
+  syntheticFlightOffer?: SyntheticFlightOfferPayload;
 }
 
 export interface TransportCheckoutPayload {
@@ -97,6 +117,7 @@ export interface TransportCheckoutPayload {
   numberOfSeats: number;
   travelDate: string;
   routeKm?: number;
+  routeDurationMin?: number;
   rentalDays?: number;
   passengerFirstName: string;
   passengerLastName: string;
@@ -105,6 +126,85 @@ export interface TransportCheckoutPayload {
   idempotencyKey: string;
   /** Stripe Checkout presentment: TND | EUR | USD */
   presentmentCurrency?: string;
+  /** Required when {@code transportId < 0}. */
+  syntheticFlightOffer?: SyntheticFlightOfferPayload;
+}
+
+/** POST /api/transports/estimate — taxi & bus are quote-only (no booking). */
+export interface TransportEstimateInput {
+  userId?: number;
+  departureCityId: number;
+  arrivalCityId: number;
+  /** ISO date yyyy-MM-dd (time ignored by API). */
+  travelDate: string;
+  transportType: TransportType;
+  seats?: number;
+  routeKm?: number;
+  routeDurationMin?: number;
+  rentalDays?: number;
+}
+
+export interface TransportEstimateResult {
+  transportType: string;
+  departureCityId: number;
+  arrivalCityId: number;
+  travelDate: string;
+  seats: number;
+  routeKm?: number;
+  routeDurationMin?: number | null;
+  referencePriceTnd: number;
+  minPriceTnd: number;
+  maxPriceTnd: number;
+  currency: string;
+  advisoryApplied?: boolean;
+  demandLevel?: string;
+  availabilityLevel?: string;
+  reducedAvailability?: boolean;
+  possibleHigherPrice?: boolean;
+  advisoryMessage?: string | null;
+}
+
+/** Query for GET /api/cars/search (Amadeus transfer-offers via backend). */
+export interface AmadeusCarSearchParams {
+  location: string;
+  startDate: string;
+  endDate: string;
+  passengers?: number;
+}
+
+/** One offer from Amadeus Cars & Transfers (mapped server-side). */
+export interface AmadeusCarOffer {
+  offerId: string;
+  provider: string;
+  model: string;
+  price: number;
+  currency: string;
+  location: string;
+  transferType?: string;
+  pickupDateTime?: string;
+}
+
+/** POST /api/cars/book-simulation response. */
+export interface CarBookSimulationResult {
+  simulated: boolean;
+  confirmationRef: string;
+  offerId: string;
+  message?: string;
+}
+
+/** POST /api/transport/payments/paypal/create */
+export interface TransportPayPalCreatePayload {
+  transportId: number;
+  seats: number;
+  travelDate: string;
+  routeKm?: number;
+  routeDurationMin?: number;
+  amountTnd: number;
+  passengerFirstName?: string;
+  passengerLastName?: string;
+  passengerEmail?: string;
+  passengerPhone?: string;
+  syntheticFlightOffer?: SyntheticFlightOfferPayload;
 }
 
 /** PATCH body for updating an existing transport booking. */
@@ -167,6 +267,7 @@ export interface AccommodationReservation {
   reservationRef?: string;
   checkInDate?: string;
   checkOutDate?: string;
+  guestCount?: number;
   nights?: number;
   /** Room type code when API sends it (e.g. SINGLE). */
   roomType?: string;
@@ -199,6 +300,7 @@ export interface Reservation {
   /** API body for accommodation booking (LocalDate strings). */
   checkIn?: string;
   checkOut?: string;
+  guestCount?: number;
   roomId?: number;
   userId?: number;
   transportId?: number;

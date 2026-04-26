@@ -9,20 +9,22 @@ import {
   PLATFORM_ID,
   signal,
   ChangeDetectorRef,
+  inject,
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { catchError, forkJoin, map, of, Subscription } from 'rxjs';
-import { TranslateModule, TranslateService } from '@ngx-translate/core';
-import { LanguageService } from './core/services/language.service';
+import { catchError, forkJoin, map, of } from 'rxjs';
+import { TranslateModule } from '@ngx-translate/core';
 import * as echarts from 'echarts';
 import { tunisiaGeoJson } from './tunisia-map';
 import { GOVERNORATE_LABEL_EN, GOVERNORATE_LABEL_FR } from './tunisia-governorate-labels';
 import { ExploreService } from './explore/explore.service';
 import { API_BASE_URL, API_FALLBACK_ORIGIN } from './core/api-url';
 import { AuthService } from './core/auth.service';
-import { PersonalizationService } from './core/personalization.service';
+import { TravelMatchService } from './core/services/travel-match.service';
+import { travelPrefsStorageKey } from './core/travel-match.storage';
+import type { CityMatchScore, TravelPreferencePayload } from './core/travel-match.types';
 
 interface HomeImageCard {
   title: string;
@@ -103,7 +105,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly heroVideoSrc = '/assets/video.mp4';
   readonly heroVideoPoster = 'assets/sidi_bou.png';
   readonly heroVideoError = signal(false);
-  readonly videoMuted = signal(false);
+  readonly videoMuted = signal(true);
   readonly skeletonCards = Array.from({ length: 4 }, (_, i) => i);
 
   readonly activityCards = signal<HomeImageCard[]>([]);
@@ -122,6 +124,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly currentPersonalizedEventPage = signal(0);
   readonly personalizedEventPageCount = signal(1);
   readonly activeAiCityRoute = signal<string | null>(null);
+  readonly personaMatches = signal<CityMatchScore[]>([]);
 
   readonly loadingActivities = signal(true);
   readonly loadingTransportModes = signal(true);
@@ -143,7 +146,6 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   private mapGeoData?: any;
   private regionIdToLabelMap?: Map<string, string>;
   private themeObserver?: MutationObserver;
-  private langChange?: Subscription;
   private autoSlideIntervals: number[] = [];
   private readonly handleWindowResize = () => {
     this.tunisiaMapChart?.resize();
@@ -153,27 +155,20 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.recalculatePersonalizedPagination('personalized-events-slider', this.personalizedEventPageCount, this.currentPersonalizedEventPage);
   };
 
+  private readonly authService = inject(AuthService);
+  private readonly travelMatch = inject(TravelMatchService);
+
   constructor(
     @Inject(PLATFORM_ID) private platformId: Object,
     private cdr: ChangeDetectorRef,
     private readonly http: HttpClient,
     private readonly exploreService: ExploreService,
-    private readonly authService: AuthService,
-    private readonly personalizationService: PersonalizationService,
     private readonly router: Router,
-    private readonly route: ActivatedRoute,
-    private readonly translate: TranslateService,
-    private readonly language: LanguageService
+    private readonly route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
     this.loadHomeSections();
-    this.loadPersonalizedSection();
-    this.langChange = this.translate.onLangChange.subscribe(() => {
-      if (this.tunisiaMapChart) {
-        this.applyMapTheme();
-      }
-    });
   }
 
   scrollSlider(containerId: string, direction: 1 | -1): void {
@@ -330,15 +325,8 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    const nextMuted = !video.muted;
-    video.muted = nextMuted;
-    this.videoMuted.set(nextMuted);
-
-    if (video.paused) {
-      void video.play().catch(() => {
-        this.heroVideoError.set(true);
-      });
-    }
+    video.muted = true;
+    this.videoMuted.set(true);
   }
 
   ngAfterViewInit(): void {
@@ -356,7 +344,6 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.langChange?.unsubscribe();
     if (isPlatformBrowser(this.platformId)) {
       window.removeEventListener('resize', this.handleWindowResize);
       this.stopAutoSliders();
@@ -531,83 +518,60 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
         return;
       }
 
-      video.defaultMuted = false;
-      video.muted = false;
-      video.volume = 1;
-      this.videoMuted.set(false);
+      video.defaultMuted = true;
+      video.muted = true;
+      video.volume = 0;
+      this.videoMuted.set(true);
 
       void video.play().catch(() => {
-        // Autoplay with sound can be blocked by browsers; fallback to muted autoplay.
-        video.defaultMuted = true;
-        video.muted = true;
-        this.videoMuted.set(true);
-        void video.play().catch(() => {
-          this.heroVideoError.set(true);
-        });
+        this.heroVideoError.set(true);
       });
     }, 0);
   }
 
   private loadHomeSections(): void {
+    this.loadPersonaMatches();
     this.loadActivityCards();
     this.loadTransportCards();
     this.loadRestaurantCards();
     this.loadArtisanCards();
   }
 
-  private loadPersonalizedSection(): void {
-    if (!this.authService.currentUser()) {
-      this.loadingPersonalized.set(false);
+  private loadPersonaMatches(): void {
+    if (!isPlatformBrowser(this.platformId)) {
       return;
     }
-
-    this.personalizationService
-      .getRecommendations()
-      .pipe(catchError(() => of(null)))
-      .subscribe((res) => {
-        if (!res) {
-          this.loadingPersonalized.set(false);
-          return;
-        }
-
-        const cityCards: HomeImageCard[] = (res.recommendedCities ?? []).slice(0, 5).map((item) => ({
-          title: item.name,
-          subtitle: item.description || item.region || 'City recommendation for your next stop.',
-          image: item.imageUrl || 'assets/sidi_bou.png',
-          route: `/city/${item.cityId}`,
-          badge: `Match ${(item.score * 100).toFixed(0)}%`,
-          tags: [item.region || 'Tunisia', 'City'],
-        }));
-
-        const activityCards: HomeImageCard[] = (res.recommendedActivities ?? []).slice(0, 4).map((item) => ({
-          title: item.name,
-          subtitle: item.description || item.cityName || 'Activity recommendation tuned for your profile.',
-          image: item.imageUrl || 'assets/sahara.png',
-          route: `/activities/${item.activityId}`,
-          badge: `Match ${(item.score * 100).toFixed(0)}%`,
-          tags: [item.cityName || 'Tunisia', item.type || 'Activity'],
-          priceTag: item.price != null ? `${Math.round(item.price)} TND` : undefined,
-        }));
-
-        const eventCards: HomeImageCard[] = (res.recommendedEvents ?? []).slice(0, 3).map((item) => ({
-          title: item.title,
-          subtitle: item.venue || item.cityName || 'Event recommendation curated for your interests.',
-          image: item.imageUrl || 'assets/el_jem.png',
-          route: '/evenements',
-          badge: `Match ${(item.score * 100).toFixed(0)}%`,
-          tags: [item.cityName || 'Tunisia', item.eventType || 'Event'],
-          priceTag: item.price != null ? `${Math.round(item.price)} TND` : undefined,
-        }));
-
-        this.personalizedCityCards.set(cityCards);
-        this.personalizedActivityCards.set(activityCards);
-        this.personalizedEventCards.set(eventCards);
-        this.loadingPersonalized.set(false);
-        setTimeout(() => {
-          this.recalculatePersonalizedPagination('personalized-cities-slider', this.personalizedCityPageCount, this.currentPersonalizedCityPage);
-          this.recalculatePersonalizedPagination('personalized-events-slider', this.personalizedEventPageCount, this.currentPersonalizedEventPage);
-        }, 40);
+    const u = this.authService.currentUser();
+    if (!u?.id) {
+      return;
+    }
+    const raw = localStorage.getItem(travelPrefsStorageKey(u.id));
+    if (!raw) {
+      return;
+    }
+    try {
+      const prefs = JSON.parse(raw) as TravelPreferencePayload;
+      this.travelMatch.rankCities(prefs, 6).subscribe({
+        next: (rows) => this.personaMatches.set(rows),
+        error: () => {},
       });
+    } catch {
+      /* ignore malformed prefs */
+    }
+  }
+
+  exploreMatchedCity(cityName: string): void {
+    this.exploreService.resolveCityByName(cityName).subscribe({
+      next: (res) => {
+        const id = res.city?.cityId;
+        if (id != null) {
+          void this.router.navigate(['/city', id]);
+        } else {
+          void this.router.navigate(['/destination-map'], { queryParams: { q: cityName } });
+        }
+      },
+      error: () => void this.router.navigate(['/destination-map']),
+    });
   }
 
   private loadActivityCards(): void {
@@ -864,23 +828,22 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.applyMapTheme();
 
     this.tunisiaMapChart.on('click', (params: any) => {
-      const displayLabel = this.mapRegionLabel(params);
-      const apiName = ((params?.data?.gouv_fr as string | undefined) ?? '').trim() || displayLabel;
+      const label = this.displayName(params);
       this.selectedRegion.set({
-        name: displayLabel,
-        description: this.translate.instant('HOME.MAP_EXPLORING', { name: displayLabel }),
+        name: label,
+        description: `Exploring ${label}...`,
         cityId: null,
         resolving: true,
         mapRegionId: params?.name ?? null,
       });
 
-      this.exploreService.resolveCityByName(apiName).subscribe({
+      this.exploreService.resolveCityByName(label).subscribe({
         next: (resolved) => {
           this.selectedRegion.set({
             name: resolved.city.name,
             description:
               resolved.city.description ||
-              this.translate.instant('HOME.MAP_CITY_FALLBACK_DESC', { name: resolved.city.name }),
+              `Discover ${resolved.city.name}, a Tunisian destination rich in experiences.`,
             cityId: resolved.city.cityId,
             resolving: false,
             mapRegionId: params?.name ?? null,
@@ -892,7 +855,8 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
             prev
               ? {
                   ...prev,
-                  description: this.translate.instant('HOME.MAP_NO_CITY', { name: displayLabel }),
+                  description:
+                    `No linked city found in the database for ${label}.`,
                   cityId: null,
                   resolving: false,
                   mapRegionId: params?.name ?? null,
@@ -909,24 +873,16 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     window.addEventListener('resize', this.handleWindowResize);
   }
 
-  private mapRegionLabel(p: { name?: string; data?: any }): string {
-    const gid = p?.data?.gouv_id as string | undefined;
-    if (gid) {
-      const key = `MAP.GOV.${gid}`;
-      const translated = this.translate.instant(key);
-      if (translated !== key) {
-        return translated;
-      }
-    }
+  private displayName(p: { name?: string; data?: any }): string {
     const m = this.regionIdToLabelMap!;
-    return m.get(p?.name ?? '') ?? p?.data?.gouv_fr ?? p?.name ?? '';
+    return m.get(p.name ?? '') ?? p.data?.gouv_fr ?? p.name ?? '';
   }
 
   private applyMapTheme(): void {
     if (!this.tunisiaMapChart || !this.mapGeoData) return;
 
     const mapGeo = this.mapGeoData;
-    const mapLabel = (p: any) => this.mapRegionLabel(p);
+    const displayName = (p: any) => this.displayName(p);
     const mode = this.mapViewMode();
     const isLocal = mode === 'local';
     const isDark = this.isDarkTheme();
@@ -943,7 +899,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       backgroundColor: isDark ? '#0f172a' : '#ffffff',
       tooltip: {
         trigger: 'item' as const,
-        formatter: (p: any) => mapLabel(p),
+        formatter: (p: any) => displayName(p),
         backgroundColor: isDark ? 'rgba(15,23,42,0.96)' : 'rgba(255,255,255,0.96)',
         borderColor: isDark ? '#334155' : '#b6deee',
         textStyle: { color: isDark ? '#e2e8f0' : '#0f172a' },
@@ -989,7 +945,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
               color: isDark ? '#f8fafc' : '#0f172a',
               fontSize: isLocal ? 16 : 17,
               fontWeight: 'bold' as const,
-              formatter: (p: any) => mapLabel(p),
+              formatter: (p: any) => displayName(p),
             },
             itemStyle: isLocal
               ? {
@@ -1011,7 +967,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
               color: isDark ? '#f8fafc' : '#0f172a',
               fontSize: 18,
               fontWeight: 'bold' as const,
-              formatter: (p: any) => mapLabel(p),
+              formatter: (p: any) => displayName(p),
             },
             itemStyle: {
               areaColor: isDark
@@ -1025,7 +981,6 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
             name: f.properties[TUNISIA_MAP_NAME_PROP],
             value: index % 5,
             gouv_fr: f.properties.gouv_fr,
-            gouv_id: f.properties.gouv_id,
           })),
         },
       ],
@@ -1242,12 +1197,10 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
       this.applyRegionSelection(selectedMapRegionId);
       if (selectedMapRegionId) {
         const selectedName =
-          cityLabel ??
-          this.regionIdToLabelMap?.get(selectedMapRegionId) ??
-          this.translate.instant('HOME.MAP_SELECTED_FALLBACK');
+          cityLabel ?? this.regionIdToLabelMap?.get(selectedMapRegionId) ?? 'Selected city';
         this.selectedRegion.set({
           name: selectedName,
-          description: this.translate.instant('HOME.MAP_EXPLORING', { name: selectedName }),
+          description: `Exploring ${selectedName}...`,
           cityId: cityId ?? null,
           resolving: false,
           mapRegionId: selectedMapRegionId,
