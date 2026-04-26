@@ -108,6 +108,8 @@ export interface TransportReservationInput {
   routeKm?: number;
   routeDurationMin?: number;
   rentalDays?: number;
+  departureCityId?: number;
+  arrivalCityId?: number;
   /** Required when {@link TransportReservationInput.transportId} is negative. */
   syntheticFlightOffer?: SyntheticFlightOfferPayload;
 }

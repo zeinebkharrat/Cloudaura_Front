@@ -1230,6 +1230,11 @@ public class CatalogTranslationBootstrap implements ApplicationRunner {
                 "Transport not found.",
                 "وسيلة النقل غير موجودة.");
         ensureTriple(
+                "api.error.transport.admin_catalogue_plane_only",
+                "Le catalogue admin n’accepte que des vols (PLANE). Bus, taxi et voiture sont proposés côté site via le moteur / devis.",
+                "The admin catalogue only accepts flights (PLANE). Bus, taxi, and car are offered on the public site via the engine / quotes.",
+                "كتالوج الإدارة يقبل الرحلات الجوية فقط. الحافلة والتاكسي تظهر للزوار عبر المحرّر أو عروض الأسعار.");
+        ensureTriple(
                 "api.error.transport.admin_conflict",
                 "Conflit lors de l’enregistrement du transport.",
                 "Conflict while saving transport.",

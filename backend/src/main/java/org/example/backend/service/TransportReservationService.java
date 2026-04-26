@@ -95,6 +95,13 @@ public class TransportReservationService {
         }
 
         Transport transport = resolveTransportForReservation(req);
+        // For car rentals and other non-plane types with negative IDs (no synthetic offer)
+        if (transport == null && req.getTransportId() < 0) {
+            transport = materializeSyntheticCarFromRequest(req);
+        }
+        if (transport == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.transport_not_found");
+        }
         assertReservationAllowedForTransportType(transport);
         assertTransportOpenForBooking(transport, req.getNumberOfSeats());
         validateTaxiRouteKm(transport, req.getRouteKm());
@@ -739,11 +746,15 @@ public class TransportReservationService {
                     .orElseThrow(() -> new ResourceNotFoundException("reservation.error.transport_not_found"));
         }
         if (transportId < 0) {
-            if (offer == null) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST, "reservation.error.synthetic_flight_offer_required");
+            // For synthetic transports (negative IDs)
+            // If syntheticFlightOffer is provided -> create synthetic plane
+            // If not provided -> it's a car rental or other non-plane type, will be handled by caller
+            if (offer != null) {
+                return materializeSyntheticPlaneFromOffer(offer, travelDate);
             }
-            return materializeSyntheticPlaneFromOffer(offer, travelDate);
+            // For car rentals and other non-plane types without synthetic offer
+            // Return null here and let the caller handle it with request data
+            return null;
         }
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reservation.error.transport_not_found");
     }
@@ -800,6 +811,53 @@ public class TransportReservationService {
                         .isActive(true)
                         .createdAt(LocalDateTime.now())
                         .build();
+        return transportRepository.save(t);
+    }
+
+    /**
+     * Creates a synthetic CAR transport for car rentals without a database record.
+     * Used when transportId is negative and no syntheticFlightOffer is provided.
+     */
+    private Transport materializeSyntheticCarFromRequest(TransportReservationRequest req) {
+        // Parse travel date for departure/arrival times
+        LocalDateTime travelDate = req.getTravelDate() != null
+                ? resolveTravelDateTime(req.getTravelDate(), LocalDateTime.now())
+                : LocalDateTime.now();
+
+        int rentalDays = req.getRentalDays() != null && req.getRentalDays() > 0 ? req.getRentalDays() : 1;
+        LocalDateTime dep = travelDate.withHour(9).withMinute(0).withSecond(0);
+        LocalDateTime arr = dep.plusDays(rentalDays).withHour(18).withMinute(0);
+
+        // Resolve cities if city IDs are provided
+        City departureCity = null;
+        City arrivalCity = null;
+        if (req.getDepartureCityId() != null && req.getDepartureCityId() > 0) {
+            departureCity = cityRepository.findById(req.getDepartureCityId()).orElse(null);
+        }
+        if (req.getArrivalCityId() != null && req.getArrivalCityId() > 0) {
+            arrivalCity = cityRepository.findById(req.getArrivalCityId()).orElse(null);
+        }
+        // If same city or only one provided, use it for both
+        if (departureCity == null && arrivalCity != null) {
+            departureCity = arrivalCity;
+        } else if (arrivalCity == null && departureCity != null) {
+            arrivalCity = departureCity;
+        }
+
+        // Build a basic CAR transport
+        Transport t = Transport.builder()
+                .type(Transport.TransportType.CAR)
+                .departureCity(departureCity)
+                .arrivalCity(arrivalCity)
+                .departureTime(dep)
+                .arrivalTime(arr)
+                .capacity(5)
+                .price(0.0) // Price computed by pricing service based on route/days
+                .isActive(true)
+                .createdAt(LocalDateTime.now())
+                .build();
+
+        // Must save to database because reservation has foreign key to transport
         return transportRepository.save(t);
     }
 

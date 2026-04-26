@@ -250,7 +250,7 @@ public class UserDigitalPassPortService implements IUserDigitalPassPortService {
                 .findByPassportPassportIdOrderByUnlockedAtDesc(passport.getPassportId());
         List<PassportPhoto> photos = photoRepository.findByPassportIdWithCity(passport.getPassportId());
         List<City> allCities = cityRepository.findAll().stream()
-                .filter(c -> !c.isVirtualFlightEndpointCity())
+                .filter(c -> !c.isExcludedFromPublicCityCatalog())
                 .toList();
 
         int totalVisits = stamps.stream().mapToInt(s -> s.getVisitCount() == null ? 0 : s.getVisitCount()).sum();

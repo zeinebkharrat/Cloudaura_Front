@@ -49,7 +49,7 @@ public class PublicExploreService {
         String normalizedInput = normalize(mapLabel);
 
         List<City> allCities = cityRepository.findAll().stream()
-            .filter(city -> !city.isVirtualFlightEndpointCity())
+            .filter(city -> !city.isExcludedFromPublicCityCatalog())
             .filter(city -> city.getName() != null && !city.getName().isBlank())
             .toList();
 
@@ -77,7 +77,7 @@ public class PublicExploreService {
     @Transactional(readOnly = true)
     public List<CityResponse> listAllCities() {
         return cityRepository.findAll().stream()
-                .filter(c -> !c.isVirtualFlightEndpointCity())
+                .filter(c -> !c.isExcludedFromPublicCityCatalog())
                 .map(this::toCityResponse)
                 .toList();
     }
@@ -86,6 +86,9 @@ public class PublicExploreService {
     public PublicCityDetailsResponse getCityDetails(Integer cityId) {
         City city = cityRepository.findById(cityId)
             .orElseThrow(() -> new ResourceNotFoundException("api.error.city_not_found"));
+        if (city.isExcludedFromPublicCityCatalog()) {
+            throw new ResourceNotFoundException("api.error.city_not_found");
+        }
 
         List<CityMediaResponse> media = cityMediaRepository.findByCityCityIdOrderByMediaIdDesc(cityId)
             .stream()

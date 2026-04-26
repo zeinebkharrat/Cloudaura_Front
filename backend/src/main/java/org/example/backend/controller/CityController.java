@@ -25,7 +25,7 @@ public class CityController {
     @GetMapping
     public ApiResponse<List<LocalizedCityResponse>> getAll(@RequestParam(defaultValue = "fr") String lang) {
         List<LocalizedCityResponse> rows = cityRepository.findAll().stream()
-                .filter(c -> !c.isVirtualFlightEndpointCity())
+                .filter(c -> !c.isExcludedFromPublicCityCatalog())
                 .map(c -> LocalizedCityResponse.from(c, lang, catalogTranslationService))
                 .toList();
         return ApiResponse.success(rows);
@@ -37,6 +37,9 @@ public class CityController {
             @RequestParam(defaultValue = "fr") String lang) {
         City city = cityRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.city_not_found"));
+        if (city.isExcludedFromPublicCityCatalog()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.city_not_found");
+        }
         return ApiResponse.success(LocalizedCityResponse.from(city, lang, catalogTranslationService));
     }
 }

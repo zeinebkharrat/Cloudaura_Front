@@ -56,4 +56,18 @@ public class City {
     public boolean isVirtualFlightEndpointCity() {
         return region != null && "airport".equalsIgnoreCase(region.trim());
     }
+
+    private static final String INTL_AIRPORT_ANCHOR_MARKER = "Auto-created airport anchor for flight checkout";
+
+    /**
+     * All DB rows that represent airports / flight endpoints masquerading as {@link City},
+     * and that must be hidden from city pickers, explore, geo match, and NLP city lists.
+     */
+    public boolean isExcludedFromPublicCityCatalog() {
+        if (isVirtualFlightEndpointCity()) {
+            return true;
+        }
+        String d = description != null ? description : "";
+        return d.contains(INTL_AIRPORT_ANCHOR_MARKER);
+    }
 }

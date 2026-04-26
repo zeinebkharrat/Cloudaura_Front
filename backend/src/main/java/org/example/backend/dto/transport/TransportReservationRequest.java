@@ -28,7 +28,12 @@ public class TransportReservationRequest {
     /** CAR rental day count; optional, defaults to 1 server-side. */
     private Integer rentalDays;
 
-    /** Required when {@code transportId < 0}. */
+    /** For synthetic car rentals: departure city ID (optional). */
+    private Integer departureCityId;
+    /** For synthetic car rentals: arrival city ID (optional). */
+    private Integer arrivalCityId;
+
+    /** Required when {@code transportId < 0} for flights. */
     @Valid
     private SyntheticFlightOfferDto syntheticFlightOffer;
 }

@@ -11,7 +11,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, ParamMap, RouterLink } from '@angular/router';
+import { ActivatedRoute, ParamMap, Router, RouterLink } from '@angular/router';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { ButtonModule } from 'primeng/button';
 import { RippleModule } from 'primeng/ripple';
@@ -19,8 +19,10 @@ import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { Subscription } from 'rxjs';
 import { DATA_SOURCE_TOKEN } from '../../../core/adapters/data-source.adapter';
 import { AppAlertsService } from '../../../core/services/app-alerts.service';
-import { AmadeusCarOffer, City } from '../../../core/models/travel.models';
+import { CurrencyService } from '../../../core/services/currency.service';
+import { AmadeusCarOffer, City, Transport } from '../../../core/models/travel.models';
 import { GovernorateCityPickerComponent } from '../../../shared/components/governorate-city-picker/governorate-city-picker.component';
+import { TripContextStore } from '../../../core/stores/trip-context.store';
 
 @Component({
   selector: 'app-car-rental-amadeus-page',
@@ -43,9 +45,15 @@ export class CarRentalAmadeusPageComponent implements OnInit, OnDestroy {
   private readonly dataSource = inject(DATA_SOURCE_TOKEN);
   private readonly translate = inject(TranslateService);
   private readonly alerts = inject(AppAlertsService);
+  private readonly currency = inject(CurrencyService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+  private readonly tripStore = inject(TripContextStore);
   private readonly renderer = inject(Renderer2);
+
+  /** Re-render when currency changes */
+  readonly currencyDisplay = this.currency.selectedCode;
 
   private qpSub: Subscription | null = null;
 
@@ -87,7 +95,6 @@ export class CarRentalAmadeusPageComponent implements OnInit, OnDestroy {
   searched = signal(false);
   errorMsg = signal<string | null>(null);
   offers = signal<AmadeusCarOffer[]>([]);
-  simulation = signal<{ confirmationRef: string; message?: string } | null>(null);
 
   ngOnInit(): void {
     this.ensureDocumentTheme();
@@ -143,7 +150,7 @@ export class CarRentalAmadeusPageComponent implements OnInit, OnDestroy {
         this.endDate = e;
       }
       this.cdr.markForCheck();
-      queueMicrotask(() => this.runSearch(false));
+      queueMicrotask(() => this.runSearch());
       this.tryApplyLocationFromDevice(pm);
     });
   }
@@ -151,6 +158,10 @@ export class CarRentalAmadeusPageComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.qpSub?.unsubscribe();
     this.qpSub = null;
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
+      this.searchDebounceTimer = null;
+    }
   }
 
   /** Aligns `html[data-theme]` with app shell / localStorage (no duplicate theme toggle on this page). */
@@ -243,7 +254,7 @@ export class CarRentalAmadeusPageComponent implements OnInit, OnDestroy {
       this.cityHintFromTransport.set(null);
       this.location = hit.name;
       this.cdr.markForCheck();
-      queueMicrotask(() => this.runSearch(false));
+      queueMicrotask(() => this.runSearch());
     } catch {
       /* network / abort */
     }
@@ -318,18 +329,28 @@ export class CarRentalAmadeusPageComponent implements OnInit, OnDestroy {
       this.location = 'Tunis';
     }
     this.cdr.markForCheck();
+    // Auto-search after governorate change with debounce
+    this.debouncedSearch();
   }
 
-  runSearch(clearSimulation = true): void {
-    if (clearSimulation) {
-      this.simulation.set(null);
+  private searchDebounceTimer: any = null;
+
+  debouncedSearch(delay = 500): void {
+    if (this.searchDebounceTimer) {
+      clearTimeout(this.searchDebounceTimer);
     }
+    this.searchDebounceTimer = setTimeout(() => {
+      this.runSearch();
+    }, delay);
+  }
+
+  onDateChange(): void {
+    this.debouncedSearch(300);
+  }
+
+  runSearch(): void {
     this.errorMsg.set(null);
     if (!this.startDate || !this.endDate) {
-      void this.alerts.warning(
-        this.translate.instant('CAR_AMADEUS.ALERT_DATE_TITLE'),
-        this.translate.instant('CAR_AMADEUS.ALERT_DATE_BODY'),
-      );
       return;
     }
     const g = this.governoratePickerId();
@@ -381,30 +402,67 @@ export class CarRentalAmadeusPageComponent implements OnInit, OnDestroy {
       });
   }
 
-  simulate(o: AmadeusCarOffer): void {
-    const isLocal = o.offerId?.startsWith('LOCAL:');
-    this.loading.set(true);
-    this.errorMsg.set(null);
-    this.cdr.markForCheck();
-    this.dataSource.simulateAmadeusCarBooking(o.offerId).subscribe({
-      next: (r) => {
-        this.loading.set(false);
-        this.simulation.set({ confirmationRef: r.confirmationRef, message: r.message });
-        this.cdr.markForCheck();
-        if (isLocal) {
-          this.runSearch(false);
-        }
-      },
-      error: (e: unknown) => {
-        this.loading.set(false);
-        const status = e instanceof HttpErrorResponse ? e.status : undefined;
-        if (status === 409) {
-          this.errorMsg.set(this.translate.instant('CAR_AMADEUS.ERROR_409'));
-        } else {
-          this.errorMsg.set(this.translate.instant('CAR_AMADEUS.ERROR_SIM'));
-        }
-        this.cdr.markForCheck();
+  /**
+   * Book a car rental - creates a Transport object and navigates to booking page
+   * Similar to onBookFlight in flights-page.component.ts
+   */
+  onBookCar(o: AmadeusCarOffer): void {
+    // Calculate rental days from start and end dates
+    const start = new Date(this.startDate);
+    const end = new Date(this.endDate);
+    const diffTime = end.getTime() - start.getTime();
+    const rentalDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+
+    // Create a synthetic transport ID (negative to indicate synthetic/offers)
+    const syntheticId = -(Math.abs(this.hashCode(`${o.offerId}|${o.model}|${o.location}`)) + 1);
+
+    // Build location names
+    const locationName = o.location || this.location || 'Tunis';
+    const providerName = o.provider || 'Car Rental';
+
+    const selectedTransport: Transport = {
+      id: syntheticId,
+      type: 'CAR',
+      departureCityId: this.governoratePickerId() || 0,
+      arrivalCityId: this.governoratePickerId() || 0,
+      departureCityName: locationName,
+      arrivalCityName: locationName,
+      departureTime: this.startDate ? `${this.startDate}T09:00:00` : new Date().toISOString(),
+      arrivalTime: this.endDate ? `${this.endDate}T18:00:00` : new Date().toISOString(),
+      price: o.price,
+      capacity: 5,
+      availableSeats: 1,
+      durationMinutes: rentalDays * 24 * 60,
+      description: `${providerName} - ${o.model}`,
+      isActive: true,
+    };
+
+    // Store in trip context
+    this.tripStore.selectedTransport.set(selectedTransport);
+    this.tripStore.setPassengers(1);
+    this.tripStore.setTransportRentalDays(rentalDays);
+    this.tripStore.setDates({ travelDate: this.startDate });
+
+    // Navigate to booking page
+    this.router.navigate(['/transport', selectedTransport.id, 'book'], {
+      queryParams: {
+        transportType: 'CAR',
+        passengers: 1,
+        date: this.startDate,
       },
     });
+  }
+
+  /** Format price with currency service for dual currency display */
+  formatPrice(price: number): string {
+    return this.currency.formatDual(price);
+  }
+
+  private hashCode(input: string): number {
+    let hash = 0;
+    for (let i = 0; i < input.length; i++) {
+      hash = (Math.imul(31, hash) + input.charCodeAt(i)) | 0;
+    }
+    return hash;
   }
 }

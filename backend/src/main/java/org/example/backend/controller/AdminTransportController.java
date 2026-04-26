@@ -39,11 +39,11 @@ public class AdminTransportController {
     @GetMapping("/transports/stats")
     @Transactional(readOnly = true)
     public ApiResponse<TransportStatsDTO> getStats() {
-        long total   = transportRepository.count();
-        long active  = transportRepository.countActive();
+        long total  = transportRepository.countByType(Transport.TransportType.PLANE);
+        long active = transportRepository.countByIsActiveTrueAndType(Transport.TransportType.PLANE);
 
-        List<Transport> activeTransports = transportRepository.findByIsActiveTrue();
-        long availableSeats = activeTransports.stream()
+        List<Transport> activePlanes = transportRepository.findByIsActiveTrueAndType(Transport.TransportType.PLANE);
+        long availableSeats = activePlanes.stream()
             .mapToLong(t -> {
                 long booked = countBookedSeatsFor(t.getTransportId());
                 int cap = t.getCapacity() != null ? t.getCapacity() : 0;
@@ -71,22 +71,16 @@ public class AdminTransportController {
         City arr = cityRepository.findById(arrivalCityId).orElseThrow(() ->
             new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.transport.admin_arrival_city_not_found"));
 
+        // Admin catalogue is flight-only; bus/taxi/car are surfaced on the public site via the engine.
         List<TransportTypeAvailabilityDTO> result = new ArrayList<>();
-
         result.add(checkType("PLANE", "Avion", dep, arr));
-        result.add(checkType("BUS", "Bus", dep, arr));
-        result.add(checkType("VAN", "Van / Louage", dep, arr));
-        result.add(checkType("TAXI", "Taxi", dep, arr));
-        result.add(checkType("CAR", "Voiture", dep, arr));
-
         return ApiResponse.success(result);
     }
 
     @GetMapping("/transports")
     @Transactional(readOnly = true)
     public ApiResponse<List<TransportDTO>> getAllTransports() {
-        List<Transport> transports = transportRepository.findAll();
-        List<TransportDTO> dtos = transports.stream()
+        List<TransportDTO> dtos = transportRepository.findByType(Transport.TransportType.PLANE).stream()
             .map(t -> toTransportDTO(t, countBookedSeatsFor(t.getTransportId())))
             .toList();
         return ApiResponse.success(dtos);
@@ -95,6 +89,7 @@ public class AdminTransportController {
     @GetMapping("/transports/{id}/reservations")
     @Transactional(readOnly = true)
     public ApiResponse<List<ReservationDTO>> getTransportReservations(@PathVariable Integer id) {
+        requireAdminPlaneTransport(id);
         List<TransportReservation> reservations = reservationRepository.findByTransport_TransportId(id);
         return ApiResponse.success(reservations.stream().map(this::toReservationDTO).toList());
     }
@@ -102,8 +97,7 @@ public class AdminTransportController {
     @GetMapping("/transports/{id}")
     @Transactional(readOnly = true)
     public ApiResponse<TransportDTO> getTransport(@PathVariable Integer id) {
-        Transport t = transportRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.transport.admin_not_found"));
+        Transport t = requireAdminPlaneTransport(id);
         return ApiResponse.success(toTransportDTO(t, countBookedSeatsFor(id)));
     }
 
@@ -121,8 +115,7 @@ public class AdminTransportController {
     @PutMapping("/transports/{id}")
     @Transactional
     public ApiResponse<TransportDTO> updateTransport(@PathVariable Integer id, @RequestBody TransportRequest request) {
-        Transport existing = transportRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.transport.admin_not_found"));
+        Transport existing = requireAdminPlaneTransport(id);
         Transport transport = buildAndValidateTransport(request, existing);
         transport.setTransportId(id);
         transport = transportRepository.save(transport);
@@ -133,8 +126,7 @@ public class AdminTransportController {
     @PatchMapping("/transports/{id}/status")
     @Transactional
     public ApiResponse<TransportDTO> toggleTransportStatus(@PathVariable Integer id, @RequestBody StatusRequest request) {
-        Transport transport = transportRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.transport.admin_not_found"));
+        Transport transport = requireAdminPlaneTransport(id);
 
         boolean willDeactivate = Boolean.FALSE.equals(request.isActive());
         if (willDeactivate) {
@@ -154,8 +146,7 @@ public class AdminTransportController {
     @DeleteMapping("/transports/{id}")
     @Transactional
     public ResponseEntity<?> deleteTransport(@PathVariable Integer id) {
-        Transport transport = transportRepository.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.transport.admin_not_found"));
+        Transport transport = requireAdminPlaneTransport(id);
 
         long futureActive = reservationRepository.countFutureActiveReservations(id);
         if (futureActive > 0) {
@@ -200,6 +191,18 @@ public class AdminTransportController {
 
     // ==================== VALIDATION HELPERS ====================
 
+    /**
+     * Admin transport UI and mutations apply to the flight catalogue only (not bus/taxi rows).
+     */
+    private Transport requireAdminPlaneTransport(int id) {
+        Transport t = transportRepository.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.transport.admin_not_found"));
+        if (t.getType() != Transport.TransportType.PLANE) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.transport.admin_not_found");
+        }
+        return t;
+    }
+
     private long countBookedSeatsFor(Integer transportId) {
         if (transportId == null) {
             return 0L;
@@ -217,27 +220,26 @@ public class AdminTransportController {
         City arrivalCity = cityRepository.findById(req.arrivalCityId())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "api.error.transport.admin_arrival_city_not_found"));
 
-        Transport.TransportType ttype = Transport.TransportType.valueOf(req.type());
+        if (req.type() == null || req.type().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.transport.admin_catalogue_plane_only");
+        }
+        Transport.TransportType ttype;
+        try {
+            ttype = Transport.TransportType.valueOf(req.type().trim());
+        } catch (IllegalArgumentException ignored) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.transport.admin_catalogue_plane_only");
+        }
+        if (ttype != Transport.TransportType.PLANE) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "api.error.transport.admin_catalogue_plane_only");
+        }
 
-        switch (ttype) {
-            case PLANE:
-                if (Boolean.FALSE.equals(departureCity.getHasAirport()))
-                    throw new InvalidTransportException("NO_AIRPORT",
-                        "Vol impossible : " + departureCity.getName() + " n'a pas d'aéroport");
-                if (Boolean.FALSE.equals(arrivalCity.getHasAirport()))
-                    throw new InvalidTransportException("NO_AIRPORT",
-                        "Vol impossible : " + arrivalCity.getName() + " n'a pas d'aéroport");
-                break;
-            case BUS:
-                if (Boolean.FALSE.equals(departureCity.getHasBusStation()))
-                    throw new InvalidTransportException("NO_BUS_STATION",
-                        departureCity.getName() + " n'a pas de gare routière");
-                if (Boolean.FALSE.equals(arrivalCity.getHasBusStation()))
-                    throw new InvalidTransportException("NO_BUS_STATION",
-                        arrivalCity.getName() + " n'a pas de gare routière");
-                break;
-            default:
-                break;
+        if (Boolean.FALSE.equals(departureCity.getHasAirport())) {
+            throw new InvalidTransportException("NO_AIRPORT",
+                "Vol impossible : " + departureCity.getName() + " n'a pas d'aéroport");
+        }
+        if (Boolean.FALSE.equals(arrivalCity.getHasAirport())) {
+            throw new InvalidTransportException("NO_AIRPORT",
+                "Vol impossible : " + arrivalCity.getName() + " n'a pas d'aéroport");
         }
 
         if (ttype == Transport.TransportType.PLANE) {

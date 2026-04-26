@@ -29,10 +29,14 @@ public class CityService {
 
     public Page<CityResponse> list(String q, Pageable pageable) {
         Specification<City> spec = (root, query, cb) -> {
-            var predicate = cb.or(
+            Expression<String> safeDesc = cb.lower(cb.coalesce(root.get("description").as(String.class), ""));
+            var notAirportRegion = cb.or(
                 cb.isNull(root.get("region")),
                 cb.notEqual(cb.lower(cb.coalesce(root.get("region"), "")), "airport")
             );
+            var notIntlFlightAnchor = cb.not(
+                cb.like(safeDesc, "%auto-created airport anchor for flight checkout%"));
+            var predicate = cb.and(notAirportRegion, notIntlFlightAnchor);
 
             if (q == null || q.isBlank()) {
                 return predicate;
