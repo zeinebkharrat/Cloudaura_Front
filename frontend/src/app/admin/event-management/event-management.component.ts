@@ -428,32 +428,66 @@ resetFilters() {
   }
 
   private tryOcrFallback(file: File, backendMessage: string) {
-    const formData = new FormData();
-    formData.append('apikey', 'helloworld');
-    formData.append('language', 'eng');
-    formData.append('isOverlayRequired', 'false');
-    formData.append('file', file);
+    const attempts: Array<{ language: string; engine: string }> = [
+      { language: 'eng', engine: '2' },
+      { language: 'fre', engine: '2' },
+      { language: 'ara', engine: '2' },
+      { language: 'eng', engine: '1' }
+    ];
+    const ocrFailures: string[] = [];
 
-    this.http.post('https://api.ocr.space/parse/image', formData)
-      .subscribe({
-        next: (res: any) => {
-          const text = this.extractTextFromOcrResponse(res);
-          if (!text) {
-            this.aiExtracting = false;
-            void this.alerts.error('AI extraction failed', backendMessage || 'Could not read text from this image. Please complete the form manually.');
-            return;
+    const runAttempt = (index: number) => {
+      if (index >= attempts.length) {
+        this.aiExtracting = false;
+        const ocrReason = ocrFailures.length
+          ? ` OCR fallback failed: ${ocrFailures.join(' | ').slice(0, 240)}`
+          : '';
+        const message = backendMessage || 'Could not read text from this image. Please complete the form manually.';
+        void this.alerts.error('AI extraction failed', `${message}${ocrReason}`.trim());
+        return;
+      }
+
+      const attempt = attempts[index];
+      const formData = new FormData();
+      formData.append('apikey', 'helloworld');
+      formData.append('language', attempt.language);
+      formData.append('isOverlayRequired', 'false');
+      formData.append('OCREngine', attempt.engine);
+      formData.append('detectOrientation', 'true');
+      formData.append('scale', 'true');
+      formData.append('file', file);
+
+      this.http.post('https://api.ocr.space/parse/image', formData)
+        .subscribe({
+          next: (res: any) => {
+            const text = this.extractTextFromOcrResponse(res);
+            if (text) {
+              this.applyExtractedDataToCurrentEvent(text, file.name);
+              this.aiExtracting = false;
+              console.warn(
+                'Primary AI extraction failed, fallback OCR used:',
+                backendMessage || 'Unknown primary error',
+                `(language=${attempt.language}, engine=${attempt.engine})`
+              );
+              void this.alerts.success('Form pre-filled', 'Event fields were auto-filled from the uploaded image. Please review before saving.');
+              return;
+            }
+
+            const ocrMessage = this.extractOcrErrorMessage(res);
+            if (ocrMessage) {
+              ocrFailures.push(`${attempt.language}/${attempt.engine}: ${ocrMessage}`);
+            }
+            runAttempt(index + 1);
+          },
+          error: (err) => {
+            const errorMessage = this.extractAiErrorMessage(err) || 'Request failed';
+            ocrFailures.push(`${attempt.language}/${attempt.engine}: ${errorMessage}`);
+            runAttempt(index + 1);
           }
+        });
+    };
 
-          this.applyExtractedDataToCurrentEvent(text, file.name);
-          this.aiExtracting = false;
-          console.warn('Primary AI extraction failed, fallback OCR used:', backendMessage || 'Unknown primary error');
-          void this.alerts.success('Form pre-filled', 'Event fields were auto-filled from the uploaded image. Please review before saving.');
-        },
-        error: () => {
-          this.aiExtracting = false;
-          void this.alerts.error('AI extraction failed', backendMessage || 'Could not read text from this image. Please complete the form manually.');
-        }
-      });
+    runAttempt(0);
   }
 
   private extractTextFromOcrResponse(response: any): string {
@@ -466,6 +500,42 @@ resetFilters() {
       .map((item: any) => item?.ParsedText ?? '')
       .join('\n')
       .trim();
+  }
+
+  private extractOcrErrorMessage(response: any): string {
+    const topError = response?.ErrorMessage;
+    if (Array.isArray(topError)) {
+      const merged = topError.filter(Boolean).join(' ');
+      if (merged.trim()) {
+        return merged.trim();
+      }
+    }
+    if (typeof topError === 'string' && topError.trim()) {
+      return topError.trim();
+    }
+
+    const details = response?.ErrorDetails;
+    if (typeof details === 'string' && details.trim()) {
+      return details.trim();
+    }
+
+    const parsedResults = response?.ParsedResults;
+    if (Array.isArray(parsedResults) && parsedResults.length > 0) {
+      const parsedError = parsedResults
+        .map((item: any) => item?.ErrorMessage ?? '')
+        .filter((value: string) => typeof value === 'string' && value.trim())
+        .join(' ')
+        .trim();
+      if (parsedError) {
+        return parsedError;
+      }
+    }
+
+    if (response?.IsErroredOnProcessing === true) {
+      return 'OCR provider could not process this image';
+    }
+
+    return '';
   }
 
   private extractAiErrorMessage(err: any): string {

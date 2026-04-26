@@ -182,8 +182,18 @@ public class EventController {
         } catch (IllegalArgumentException ex) {
             return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage(), "text", ""));
         } catch (Exception ex) {
+            String details = ex.getMessage();
+            if (details == null || details.isBlank()) {
+                Throwable cause = ex.getCause();
+                if (cause != null && cause.getMessage() != null && !cause.getMessage().isBlank()) {
+                    details = cause.getMessage();
+                }
+            }
+            if (details == null || details.isBlank()) {
+                details = "Unexpected error while extracting text";
+            }
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                    .body(Map.of("message", "AI extraction failed", "text", ""));
+                    .body(Map.of("message", "AI extraction failed: " + details, "text", ""));
         }
     }
 
