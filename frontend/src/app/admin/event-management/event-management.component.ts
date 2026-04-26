@@ -166,8 +166,6 @@ export class EventManagementComponent implements OnInit, OnDestroy {
 }
 
 applyFilters(resetPage: boolean = true) {
-  console.log('Filtrage en cours...', this.searchQuery); // Regarde dans la console (F12) si ça s'affiche !
-
   const query = this.searchQuery.toLowerCase().trim();
 
   this.filteredEvents = this.events.filter(ev => {
@@ -422,50 +420,13 @@ resetFilters() {
         },
         error: (err) => {
           const backendMessage = this.extractAiErrorMessage(err);
-          this.tryOcrFallback(file, backendMessage);
+          this.aiExtracting = false;
+          void this.alerts.error(
+            'AI extraction failed',
+            backendMessage || 'Could not read text from this image. Please complete the form manually.'
+          );
         }
       });
-  }
-
-  private tryOcrFallback(file: File, backendMessage: string) {
-    const formData = new FormData();
-    formData.append('apikey', 'helloworld');
-    formData.append('language', 'eng');
-    formData.append('isOverlayRequired', 'false');
-    formData.append('file', file);
-
-    this.http.post('https://api.ocr.space/parse/image', formData)
-      .subscribe({
-        next: (res: any) => {
-          const text = this.extractTextFromOcrResponse(res);
-          if (!text) {
-            this.aiExtracting = false;
-            void this.alerts.error('AI extraction failed', backendMessage || 'Could not read text from this image. Please complete the form manually.');
-            return;
-          }
-
-          this.applyExtractedDataToCurrentEvent(text, file.name);
-          this.aiExtracting = false;
-          console.warn('Primary AI extraction failed, fallback OCR used:', backendMessage || 'Unknown primary error');
-          void this.alerts.success('Form pre-filled', 'Event fields were auto-filled from the uploaded image. Please review before saving.');
-        },
-        error: () => {
-          this.aiExtracting = false;
-          void this.alerts.error('AI extraction failed', backendMessage || 'Could not read text from this image. Please complete the form manually.');
-        }
-      });
-  }
-
-  private extractTextFromOcrResponse(response: any): string {
-    const parsedResults = response?.ParsedResults;
-    if (!Array.isArray(parsedResults) || parsedResults.length === 0) {
-      return '';
-    }
-
-    return parsedResults
-      .map((item: any) => item?.ParsedText ?? '')
-      .join('\n')
-      .trim();
   }
 
   private extractAiErrorMessage(err: any): string {
@@ -500,6 +461,7 @@ resetFilters() {
     const detectedDates = this.detectDates(normalizedText);
     const detectedType = this.detectType(normalizedText, detectedTitle, detectedVenue);
     const detectedPrice = this.detectPrice(normalizedText);
+    const posterDescription = this.buildPosterDescriptionFromText(normalizedText, lines);
 
     if (detectedTitle) {
       this.currentEvent.title = detectedTitle;
@@ -535,6 +497,10 @@ resetFilters() {
 
     if (detectedPrice != null) {
       this.currentEvent.price = detectedPrice;
+    }
+
+    if (posterDescription) {
+      this.aiPosterDescription = posterDescription;
     }
 
     this.currentEvent.status = 'UPCOMING';
@@ -579,8 +545,16 @@ resetFilters() {
   }
 
   private detectCity(text: string): City | null {
-    const lower = text.toLowerCase();
-    const city = this.tunisiaCities.find((c) => lower.includes((c.name ?? '').toLowerCase()));
+    const normalizedText = this.normalizeForLookup(text);
+    const city = this.tunisiaCities.find((c) => {
+      const cityName = this.normalizeForLookup(c.name ?? '');
+      if (!cityName) {
+        return false;
+      }
+      const escaped = cityName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const pattern = new RegExp(`\\b${escaped}\\b`, 'i');
+      return pattern.test(normalizedText);
+    });
     return city ?? null;
   }
 
@@ -726,6 +700,45 @@ resetFilters() {
       .split(' ')
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ');
+  }
+
+  private buildPosterDescriptionFromText(fullText: string, lines: string[]): string {
+    const cleaned = lines
+      .map((line) => line.replace(/\s+/g, ' ').trim())
+      .filter((line) => line.length >= 6 && line.length <= 120)
+      .filter((line) => !/^\d[\d\s:\/.-]*$/.test(line))
+      .filter((line) => !/(facebook|instagram|www\.|http|ticket|phone|tel|@\w+)/i.test(line));
+
+    if (!cleaned.length) {
+      return '';
+    }
+
+    const unique: string[] = [];
+    for (const line of cleaned) {
+      if (!unique.some((entry) => this.normalizeForLookup(entry) === this.normalizeForLookup(line))) {
+        unique.push(line);
+      }
+      if (unique.length >= 3) {
+        break;
+      }
+    }
+
+    if (!unique.length) {
+      return '';
+    }
+
+    const merged = unique.join('. ').replace(/\.+/g, '.').trim();
+    return merged.length > 220 ? `${merged.slice(0, 217).trim()}...` : merged;
+  }
+
+  private normalizeForLookup(value: string): string {
+    return String(value ?? '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   getStatusClass(status: string | undefined): string {

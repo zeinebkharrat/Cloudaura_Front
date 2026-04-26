@@ -79,9 +79,11 @@ export class HomeAssistantWidgetComponent {
       }
 
       this.previousAuthToken = currentToken;
-      this.rotateClientSessionId();
-      this.messages.set([this.buildWelcomeMessage()]);
-      this.loadConversationHistory();
+      queueMicrotask(() => {
+        this.rotateClientSessionId();
+        this.messages.set([this.buildWelcomeMessage()]);
+        this.loadConversationHistory();
+      });
     });
   }
 

@@ -118,6 +118,8 @@
         <button type="button" class="persona-hotspot" (click)="exploreMatchedCity(m.cityName)" [attr.aria-label]="m.cityName">
           <span class="persona-ring" [style.--pct]="m.percent"></span>
           <span class="persona-city">{{ m.cityName }}</span>
+          <span class="persona-meta" *ngIf="m.recommendedRegion">{{ m.recommendedRegion }}</span>
+          <span class="persona-meta" *ngIf="m.recommendedEvent">{{ m.recommendedEvent }}</span>
           <span class="persona-pct">{{ m.percent }}%</span>
           <span class="persona-hint">{{ 'HOME.PERSONA_EXPLORE' | translate }}</span>
         </button>
