@@ -1,13 +1,34 @@
-<div class="flights-page">
-  <header class="page-hero">
-    <a routerLink="/transport" class="back-link"><i class="pi pi-arrow-left"></i> Transport hub</a>
-    <div class="hero-text">
-      <h1>Live flight schedules</h1>
-      <p class="sub">Search flights from any destination in real time</p>
+<div class="flights-page live-page live-flights-page">
+  <header class="live-header">
+    <div class="live-header-row">
+      <a routerLink="/transport" class="live-back">
+        <i class="pi pi-arrow-left" aria-hidden="true"></i>
+        <span>Transport</span>
+      </a>
+      <div class="live-brand">
+        <span class="live-brand-icon" aria-hidden="true"><i class="pi pi-send"></i></span>
+        <div>
+          <h1 class="live-title">Live flights</h1>
+          <p class="live-sub">Search worldwide routes — live map when ADS-B data is available.</p>
+        </div>
+      </div>
     </div>
   </header>
 
-  @if (suggestionMeta?.resolvedDestinationLabel) {
+  @if (flightNumberSearchActive && lastFlightQuery) {
+    <div class="suggest-banner suggest-banner--flight" role="status">
+      <span class="banner-icon" aria-hidden="true"><i class="pi pi-compass"></i></span>
+      <div class="banner-text">
+        <span class="banner-title">Flight lookup</span>
+        <span class="banner-line">
+          <strong>{{ lastFlightQuery }}</strong>
+          @if (flightSearchDate) {
+            <span class="banner-iata">· UTC date {{ flightSearchDate }}</span>
+          }
+        </span>
+      </div>
+    </div>
+  } @else if (suggestionMeta?.resolvedDestinationLabel) {
     <div class="suggest-banner" role="status">
       <span class="banner-icon" aria-hidden="true"><i class="pi pi-send"></i></span>
       <div class="banner-text">
@@ -24,102 +45,179 @@
     </div>
   }
 
-  <app-flight-search
-    [loading]="loading"
-    [destinationQuery]="destinationQuery"
-    [originIata]="originIata"
-    [suggestions]="autocompleteSuggestions"
-    (destinationQueryChange)="onDestinationQueryChange($event)"
-    (originIataChange)="onOriginIataChange($event)"
-    (searchSubmit)="onSearchSubmit()"
-    (pickSuggestion)="onPickSuggestion($event)"
-  />
+  <section class="search-section">
+    <div class="intl-search-card live-search-card" [class.intl-search-card--loading]="loading">
+      <div class="trip-tabs" role="tablist">
+        <button type="button" class="trip-tab trip-tab--active">One-way</button>
+        <button type="button" class="trip-tab" disabled title="Coming soon">Round-trip</button>
+        <button type="button" class="trip-tab" disabled title="Coming soon">Multi-city</button>
+      </div>
 
-  @if (hasSearched && apiFlights.length > 0) {
-    <section class="filters-bar" aria-label="Flight filters">
-      <div class="filter-group">
-        <span class="filter-label">Status</span>
-        <div class="chips">
-          <button type="button" class="chip" [class.active]="statusFilter === 'all'" (click)="setStatusFilter('all')">
-            All
-          </button>
-          <button
-            type="button"
-            class="chip"
-            [class.active]="statusFilter === 'on_time'"
-            (click)="setStatusFilter('on_time')"
-          >
-            On time
-          </button>
-          <button
-            type="button"
-            class="chip"
-            [class.active]="statusFilter === 'delayed'"
-            (click)="setStatusFilter('delayed')"
-          >
-            Delayed
-          </button>
-          <button
-            type="button"
-            class="chip"
-            [class.active]="statusFilter === 'scheduled'"
-            (click)="setStatusFilter('scheduled')"
-          >
-            Scheduled
-          </button>
+      <div class="search-bar intl-search-bar live-search-row">
+        <div class="sb-field sb-city sb-intl-origin">
+          <span class="sb-icon"><i class="pi pi-send" aria-hidden="true"></i></span>
+          <div class="sb-inner">
+            <span class="sb-label">From</span>
+            <input
+              type="text"
+              class="intl-text-input"
+              id="internal-origin"
+              [ngModel]="originIata"
+              (ngModelChange)="onOriginIataChange($event)"
+              maxlength="4"
+              placeholder="TUN"
+              autocomplete="off"
+              aria-label="Origin IATA"
+            />
+          </div>
+        </div>
+
+        <button type="button" class="swap-airports" (click)="swapRoute()" title="Swap airports" aria-label="Swap departure and arrival">
+          <i class="pi pi-refresh" aria-hidden="true"></i>
+        </button>
+
+        <div class="sb-field sb-city sb-to-wrap">
+          <span class="sb-icon"><i class="pi pi-map-marker" aria-hidden="true"></i></span>
+          <div class="sb-inner">
+            <span class="sb-label">To</span>
+            <input
+              type="text"
+              class="intl-text-input"
+              id="internal-destination"
+              [ngModel]="destinationQuery"
+              (ngModelChange)="onDestinationQueryChange($event)"
+              placeholder="City, airport or code"
+              autocomplete="off"
+              aria-label="Destination"
+            />
+            @if (autocompleteSuggestions.length > 0) {
+              <ul class="lf-suggest-list" role="listbox">
+                @for (s of autocompleteSuggestions; track s.pickValue) {
+                  <li>
+                    <button type="button" (click)="onPickSuggestion(s.pickValue)">{{ s.label }}</button>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        </div>
+
+        <div class="sb-divider" aria-hidden="true"></div>
+
+        <div class="sb-field sb-date">
+          <span class="sb-icon"><i class="pi pi-calendar" aria-hidden="true"></i></span>
+          <div class="sb-inner">
+            <span class="sb-label">Depart</span>
+            <p-datepicker
+              inputId="internalDepartureDate"
+              [(ngModel)]="departureDate"
+              (ngModelChange)="onDepartureDateChange($event)"
+              [minDate]="today"
+              dateFormat="dd/mm/yy"
+              [showTime]="false"
+              [showButtonBar]="true"
+              [showIcon]="true"
+              [touchUI]="false"
+              [readonlyInput]="true"
+              [keepInvalid]="false"
+              appendTo="body"
+              styleClass="sb-calendar live-datepicker"
+              panelStyleClass="transport-search-calendar-panel"
+            ></p-datepicker>
+          </div>
+        </div>
+
+        <div class="sb-divider" aria-hidden="true"></div>
+
+        <div class="sb-field sb-pax">
+          <span class="sb-icon"><i class="pi pi-users" aria-hidden="true"></i></span>
+          <div class="sb-inner">
+            <span class="sb-label">Pax</span>
+            <div class="sb-pax-shell">
+              <p-inputNumber
+                inputId="internalPassengers"
+                [(ngModel)]="passengers"
+                (ngModelChange)="onPassengersChange($event)"
+                [min]="1"
+                [max]="20"
+                [showButtons]="true"
+                buttonLayout="horizontal"
+                incrementButtonIcon="pi pi-plus"
+                decrementButtonIcon="pi pi-minus"
+                [fluid]="false"
+                styleClass="sb-pax-input"
+              ></p-inputNumber>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="filter-group filter-dd">
-        <label class="filter-label" for="airlineFilter">Airline</label>
-        <p-dropdown
-          inputId="airlineFilter"
-          [options]="airlineDropdownOptions"
-          [(ngModel)]="airlineFilter"
-          placeholder="All airlines"
-          [showClear]="true"
-          optionLabel="label"
-          optionValue="value"
-          styleClass="flights-filter-dropdown"
-          [disabled]="airlineDropdownOptions.length === 0"
-        ></p-dropdown>
-      </div>
-      <div class="filter-group filter-dd">
-        <label class="filter-label" for="sortKey">Sort by</label>
-        <p-dropdown
-          inputId="sortKey"
-          [options]="sortOptions"
-          [(ngModel)]="sortKey"
-          optionLabel="label"
-          optionValue="value"
-          styleClass="flights-filter-dropdown"
-        ></p-dropdown>
-      </div>
-      <button pButton type="button" label="Clear filters" class="p-button-text clear-filters" (click)="clearFilters()"></button>
-    </section>
-  }
 
-  <section class="results-section">
-    <div class="results-toolbar">
-      <h2 class="results-title">Results</h2>
-      <div class="results-actions">
-        <button
-          pButton
-          type="button"
-          icon="pi pi-refresh"
-          class="p-button-rounded p-button-text refresh-btn"
-          [disabled]="loading || lastSearchDestination.trim().length < 2"
-          (click)="refreshResults()"
-          pTooltip="Refresh results"
-          tooltipPosition="bottom"
-        ></button>
-        <div class="map-toggle">
-          <label for="showMap">Show map</label>
-          <p-inputSwitch inputId="showMap" [(ngModel)]="mapMode" (ngModelChange)="onMapToggle($event)"></p-inputSwitch>
+      <div class="search-actions intl-search-actions">
+        <button type="button" class="ts-cta" pRipple [disabled]="loading || destinationQuery.trim().length < 2" (click)="onMainSearch()">
+          <span>Search flights</span>
+          <i class="pi pi-arrow-right" aria-hidden="true"></i>
+        </button>
+      </div>
+
+      <div class="lf-flight-extra">
+        <h3 class="lf-flight-extra-title">Search by flight number</h3>
+        <p class="lf-flight-extra-hint">Airline + number (e.g. TU712) or 1–4 digits; date is UTC (provider).</p>
+        <div class="lf-flight-extra-row">
+          <div class="lf-flight-field">
+            <span class="sb-label">Flight</span>
+            <input
+              type="text"
+              class="intl-text-input lf-inline-input"
+              id="internal-flight-num"
+              [ngModel]="flightNumberQuery"
+              (ngModelChange)="flightNumberQuery = $event"
+              placeholder="e.g. TU712"
+              autocomplete="off"
+            />
+          </div>
+          <div class="lf-flight-field">
+            <span class="sb-label">Date (UTC)</span>
+            <input
+              type="date"
+              class="lf-date-input"
+              id="internal-flight-date"
+              [ngModel]="flightSearchDate"
+              (ngModelChange)="onFlightSearchDateFieldChange($event)"
+            />
+          </div>
+          <button type="button" class="ts-cta ts-cta--secondary" pRipple [disabled]="loading || !isFlightQueryValid()" (click)="onFlightSearchSubmit()">
+            <span>Find flights</span>
+            <i class="pi pi-send" aria-hidden="true"></i>
+          </button>
         </div>
       </div>
     </div>
+  </section>
 
-    <div class="content-split" [class.with-map]="mapMode">
+  @if (error) {
+    <p class="intl-submit-error" role="alert">{{ error }}</p>
+  }
+
+  <section class="results-section" [class.results-active]="hasSearched || loading">
+    <div class="results-toolbar live-toolbar">
+      <div>
+        <h2 class="results-title">Best options</h2>
+        <p class="results-count">{{ displayFlights.length }} results</p>
+      </div>
+      <div class="toolbar-actions">
+        <label class="sort-wrap">
+          <span class="sort-label">Sort</span>
+          <select class="sort-select" [value]="sortMode" (change)="setSort($any($event.target).value)">
+            <option value="best">Best price</option>
+            <option value="duration">Duration</option>
+            <option value="depart">Departure time</option>
+          </select>
+        </label>
+        <span class="filters-pill" title="More filters later">Filters</span>
+      </div>
+    </div>
+
+    <div class="content-split live-split">
       <div class="list-col">
         <app-flight-list
           [flights]="displayFlights"
@@ -129,16 +227,25 @@
           [idleHint]="idleHint"
           [hasSearched]="hasSearched"
           [selected]="selected"
-          [mapMode]="mapMode"
+          [mapMode]="true"
           (selectFlight)="onSelectFlight($event)"
           (bookFlight)="onBookFlight($event)"
         />
       </div>
-      @if (mapMode) {
-        <div class="map-col">
-          <app-flight-route-map [flight]="selected" />
+      <aside class="map-col">
+        <app-international-flight-live-map
+          [flight]="selected"
+          [depIata]="lastSearchOrigin"
+          [arrIata]="arrIataForMap"
+          [travelDate]="travelDateForMap"
+        />
+        <div class="live-foot">
+          <div class="live-foot-card">
+            <i class="pi pi-clock" aria-hidden="true"></i>
+            <p>List prices use the provider currency. TND for payment is computed at booking.</p>
+          </div>
         </div>
-      }
+      </aside>
     </div>
   </section>
 </div>

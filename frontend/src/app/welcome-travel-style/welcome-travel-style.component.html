@@ -1,0 +1,185 @@
+<div class="wts-root">
+  <div class="wts-orbit" aria-hidden="true"></div>
+  <div class="wts-aurora" aria-hidden="true"></div>
+  <div class="wts-noise" aria-hidden="true"></div>
+
+  <header class="wts-header">
+    <div class="wts-brand">
+      <span class="wts-flag" aria-hidden="true"></span>
+      <span class="wts-brand-text">{{ 'WELCOME_TRAVEL.KICKER' | translate }}</span>
+    </div>
+    <button type="button" class="wts-skip" (click)="skip()">{{ 'WELCOME_TRAVEL.SKIP' | translate }}</button>
+  </header>
+
+  <main class="wts-main">
+    <nav class="wts-step-rail" [attr.aria-label]="'WELCOME_TRAVEL.STEP_RAIL_ARIA' | translate">
+      <button
+        type="button"
+        *ngFor="let st of stepsMeta; let idx = index"
+        class="wts-step-dot"
+        [class.wts-step-dot--active]="stepIndex() === idx"
+        [class.wts-step-dot--done]="stepIndex() > idx"
+        (click)="goStep(idx)"
+      >
+        <span class="wts-step-dot__glyph">{{ st.icon }}</span>
+        <span class="wts-step-dot__label">{{ 'WELCOME_TRAVEL.' + st.key | translate }}</span>
+      </button>
+    </nav>
+
+    <div class="wts-progress" role="progressbar" [attr.aria-valuenow]="progressPercent()" aria-valuemin="0" aria-valuemax="100">
+      <div class="wts-progress-fill" [style.width.%]="progressPercent()"></div>
+    </div>
+
+    <div class="wts-card glass-panel-inset">
+      <div class="wts-step-meta">
+        <span class="wts-step-pill">{{ 'WELCOME_TRAVEL.STEP_OF' | translate: { cur: stepIndex() + 1, total: stepCount } }}</span>
+        <h1 id="wts-title" class="wts-title">{{ 'WELCOME_TRAVEL.TITLE_' + (stepIndex() + 1) | translate }}</h1>
+        <p class="wts-lead" *ngIf="stepIndex() === 0">{{ 'WELCOME_TRAVEL.' + step1LeadKey() | translate }}</p>
+        <p class="wts-lead" *ngIf="stepIndex() !== 0">{{ 'WELCOME_TRAVEL.LEAD_' + (stepIndex() + 1) | translate }}</p>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="next()" class="wts-form">
+        <!-- Step 1 -->
+        <div class="wts-fields" *ngIf="stepIndex() === 0">
+          <div
+            class="wts-imported"
+            *ngIf="!showAgeInput() || !showGenderInput() || !showNationalityInput() || !showCityInput()"
+          >
+            <span class="wts-imported__title">{{ 'WELCOME_TRAVEL.PROFILE_IMPORTED' | translate }}</span>
+            <div class="wts-imported__chips">
+              <span class="wts-mini-chip" *ngIf="!showAgeInput()">{{ form.getRawValue().age }}</span>
+              <span class="wts-mini-chip" *ngIf="!showGenderInput()">{{ 'WELCOME_TRAVEL.OPT.gender.' + form.getRawValue().gender | translate }}</span>
+              <span class="wts-mini-chip" *ngIf="!showNationalityInput()">{{
+                'WELCOME_TRAVEL.OPT.nationality.' + form.getRawValue().nationality | translate
+              }}</span>
+              <span class="wts-mini-chip" *ngIf="!showCityInput()">{{ 'WELCOME_TRAVEL.OPT.city.' + form.getRawValue().current_city | translate }}</span>
+            </div>
+          </div>
+
+          <label class="wts-field" *ngIf="showAgeInput()">
+            <span>{{ 'WELCOME_TRAVEL.FIELD_AGE' | translate }}</span>
+            <input type="number" formControlName="age" min="18" max="110" class="wts-input" />
+          </label>
+          <label class="wts-field" *ngIf="showGenderInput()">
+            <span>{{ 'WELCOME_TRAVEL.FIELD_GENDER' | translate }}</span>
+            <select formControlName="gender" class="wts-select">
+              <option *ngFor="let g of genders" [value]="g">{{ 'WELCOME_TRAVEL.OPT.gender.' + g | translate }}</option>
+            </select>
+          </label>
+          <label class="wts-field" *ngIf="showNationalityInput()">
+            <span>{{ 'WELCOME_TRAVEL.FIELD_NATIONALITY' | translate }}</span>
+            <select formControlName="nationality" class="wts-select">
+              <option *ngFor="let n of nationalities" [value]="n">{{ 'WELCOME_TRAVEL.OPT.nationality.' + n | translate }}</option>
+            </select>
+          </label>
+          <label class="wts-field" *ngIf="showCityInput()">
+            <span>{{ 'WELCOME_TRAVEL.FIELD_CURRENT_CITY' | translate }}</span>
+            <select formControlName="current_city" class="wts-select">
+              <option *ngFor="let c of cities" [value]="c">{{ 'WELCOME_TRAVEL.OPT.city.' + c | translate }}</option>
+            </select>
+          </label>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="wts-fields wts-fields--stack" *ngIf="stepIndex() === 1">
+          <div class="wts-field wts-field--full">
+            <span class="wts-label-row">
+              {{ 'WELCOME_TRAVEL.FIELD_STYLES' | translate }}
+              <span class="wts-hint">{{ 'WELCOME_TRAVEL.STYLES_HINT' | translate }}</span>
+            </span>
+            <div class="wts-chip-grid" role="group" [attr.aria-label]="'WELCOME_TRAVEL.FIELD_STYLES' | translate">
+              <button
+                type="button"
+                *ngFor="let s of travelStyles"
+                class="wts-pill"
+                [class.wts-pill--on]="styleSelected(s)"
+                (click)="toggleTravelStyle(s)"
+              >
+                <span class="wts-pill__check" *ngIf="styleSelected(s)">✓</span>
+                {{ 'WELCOME_TRAVEL.OPT.style.' + s | translate }}
+              </button>
+            </div>
+            <p class="wts-field-error" *ngIf="form.controls.travel_styles.touched && form.controls.travel_styles.invalid">
+              {{ 'WELCOME_TRAVEL.ERR_STYLES_MIN' | translate }}
+            </p>
+          </div>
+          <label class="wts-field">
+            <span>{{ 'WELCOME_TRAVEL.FIELD_BUDGET_LEVEL' | translate }}</span>
+            <select formControlName="budget_level" class="wts-select">
+              <option *ngFor="let b of budgetLevels" [value]="b">{{ 'WELCOME_TRAVEL.OPT.budget_level.' + b | translate }}</option>
+            </select>
+          </label>
+          <label class="wts-field">
+            <span>{{ 'WELCOME_TRAVEL.FIELD_REGION' | translate }}</span>
+            <select formControlName="preferred_region" class="wts-select">
+              <option *ngFor="let r of regions" [value]="r">{{ 'WELCOME_TRAVEL.OPT.region.' + r | translate }}</option>
+            </select>
+          </label>
+          <label class="wts-field">
+            <span>{{ 'WELCOME_TRAVEL.FIELD_CUISINE' | translate }}</span>
+            <select formControlName="preferred_cuisine" class="wts-select">
+              <option *ngFor="let x of cuisines" [value]="x">{{ 'WELCOME_TRAVEL.OPT.cuisine.' + x | translate }}</option>
+            </select>
+          </label>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="wts-fields" *ngIf="stepIndex() === 2">
+          <label class="wts-field">
+            <span>{{ 'WELCOME_TRAVEL.FIELD_WITH' | translate }}</span>
+            <select formControlName="travel_with" class="wts-select">
+              <option *ngFor="let w of travelWith" [value]="w">{{ 'WELCOME_TRAVEL.OPT.with.' + w | translate }}</option>
+            </select>
+          </label>
+          <label class="wts-field">
+            <span>{{ 'WELCOME_TRAVEL.FIELD_TRANSPORT' | translate }}</span>
+            <select formControlName="transport_preference" class="wts-select">
+              <option *ngFor="let t of transports" [value]="t">{{ 'WELCOME_TRAVEL.OPT.transport.' + t | translate }}</option>
+            </select>
+          </label>
+          <label class="wts-field">
+            <span>{{ 'WELCOME_TRAVEL.FIELD_STAY' | translate }}</span>
+            <select formControlName="accommodation_type" class="wts-select">
+              <option *ngFor="let a of accommodations" [value]="a">{{ 'WELCOME_TRAVEL.OPT.stay.' + a | translate }}</option>
+            </select>
+          </label>
+          <label class="wts-field">
+            <span>{{ 'WELCOME_TRAVEL.FIELD_INTENSITY' | translate }}</span>
+            <select formControlName="travel_intensity" class="wts-select">
+              <option *ngFor="let i of intensities" [value]="i">{{ 'WELCOME_TRAVEL.OPT.intensity.' + i | translate }}</option>
+            </select>
+          </label>
+          <label class="wts-field wts-field--full">
+            <span class="wts-label-row">
+              {{ 'WELCOME_TRAVEL.FIELD_BUDGET_AVG' | translate }}
+              <span class="wts-hint">{{ 'WELCOME_TRAVEL.BUDGET_HINT' | translate }}</span>
+            </span>
+            <input type="number" formControlName="budget_avg" min="20" max="8000" class="wts-input" placeholder="180" />
+          </label>
+          <fieldset class="wts-toggle-group wts-field--full">
+            <legend>{{ 'WELCOME_TRAVEL.FIELD_GROUP' | translate }}</legend>
+            <div class="wts-toggle-row">
+              <label class="wts-chip" [class.wts-chip--on]="+form.getRawValue().is_group === 0">
+                <input type="radio" formControlName="is_group" [value]="0" />
+                {{ 'WELCOME_TRAVEL.GROUP_NO' | translate }}
+              </label>
+              <label class="wts-chip" [class.wts-chip--on]="+form.getRawValue().is_group === 1">
+                <input type="radio" formControlName="is_group" [value]="1" />
+                {{ 'WELCOME_TRAVEL.GROUP_YES' | translate }}
+              </label>
+            </div>
+          </fieldset>
+        </div>
+
+        <footer class="wts-footer">
+          <button type="button" class="btn-ghost" (click)="back()" *ngIf="stepIndex() > 0">{{ 'WELCOME_TRAVEL.BACK' | translate }}</button>
+          <button type="submit" class="btn-wts-primary">
+            {{
+              stepIndex() < stepCount - 1 ? ('WELCOME_TRAVEL.NEXT' | translate) : ('WELCOME_TRAVEL.FINISH' | translate)
+            }}
+          </button>
+        </footer>
+      </form>
+    </div>
+  </main>
+</div>

@@ -5,8 +5,14 @@ import {
   TransportRecommendation, TransportRecommendationRequest,
   TransportReservationInput, TransportReservation, TransportReservationUpdatePayload,
   TransportCheckoutPayload,
+  TransportPayPalCreatePayload,
   AccommodationReservation,
-  EngineRecommendationRequest, EngineRecommendationResponse
+  EngineRecommendationRequest, EngineRecommendationResponse,
+  TransportEstimateInput,
+  TransportEstimateResult,
+  AmadeusCarSearchParams,
+  AmadeusCarOffer,
+  CarBookSimulationResult,
 } from '../models/travel.models';
 
 export interface TransportSearchParams {
@@ -22,20 +28,6 @@ export interface TransportCheckoutResult {
   url: string;
 }
 
-/** POST /api/transport/payments/paypal/create */
-export interface TransportPayPalCreatePayload {
-  transportId: number;
-  seats: number;
-  travelDate: string;
-  routeKm?: number;
-  routeDurationMin?: number;
-  amountTnd: number;
-  passengerFirstName?: string;
-  passengerLastName?: string;
-  passengerEmail?: string;
-  passengerPhone?: string;
-}
-
 export interface DataSourceAdapter {
   getCities(): Observable<City[]>;
 
@@ -49,6 +41,15 @@ export interface DataSourceAdapter {
   getTransports(params: TransportSearchParams): Observable<Transport[]>;
 
   getTransportById(id: number): Observable<Transport>;
+
+  /** Taxi & bus indicative price band (+ holiday advisory). */
+  estimateTransport(input: TransportEstimateInput): Observable<TransportEstimateResult>;
+
+  /** Amadeus-backed car / private transfer search (GET /api/cars/search). */
+  searchAmadeusCars(params: AmadeusCarSearchParams): Observable<AmadeusCarOffer[]>;
+
+  /** Simulated booking (POST /api/cars/book-simulation). */
+  simulateAmadeusCarBooking(offerId: string): Observable<CarBookSimulationResult>;
 
   createTransportReservation(input: TransportReservationInput): Observable<TransportReservation>;
 

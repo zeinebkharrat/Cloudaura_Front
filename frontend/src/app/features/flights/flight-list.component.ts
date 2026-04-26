@@ -1,9 +1,16 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, inject, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TagModule } from 'primeng/tag';
 import { ButtonModule } from 'primeng/button';
 import { SkeletonModule } from 'primeng/skeleton';
+import { CurrencyService } from '../../core/services/currency.service';
 import { FlightDto } from './flight.models';
+import {
+  effectivePriceTnd,
+  estimateDurationMinutes,
+  estimateSeatPriceTnd,
+  formatOfferPriceDisplay,
+} from './flight-display.util';
 import { flightBadge } from './flight-status.util';
 
 @Component({
@@ -14,6 +21,8 @@ import { flightBadge } from './flight-status.util';
   styleUrl: './flight-list.component.css',
 })
 export class FlightListComponent {
+  private readonly currency = inject(CurrencyService);
+
   @Input() flights: FlightDto[] = [];
   @Input() loading = false;
   @Input() error: string | null = null;
@@ -56,5 +65,39 @@ export class FlightListComponent {
       s.arrivalIata === f.arrivalIata &&
       s.departureTime === f.departureTime
     );
+  }
+
+  /**
+   * Search cards: show provider amount in its real currency. Estimates stay in TND with an explicit label.
+   * Conversion to other display currencies is applied at booking/checkout only.
+   */
+  priceLine(f: FlightDto): string {
+    this.currency.displayRevision();
+    const offer = formatOfferPriceDisplay(f);
+    if (offer) {
+      return offer;
+    }
+    const tnd = estimateSeatPriceTnd(estimateDurationMinutes(f));
+    return `${tnd.toFixed(2)} TND (est.)`;
+  }
+
+  isBestPrice(f: FlightDto): boolean {
+    this.currency.displayRevision();
+    if (this.flights.length < 2) return false;
+    const target = effectivePriceTnd(f, this.currency);
+    let min = Infinity;
+    for (const x of this.flights) {
+      const v = effectivePriceTnd(x, this.currency);
+      if (v < min) min = v;
+    }
+    return Math.abs(target - min) < 0.02;
+  }
+
+  onCardActivate(f: FlightDto, ev: MouseEvent): void {
+    const t = ev.target as HTMLElement | null;
+    if (t?.closest('button')) {
+      return;
+    }
+    this.selectFlight.emit(f);
   }
 }

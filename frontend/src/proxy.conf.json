@@ -1,4 +1,10 @@
 {
+  "/travel-rec": {
+    "target": "http://127.0.0.1:5050",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": { "^/travel-rec": "" }
+  },
   "/api": {
     "target": "http://127.0.0.1:9091",
     "secure": false,

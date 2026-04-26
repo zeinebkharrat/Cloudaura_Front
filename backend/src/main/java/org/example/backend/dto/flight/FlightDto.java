@@ -34,4 +34,8 @@ public class FlightDto {
     private Double departureLongitude;
     private Double arrivalLatitude;
     private Double arrivalLongitude;
+    /** Offer total from provider (e.g. Duffel), before passenger split — nullable for Aviationstack-only rows. */
+    private String totalAmount;
+    /** ISO 4217, e.g. EUR, USD, TND — nullable when {@code totalAmount} is absent. */
+    private String totalCurrency;
 }

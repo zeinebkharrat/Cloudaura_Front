@@ -16,6 +16,9 @@ import org.example.backend.model.Post;
 import org.example.backend.model.User;
 import org.example.backend.repository.CityRepository;
 import org.example.backend.repository.EventRepository;
+import org.example.backend.repository.EventReservationItemRepository;
+import org.example.backend.repository.EventReservationRepository;
+import org.example.backend.repository.TicketTypeRepository;
 import org.example.backend.repository.UserRepository;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +31,15 @@ public class EventService {
 
     @Autowired
     private EventRepository eventRepository;
+
+    @Autowired
+    private EventReservationRepository eventReservationRepository;
+
+    @Autowired
+    private EventReservationItemRepository eventReservationItemRepository;
+
+    @Autowired
+    private TicketTypeRepository ticketTypeRepository;
 
     @Autowired
     private CityRepository cityRepository;
@@ -143,7 +155,18 @@ public class EventService {
                 .orElse(false);
     }
 
+    /**
+     * Removes dependent rows first so FK constraints do not surface as HTTP 409
+     * ({@link org.springframework.dao.DataIntegrityViolationException}).
+     */
+    @Transactional
     public void deleteEvent(Integer id) {
+        if (id == null) {
+            return;
+        }
+        eventReservationItemRepository.deleteByEventReservation_Event_EventId(id);
+        eventReservationRepository.deleteByEvent_EventId(id);
+        ticketTypeRepository.deleteByEvent_EventId(id);
         eventRepository.deleteById(id);
     }
 

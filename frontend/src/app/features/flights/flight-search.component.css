@@ -90,3 +90,61 @@
   background: rgba(241, 37, 69, 0.12);
   color: #fff;
 }
+
+.panel-divider {
+  height: 1px;
+  margin: 0.25rem 0 0.75rem;
+  background: rgba(148, 163, 184, 0.2);
+  border: 0;
+}
+
+.flight-by-number {
+  width: 100%;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.sub-block-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-color, #f8fafc);
+  font-family: 'Outfit', system-ui, sans-serif;
+}
+
+.sub-block-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text-muted, #94a3b8);
+}
+
+.field-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.85rem;
+}
+
+.field-grow {
+  flex: 1 1 160px;
+  min-width: 0;
+}
+
+.field-date {
+  flex: 0 0 168px;
+}
+
+.field-input-date {
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border, rgba(148, 163, 184, 0.25));
+  background: var(--input-bg, rgba(15, 23, 42, 0.6));
+  color: var(--text-color, #f8fafc);
+  font-size: 0.9rem;
+}
+
+.search-btn-secondary {
+  flex: 0 0 auto;
+}

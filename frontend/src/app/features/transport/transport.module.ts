@@ -12,10 +12,10 @@ import { TooltipModule } from 'primeng/tooltip';
 import { InputTextModule } from 'primeng/inputtext';
 import { InputMaskModule } from 'primeng/inputmask';
 import { RadioButtonModule } from 'primeng/radiobutton';
-import { DividerModule } from 'primeng/divider';
 import { TagModule } from 'primeng/tag';
 import { SkeletonModule } from 'primeng/skeleton';
 import { ToastModule } from 'primeng/toast';
+import { DialogModule } from 'primeng/dialog';
 import { TRANSPORT_ROUTES } from './transport.routes';
 import { TransportSearchPageComponent } from './transport-search-page/transport-search-page.component';
 import { TransportResultsPageComponent } from './transport-results-page/transport-results-page.component';
@@ -24,6 +24,7 @@ import { TransportBookingPageComponent } from './transport-booking-page/transpor
 import { TransportAiRecommendationComponent } from './transport-ai-recommendation/transport-ai-recommendation.component';
 import { TransportPaymentReturnComponent } from './transport-payment-return/transport-payment-return.component';
 import { TransportPaymentCancelComponent } from './transport-payment-cancel/transport-payment-cancel.component';
+import { TransportEstimatePageComponent } from './transport-estimate-page/transport-estimate-page.component';
 import { TransportRouteMapComponent } from './transport-route-map/transport-route-map.component';
 import { TunisiaCityMatchService } from './tunisia-city-match.service';
 import { TransportTrackingSseService } from './transport-tracking-sse.service';
@@ -47,10 +48,10 @@ import { TranslateModule } from '@ngx-translate/core';
     InputTextModule,
     InputMaskModule,
     RadioButtonModule,
-    DividerModule,
     TagModule,
     SkeletonModule,
     ToastModule,
+    DialogModule,
   ],
   declarations: [
     TransportSearchPageComponent,
@@ -60,6 +61,7 @@ import { TranslateModule } from '@ngx-translate/core';
     TransportAiRecommendationComponent,
     TransportPaymentReturnComponent,
     TransportPaymentCancelComponent,
+    TransportEstimatePageComponent,
     TransportRouteMapComponent,
   ],
   providers: [

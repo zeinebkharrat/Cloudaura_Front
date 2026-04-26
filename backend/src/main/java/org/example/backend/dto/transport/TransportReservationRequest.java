@@ -1,5 +1,6 @@
 package org.example.backend.dto.transport;
 
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -7,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 @Data @Builder @NoArgsConstructor @AllArgsConstructor
 public class TransportReservationRequest {
+    /** Negative for flight-search rows — requires {@link #syntheticFlightOffer}. */
     private int transportId;
     private int userId;
     private int numberOfSeats;
@@ -25,4 +27,8 @@ public class TransportReservationRequest {
     private Integer routeDurationMin;
     /** CAR rental day count; optional, defaults to 1 server-side. */
     private Integer rentalDays;
+
+    /** Required when {@code transportId < 0}. */
+    @Valid
+    private SyntheticFlightOfferDto syntheticFlightOffer;
 }

@@ -140,7 +140,7 @@ public class ChatbotAssistantService {
 
         Intent intent = detectIntent(normalizedQuestion);
 
-        List<City> allCities = cityRepository.findAll();
+        List<City> allCities = citiesForNlpMatching();
         Optional<City> city = findMentionedCity(normalizedQuestion, allCities);
         List<City> mentionedCities = findMentionedCitiesInQuestionOrder(normalizedQuestion, allCities);
 
@@ -2115,7 +2115,7 @@ public class ChatbotAssistantService {
         }
 
         int resultLimit = (asksCheapest(normalizedQuestion) || asksMostExpensive(normalizedQuestion)) ? 1 : 6;
-        boolean questionMentionsCity = findMentionedCity(normalizedQuestion, cityRepository.findAll()).isPresent();
+        boolean questionMentionsCity = findMentionedCity(normalizedQuestion, citiesForNlpMatching()).isPresent();
 
         List<Event> events = baseEvents
             .stream()
@@ -2391,7 +2391,7 @@ public class ChatbotAssistantService {
         boolean asksOnlyCheapest = asksCheapest(normalizedQuestion) || containsAny(normalizedQuestion, "moins cher", "low cost");
         boolean asksOnlyMostExpensive = asksMostExpensive(normalizedQuestion) || containsAny(normalizedQuestion, "cher", "plus cher", "premium");
         boolean genericProductAvailabilityQuery = isGenericProductAvailabilityQuery(normalizedQuestion);
-        boolean questionMentionsCity = findMentionedCity(normalizedQuestion, cityRepository.findAll()).isPresent();
+        boolean questionMentionsCity = findMentionedCity(normalizedQuestion, citiesForNlpMatching()).isPresent();
         Optional<Product> matchedProduct = findBestMatchingProduct(normalizedQuestion, cityOpt);
         boolean asksProductPurchaseAction = asksProductPurchaseAction(normalizedQuestion);
 
@@ -3170,6 +3170,12 @@ public class ChatbotAssistantService {
         }
 
         return text.toString().trim();
+    }
+
+    private List<City> citiesForNlpMatching() {
+        return cityRepository.findAll().stream()
+                .filter(c -> !c.isVirtualFlightEndpointCity())
+                .collect(Collectors.toList());
     }
 
     private Optional<City> findMentionedCity(String normalizedQuestion, List<City> cities) {

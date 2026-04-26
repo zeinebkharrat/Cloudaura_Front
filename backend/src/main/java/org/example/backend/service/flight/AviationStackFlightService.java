@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 /**
  * Calls Aviationstack flight API via {@link org.springframework.web.reactive.function.client.WebClient}
@@ -32,6 +33,9 @@ import java.util.Optional;
 @RequiredArgsConstructor
 @Slf4j
 public class AviationStackFlightService {
+
+    private static final Pattern FLIGHT_IATA = Pattern.compile("^[A-Z]{2}\\d{1,4}$");
+    private static final Pattern FLIGHT_NUMBER_ONLY = Pattern.compile("^\\d{1,4}$");
 
     private final org.springframework.web.reactive.function.client.WebClient aviationStackWebClient;
     private final AviationStackProperties properties;
@@ -94,6 +98,134 @@ public class AviationStackFlightService {
         }
     }
 
+    /**
+     * Flights matching a flight number / IATA flight code for a given UTC date (Aviationstack {@code flight_iata}
+     * or {@code flight_number}).
+     *
+     * @param flightQuery e.g. {@code TU712}, {@code TU 712}, or numeric {@code 712} (uses {@code flight_number} only)
+     * @param flightDate  optional {@code yyyy-MM-dd} in UTC; defaults to today UTC
+     */
+    @Cacheable(cacheNames = AviationStackCacheConfig.CACHE_BY_FLIGHT,
+            cacheManager = "aviationCacheManager",
+            key = "(#flightQuery != null ? #flightQuery.trim().toUpperCase() : '') + ':' + "
+                    + "(#flightDate != null && !#flightDate.isBlank() ? #flightDate : T(java.time.LocalDate).now(T(java.time.ZoneOffset).UTC).toString()) "
+                    + "+ ':' + #limit")
+    public List<FlightDto> getFlightsByFlightQuery(String flightQuery, String flightDate, int limit) {
+        if (flightQuery == null || flightQuery.isBlank()) {
+            return Collections.emptyList();
+        }
+        int lim = clampLimit(limit);
+        ParsedFlightQuery parsed = parseFlightQuery(flightQuery);
+        if (parsed == null) {
+            log.warn("Aviationstack: invalid flight query '{}'", flightQuery);
+            return Collections.emptyList();
+        }
+        String date = (flightDate == null || flightDate.isBlank())
+                ? LocalDate.now(ZoneOffset.UTC).toString()
+                : flightDate.trim().substring(0, Math.min(10, flightDate.trim().length()));
+
+        if (!properties.hasAccessKey()) {
+            log.warn("Aviationstack: missing access key, fallback for flight {}", parsed.logLabel());
+            return fallbackFlightsByFlightQuery(parsed, lim);
+        }
+        try {
+            String body = aviationStackWebClient.get()
+                    .uri(uriBuilder -> flightsByFlightUri(uriBuilder, date, parsed, lim))
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+            return parseAndMap(body);
+        } catch (WebClientResponseException e) {
+            int sc = e.getStatusCode().value();
+            String resp = e.getResponseBodyAsString();
+            /* Free / basic plans often block flight_iata & flight_number filters (403 function_access_restricted). */
+            boolean planBlocksFlightCodeFilter =
+                    sc == HttpStatus.FORBIDDEN.value()
+                            || sc == HttpStatus.UNAUTHORIZED.value()
+                            || (resp != null && resp.contains("function_access_restricted"));
+            if (planBlocksFlightCodeFilter) {
+                log.warn(
+                        "Aviationstack flight-by-code not allowed on this plan (HTTP {}). Using same-day sample + local filter.",
+                        sc);
+                List<FlightDto> filtered = wideDateSampleThenFilter(date, parsed, lim);
+                if (!filtered.isEmpty()) {
+                    return filtered;
+                }
+            } else if (sc == HttpStatus.TOO_MANY_REQUESTS.value()) {
+                log.warn("Aviationstack flight-query HTTP 429 — skipping extra wide query.");
+            } else {
+                log.error("Aviationstack flight-query HTTP {}: {}", e.getStatusCode(), resp);
+            }
+            return fallbackFlightsByFlightQuery(parsed, lim);
+        } catch (Exception e) {
+            log.error("Aviationstack getFlightsByFlightQuery failed", e);
+            return fallbackFlightsByFlightQuery(parsed, lim);
+        }
+    }
+
+    /**
+     * Fetches a limited global sample for {@code flight_date} (no flight_iata / dep_iata filters) then keeps rows
+     * matching the user's flight code. Works on plans that allow date-only queries but not flight-code filters.
+     */
+    private List<FlightDto> wideDateSampleThenFilter(String flightDate, ParsedFlightQuery parsed, int maxResults) {
+        int wideLim = Math.min(100, Math.max(maxResults * 4, 50));
+        List<FlightDto> wide = fetchFlightsForDateWideUncached(flightDate, wideLim);
+        return filterFlightsByParsed(wide, parsed, maxResults);
+    }
+
+    private List<FlightDto> fetchFlightsForDateWideUncached(String flightDate, int limit) {
+        try {
+            String body = aviationStackWebClient.get()
+                    .uri(uriBuilder -> flightsUri(uriBuilder, flightDate, null, null, limit))
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+            return parseAndMap(body);
+        } catch (WebClientResponseException e) {
+            log.warn("Aviationstack wide date query HTTP {}: {}", e.getStatusCode(), e.getResponseBodyAsString());
+            return Collections.emptyList();
+        } catch (Exception e) {
+            log.warn("Aviationstack wide date query failed: {}", e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    private List<FlightDto> filterFlightsByParsed(List<FlightDto> rows, ParsedFlightQuery parsed, int maxResults) {
+        if (rows == null || rows.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<FlightDto> out = new ArrayList<>();
+        for (FlightDto f : rows) {
+            if (matchesParsedFlight(f, parsed)) {
+                out.add(f);
+                if (out.size() >= maxResults) {
+                    break;
+                }
+            }
+        }
+        return out;
+    }
+
+    private static boolean matchesParsedFlight(FlightDto f, ParsedFlightQuery parsed) {
+        String fn = f.getFlightNumber();
+        if (fn == null || fn.isBlank()) {
+            return false;
+        }
+        String compact = fn.trim().toUpperCase().replaceAll("\\s+", "");
+        if (parsed.flightIata() != null) {
+            return compact.equals(parsed.flightIata());
+        }
+        String num = parsed.flightNumberOnly();
+        if (num == null) {
+            return false;
+        }
+        if (compact.endsWith(num)) {
+            return true;
+        }
+        String digits = compact.replaceAll("[^0-9]", "");
+        return digits.equals(num) || digits.endsWith(num);
+    }
+
         @Cacheable(cacheNames = AviationStackCacheConfig.CACHE_SUGGEST,
             cacheManager = "aviationCacheManager",
             key = "#originIata.toUpperCase() + ':' + #destinationQuery.trim().toLowerCase() + ':' + #limit")
@@ -148,6 +280,67 @@ public class AviationStackFlightService {
         }
         return ub.build();
     }
+
+    private java.net.URI flightsByFlightUri(UriBuilder uriBuilder, String flightDate, ParsedFlightQuery parsed, int lim) {
+        UriBuilder ub = uriBuilder.path("/flights")
+                .queryParam("access_key", properties.getAccessKey())
+                .queryParam("limit", lim)
+                .queryParam("flight_date", flightDate);
+        if (parsed.flightIata() != null) {
+            ub.queryParam("flight_iata", parsed.flightIata());
+        } else {
+            ub.queryParam("flight_number", parsed.flightNumberOnly());
+        }
+        return ub.build();
+    }
+
+    private ParsedFlightQuery parseFlightQuery(String raw) {
+        String compact = raw.trim().toUpperCase().replaceAll("\\s+", "");
+        if (FLIGHT_IATA.matcher(compact).matches()) {
+            return new ParsedFlightQuery(compact, null, compact);
+        }
+        String digits = raw.trim().replaceAll("\\D+", "");
+        if (digits.length() >= 1 && digits.length() <= 4 && FLIGHT_NUMBER_ONLY.matcher(digits).matches()) {
+            return new ParsedFlightQuery(null, digits, digits);
+        }
+        return null;
+    }
+
+    private record ParsedFlightQuery(String flightIata, String flightNumberOnly, String logLabel) {}
+
+    private List<FlightDto> fallbackFlightsByFlightQuery(ParsedFlightQuery parsed, int limit) {
+        String iata = parsed.flightIata() != null ? parsed.flightIata() : ("YT" + parsed.flightNumberOnly());
+        List<FlightDto> base = fallbackFlightsByRoute("TUN", "NBE", Math.max(1, limit));
+        if (base.isEmpty()) {
+            return base;
+        }
+        FlightDto first = base.get(0);
+        FlightDto adjusted = FlightDto.builder()
+                .flightNumber(iata)
+                .airline(first.getAirline())
+                .departureAirport(first.getDepartureAirport())
+                .departureIata(first.getDepartureIata())
+                .arrivalAirport(first.getArrivalAirport())
+                .arrivalIata(first.getArrivalIata())
+                .departureTime(first.getDepartureTime())
+                .arrivalTime(first.getArrivalTime())
+                .status("scheduled")
+                .statusCategory("ON_TIME")
+                .departureLatitude(first.getDepartureLatitude())
+                .departureLongitude(first.getDepartureLongitude())
+                .arrivalLatitude(first.getArrivalLatitude())
+                .arrivalLongitude(first.getArrivalLongitude())
+                .totalAmount(first.getTotalAmount())
+                .totalCurrency(first.getTotalCurrency())
+                .build();
+        List<FlightDto> out = new ArrayList<>();
+        out.add(adjusted);
+        if (base.size() > 1 && limit > 1) {
+            out.addAll(base.subList(1, Math.min(base.size(), limit)));
+        }
+        return out.size() > limit ? out.subList(0, limit) : out;
+    }
+
 
     private int clampLimit(int limit) {
         int def = Math.max(1, properties.getDefaultLimit());

@@ -145,14 +145,6 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
                   <strong>{{ selectedRoomLabel() }}</strong>
                 </div>
                 <hr class="sum-divider">
-                <div class="summary-row price-row">
-                  <span>{{ quoteNightly() | dualCurrency }} {{ 'ACCOMM.X_NIGHTS' | translate: { n: nightCount() } }}</span>
-                  <span>{{ baseTotal() | dualCurrency }}</span>
-                </div>
-                <div class="summary-row price-row">
-                  <span>{{ 'ACCOMM.TAXES_PCT' | translate }}</span>
-                  <span>{{ taxAmount() | dualCurrency }}</span>
-                </div>
                 <div class="summary-row total-row">
                   <strong>{{ 'ACCOMM.TOTAL_DUE' | translate }}</strong>
                   <strong class="total-amount">{{ grandTotal() | dualCurrency }}</strong>
@@ -320,12 +312,13 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
     /* Summary Box */
     .summary-box { background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: 14px; padding: 1.5rem; margin-bottom: 1.5rem; }
-    .summary-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 0.9rem; color: var(--text-muted); }
+    .summary-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 0.85rem; padding: 8px 0; font-size: 0.9rem; color: var(--text-muted); }
     .summary-row strong { color: var(--text-color); }
     .sum-divider { border: none; border-top: 1px solid var(--border-soft); margin: 8px 0; }
     .price-row span { color: var(--text-muted); }
     .total-row { margin-top: 4px; font-size: 1.05rem; }
-    .total-amount { color: var(--tunisia-red); font-size: 1.4rem; }
+    .total-row strong:last-child { text-align: right; white-space: nowrap; }
+    .total-amount { color: var(--tunisia-red); font-size: 1.4rem; line-height: 1.1; }
 
     /* Payment */
     .payment-section { margin-bottom: 2rem; }
@@ -386,9 +379,9 @@ import { TranslateModule, TranslateService } from '@ngx-translate/core';
     .date-val { font-size: 0.95rem; color: var(--text-color); font-weight: 600; }
     .nights-block { font-size: 1.4rem; font-weight: 800; color: var(--tunisia-red); text-align: center; display: flex; flex-direction: column; align-items: center; }
     .nights-block span { font-size: 0.7rem; color: var(--text-muted); font-weight: 400; }
-    .stay-total { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; border-top: 1px solid var(--border-soft); }
+    .stay-total { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 0.85rem; padding: 1rem 1.5rem; border-top: 1px solid var(--border-soft); }
     .stay-total span { color: var(--text-muted); font-size: 0.9rem; }
-    .stay-total strong { color: var(--tunisia-red); font-size: 1.3rem; }
+    .stay-total strong { color: var(--tunisia-red); font-size: 1.3rem; text-align: right; white-space: nowrap; line-height: 1.1; }
 
     /* Guarantees */
     .guarantees { background: var(--surface-1); border: 1px solid var(--border-soft); border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; gap: 12px; box-shadow: var(--shadow-soft); }

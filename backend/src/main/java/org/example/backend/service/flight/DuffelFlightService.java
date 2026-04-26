@@ -309,6 +309,8 @@ public class DuffelFlightService {
                 .departureLongitude(offer.getDepartureLongitude())
                 .arrivalLatitude(offer.getArrivalLatitude())
                 .arrivalLongitude(offer.getArrivalLongitude())
+                .totalAmount(offer.getTotalAmount())
+                .totalCurrency(offer.getTotalCurrency())
                 .build();
     }
 
@@ -690,6 +692,19 @@ public class DuffelFlightService {
         String normalizedAirport = airportName == null ? "" : airportName.trim();
         String preferredName = !normalizedAirport.isBlank() ? normalizedAirport : code + " Airport";
 
+        Optional<String> tnGovernorate = TunisiaAirportIataGovernorateMap.governorateNameForIata(code);
+        if (tnGovernorate.isPresent()) {
+            Optional<City> resolvedGovernorate =
+                    cityRepository.findFirstByNameIgnoreCase(tnGovernorate.get());
+            if (resolvedGovernorate.isPresent()) {
+                return resolvedGovernorate.get();
+            }
+            log.warn(
+                    "Duffel: Tunisian IATA {} maps to governorate '{}' but no matching City row — check DataInitializer seed",
+                    code,
+                    tnGovernorate.get());
+        }
+
         Optional<City> existing = cityRepository.findFirstByNameIgnoreCase(preferredName);
         if (existing.isEmpty() && !preferredName.equalsIgnoreCase(code + " Airport")) {
             existing = cityRepository.findFirstByNameIgnoreCase(code + " Airport");
@@ -701,7 +716,7 @@ public class DuffelFlightService {
         City city = new City();
         city.setName(preferredName);
         city.setRegion("Airport");
-        city.setDescription("Virtual airport city for flight booking flow (" + code + ").");
+        city.setDescription("Virtual airport / foreign endpoint for flight booking (" + code + ").");
         city.setHasAirport(true);
         city.setHasBusStation(false);
         city.setHasTrainStation(false);

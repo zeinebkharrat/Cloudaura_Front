@@ -1,6 +1,8 @@
 package org.example.backend.controller;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.net.URI;
 import org.example.backend.dto.AuthMessageResponse;
 import org.example.backend.dto.AuthResponse;
 import org.example.backend.dto.CaptchaConfigResponse;
@@ -15,6 +17,7 @@ import org.example.backend.service.AuthService;
 import org.example.backend.service.RecaptchaService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -61,6 +64,10 @@ public class AuthController {
     @Value("${app.oauth2.instagram-client-secret}")
     private String instagramClientSecret;
 
+    /** Browser hits on POST-only routes (e.g. opening /api/auth/signup in a tab) redirect here. */
+    @Value("${app.public.url:http://localhost:4200}")
+    private String publicAppBaseUrl;
+
     public AuthController(AuthService authService, RecaptchaService recaptchaService) {
         this.authService = authService;
         this.recaptchaService = recaptchaService;
@@ -83,9 +90,21 @@ public class AuthController {
         return authService.signup(request);
     }
 
+    /** GET /api/auth/signup → redirect to SPA (POST-only registration). */
+    @GetMapping("/signup")
+    public ResponseEntity<Void> signupGetRedirect(HttpServletRequest request) {
+        return redirectToPublicPath(request, "/signup");
+    }
+
     @PostMapping("/signin")
     public AuthResponse signin(@Valid @RequestBody LoginRequest request) {
         return authService.signin(request);
+    }
+
+    /** GET /api/auth/signin → redirect to SPA sign-in page. */
+    @GetMapping("/signin")
+    public ResponseEntity<Void> signinGetRedirect(HttpServletRequest request) {
+        return redirectToPublicPath(request, "/signin");
     }
 
     @GetMapping("/me")
@@ -125,13 +144,47 @@ public class AuthController {
         return authService.resendVerification(request);
     }
 
+    /** GET → SPA so users are not stuck on 405 when opening the API URL by mistake. */
+    @GetMapping("/resend-verification")
+    public ResponseEntity<Void> resendVerificationGetRedirect(HttpServletRequest request) {
+        return redirectToPublicPath(request, "/signin");
+    }
+
     @PostMapping("/forgot-password")
     public AuthMessageResponse forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         return authService.forgotPassword(request);
     }
 
+    @GetMapping("/forgot-password")
+    public ResponseEntity<Void> forgotPasswordGetRedirect(HttpServletRequest request) {
+        return redirectToPublicPath(request, "/forgot-password");
+    }
+
     @PostMapping("/reset-password")
     public AuthMessageResponse resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         return authService.resetPassword(request);
+    }
+
+    /**
+     * GET /api/auth/reset-password → SPA reset form (POST stays JSON-only).
+     * Query string (e.g. token from email) is preserved when present on the incoming request.
+     */
+    @GetMapping("/reset-password")
+    public ResponseEntity<Void> resetPasswordGetRedirect(HttpServletRequest request) {
+        return redirectToPublicPath(request, "/reset-password");
+    }
+
+    private ResponseEntity<Void> redirectToPublicPath(HttpServletRequest request, String path) {
+        String base = publicAppBaseUrl == null ? "" : publicAppBaseUrl.trim();
+        while (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
+        String p = path.startsWith("/") ? path : "/" + path;
+        String qs = request.getQueryString();
+        if (qs != null && !qs.isBlank()) {
+            p = p + "?" + qs;
+        }
+        URI location = URI.create(base + p);
+        return ResponseEntity.status(HttpStatus.FOUND).location(location).build();
     }
 }

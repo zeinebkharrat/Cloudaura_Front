@@ -30,10 +30,14 @@
   <div class="nav-collapse" (click)="$event.stopPropagation()">
   <ul class="nav-links">
     <li>
-      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMobileNav()">{{ 'NAV.HOME' | translate }}</a>
+      <a data-tour-id="nav-home" routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMobileNav()">{{
+        'NAV.HOME' | translate
+      }}</a>
     </li>
     <li>
-      <a routerLink="/destination-map" routerLinkActive="active" (click)="closeMobileNav()">{{ 'NAV.DESTINATIONS' | translate }}</a>
+      <a data-tour-id="nav-destinations" routerLink="/destination-map" routerLinkActive="active" (click)="closeMobileNav()">{{
+        'NAV.DESTINATIONS' | translate
+      }}</a>
     </li>
     <li class="services-menu-wrap" (click)="$event.stopPropagation()">
       <button
@@ -54,7 +58,7 @@
           <a data-tour-id="services-activities" class="services-dd-item" routerLink="/services/activities" routerLinkActive="active" (click)="closeServicesMenu(); closeMobileNav()">Activities</a>
           <a data-tour-id="services-events" class="services-dd-item" routerLink="/evenements" routerLinkActive="active" (click)="closeServicesMenu(); closeMobileNav()">Events</a>
           <a data-tour-id="services-restaurants" class="services-dd-item" routerLink="/services/restaurants" routerLinkActive="active" (click)="closeServicesMenu(); closeMobileNav()">Restaurants</a>
-          <a data-tour-id="services-stays" class="services-dd-item" routerLink="/planifier-voyage" routerLinkActive="active" (click)="closeServicesMenu(); closeMobileNav()">Stays</a>
+          <a data-tour-id="services-stays" class="services-dd-item" routerLink="/hebergement" routerLinkActive="active" (click)="closeServicesMenu(); closeMobileNav()">Stays</a>
           <a data-tour-id="services-transport" class="services-dd-item" routerLink="/transport" routerLinkActive="active" (click)="closeServicesMenu(); closeMobileNav()">Transport</a>
         </div>
       }
@@ -396,7 +400,7 @@
     <div class="site-footer__col">
       <h4>Travel Services</h4>
       <a routerLink="/transport">Transport</a>
-      <a routerLink="/planifier-voyage">Stays</a>
+      <a routerLink="/hebergement">Stays</a>
       <a routerLink="/services/restaurants">Restaurants</a>
       <a routerLink="/virtual-tour">360° Tour</a>
     </div>

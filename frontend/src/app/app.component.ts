@@ -296,7 +296,7 @@ export class AppComponent implements OnInit {
 
   isStaysNavActive(): boolean {
     const path = this.router.url.split('?')[0].split('#')[0];
-    return path.startsWith('/planifier-voyage') || path.startsWith('/hebergement') || path.startsWith('/my-bookings');
+    return path.startsWith('/hebergement') || path.startsWith('/my-bookings');
   }
 
   isHeroRoute(): boolean {

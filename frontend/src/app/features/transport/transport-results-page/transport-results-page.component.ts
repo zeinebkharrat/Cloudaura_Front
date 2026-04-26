@@ -49,6 +49,12 @@ import { TranslateService } from '@ngx-translate/core';
 
       <!-- Results -->
       <section class="rp-body">
+        @if (isEstimateOnlyMode()) {
+          <p class="rp-estimate-strip" role="status">
+            <i class="pi pi-info-circle"></i>
+            <span>{{ 'TRANSPORT_RESULTS.ESTIMATE_ONLY_STRIP' | translate }}</span>
+          </p>
+        }
         @if (loading()) {
           <!-- Skeleton Loaders -->
           <div class="rp-list">
@@ -121,12 +127,16 @@ import { TranslateService } from '@ngx-translate/core';
                     <span class="tc-seats"><i class="pi pi-users"></i> {{ 'TRANSPORT_RESULTS.SEATS' | translate: { n: (t.availableSeats ?? t.capacity) } }}</span>
                   </div>
 
-                  <div class="tc-action">
-                    <div class="tc-price">
-                      <span class="tc-amount">{{ displayPrice(t) }}</span>
-                      <span class="tc-currency">TND</span>
-                    </div>
-                    <button pButton [label]="'TRANSPORT_RESULTS.BTN_BOOK' | translate" icon="pi pi-arrow-right"
+                  <div class="tc-action" [class.tc-action--estimate-only]="isEstimateOnlyMode()">
+                    @if (!isEstimateOnlyMode()) {
+                      <div class="tc-price">
+                        <span class="tc-amount">{{ displayPrice(t) }}</span>
+                        <span class="tc-currency">TND</span>
+                      </div>
+                    }
+                    <button pButton
+                            [label]="(isEstimateOnlyMode() ? 'TRANSPORT_RESULTS.BTN_ESTIMATE' : 'TRANSPORT_RESULTS.BTN_BOOK') | translate"
+                            [icon]="isEstimateOnlyMode() ? 'pi pi-calculator' : 'pi pi-arrow-right'"
                             iconPos="right" class="p-button-sm p-button-raised"></button>
                   </div>
                 </div>
@@ -180,6 +190,15 @@ import { TranslateService } from '@ngx-translate/core';
 
     /* ---- Body ---- */
     .rp-body { max-width: 820px; margin: 0 auto; padding: 0 1.5rem; }
+    .rp-estimate-strip {
+      display: flex; align-items: flex-start; gap: 0.5rem;
+      margin: 0 0 1.25rem; padding: 0.75rem 1rem;
+      border-radius: 12px;
+      font-size: 0.86rem; line-height: 1.45; color: var(--text-color);
+      background: color-mix(in srgb, #0ea5e9 10%, var(--surface-1));
+      border: 1px solid color-mix(in srgb, #0ea5e9 28%, var(--glass-border));
+    }
+    .rp-estimate-strip .pi { color: #0ea5e9; flex-shrink: 0; margin-top: 2px; }
     .rp-count {
       font-size: 0.85rem; color: var(--text-muted, #a8b3c7);
       margin-bottom: 1.25rem; text-align: center;
@@ -259,6 +278,7 @@ import { TranslateService } from '@ngx-translate/core';
     }
 
     .tc-action { display: flex; align-items: center; gap: 1rem; flex-shrink: 0; }
+    .tc-action--estimate-only { justify-content: flex-end; }
     .tc-price { display: flex; align-items: baseline; gap: 4px; }
     .tc-amount {
       font-family: 'Outfit', sans-serif;
@@ -300,6 +320,7 @@ import { TranslateService } from '@ngx-translate/core';
       .tc-time { font-size: 1.4rem; }
       .tc-bottom { flex-direction: column; gap: 1rem; align-items: flex-start; }
       .tc-action { width: 100%; justify-content: space-between; }
+      .tc-action.tc-action--estimate-only { justify-content: flex-end; }
     }
 
     :host ::ng-deep .p-tag { font-size: 0.78rem; padding: 0.3rem 0.75rem; }
@@ -366,7 +387,24 @@ export class TransportResultsPageComponent implements OnInit {
     });
   }
 
+  isEstimateOnlyMode(): boolean {
+    const t = (this.queryParams.transportType ?? '').toString().toUpperCase();
+    return t === 'TAXI' || t === 'BUS';
+  }
+
   onSelect(transport: Transport) {
+    if (transport.type === 'TAXI' || transport.type === 'BUS') {
+      void this.router.navigate(['/transport/estimate'], {
+        queryParams: {
+          from: this.queryParams.from,
+          to: this.queryParams.to,
+          date: this.queryParams.date,
+          transportType: this.queryParams.transportType ?? transport.type,
+          passengers: this.queryParams.passengers ?? '1',
+        },
+      });
+      return;
+    }
     this.store.selectedTransport.set({
       ...transport,
       price: this.displayUnitPrice(transport),

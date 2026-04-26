@@ -9,6 +9,7 @@ import {
   PLATFORM_ID,
   signal,
   ChangeDetectorRef,
+  inject,
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
@@ -20,6 +21,10 @@ import { tunisiaGeoJson } from './tunisia-map';
 import { GOVERNORATE_LABEL_EN, GOVERNORATE_LABEL_FR } from './tunisia-governorate-labels';
 import { ExploreService } from './explore/explore.service';
 import { API_BASE_URL, API_FALLBACK_ORIGIN } from './core/api-url';
+import { AuthService } from './core/auth.service';
+import { TravelMatchService } from './core/services/travel-match.service';
+import { travelPrefsStorageKey } from './core/travel-match.storage';
+import type { CityMatchScore, TravelPreferencePayload } from './core/travel-match.types';
 
 interface HomeImageCard {
   title: string;
@@ -119,6 +124,7 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   readonly currentPersonalizedEventPage = signal(0);
   readonly personalizedEventPageCount = signal(1);
   readonly activeAiCityRoute = signal<string | null>(null);
+  readonly personaMatches = signal<CityMatchScore[]>([]);
 
   readonly loadingActivities = signal(true);
   readonly loadingTransportModes = signal(true);
@@ -148,6 +154,9 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.recalculatePersonalizedPagination('personalized-cities-slider', this.personalizedCityPageCount, this.currentPersonalizedCityPage);
     this.recalculatePersonalizedPagination('personalized-events-slider', this.personalizedEventPageCount, this.currentPersonalizedEventPage);
   };
+
+  private readonly authService = inject(AuthService);
+  private readonly travelMatch = inject(TravelMatchService);
 
   constructor(
     @Inject(PLATFORM_ID) private platformId: Object,
@@ -521,10 +530,48 @@ export class HomeComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private loadHomeSections(): void {
+    this.loadPersonaMatches();
     this.loadActivityCards();
     this.loadTransportCards();
     this.loadRestaurantCards();
     this.loadArtisanCards();
+  }
+
+  private loadPersonaMatches(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      return;
+    }
+    const u = this.authService.currentUser();
+    if (!u?.id) {
+      return;
+    }
+    const raw = localStorage.getItem(travelPrefsStorageKey(u.id));
+    if (!raw) {
+      return;
+    }
+    try {
+      const prefs = JSON.parse(raw) as TravelPreferencePayload;
+      this.travelMatch.rankCities(prefs, 6).subscribe({
+        next: (rows) => this.personaMatches.set(rows),
+        error: () => {},
+      });
+    } catch {
+      /* ignore malformed prefs */
+    }
+  }
+
+  exploreMatchedCity(cityName: string): void {
+    this.exploreService.resolveCityByName(cityName).subscribe({
+      next: (res) => {
+        const id = res.city?.cityId;
+        if (id != null) {
+          void this.router.navigate(['/city', id]);
+        } else {
+          void this.router.navigate(['/destination-map'], { queryParams: { q: cityName } });
+        }
+      },
+      error: () => void this.router.navigate(['/destination-map']),
+    });
   }
 
   private loadActivityCards(): void {

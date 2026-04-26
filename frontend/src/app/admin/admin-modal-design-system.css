@@ -41,6 +41,12 @@
   background: var(--adm-dialog-content-bg) !important;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
+  /* Single scroll column: outer content scrolls, inner .adm-dlg-body does not (avoids nested scrollbars). */
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  max-height: min(82vh, 760px);
+  /* Avoid scroll chaining into the page when scrolling the modal form */
+  overscroll-behavior: contain;
 }
 
 .adm-modal-dialog .p-dialog-footer {
@@ -112,16 +118,16 @@
   display: flex;
   flex-direction: column;
   gap: calc(var(--adm-space-2) - 2px);
-  max-height: min(70vh, 620px);
-  overflow-y: auto;
-  padding-right: 4px;
-  scrollbar-gutter: stable;
+  max-height: none;
+  overflow: visible;
+  padding-right: 0;
 }
 
-.adm-dlg-body::-webkit-scrollbar {
+/* Thin scrollbar on the dialog content pane (single scrollbar for the whole form body). */
+.adm-modal-dialog .p-dialog-content::-webkit-scrollbar {
   width: 6px;
 }
-.adm-dlg-body::-webkit-scrollbar-thumb {
+.adm-modal-dialog .p-dialog-content::-webkit-scrollbar-thumb {
   background: color-mix(in srgb, var(--adm-text) 14%, transparent);
   border-radius: 6px;
 }

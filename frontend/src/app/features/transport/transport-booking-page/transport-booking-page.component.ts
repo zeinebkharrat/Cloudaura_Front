@@ -7,6 +7,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   DestroyRef,
+  effect,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TranslateService } from '@ngx-translate/core';
@@ -22,6 +23,7 @@ import {
   Transport,
   TransportReservation,
   ReservationStatus,
+  SyntheticFlightOfferPayload,
 } from '../../../core/models/travel.models';
 import { TransportTrackingSseService } from '../transport-tracking-sse.service';
 import { CurrencyService } from '../../../core/services/currency.service';
@@ -64,6 +66,16 @@ import { createCurrencyDisplaySyncEffect } from '../../../core/utils/currency-di
       font-weight: 800; color: var(--tunisia-red); white-space: nowrap; flex-shrink: 0;
     }
     .trip-price small { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); }
+    .trip-price-col { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
+    .trip-quote-note {
+      display: block;
+      margin-top: 0.35rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      line-height: 1.35;
+      max-width: 22rem;
+    }
 
     .stepper-wrap {
       background: var(--surface-1);
@@ -391,6 +403,9 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
   /** Re-render OnPush views when the global currency or FX snapshot changes. */
   private readonly _currencyDisplaySync = createCurrencyDisplaySyncEffect();
 
+  /** Avoid refilling passenger fields when the same profile was already applied. */
+  private syncedPassengerProfileUserId: number | null = null;
+
   passengerForm = this.fb.group({
     firstName: ['', [Validators.required, Validators.minLength(2)]],
     lastName: ['', [Validators.required, Validators.minLength(2)]],
@@ -401,6 +416,35 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
 
   constructor() {
     this.translate.onLangChange.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.cdr.markForCheck());
+
+    effect(() => {
+      const user = this.authService.currentUser();
+      if (!user) {
+        this.syncedPassengerProfileUserId = null;
+        return;
+      }
+      if (this.route.snapshot.queryParamMap.get('edit')) {
+        return;
+      }
+      if (this.editingReservationId() != null) {
+        return;
+      }
+      if (this.syncedPassengerProfileUserId === user.id) {
+        return;
+      }
+      this.syncedPassengerProfileUserId = user.id;
+      const digits = (user.phone?.replace(/\+216\s*/, '').replace(/\D/g, '') ?? '').slice(-8);
+      this.passengerForm.patchValue(
+        {
+          firstName: user.firstName ?? '',
+          lastName: user.lastName ?? '',
+          email: user.email ?? '',
+          phone: digits,
+        },
+        { emitEvent: false },
+      );
+      this.cdr.markForCheck();
+    });
   }
 
   ngOnInit() {
@@ -409,17 +453,9 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
       this.store.setDates({ travelDate: qpDate });
     }
 
-    const user = this.authService.currentUser();
-    if (user) {
-      this.passengerForm.patchValue({
-        firstName: user.firstName ?? '',
-        lastName: user.lastName ?? '',
-        email: user.email ?? '',
-        phone: user.phone?.replace(/\+216\s*/, '').replace(/\D/g, '') ?? '',
-      });
-    }
-
     this.passengerForm.patchValue({ seats: this.store.pax().adults || 1 });
+
+    const user = this.authService.currentUser();
 
     const routeId = this.route.snapshot.paramMap.get('id');
     const editParam = this.route.snapshot.queryParamMap.get('edit');
@@ -429,11 +465,13 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
     if (selected && Number.isFinite(transportIdNum) && selected.id === transportIdNum) {
       this.transport.set(selected);
       this.applySeatCapacityValidators(selected);
+      this.maybeRedirectEstimateOnly(selected);
     } else if (Number.isFinite(transportIdNum)) {
       this.dataSource.getTransportById(transportIdNum).subscribe({
         next: (t) => {
           this.transport.set(t);
           this.applySeatCapacityValidators(t);
+          this.maybeRedirectEstimateOnly(t);
           this.cdr.markForCheck();
         },
         error: () => {
@@ -447,6 +485,7 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
     } else if (selected) {
       this.transport.set(selected);
       this.applySeatCapacityValidators(selected);
+      this.maybeRedirectEstimateOnly(selected);
     }
 
     const paid = this.route.snapshot.queryParamMap.get('paid');
@@ -591,8 +630,12 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
     const t = this.transport();
     if (!t) return;
 
-    if (t.type === 'PLANE' && t.id < 0) {
-      this.confirmSyntheticFlightBooking();
+    const syntheticOffer = this.buildSyntheticFlightOfferPayload(t);
+    if (t.id < 0 && !syntheticOffer) {
+      void this.alerts.warning(
+        this.translate.instant('TRANSPORT_BOOKING.ALERT_SYNTHETIC_FLIGHT_TITLE'),
+        this.translate.instant('TRANSPORT_BOOKING.ALERT_SYNTHETIC_FLIGHT_BODY'),
+      );
       return;
     }
 
@@ -678,6 +721,7 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
           passengerPhone: '+216 ' + (this.passengerForm.get('phone')?.value ?? ''),
           idempotencyKey,
           presentmentCurrency: this.currency.selectedCode(),
+          ...(syntheticOffer ? { syntheticFlightOffer: syntheticOffer } : {}),
         })
         .subscribe({
           next: (checkout) => {
@@ -732,6 +776,7 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
           passengerLastName: this.passengerForm.get('lastName')?.value ?? '',
           passengerEmail: this.passengerForm.get('email')?.value ?? '',
           passengerPhone: '+216 ' + (this.passengerForm.get('phone')?.value ?? ''),
+          ...(syntheticOffer ? { syntheticFlightOffer: syntheticOffer } : {}),
         })
         .subscribe({
           next: (checkout) => {
@@ -772,6 +817,7 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
           ? (this.store.transportRouteDurationMin() ?? undefined)
           : undefined,
         rentalDays: t.type === 'CAR' ? this.store.transportRentalDays() : undefined,
+        ...(syntheticOffer ? { syntheticFlightOffer: syntheticOffer } : {}),
       })
       .subscribe({
         next: (res) => {
@@ -935,36 +981,74 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
     return `${dateStr}T${h}:${m}:${s}`;
   }
 
-  private confirmSyntheticFlightBooking(): void {
-    const seats = this.passengerForm.get('seats')?.value ?? 1;
-    const totalPrice = this.calculateTotal();
-    const travelDate = this.buildTravelDateTimeIso() ?? new Date().toISOString();
-    const reservationRef = `FLT-${Date.now().toString(36).toUpperCase()}`;
-    this.reservation.set({
-      transportReservationId: Date.now(),
-      transportId: this.transport()?.id,
-      reservationRef,
-      status: 'CONFIRMED',
-      paymentStatus: this.paymentMethod() === 'CASH' ? 'PENDING' : 'PAID',
-      paymentMethod: this.paymentMethod(),
-      totalPrice,
-      numberOfSeats: seats,
-      travelDate,
-      passengerFirstName: this.passengerForm.get('firstName')?.value ?? '',
-      passengerLastName: this.passengerForm.get('lastName')?.value ?? '',
-      passengerEmail: this.passengerForm.get('email')?.value ?? '',
-      passengerPhone: '+216 ' + (this.passengerForm.get('phone')?.value ?? ''),
-      createdAt: new Date().toISOString(),
-      transportType: 'PLANE',
-      type: 'PLANE',
-      departureCityName: this.transport()?.departureCityName,
-      arrivalCityName: this.transport()?.arrivalCityName,
-      departureTime: this.transport()?.departureTime,
-    });
-    this.activeStep.set(2);
+  /** Payload for API when booking a flight-search row (negative transport id). */
+  private buildSyntheticFlightOfferPayload(t: Transport): SyntheticFlightOfferPayload | null {
+    if (t.id >= 0) {
+      return null;
+    }
+    const o = t.syntheticFlightOffer;
+    if (!o) {
+      return null;
+    }
+    return {
+      operatorName: (o.operatorName ?? 'Airline').trim() || 'Airline',
+      flightCode: o.flightCode,
+      departureIata: o.departureIata,
+      arrivalIata: o.arrivalIata,
+      pricePerSeatTnd: t.price,
+      departureTimeIso: o.departureTimeIso ?? t.departureTime,
+      arrivalTimeIso: o.arrivalTimeIso ?? t.arrivalTime,
+      description: (o.description ?? t.description)?.trim(),
+      quoteOriginalAmount: o.quoteOriginalAmount,
+      quoteOriginalCurrency: o.quoteOriginalCurrency,
+    };
+  }
+
+  /**
+   * Taxi and bus are quote-only: deep links to /transport/:id/book must land on the estimate page.
+   */
+  private maybeRedirectEstimateOnly(t: Transport): void {
+    if (t.type !== 'TAXI' && t.type !== 'BUS') {
+      return;
+    }
+    if (this.route.snapshot.queryParamMap.get('edit')) {
+      return;
+    }
+    if (this.route.snapshot.queryParamMap.get('paid') === '1') {
+      return;
+    }
+    const q: Record<string, string> = { ...(this.route.snapshot.queryParams as Record<string, string>) };
+    q['from'] = String(t.departureCityId);
+    q['to'] = String(t.arrivalCityId);
+    q['transportType'] = t.type;
+    const td = this.store.dates().travelDate;
+    if (!q['date'] && td) {
+      q['date'] = td;
+    }
+    if (!q['passengers']) {
+      q['passengers'] = String(Math.max(1, this.store.pax().adults || 1));
+    }
+    void this.router.navigate(['/transport/estimate'], { queryParams: q });
   }
 
   goBack() { this.router.navigate(['/transport/results'], { queryParams: this.route.snapshot.queryParams }); }
+
+  /** Provider list price (e.g. EUR); payable TND is shown via dualCurrency on {@code t.price}. */
+  syntheticQuoteLabel(t: Transport): string | null {
+    const o = t.syntheticFlightOffer;
+    if (!o?.quoteOriginalCurrency || o.quoteOriginalAmount == null) {
+      return null;
+    }
+    try {
+      return new Intl.NumberFormat(undefined, {
+        style: 'currency',
+        currency: o.quoteOriginalCurrency.trim().toUpperCase(),
+        maximumFractionDigits: 2,
+      }).format(o.quoteOriginalAmount);
+    } catch {
+      return `${o.quoteOriginalAmount} ${o.quoteOriginalCurrency}`;
+    }
+  }
 
   formatTime(dateStr: string): string {
     if (!dateStr) return '';

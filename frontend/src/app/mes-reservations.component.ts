@@ -856,6 +856,88 @@ type ActiveTab = 'transport' | 'hebergement';
     }
     .tracking-close:hover { background: rgba(241,37,69,0.1); color: #f12545; }
 
+    /* ── Light theme: align header & panels with page (no dark slab + invisible title) ── */
+    :host-context([data-theme='light']) .mr-header-card {
+      background: linear-gradient(
+        145deg,
+        var(--surface-1) 0%,
+        color-mix(in srgb, var(--mediterranean-blue) 8%, var(--surface-1)) 55%,
+        color-mix(in srgb, var(--tunisia-red) 5%, var(--surface-1)) 100%
+      );
+      border: 1px solid var(--border-soft);
+      box-shadow: var(--shadow-card);
+    }
+    :host-context([data-theme='light']) .mr-title-plain {
+      color: var(--text-color);
+    }
+    :host-context([data-theme='light']) .mr-subtitle {
+      color: var(--text-muted);
+    }
+    :host-context([data-theme='light']) .mr-back-btn,
+    :host-context([data-theme='light']) .mr-refresh-btn {
+      background: var(--surface-2);
+      border-color: var(--border-soft);
+      color: var(--text-color);
+    }
+    :host-context([data-theme='light']) .mr-back-btn:hover,
+    :host-context([data-theme='light']) .mr-refresh-btn:hover:not(:disabled) {
+      background: color-mix(in srgb, var(--tunisia-red) 10%, var(--surface-2));
+      border-color: color-mix(in srgb, var(--tunisia-red) 35%, var(--border-soft));
+    }
+    :host-context([data-theme='light']) .mr-new-btn:not(.mr-new-btn-red) {
+      background: var(--surface-1);
+      border: 1px solid var(--btn-outline-border);
+      color: var(--text-color);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+    }
+    :host-context([data-theme='light']) .mr-new-btn:not(.mr-new-btn-red):hover {
+      background: var(--surface-2);
+      border-color: color-mix(in srgb, var(--tunisia-red) 40%, var(--border-soft));
+    }
+    :host-context([data-theme='light']) .mr-stats {
+      background: var(--surface-1);
+      border: 1px solid var(--border-soft);
+      box-shadow: var(--shadow-soft);
+    }
+    :host-context([data-theme='light']) .mr-tabs {
+      background: var(--surface-2);
+      border: 1px solid var(--border-soft);
+    }
+    :host-context([data-theme='light']) .mr-tab-active {
+      background: color-mix(in srgb, var(--tunisia-red) 12%, var(--surface-1));
+      border: 1px solid color-mix(in srgb, var(--tunisia-red) 28%, var(--border-soft));
+    }
+    :host-context([data-theme='light']) .mr-sync-hint {
+      background: color-mix(in srgb, var(--mediterranean-blue) 8%, var(--surface-1));
+      border: 1px solid var(--border-soft);
+      color: var(--text-muted);
+    }
+    :host-context([data-theme='light']) .mr-empty {
+      background: var(--surface-1);
+      border: 1px dashed color-mix(in srgb, var(--text-muted) 35%, var(--border-soft));
+    }
+    :host-context([data-theme='light']) .mr-card {
+      background: var(--surface-1);
+      border: 1px solid var(--border-soft);
+      box-shadow: var(--shadow-soft);
+    }
+    :host-context([data-theme='light']) .mr-card:hover {
+      box-shadow: var(--shadow-card);
+    }
+    :host-context([data-theme='light']) .mr-line {
+      background: color-mix(in srgb, var(--tunisia-red) 22%, var(--border-soft));
+    }
+    :host-context([data-theme='light']) .mr-card-divider {
+      background: var(--border-soft);
+    }
+    :host-context([data-theme='light']) .mr-action-outline {
+      background: var(--surface-2);
+      border-color: var(--border-soft);
+    }
+    :host-context([data-theme='light']) .mr-bg-orb {
+      opacity: 0.12;
+    }
+
     @media (max-width: 600px) {
       .mr-stats { flex-direction: column; gap: 0.75rem; }
       .mr-stat-divider { display: none; }

@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from './core/auth.service';
+import { travelPrefsStorageKey } from './core/travel-match.storage';
 import { extractApiErrorMessage } from './api-error.util';
 import Swal from 'sweetalert2';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
@@ -130,6 +131,16 @@ export class SignInComponent implements OnInit {
     }
     if (this.authService.hasRole('ROLE_ADMIN')) {
       this.router.navigateByUrl('/admin/dashboard');
+      return;
+    }
+    const user = this.authService.currentUser();
+    const needsPrefs =
+      !!user?.id &&
+      typeof localStorage !== 'undefined' &&
+      !localStorage.getItem(travelPrefsStorageKey(user.id));
+    if (needsPrefs) {
+      const q = encodeURIComponent(returnUrl || '/');
+      void this.router.navigateByUrl(`/welcome-travel-style?next=${q}`);
       return;
     }
     this.router.navigateByUrl(returnUrl);

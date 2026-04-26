@@ -20,6 +20,7 @@ import org.example.backend.repository.TicketTypeRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @Order(50)
 @RequiredArgsConstructor
+@ConditionalOnProperty(name = "app.translation.enabled", havingValue = "true", matchIfMissing = true)
 public class CatalogTranslationBootstrap implements ApplicationRunner {
 
     private final CatalogTranslationRepository catalogTranslationRepository;
@@ -324,6 +326,11 @@ public class CatalogTranslationBootstrap implements ApplicationRunner {
                 "Le kilométrage estimé est obligatoire pour un taxi.",
                 "Estimated distance (km) is required for a taxi.",
                 "المسافة التقديرية بالكيلومترات مطلوبة للأجرة.");
+        ensureTriple(
+                "reservation.error.estimate_only_transport",
+                "Ce mode de transport est en consultation de prix uniquement (sans réservation).",
+                "This transport mode is quote-only (no booking).",
+                "هذا النوع من النقل للاستعلام عن السعر فقط (بدون حجز).");
         ensureTriple(
                 "reservation.error.invalid_travel_date",
                 "Format de date de voyage invalide.",

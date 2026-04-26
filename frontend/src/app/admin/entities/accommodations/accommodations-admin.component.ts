@@ -95,7 +95,7 @@ export class AccommodationsAdminComponent {
 
   cityDropdownOptions = computed(() =>
     this.cities().map((c) => ({
-      label: `${c.name} (${c.region})`,
+      label: c.region ? `${c.name} (${c.region})` : String(c.name),
       value: c.cityId,
     }))
   );
@@ -296,12 +296,27 @@ export class AccommodationsAdminComponent {
   }
 
   loadCities() {
-    this.http.get<{success: boolean, data: City[]}>(`/api/cities`)
-      .subscribe(response => {
-        if (response?.success) {
-          this.cities.set(response.data || []);
-        }
-      });
+    this.http
+      .get<unknown>(`/api/cities`)
+      .pipe(catchError(() => of(null)))
+      .subscribe((response) => this.cities.set(this.normalizeCityListPayload(response)));
+  }
+
+  /** Accepts ApiResponse or legacy/raw array shapes from `/api/cities`. */
+  private normalizeCityListPayload(payload: unknown): City[] {
+    if (payload == null) {
+      return [];
+    }
+    if (Array.isArray(payload)) {
+      return payload as City[];
+    }
+    if (typeof payload === 'object' && payload !== null && 'data' in payload) {
+      const data = (payload as { data?: unknown }).data;
+      if (Array.isArray(data)) {
+        return data as City[];
+      }
+    }
+    return [];
   }
 
   openCreateForm() {

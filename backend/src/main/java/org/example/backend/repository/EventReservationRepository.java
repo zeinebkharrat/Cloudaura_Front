@@ -9,4 +9,6 @@ public interface EventReservationRepository extends JpaRepository<EventReservati
 	List<EventReservation> findByUserUserIdOrderByEventReservationIdDesc(Integer userId);
 	List<EventReservation> findTop5ByUserUserIdOrderByEventReservationIdDesc(Integer userId);
 	long countByUserUserId(Integer userId);
+
+	void deleteByEvent_EventId(Integer eventId);
 }
