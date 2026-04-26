@@ -2,12 +2,11 @@ package org.example.backend.controller;
 
 import org.example.backend.dto.gamification.BadgeRequest;
 import org.example.backend.dto.gamification.DailyChallengeRequest;
-import org.example.backend.dto.gamification.TournamentRequest;
-import org.example.backend.dto.gamification.TournamentRoundRequest;
 import org.example.backend.model.*;
 import org.example.backend.repository.BadgeRepository;
 import org.example.backend.repository.DailyChallengeRepository;
-import org.example.backend.repository.TournamentRepository;
+import org.example.backend.repository.GameUnlockCostRepository;
+import org.example.backend.repository.PointPackageRepository;
 import org.example.backend.service.GamificationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -27,18 +26,21 @@ public class GamificationAdminController {
 
     private final BadgeRepository badgeRepository;
     private final DailyChallengeRepository dailyChallengeRepository;
-    private final TournamentRepository tournamentRepository;
     private final GamificationService gamificationService;
+    private final GameUnlockCostRepository gameUnlockCostRepository;
+    private final PointPackageRepository pointPackageRepository;
 
     public GamificationAdminController(
             BadgeRepository badgeRepository,
             DailyChallengeRepository dailyChallengeRepository,
-            TournamentRepository tournamentRepository,
-            GamificationService gamificationService) {
+            GamificationService gamificationService,
+            GameUnlockCostRepository gameUnlockCostRepository,
+            PointPackageRepository pointPackageRepository) {
         this.badgeRepository = badgeRepository;
         this.dailyChallengeRepository = dailyChallengeRepository;
-        this.tournamentRepository = tournamentRepository;
         this.gamificationService = gamificationService;
+        this.gameUnlockCostRepository = gameUnlockCostRepository;
+        this.pointPackageRepository = pointPackageRepository;
     }
 
     @GetMapping("/badges")
@@ -55,6 +57,8 @@ public class GamificationAdminController {
         b.setName(req.name().trim());
         b.setDescription(req.description());
         b.setIconUrl(req.iconUrl());
+        b.setTargetGameId(req.targetGameId());
+        b.setTargetGameKind(req.targetGameKind());
         return badgeRepository.save(b);
     }
 
@@ -70,6 +74,8 @@ public class GamificationAdminController {
         if (req.iconUrl() != null) {
             b.setIconUrl(req.iconUrl());
         }
+        b.setTargetGameId(req.targetGameId());
+        b.setTargetGameKind(req.targetGameKind());
         return badgeRepository.save(b);
     }
 
@@ -134,62 +140,62 @@ public class GamificationAdminController {
         }
     }
 
-    @GetMapping("/tournaments")
-    public List<Tournament> listTournaments() {
-        return tournamentRepository.findAll();
+
+
+    @GetMapping("/unlock-costs")
+    public List<GameUnlockCost> listUnlockCosts() {
+        return gameUnlockCostRepository.findAll();
     }
 
-    @PostMapping("/tournaments")
-    public Tournament createTournament(@RequestBody TournamentRequest req) {
-        if (req.title() == null || req.title().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "title required");
+    @PostMapping("/unlock-costs")
+    public GameUnlockCost saveUnlockCost(@RequestBody GameUnlockCost req) {
+        if (req.getGameId() == null || req.getGameId().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "gameId is required");
         }
-        Tournament t = new Tournament();
-        t.setTitle(req.title().trim());
-        t.setDescription(req.description());
-        t.setStartsAt(req.startsAt());
-        t.setEndsAt(req.endsAt());
-        t.setStatus(TournamentStatus.DRAFT);
-        if (req.winnerBadgeId() != null) {
-            t.setWinnerBadge(badgeRepository.getReferenceById(req.winnerBadgeId()));
+        if (req.getCostPoints() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "costPoints is required");
         }
-        if (req.rounds() != null) {
-            List<TournamentRoundRequest> sorted =
-                    req.rounds().stream()
-                            .sorted(Comparator.comparing(TournamentRoundRequest::sequenceOrder))
-                            .toList();
-            for (TournamentRoundRequest rr : sorted) {
-                TournamentRound tr = new TournamentRound();
-                tr.setTournament(t);
-                tr.setSequenceOrder(rr.sequenceOrder());
-                tr.setGameKind(rr.gameKind());
-                tr.setGameId(rr.gameId());
-                t.getRounds().add(tr);
-            }
+        return gameUnlockCostRepository.save(req);
+    }
+
+    @DeleteMapping("/unlock-costs/{gameId}")
+    public ResponseEntity<Void> deleteUnlockCost(@PathVariable String gameId) {
+        gameUnlockCostRepository.deleteById(gameId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/point-packages")
+    public List<PointPackage> listPointPackages() {
+        return pointPackageRepository.findAll();
+    }
+
+    @PostMapping("/point-packages")
+    public PointPackage createPointPackage(@RequestBody PointPackage pkg) {
+        if (pkg.getName() == null || pkg.getName().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "name required");
         }
-        return tournamentRepository.save(t);
+        return pointPackageRepository.save(pkg);
     }
 
-    @PostMapping("/tournaments/{id}/go-live")
-    public ResponseEntity<Map<String, Object>> goLive(@PathVariable Integer id) {
-        Tournament t =
-                tournamentRepository
-                        .findById(id)
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
-        t.setStatus(TournamentStatus.LIVE);
-        tournamentRepository.save(t);
-        return ResponseEntity.ok(Map.of("status", "LIVE", "tournamentId", id));
+    @PutMapping("/point-packages/{id}")
+    public PointPackage updatePointPackage(@PathVariable Long id, @RequestBody PointPackage req) {
+        PointPackage pkg = pointPackageRepository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        if (req.getName() != null && !req.getName().isBlank()) {
+            pkg.setName(req.getName());
+        }
+        if (req.getPointsAmount() > 0) {
+            pkg.setPointsAmount(req.getPointsAmount());
+        }
+        if (req.getPrice() >= 0) {
+            pkg.setPrice(req.getPrice());
+        }
+        pkg.setActive(req.isActive());
+        return pointPackageRepository.save(pkg);
     }
 
-    @PostMapping("/tournaments/{id}/finalize")
-    public ResponseEntity<Map<String, Object>> finalize(@PathVariable Integer id) {
-        gamificationService.finalizeTournament(id);
-        return ResponseEntity.ok(Map.of("status", "FINISHED", "tournamentId", id));
-    }
-
-    @DeleteMapping("/tournaments/{id}")
-    public ResponseEntity<Void> deleteTournament(@PathVariable Integer id) {
-        tournamentRepository.deleteById(id);
+    @DeleteMapping("/point-packages/{id}")
+    public ResponseEntity<Void> deletePointPackage(@PathVariable Long id) {
+        pointPackageRepository.deleteById(id);
         return ResponseEntity.noContent().build();
     }
 }

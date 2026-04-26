@@ -14,6 +14,8 @@ import { DailyChallengeRow, GamificationBadgeEntry, GamificationService } from '
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 import { LanguageService } from './core/services/language.service';
 import { CurrencySelectorComponent } from './core/components/currency-selector/currency-selector.component';
+import { AiService } from './core/ai.service';
+
 
 @Component({
   selector: 'app-root',
@@ -44,6 +46,8 @@ export class AppComponent implements OnInit {
   private readonly gamification = inject(GamificationService);
   readonly notifier = inject(NotificationService);
   readonly loginPrompt = inject(LoginRequiredPromptService);
+  private readonly ai = inject(AiService);
+
 
   isDarkMode = signal(true);
   isUserMenuOpen = signal(false);
@@ -192,6 +196,31 @@ export class AppComponent implements OnInit {
   closeChallengesPopup(): void {
     this.isChallengesPopupOpen.set(false);
   }
+
+  readonly challengeAiHelp = signal<Record<number, string>>({});
+  readonly challengeAiLoading = signal<Record<number, boolean>>({});
+
+  getAiHelp(challenge: DailyChallengeRow): void {
+    if (this.challengeAiHelp()[challenge.challengeId]) {
+      // Toggle off if already shown
+      const next = { ...this.challengeAiHelp() };
+      delete next[challenge.challengeId];
+      this.challengeAiHelp.set(next);
+      return;
+    }
+
+    this.challengeAiLoading.update(prev => ({ ...prev, [challenge.challengeId]: true }));
+    this.ai.getHelpForChallenge(challenge).subscribe({
+      next: (help) => {
+        this.challengeAiHelp.update(prev => ({ ...prev, [challenge.challengeId]: help }));
+        this.challengeAiLoading.update(prev => ({ ...prev, [challenge.challengeId]: false }));
+      },
+      error: () => {
+        this.challengeAiLoading.update(prev => ({ ...prev, [challenge.challengeId]: false }));
+      }
+    });
+  }
+
 
   private loadGamificationSummary(): void {
     this.gamification.me().subscribe({

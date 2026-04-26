@@ -71,10 +71,35 @@ export interface LudoCard {
   createdAt?: string;
 }
 
+export interface GameUnlockCost {
+  gameId: string;
+  costPoints: number;
+}
+
+export interface PointPackage {
+  id: number;
+  name: string;
+  pointsAmount: number;
+  price: number;
+  active: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class LudificationService {
   private readonly http = inject(HttpClient);
   private readonly base = `${API_BASE_URL}/api/ludification`;
+
+  getPointPackages(): Observable<{ id: number; name: string; pointsAmount: number; price: number; active: boolean }[]> {
+    return this.http.get<{ id: number; name: string; pointsAmount: number; price: number; active: boolean }[]>(`${API_BASE_URL}/api/store/packages`);
+  }
+
+  checkoutPointPackage(packageId: number): Observable<{ sessionId: string; url: string }> {
+    return this.http.post<{ sessionId: string; url: string }>(`${API_BASE_URL}/api/store/checkout`, { packageId });
+  }
+
+  verifyCheckout(sessionId: string): Observable<{ success: boolean; message: string; addedPoints?: number }> {
+    return this.http.post<{ success: boolean; message: string; addedPoints?: number }>(`${API_BASE_URL}/api/store/checkout/success`, { sessionId });
+  }
 
   getQuizzes(): Observable<Quiz[]> {
     return this.http.get<Quiz[]>(`${this.base}/quizzes`);
@@ -160,6 +185,27 @@ export class LudificationService {
       `${this.base}/roadmap/nodes/${nodeId}/complete`,
       body,
     );
+  }
+
+  reportStandaloneGame(payload: {
+    gameKind: string;
+    gameId: number;
+    score?: number;
+    maxScore?: number;
+  }): Observable<void> {
+    return this.http.post<void>(`${API_BASE_URL}/api/gamification/report-game`, payload);
+  }
+
+  getUnlockCosts(): Observable<{ gameId: string; costPoints: number }[]> {
+    return this.http.get<{ gameId: string; costPoints: number }[]>(`${API_BASE_URL}/api/gamification/unlock-costs`);
+  }
+
+  getUnlockedGames(): Observable<string[]> {
+    return this.http.get<string[]>(`${API_BASE_URL}/api/gamification/unlocked-games`);
+  }
+
+  unlockGame(gameId: string): Observable<{ success: boolean; message: string }> {
+    return this.http.post<{ success: boolean; message: string }>(`${API_BASE_URL}/api/gamification/unlock-game/${gameId}`, {});
   }
 
   // --- Puzzle image (front local storage) ---

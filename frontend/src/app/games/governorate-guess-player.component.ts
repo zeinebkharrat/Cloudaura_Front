@@ -14,6 +14,8 @@ import { RouterLink } from '@angular/router';
 import * as echarts from 'echarts';
 import { tunisiaGeoJson } from '../tunisia-map';
 import { GOVERNORATE_LABEL_EN, GOVERNORATE_LABEL_FR } from '../tunisia-governorate-labels';
+import { AuthService } from '../core/auth.service';
+import { LudificationService } from '../core/ludification.service';
 
 const TUNISIA_MAP_NAME_PROP = '_echartsRegionId';
 const ECHARTS_MAP_NAME = 'TunisiaGovernorateGuess';
@@ -233,6 +235,13 @@ function buildAliasToRegionIds(
           <span
             >Distance au secret : <strong>~{{ lastDistanceKm() }} km</strong> (a vol d'oiseau)</span
           >
+        }
+        @if (won()) {
+          @if (!pointsClaimed()) {
+            <button type="button" class="gg-btn" style="background: linear-gradient(135deg, #10b981, #059669); border-color: #34d399;" (click)="claimPoints()">Réclamer mes points</button>
+          } @else {
+            <button type="button" class="gg-btn" style="opacity: 0.7;" disabled>Points réclamés !</button>
+          }
         }
         <button type="button" class="gg-btn" (click)="newRound()">Nouvelle partie</button>
       </div>
@@ -457,8 +466,11 @@ export class GovernorateGuessPlayerComponent implements AfterViewInit, OnDestroy
   @ViewChild('mapHost', { static: false }) mapHost!: ElementRef<HTMLDivElement>;
 
   private readonly zone = inject(NgZone);
+  private readonly auth = inject(AuthService);
+  private readonly api = inject(LudificationService);
 
   readonly attempts = signal(0);
+  readonly pointsClaimed = signal(false);
   readonly lastGuessLabel = signal<string | null>(null);
   readonly lastDistanceKm = signal<number | null>(null);
   readonly won = signal(false);
@@ -501,6 +513,7 @@ export class GovernorateGuessPlayerComponent implements AfterViewInit, OnDestroy
     this.lastGuessLabel.set(null);
     this.lastDistanceKm.set(null);
     this.won.set(false);
+    this.pointsClaimed.set(false);
     this.heat.clear();
     this.chartError.set(null);
     this.inputError.set(null);
@@ -559,7 +572,8 @@ export class GovernorateGuessPlayerComponent implements AfterViewInit, OnDestroy
 
   submitGuess(): void {
     this.inputError.set(null);
-    if (this.won() || !this.secretId || this.chartError()) {
+    const secret = this.secretId;
+    if (this.won() || !secret || this.chartError()) {
       return;
     }
     const resolved = this.resolveRegionFromText(this.guessText);
@@ -567,7 +581,7 @@ export class GovernorateGuessPlayerComponent implements AfterViewInit, OnDestroy
       this.inputError.set(resolved.error);
       return;
     }
-    this.applyGuessForRegions(resolved.ids);
+    this.applyGuessForRegions(resolved.ids, secret);
   }
 
   private resolveRegionFromText(raw: string): { ids: string[] } | { error: string } {
@@ -601,8 +615,8 @@ export class GovernorateGuessPlayerComponent implements AfterViewInit, OnDestroy
     return { error: 'Gouvernorat non reconnu. Verifiez l orthographe.' };
   }
 
-  private applyGuessForRegions(regionIds: string[]): void {
-    if (this.won() || !this.secretId || !regionIds.length) {
+  private applyGuessForRegions(regionIds: string[], secret: string): void {
+    if (this.won() || !secret || !regionIds.length) {
       return;
     }
 
@@ -611,10 +625,10 @@ export class GovernorateGuessPlayerComponent implements AfterViewInit, OnDestroy
     let bestRegionId = regionIds[0];
 
     for (const rid of regionIds) {
-      if (rid === this.secretId) {
+      if (rid === secret) {
         isMatch = true;
       }
-      const d = haversineKm(this.centroids.get(rid)!, this.centroids.get(this.secretId)!);
+      const d = haversineKm(this.centroids.get(rid)!, this.centroids.get(secret)!);
       if (d < minDistance) {
         minDistance = d;
         bestRegionId = rid;
@@ -627,7 +641,7 @@ export class GovernorateGuessPlayerComponent implements AfterViewInit, OnDestroy
         this.heat.set(rid, 1);
       }
       this.hint.set("Bravo ! C'est le bon gouvernorat.");
-      this.lastGuessLabel.set(this.regionIdToLabel.get(this.secretId) ?? 'Gouvernorat');
+      this.lastGuessLabel.set(this.regionIdToLabel.get(secret) ?? 'Gouvernorat');
       this.lastDistanceKm.set(0);
       this.applyChartOption();
       return;
@@ -709,5 +723,16 @@ export class GovernorateGuessPlayerComponent implements AfterViewInit, OnDestroy
     };
 
     this.chart.setOption(option, { notMerge: true });
+  }
+
+  claimPoints(): void {
+    if (this.pointsClaimed() || !this.auth.currentUser()) return;
+    this.pointsClaimed.set(true);
+    this.api.reportStandaloneGame({
+      gameKind: 'GOVERNORATE_GUESS',
+      gameId: 1, 
+      score: Math.max(10 - this.attempts(), 1) * 10, // give score based on attempts
+      maxScore: 100
+    }).subscribe();
   }
 }

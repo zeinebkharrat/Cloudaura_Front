@@ -32,6 +32,9 @@
     <button class="tab" [class.active]="activeTab() === 'CHEF'" (click)="setTab('CHEF')">
       👨‍🍳 Chef Quest
     </button>
+    <button class="tab" [class.active]="activeTab() === 'KARAOKE'" (click)="setTab('KARAOKE')">
+      🎤 Karaoke
+    </button>
   </div>
 
   <!-- Content Area -->
@@ -218,6 +221,34 @@
         }
       </div>
     }
+
+    <!-- KARAOKE TAB -->
+    @if (activeTab() === 'KARAOKE') {
+      <div class="grid-cards">
+        @for (song of karaokeSongs(); track song.id) {
+          <div class="game-card glass-card">
+            <div class="gc-head">
+              <div class="gc-icon blue">🎤</div>
+              <div class="gc-status" style="display:flex; gap:8px;">
+                <span class="stat-pill" [class.on]="song.published">{{ song.published ? 'Published' : 'Draft' }}</span>
+                <button class="btn-ghost" (click)="deleteItem(song.id, 'KARAOKE')" title="Delete">🗑️</button>
+              </div>
+            </div>
+            <h3 class="gc-title">{{ song.title }}</h3>
+            <p class="gc-desc">{{ song.artist }}</p>
+            <div class="gc-foot">
+              <span class="gc-meta">ID: #{{ song.id }}</span>
+              <button class="btn-ghost" (click)="openEdit(song)">Edit →</button>
+            </div>
+          </div>
+        }
+        @if (karaokeSongs().length === 0) {
+          <div class="empty-state glass-card">
+            No karaoke songs yet. Click <strong>New</strong> to add one.
+          </div>
+        }
+      </div>
+    }
   </div>
 
   <!-- Creation Modal Overlay -->
@@ -231,6 +262,7 @@
             @else if (activeTab() === 'ROADMAP') { New roadmap step }
             @else if (activeTab() === 'PUZZLE') { New image puzzle }
             @else if (activeTab() === 'LUDO') { New Ludo Tunisia card }
+            @else if (activeTab() === 'KARAOKE') { {{ isEditMode() ? 'Edit karaoke song' : 'New karaoke song' }} }
             @else { New Chef Quest Item }
           </h3>
           <button class="btn-close" (click)="closeCreate()">✕</button>
@@ -494,6 +526,62 @@
               <label class="tg-label">Publish</label>
               <label class="switch">
                 <input type="checkbox" [checked]="newLudo().published" (change)="newLudo().published = !newLudo().published" />
+                <span class="slider"></span>
+              </label>
+            </div>
+          }
+
+          @if (activeTab() === 'KARAOKE') {
+            <div class="form-group">
+              <label>Song Title</label>
+              <input type="text" class="g-input" [(ngModel)]="newKaraoke().title" placeholder="Ex: Sidi Mansour" />
+            </div>
+            <div class="form-group">
+              <label>Artist</label>
+              <input type="text" class="g-input" [(ngModel)]="newKaraoke().artist" placeholder="Ex: Saber Rebaï" />
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+              <div class="form-group">
+                <label>Audio Vocal (pour Whisper)</label>
+                <p class="form-hint" style="font-size: 0.65rem;">Son avec voix pour l'IA.</p>
+                <input type="text" class="g-input" [(ngModel)]="newKaraoke().audioUrl" placeholder="URL du son..." />
+                <div style="margin-top:8px;">
+                  <input type="file" accept="audio/*" (change)="uploadKaraokeAudio($event, 'vocal')" />
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Audio Instrumental (Chanteur)</label>
+                <p class="form-hint" style="font-size: 0.65rem;">Son sans voix pour le jeu.</p>
+                <input type="text" class="g-input" [(ngModel)]="newKaraoke().instrumentalUrl" placeholder="URL instrumental..." />
+                <div style="margin-top:8px;">
+                  <input type="file" accept="audio/*" (change)="uploadKaraokeAudio($event, 'instrumental')" />
+                </div>
+              </div>
+            </div>
+            
+            <div class="ai-gen-box glass-card" style="margin-bottom: 20px; border: 1px dashed rgba(255,255,255,0.2); padding: 15px;">
+              <h4 style="margin-top:0; font-size: 0.9rem; color: #60a5fa;">✨ AI Generation (Gemini 2.0)</h4>
+              <p class="form-hint" style="margin-bottom: 10px;">Si l'IA ne trouve pas les bonnes paroles, collez-les ici pour qu'elle les synchronise :</p>
+              <textarea class="g-input" style="min-height: 80px; margin-bottom: 10px; font-size: 0.85rem;" [(ngModel)]="rawLyricsInput" placeholder="Collez les paroles ici (optionnel)..."></textarea>
+              <button class="btn-primary" style="width: 100%; justify-content: center;" (click)="generateKaraokeWithAI()" [disabled]="isGeneratingKaraoke()">
+                {{ isGeneratingKaraoke() ? '✨ Synchronisation...' : '✨ Generate / Sync with AI' }}
+              </button>
+              <div style="margin: 10px 0; text-align: center; font-size: 0.7rem; opacity: 0.5;">— OU —</div>
+              <button class="btn-primary" style="width: 100%; justify-content: center; background: #10b981;" (click)="transcribeWithWhisper()" [disabled]="isGeneratingKaraoke() || !newKaraoke().audioUrl">
+                <i class="fas fa-microphone-lines"></i>
+                {{ isGeneratingKaraoke() ? 'Transcription...' : 'Transcribe Audio (Whisper v3)' }}
+              </button>
+            </div>
+
+            <div class="form-group">
+              <label>Lyrics JSON</label>
+              <textarea class="g-input" rows="8" [(ngModel)]="newKaraoke().lyricsJson"></textarea>
+            </div>
+
+            <div class="form-group-toggle">
+              <label class="tg-label">Publish</label>
+              <label class="switch">
+                <input type="checkbox" [checked]="newKaraoke().published" (change)="newKaraoke().published = !newKaraoke().published" />
                 <span class="slider"></span>
               </label>
             </div>

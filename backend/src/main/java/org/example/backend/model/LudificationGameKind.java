@@ -6,5 +6,11 @@ public enum LudificationGameKind {
     CROSSWORD,
     PUZZLE,
     LUDO,
-    ROADMAP_NODE
+    KARAOKE,
+    ROADMAP_NODE,
+    GOVERNORATE_GUESS,
+    EL_JEM_QUEST,
+    CHEF_QUEST,
+    CHKOBBA,
+    MUSIC
 }

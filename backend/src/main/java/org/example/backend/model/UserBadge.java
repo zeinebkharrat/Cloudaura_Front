@@ -19,10 +19,6 @@ public class UserBadge {
     @JoinColumn(name = "badge_id")
     private Badge badge;
 
-    @ManyToOne
-    @JoinColumn(name = "tournament_id")
-    private Tournament tournament;
-
     @Temporal(TemporalType.TIMESTAMP)
     private Date earnedAt;
 
@@ -55,14 +51,6 @@ public class UserBadge {
 
     public void setBadge(Badge badge) {
         this.badge = badge;
-    }
-
-    public Tournament getTournament() {
-        return tournament;
-    }
-
-    public void setTournament(Tournament tournament) {
-        this.tournament = tournament;
     }
 
     public Date getEarnedAt() {

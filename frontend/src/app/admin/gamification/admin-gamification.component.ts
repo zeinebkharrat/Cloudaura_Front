@@ -1,17 +1,20 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { finalize, forkJoin } from 'rxjs';
+import { finalize, forkJoin, switchMap, of, Observable, map } from 'rxjs';
 import {
   GamificationService,
   AdminBadge,
   AdminDailyChallenge,
-  AdminTournament,
+  AdminGameUnlockCost,
+  AdminPointPackage,
   LudificationGameKind,
 } from '../../core/gamification.service';
-import { LudificationService, Quiz, Crossword, PuzzleImage } from '../../core/ludification.service';
+import { LudificationService, Quiz, Crossword, PuzzleImage, LudoCard, QuizView } from '../../core/ludification.service';
+import { AiService } from '../../core/ai.service';
+import { KaraokeService, KaraokeSong } from '../../core/karaoke.service';
 
-type Tab = 'badges' | 'challenges' | 'tournaments';
+type Tab = 'badges' | 'challenges' | 'unlocks' | 'point-packages';
 
 interface NewChallengeForm {
   title: string;
@@ -32,22 +35,39 @@ interface NewChallengeForm {
 export class AdminGamificationComponent implements OnInit {
   private readonly gamification = inject(GamificationService);
   private readonly ludification = inject(LudificationService);
+  private readonly ai = inject(AiService);
+  private readonly karaoke = inject(KaraokeService);
 
   readonly activeTab = signal<Tab>('badges');
   readonly busy = signal(false);
+  readonly aiBusy = signal(false);
+  readonly aiGenerated = signal(false);
   readonly error = signal<string | null>(null);
 
   readonly badges = signal<AdminBadge[]>([]);
   readonly challenges = signal<AdminDailyChallenge[]>([]);
-  readonly tournaments = signal<AdminTournament[]>([]);
+  readonly unlockCosts = signal<AdminGameUnlockCost[]>([]);
+  readonly pointPackages = signal<AdminPointPackage[]>([]);
 
   readonly allQuizzes = signal<Quiz[]>([]);
   readonly allCrosswords = signal<Crossword[]>([]);
   readonly allPuzzles = signal<PuzzleImage[]>([]);
+  readonly allSongs = signal<KaraokeSong[]>([]);
+  readonly allLudoCards = signal<LudoCard[]>([]);
 
-  readonly gameKinds: LudificationGameKind[] = ['QUIZ', 'CROSSWORD', 'PUZZLE', 'LUDO', 'ROADMAP_NODE'];
+  readonly gameKinds: LudificationGameKind[] = [
+    'QUIZ', 'CROSSWORD', 'PUZZLE', 'LUDO', 'ROADMAP_NODE', 
+    'KARAOKE', 'GOVERNORATE_GUESS', 'EL_JEM_QUEST', 
+    'CHEF_QUEST', 'CHKOBBA', 'MUSIC'
+  ];
 
-  newBadge = { name: '', description: '', iconUrl: '' };
+  newBadge = { 
+    name: '', 
+    description: '', 
+    iconUrl: '', 
+    targetGameId: null as string | null, 
+    targetGameKind: null as LudificationGameKind | null 
+  };
   selectedBadgeFile: File | null = null;
   badgePreviewUrl: string | null = null;
   editBadgeId: number | null = null;
@@ -64,26 +84,10 @@ export class AdminGamificationComponent implements OnInit {
     active: true,
   };
 
-  newTournament: {
-    title: string;
-    description: string;
-    startsAt: string;
-    endsAt: string;
-    winnerBadgeId: number | null;
-  } = {
-    title: '',
-    description: '',
-    startsAt: '',
-    endsAt: '',
-    winnerBadgeId: null,
-  };
-
-  tournamentRounds: Array<{
-    sequenceOrder: number;
-    gameKind: LudificationGameKind;
-    gameId: number | null;
-    gameTitle?: string;
-  }> = [];
+  newUnlockCost = { gameId: '', costPoints: 0 };
+  
+  newPointPackage: AdminPointPackage = { name: '', pointsAmount: 100, price: 1.0, active: true };
+  editPointPackageId: number | null = null;
 
   ngOnInit(): void {
     this.refreshAll();
@@ -99,14 +103,16 @@ export class AdminGamificationComponent implements OnInit {
     forkJoin({
       badges: this.gamification.adminListBadges(),
       challenges: this.gamification.adminListChallenges(),
-      tournaments: this.gamification.adminListTournaments(),
+      unlocks: this.gamification.adminListUnlockCosts(),
+      packages: this.gamification.adminListPointPackages(),
     })
       .pipe(finalize(() => this.busy.set(false)))
       .subscribe({
         next: (r) => {
           this.badges.set(r.badges);
           this.challenges.set(r.challenges);
-          this.tournaments.set(r.tournaments);
+          this.unlockCosts.set(r.unlocks);
+          this.pointPackages.set(r.packages);
         },
         error: () => this.error.set('Could not load gamification data.'),
       });
@@ -114,16 +120,24 @@ export class AdminGamificationComponent implements OnInit {
     this.ludification.getQuizzes().subscribe((d) => this.allQuizzes.set(d));
     this.ludification.getCrosswords().subscribe((d) => this.allCrosswords.set(d));
     this.ludification.getPuzzles().subscribe((d) => this.allPuzzles.set(d));
+    this.karaoke.getAllSongs().subscribe((d) => this.allSongs.set(d));
+    this.ludification.getLudoCards().subscribe((d) => this.allLudoCards.set(d));
   }
 
   startEditBadge(b: AdminBadge): void {
     this.editBadgeId = b.badgeId;
-    this.newBadge = { name: b.name, description: b.description ?? '', iconUrl: b.iconUrl ?? '' };
+    this.newBadge = { 
+      name: b.name, 
+      description: b.description ?? '', 
+      iconUrl: b.iconUrl ?? '',
+      targetGameId: b.targetGameId ?? null,
+      targetGameKind: b.targetGameKind ?? null
+    };
   }
 
   cancelEditBadge(): void {
     this.editBadgeId = null;
-    this.newBadge = { name: '', description: '', iconUrl: '' };
+    this.newBadge = { name: '', description: '', iconUrl: '', targetGameId: null, targetGameKind: null };
   }
 
   saveBadge(): void {
@@ -154,7 +168,9 @@ export class AdminGamificationComponent implements OnInit {
     const payload = {
       name: this.newBadge.name,
       description: this.newBadge.description || null,
-      iconUrl: this.newBadge.iconUrl || null
+      iconUrl: this.newBadge.iconUrl || null,
+      targetGameId: this.newBadge.targetGameId || null,
+      targetGameKind: this.newBadge.targetGameKind || null
     };
 
     const req =
@@ -164,7 +180,7 @@ export class AdminGamificationComponent implements OnInit {
 
     req.pipe(finalize(() => this.busy.set(false))).subscribe({
       next: () => {
-        this.newBadge = { name: '', description: '', iconUrl: '' };
+        this.newBadge = { name: '', description: '', iconUrl: '', targetGameId: null, targetGameKind: null };
         this.selectedBadgeFile = null;
         this.badgePreviewUrl = null;
         this.cancelEditBadge();
@@ -253,6 +269,7 @@ export class AdminGamificationComponent implements OnInit {
             targetId: null,
             active: true,
           };
+          this.aiGenerated.set(false);
           this.refreshAll();
         },
         error: () => this.error.set('Create challenge failed.'),
@@ -273,130 +290,165 @@ export class AdminGamificationComponent implements OnInit {
       });
   }
 
-  addRoundRow(): void {
-    const n = this.tournamentRounds.length + 1;
-    const { kind, id, title } = this.pickRandomGame();
-    this.tournamentRounds = [
-      ...this.tournamentRounds,
-      { sequenceOrder: n, gameKind: kind, gameId: id, gameTitle: title },
-    ];
-  }
-
-  private pickRandomGame(): { kind: LudificationGameKind; id: number; title: string } {
-    const pool: { kind: LudificationGameKind; id: number; title: string }[] = [];
-    this.allQuizzes().forEach((q) => {
-      if (q.quizId != null) {
-        pool.push({ kind: 'QUIZ', id: q.quizId, title: String(q.title ?? '') });
-      }
-    });
-    this.allCrosswords().forEach((c) => {
-      if (c.crosswordId != null) {
-        pool.push({ kind: 'CROSSWORD', id: c.crosswordId, title: String(c.title ?? '') });
-      }
-    });
-    this.allPuzzles().forEach((p) => {
-      if (p.puzzleId != null) {
-        pool.push({ kind: 'PUZZLE', id: p.puzzleId, title: String(p.title ?? '') });
-      }
-    });
-
-    if (pool.length === 0) return { kind: 'QUIZ', id: 0, title: 'No games available' };
-    const idx = Math.floor(Math.random() * pool.length);
-    return pool[idx];
-  }
-
-  removeRoundRow(idx: number): void {
-    this.tournamentRounds = this.tournamentRounds.filter((_, i) => i !== idx);
-    this.tournamentRounds = this.tournamentRounds.map((r, i) => ({ ...r, sequenceOrder: i + 1 }));
-  }
-
-  saveTournament(): void {
-    const title = String(this.newTournament.title ?? '').trim();
-    if (!title) {
-      this.error.set('Tournament title required.');
+  generateAiChallenge(): void {
+    if (!this.challengeKind) {
+      this.error.set('Please select a game type first.');
       return;
     }
-    const tStarts = this.newTournament.startsAt ? new Date(this.newTournament.startsAt).toISOString() : new Date().toISOString();
-    const tEnds = this.newTournament.endsAt ? new Date(this.newTournament.endsAt).toISOString() : new Date(Date.now() + 86400000 * 7).toISOString();
+    this.aiBusy.set(true);
+    this.error.set(null);
+    this.aiGenerated.set(false);
 
-    const rounds = this.tournamentRounds
-      .filter((r) => r.gameId != null)
-      .map((r) => ({
-        sequenceOrder: r.sequenceOrder,
-        gameKind: r.gameKind,
-        gameId: Number(r.gameId),
-        roundStartsAt: tStarts,
-        roundEndsAt: tEnds,
-      }));
+    // 1. Generate challenge metadata
+    this.ai.generateDailyChallenge(this.challengeKind)
+      .pipe(
+        switchMap(data => {
+          // 2. Handle based on game type
+          if (this.challengeKind === 'QUIZ') {
+            return this.generateAiQuiz(data).pipe(
+              map(quizRes => ({ challengeData: data, quizRes }))
+            );
+          }
+          // We only support generating full games for QUIZ right now
+          return of({ challengeData: data, quizRes: null });
+        }),
+        finalize(() => this.aiBusy.set(false))
+      )
+      .subscribe({
+        next: (result: any) => {
+          if (!result) return;
+          const { challengeData, quizRes } = result;
 
-    if (rounds.length === 0) {
-      this.error.set('Add at least one round.');
+          // Only update UI if the whole process succeeded
+          this.newChallenge.title = challengeData.title;
+          this.newChallenge.description = challengeData.description;
+          this.newChallenge.pointsReward = challengeData.points;
+
+          if (quizRes && quizRes.quizId) {
+            this.newChallenge.targetId = quizRes.quizId;
+            this.aiGenerated.set(true);
+            
+            // Refresh lists to show the new game in the dropdown
+            this.ludification.getQuizzes().subscribe(d => {
+              this.allQuizzes.set(d);
+            });
+          }
+        },
+        error: (err) => {
+          console.error('AI generation failed', err);
+          this.error.set('AI generation failed: ' + (err.message || 'Unknown error'));
+        }
+      });
+  }
+
+  private generateAiQuiz(challengeData: any): Observable<any> {
+    return this.ai.generateFullQuiz(challengeData.title).pipe(
+      switchMap((quizData: any) => {
+        if (!quizData || !quizData.questions || !Array.isArray(quizData.questions)) {
+          throw new Error('Invalid quiz data generated by AI');
+        }
+
+        const payload = {
+          title: quizData.title || challengeData.title,
+          description: quizData.description || challengeData.description,
+          published: true,
+          coverImageUrl: null,
+          timeLimitSeconds: 120,
+          questions: quizData.questions.map((q: any, i: number) => ({
+            orderIndex: i,
+            questionText: q.questionText || q.question || 'Missing question',
+            imageUrl: null,
+            optionsJson: JSON.stringify(Array.isArray(q.options) ? q.options : ["A", "B", "C", "D"]),
+            correctOptionIndex: typeof q.correctOptionIndex === 'number' ? q.correctOptionIndex : 0
+          }))
+        };
+        return this.ludification.createQuiz(payload);
+      })
+    );
+  }
+
+  saveUnlockCost(): void {
+    const gameId = this.newUnlockCost.gameId.trim();
+    if (!gameId) {
+      this.error.set('Game ID required.');
       return;
     }
-    const payload: Record<string, unknown> = {
-      title,
-      description: this.newTournament.description || null,
-      startsAt: this.newTournament.startsAt ? new Date(this.newTournament.startsAt).toISOString() : null,
-      endsAt: this.newTournament.endsAt ? new Date(this.newTournament.endsAt).toISOString() : null,
-      winnerBadgeId: this.newTournament.winnerBadgeId != null ? Number(this.newTournament.winnerBadgeId) : null,
-      rounds,
-    };
     this.busy.set(true);
     this.gamification
-      .adminCreateTournament(payload)
+      .adminSaveUnlockCost({ gameId, costPoints: this.newUnlockCost.costPoints })
       .pipe(finalize(() => this.busy.set(false)))
       .subscribe({
         next: () => {
-          this.newTournament = {
-            title: '',
-            description: '',
-            startsAt: '',
-            endsAt: '',
-            winnerBadgeId: null,
-          };
-          this.tournamentRounds = [];
+          this.newUnlockCost = { gameId: '', costPoints: 0 };
           this.refreshAll();
         },
-        error: () => this.error.set('Create tournament failed.'),
+        error: () => this.error.set('Save unlock cost failed.'),
       });
   }
 
-  goLive(id: number): void {
-    this.busy.set(true);
-    this.gamification
-      .adminGoLiveTournament(id)
-      .pipe(finalize(() => this.busy.set(false)))
-      .subscribe({
-        next: () => this.refreshAll(),
-        error: () => this.error.set('Go live failed.'),
-      });
-  }
-
-  finalize(id: number): void {
-    if (!confirm('Finalize tournament and award winner badge?')) {
+  deleteUnlockCost(gameId: string): void {
+    if (!confirm('Remove this game lock? The game will become free.')) {
       return;
     }
     this.busy.set(true);
     this.gamification
-      .adminFinalizeTournament(id)
-      .pipe(finalize(() => this.busy.set(false)))
-      .subscribe({
-        next: () => this.refreshAll(),
-        error: () => this.error.set('Finalize failed.'),
-      });
-  }
-
-  deleteTournament(id: number): void {
-    if (!confirm('Delete this tournament?')) {
-      return;
-    }
-    this.busy.set(true);
-    this.gamification
-      .adminDeleteTournament(id)
+      .adminDeleteUnlockCost(gameId)
       .pipe(finalize(() => this.busy.set(false)))
       .subscribe({
         next: () => this.refreshAll(),
         error: () => this.error.set('Delete failed.'),
       });
+  }
+
+  startEditUnlockCost(u: AdminGameUnlockCost): void {
+    this.newUnlockCost = { gameId: u.gameId, costPoints: u.costPoints };
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  savePointPackage(): void {
+    const name = this.newPointPackage.name.trim();
+    if (!name) {
+      this.error.set('Package name required.');
+      return;
+    }
+    this.busy.set(true);
+
+    const req = this.editPointPackageId != null
+      ? this.gamification.adminUpdatePointPackage(this.editPointPackageId, this.newPointPackage)
+      : this.gamification.adminCreatePointPackage(this.newPointPackage);
+
+    req.pipe(finalize(() => this.busy.set(false)))
+      .subscribe({
+        next: () => {
+          this.newPointPackage = { name: '', pointsAmount: 100, price: 1.0, active: true };
+          this.editPointPackageId = null;
+          this.refreshAll();
+        },
+        error: () => this.error.set('Save point package failed.'),
+      });
+  }
+
+  deletePointPackage(id: number): void {
+    if (!confirm('Delete this point package?')) {
+      return;
+    }
+    this.busy.set(true);
+    this.gamification.adminDeletePointPackage(id)
+      .pipe(finalize(() => this.busy.set(false)))
+      .subscribe({
+        next: () => this.refreshAll(),
+        error: () => this.error.set('Delete package failed.'),
+      });
+  }
+
+  startEditPointPackage(p: AdminPointPackage): void {
+    this.editPointPackageId = p.id ?? null;
+    this.newPointPackage = { ...p };
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  cancelEditPointPackage(): void {
+    this.editPointPackageId = null;
+    this.newPointPackage = { name: '', pointsAmount: 100, price: 1.0, active: true };
   }
 }

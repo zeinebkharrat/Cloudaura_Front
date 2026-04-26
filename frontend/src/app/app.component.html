@@ -179,6 +179,15 @@
                       <p class="ci-desc">{{ c.description || 'Complete the target to earn points!' }}</p>
                       <div class="ci-foot">
                         <span class="ci-points">💰 {{ c.pointsReward }} pts</span>
+                        <div class="ci-ai-actions">
+                          <button class="btn-ai-hint" (click)="getAiHelp(c)" [disabled]="challengeAiLoading()[c.challengeId]">
+                            @if (challengeAiLoading()[c.challengeId]) {
+                              <i class="pi pi-spin pi-spinner"></i>
+                            } @else {
+                              ✨ Ask AI
+                            }
+                          </button>
+                        </div>
                         @if (c.completed) {
                           <span class="ci-status done">✓ Completed</span>
                         } @else {
@@ -195,6 +204,12 @@
                           }
                         }
                       </div>
+                      @if (challengeAiHelp()[c.challengeId]) {
+                        <div class="ci-ai-bubble animate-in">
+                          <i class="pi pi-sparkles"></i>
+                          <p>{{ challengeAiHelp()[c.challengeId] }}</p>
+                        </div>
+                      }
                     </div>
                   </div>
                 }

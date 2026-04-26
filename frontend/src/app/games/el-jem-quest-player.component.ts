@@ -14,6 +14,8 @@ import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { mountElJemVoxelScene } from './el-jem-voxel-scene';
+import { AuthService } from '../core/auth.service';
+import { LudificationService } from '../core/ludification.service';
 
 @Component({
   selector: 'app-el-jem-quest-player',
@@ -244,6 +246,11 @@ import { mountElJemVoxelScene } from './el-jem-voxel-scene';
                 </div>
              </div>
              <div class="max-terminal-footer">
+                @if (!pointsClaimed()) {
+                  <button class="max-btn-cyber" style="background: rgba(16, 185, 129, 0.2); border-color: var(--c-success);" (click)="claimPoints()">CLAIM_CREDITS</button>
+                } @else {
+                  <button class="max-btn-cyber" style="opacity: 0.5" disabled>CREDITS_SECURED</button>
+                }
                 <button class="max-btn-cyber" (click)="reset()">RELOAD_SIMULATION</button>
                 <a routerLink="/games" class="max-btn-glow-link">SECURE_TERMINATION</a>
              </div>
@@ -601,11 +608,14 @@ export class ElJemQuestPlayerComponent implements AfterViewInit, OnDestroy {
 
   private readonly zone = inject(NgZone);
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly auth = inject(AuthService);
+  private readonly api = inject(LudificationService);
   private voxelApi?: { destroy: () => void; resize: () => void; getPlayerPos: () => { x: number; z: number } };
 
   private timerInterval?: any;
   private missionInterval?: any;
 
+  readonly pointsClaimed = signal(false);
   readonly timer = signal(0);
   readonly won = signal(false);
   readonly health = signal(5);
@@ -713,7 +723,7 @@ export class ElJemQuestPlayerComponent implements AfterViewInit, OnDestroy {
   reset(): void {
     this.health.set(5); this.treasureHealth.set(100); this.killCount.set(0); this.blocksBroken.set(0); 
     this.inventory.set({ 'STONE': 0, 'CARREAUX': 0, 'WOOD': 0, 'HERBES': 0 }); this.timer.set(0); this.won.set(false);
-    this.currentMissionIdx.set(0); this.score.set(0); 
+    this.currentMissionIdx.set(0); this.score.set(0); this.pointsClaimed.set(false);
     (window as any)._ej_spawned_count = 0;
     (window as any)._ej_kill_count = 0;
     if (this.voxelApi) { this.voxelApi.destroy(); this.ngAfterViewInit(); }
@@ -724,4 +734,15 @@ export class ElJemQuestPlayerComponent implements AfterViewInit, OnDestroy {
   addToSlot(m: string): void { if (this.inventory()[m] > 0 && this.craftingSlots().length < 2) { this.inventory.update(inv => ({ ...inv, [m]: inv[m]-1 })); this.craftingSlots.update(s => [...s, m]); } }
   removeSlot(i: number): void { const m = this.craftingSlots()[i]; if (m) { this.inventory.update(inv => ({ ...inv, [m]: inv[m]+1 })); this.craftingSlots.update(s => s.filter((_, idx) => idx !== i)); } }
   forgeWeapon(): void { const res = this.predictedWeapon(); if (res) { this.currentWeapon.set(res); this.craftingSlots.set([]); this.showCrafting.set(false); (window as any)._ej_update_weapon?.(res); } }
+
+  claimPoints(): void {
+    if (this.pointsClaimed() || !this.auth.currentUser()) return;
+    this.pointsClaimed.set(true);
+    this.api.reportStandaloneGame({
+      gameKind: 'EL_JEM_QUEST',
+      gameId: 1, // Doesn't matter for specific games standalone
+      score: this.score(),
+      maxScore: 1000 // A nice target score
+    }).subscribe();
+  }
 }

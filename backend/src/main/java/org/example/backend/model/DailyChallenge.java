@@ -26,9 +26,9 @@ public class DailyChallenge {
     @Temporal(TemporalType.TIMESTAMP)
     private Date validTo;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 40)
-    private LudificationGameKind gameKind;
+    /** Stocké en String pour éviter les erreurs de désérialisation Hibernate si l'Enum change. */
+    @Column(name = "game_kind", nullable = false, length = 50)
+    private String gameKind;
 
     /** Selon gameKind : quizId, nodeId, crosswordId, puzzleId… ; null = tout jeu de ce type. */
     private Integer targetId;
@@ -84,12 +84,19 @@ public class DailyChallenge {
         this.validTo = validTo;
     }
 
+    /** Retourne l'Enum correspondant au String stocké. */
     public LudificationGameKind getGameKind() {
-        return gameKind;
+        if (gameKind == null || gameKind.isBlank()) return null;
+        try {
+            return LudificationGameKind.valueOf(gameKind);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 
-    public void setGameKind(LudificationGameKind gameKind) {
-        this.gameKind = gameKind;
+    /** Stocke le nom de l'Enum en String. */
+    public void setGameKind(LudificationGameKind kind) {
+        this.gameKind = kind == null ? null : kind.name();
     }
 
     public Integer getTargetId() {

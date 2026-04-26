@@ -92,6 +92,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/ludification/roadmap/nodes/*/can-play").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/ludification/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/chef-quest/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/games/karaoke/songs").permitAll()
+                        .requestMatchers("/api/games/karaoke/admin/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers("/api/chef-quest/admin/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/ludification/**").hasAuthority("ROLE_ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/ludification/**").hasAuthority("ROLE_ADMIN")
@@ -127,6 +129,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/transport/payments/paypal/**").authenticated()
                         .requestMatchers("/api/transport/payments/**").authenticated()
                         .requestMatchers("/api/accommodation/payments/**").authenticated()
+                        .requestMatchers("/api/ai/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2

@@ -2,7 +2,7 @@
   <header class="lh-header">
     <div class="lh-left">
       <h1 class="dash-h1">Gamification</h1>
-      <p class="dash-p">Badges, daily challenges, and live tournaments.</p>
+      <p class="dash-p">Badges, daily challenges, and game unlocks.</p>
     </div>
     <div class="lh-right">
       <button type="button" class="btn-primary main-act" (click)="refreshAll()" [disabled]="busy()">Refresh</button>
@@ -18,15 +18,19 @@
     <button type="button" class="tab" [class.active]="activeTab() === 'challenges'" (click)="setTab('challenges')">
       Daily challenges
     </button>
-    <button type="button" class="tab" [class.active]="activeTab() === 'tournaments'" (click)="setTab('tournaments')">
-      Tournaments
+
+    <button type="button" class="tab" [class.active]="activeTab() === 'unlocks'" (click)="setTab('unlocks')">
+      Game costs
+    </button>
+    <button type="button" class="tab" [class.active]="activeTab() === 'point-packages'" (click)="setTab('point-packages')">
+      Point Packages
     </button>
   </div>
 
   @if (activeTab() === 'badges') {
     <section class="glass-card panel-block">
       <h2>Badges</h2>
-      <p class="dash-p">Create badges; tournaments can pick a winner badge.</p>
+      <p class="dash-p">Create badges and link them to specific games to reward users upon completion.</p>
       <div class="form-grid">
         <label>
           Name
@@ -49,6 +53,65 @@
         <label class="span-2">
           Description
           <textarea [(ngModel)]="newBadge.description" name="bd" rows="2"></textarea>
+        </label>
+        <label>
+          Link to Game Type
+          <select [(ngModel)]="newBadge.targetGameKind" name="btgk">
+            <option [ngValue]="null">Not linked to a game</option>
+            @for (k of gameKinds; track k) {
+              <option [ngValue]="k">{{ k }}</option>
+            }
+          </select>
+        </label>
+        <label>
+          Target Game
+          @if (newBadge.targetGameKind === 'QUIZ') {
+            <select [(ngModel)]="newBadge.targetGameId" name="btid">
+              <option [ngValue]="null">Select a quiz...</option>
+              @for (q of allQuizzes(); track q.quizId) {
+                <option [value]="q.quizId?.toString()">{{ q.title }} (#{{ q.quizId }})</option>
+              }
+            </select>
+          } @else if (newBadge.targetGameKind === 'CROSSWORD') {
+            <select [(ngModel)]="newBadge.targetGameId" name="btid">
+              <option [ngValue]="null">Select a crossword...</option>
+              @for (c of allCrosswords(); track c.crosswordId) {
+                <option [value]="c.crosswordId?.toString()">{{ c.title }} (#{{ c.crosswordId }})</option>
+              }
+            </select>
+          } @else if (newBadge.targetGameKind === 'PUZZLE') {
+            <select [(ngModel)]="newBadge.targetGameId" name="btid">
+              <option [ngValue]="null">Select a puzzle...</option>
+              @for (p of allPuzzles(); track p.puzzleId) {
+                <option [value]="p.puzzleId.toString()">{{ p.title }} (#{{ p.puzzleId }})</option>
+              }
+            </select>
+          } @else if (newBadge.targetGameKind === 'KARAOKE') {
+            <select [(ngModel)]="newBadge.targetGameId" name="btid">
+              <option [ngValue]="null">Select a song...</option>
+              @for (s of allSongs(); track s.id) {
+                <option [value]="s.id?.toString()">{{ s.title }} - {{ s.artist }} (#{{ s.id }})</option>
+              }
+            </select>
+          } @else if (newBadge.targetGameKind === 'LUDO') {
+            <select [(ngModel)]="newBadge.targetGameId" name="btid">
+              <option [ngValue]="null">Select a Ludo Card (Optional)</option>
+              @for (card of allLudoCards(); track card.cardId) {
+                <option [value]="card.cardId?.toString()">{{ card.title }} (#{{ card.cardId }})</option>
+              }
+            </select>
+          } @else if (newBadge.targetGameKind === 'ROADMAP_NODE') {
+            <input type="text" [(ngModel)]="newBadge.targetGameId" name="btid" placeholder="Game ID" />
+          } @else if (newBadge.targetGameKind === 'CHKOBBA' || newBadge.targetGameKind === 'GOVERNORATE_GUESS' || newBadge.targetGameKind === 'CHEF_QUEST' || newBadge.targetGameKind === 'EL_JEM_QUEST' || newBadge.targetGameKind === 'MUSIC') {
+            <select [(ngModel)]="newBadge.targetGameId" name="btid">
+              <option [ngValue]="null">Select instance...</option>
+              <option value="1">Main Game (Default)</option>
+              <option value="2">Instance 2</option>
+              <option value="3">Instance 3</option>
+            </select>
+          } @else {
+            <input type="text" disabled placeholder="Select game kind first" />
+          }
         </label>
       </div>
       <div class="btn-row">
@@ -100,10 +163,19 @@
             }
           </select>
         </label>
+        <div class="span-2" style="margin-top: -10px; display: flex; align-items: center; gap: 12px;">
+          <button type="button" class="btn-ai" (click)="generateAiChallenge()" [disabled]="aiBusy() || !challengeKind" style="flex: 1;">
+            @if (aiBusy()) {
+              <span>🪄 Thinking...</span>
+            } @else {
+              <span>✨ Generate with Groq AI</span>
+            }
+          </button>
+        </div>
       </div>
 
       @if (challengeKind) {
-        <div class="form-grid challenge-form-block animate-in">
+        <div class="form-grid challenge-form-block">
           <label>
             Title
             <input type="text" [(ngModel)]="newChallenge.title" name="ct" placeholder="e.g. Daily Quiz" />
@@ -114,29 +186,52 @@
           </label>
           <label>
             Target ({{ challengeKind }})
-            @if (challengeKind === 'QUIZ') {
-              <select [(ngModel)]="newChallenge.targetId" name="ctid">
-                <option [ngValue]="null">Select a quiz...</option>
-                @for (q of allQuizzes(); track q.quizId) {
-                  <option [ngValue]="q.quizId">{{ q.title }} (#{{ q.quizId }})</option>
-                }
-              </select>
-            } @else if (challengeKind === 'CROSSWORD') {
-              <select [(ngModel)]="newChallenge.targetId" name="ctid">
-                <option [ngValue]="null">Select a crossword...</option>
-                @for (c of allCrosswords(); track c.crosswordId) {
-                  <option [ngValue]="c.crosswordId">{{ c.title }} (#{{ c.crosswordId }})</option>
-                }
-              </select>
-            } @else if (challengeKind === 'PUZZLE') {
-              <select [(ngModel)]="newChallenge.targetId" name="ctid">
-                <option [ngValue]="null">Select a puzzle...</option>
-                @for (p of allPuzzles(); track p.puzzleId) {
-                  <option [ngValue]="p.puzzleId">{{ p.title }} (#{{ p.puzzleId }})</option>
-                }
-              </select>
-            } @else {
-              <input type="number" [(ngModel)]="newChallenge.targetId" name="ctid" placeholder="Manual ID if needed" />
+            @if (aiGenerated()) {
+              <div class="ai-success-indicator">
+                <span>✨ Auto-generated & selected</span>
+                <button type="button" class="btn-ghost btn-sm" (click)="aiGenerated.set(false)">Change manual</button>
+              </div>
+            }
+
+            @if (!aiGenerated()) {
+              @if (challengeKind === 'QUIZ') {
+                <select [(ngModel)]="newChallenge.targetId" name="ctid">
+                  <option [ngValue]="null">Select a quiz...</option>
+                  @for (q of allQuizzes(); track q.quizId) {
+                    <option [ngValue]="q.quizId">{{ q.title }} (#{{ q.quizId }})</option>
+                  }
+                </select>
+              } @else if (challengeKind === 'CROSSWORD') {
+                <select [(ngModel)]="newChallenge.targetId" name="ctid">
+                  <option [ngValue]="null">Select a crossword...</option>
+                  @for (c of allCrosswords(); track c.crosswordId) {
+                    <option [ngValue]="c.crosswordId">{{ c.title }} (#{{ c.crosswordId }})</option>
+                  }
+                </select>
+              } @else if (challengeKind === 'PUZZLE') {
+                <select [(ngModel)]="newChallenge.targetId" name="ctid">
+                  <option [ngValue]="null">Select a puzzle...</option>
+                  @for (p of allPuzzles(); track p.puzzleId) {
+                    <option [ngValue]="p.puzzleId">{{ p.title }} (#{{ p.puzzleId }})</option>
+                  }
+                </select>
+              } @else if (challengeKind === 'KARAOKE') {
+                <select [(ngModel)]="newChallenge.targetId" name="ctid">
+                  <option [ngValue]="null">Select a song...</option>
+                  @for (s of allSongs(); track s.id) {
+                    <option [ngValue]="s.id">{{ s.title }} - {{ s.artist }} (#{{ s.id }})</option>
+                  }
+                </select>
+              } @else if (challengeKind === 'LUDO') {
+                <select [(ngModel)]="newChallenge.targetId" name="ctid">
+                  <option [ngValue]="null">Select a Ludo Card (Optional)</option>
+                  @for (card of allLudoCards(); track card.cardId) {
+                    <option [ngValue]="card.cardId">{{ card.title }} (#{{ card.cardId }})</option>
+                  }
+                </select>
+              } @else {
+                <input type="number" [(ngModel)]="newChallenge.targetId" name="ctid" placeholder="Manual ID if needed" />
+              }
             }
             <small class="form-hint" style="margin-top: 4px;">
               Manage content in <a href="/admin/games" style="color: #e63946; text-decoration: underline;">Games section</a>.
@@ -187,86 +282,124 @@
     </section>
   }
 
-  @if (activeTab() === 'tournaments') {
+
+  @if (activeTab() === 'unlocks') {
     <section class="glass-card panel-block">
-      <h2>Tournaments</h2>
-      <p class="dash-p">Create rounds with live time windows; go live, then finalize to award the badge to the top scorer.</p>
+      <h2>Game unlocks & costs</h2>
+      <p class="dash-p">Set a coin price for games. Users must pay points to unlock them in the Games Hub. Default is 0 (Free).</p>
       <div class="form-grid">
         <label>
-          Title
-          <input type="text" [(ngModel)]="newTournament.title" name="tt" />
-        </label>
-        <label>
-          Winner badge
-          <select [(ngModel)]="newTournament.winnerBadgeId" name="twb">
-            <option [ngValue]="null">— none —</option>
-            @for (b of badges(); track b.badgeId) {
-              <option [ngValue]="b.badgeId">{{ b.name }} ({{ b.badgeId }})</option>
-            }
+          Game ID
+          <select [(ngModel)]="newUnlockCost.gameId" name="ugid">
+             <option value="">— Select a standalone game —</option>
+             <option value="LUDO">Ludo Tunisia</option>
+             <option value="EL_JEM_QUEST">El Jem Quest</option>
+             <option value="GOVERNORATE_GUESS">Governorate Guess</option>
+             <option value="CHEF_QUEST">Cloud Chef</option>
+             <option value="CHKOBBA">Chkobba</option>
+             <option value="MUSIC">Music (Rythmes de Tunisie)</option>
+             <optgroup label="Puzzles">
+               @for (p of allPuzzles(); track p.puzzleId) {
+                 <option [value]="'PUZZLE_' + p.puzzleId">PUZZLE_{{ p.puzzleId }} ({{ p.title }})</option>
+               }
+             </optgroup>
           </select>
         </label>
         <label>
-          Starts at
-          <input type="datetime-local" [(ngModel)]="newTournament.startsAt" name="tsa" />
+          Cost in Points
+          <input type="number" [(ngModel)]="newUnlockCost.costPoints" name="ucost" min="0" />
         </label>
-        <label>
-          Ends at
-          <input type="datetime-local" [(ngModel)]="newTournament.endsAt" name="tea" />
-        </label>
-        <label class="span-2">
-          Description
-          <textarea [(ngModel)]="newTournament.description" name="td" rows="2"></textarea>
-        </label>
-      </div>
-      <h3>Rounds (Random Selection)</h3>
-      <div class="tournament-rounds-list">
-        @for (r of tournamentRounds; track $index) {
-          <div class="round-summary-card glass-card">
-            <div class="rs-info">
-              <span class="rs-order">#{{ r.sequenceOrder }}</span>
-              <span class="rs-badge badge-{{ r.gameKind.toLowerCase() }}">{{ r.gameKind }}</span>
-              <span class="rs-title">{{ r.gameTitle }}</span>
-            </div>
-            <button type="button" class="btn-text delete" (click)="removeRoundRow($index)">Remove</button>
-          </div>
-        }
-        @if (tournamentRounds.length === 0) {
-          <p class="empty-msg">No rounds added yet. Click the button below to add a random game round.</p>
-        }
-        <div class="round-actions-bottom">
-          <button type="button" class="btn-secondary" (click)="addRoundRow()">+ Add Random Round</button>
-        </div>
       </div>
       <div class="btn-row">
-        <button type="button" class="btn-primary main-act" (click)="saveTournament()" [disabled]="busy()">Create tournament</button>
+        <button type="button" class="btn-primary main-act" (click)="saveUnlockCost()" [disabled]="busy()">Save Cost</button>
       </div>
-      <table class="data-table">
+      <table class="data-table mt-4">
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Title</th>
-            <th>Status</th>
-            <th>Rounds</th>
+            <th>Game ID</th>
+            <th>Cost (Points)</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
-          @for (t of tournaments(); track t.tournamentId) {
+          @for (u of unlockCosts(); track u.gameId) {
             <tr>
-              <td>{{ t.tournamentId }}</td>
-              <td>{{ t.title }}</td>
-              <td>{{ t.status }}</td>
-              <td>{{ t.rounds.length }}</td>
+              <td><span class="rs-badge badge-quiz">{{ u.gameId }}</span></td>
+              <td><strong>{{ u.costPoints }}</strong></td>
               <td class="actions">
-                @if (t.status === 'DRAFT') {
-                  <button type="button" class="btn-primary main-act" (click)="goLive(t.tournamentId)">Go live</button>
-                }
-                @if (t.status === 'LIVE') {
-                  <button type="button" class="btn-primary main-act" (click)="finalize(t.tournamentId)">Finalize</button>
-                }
-                <button type="button" class="btn-danger" (click)="deleteTournament(t.tournamentId)">Delete</button>
+                <button type="button" class="btn-ghost" (click)="startEditUnlockCost(u)">Edit</button>
+                <button type="button" class="btn-danger" (click)="deleteUnlockCost(u.gameId)">Delete</button>
               </td>
             </tr>
+          }
+          @if (unlockCosts().length === 0) {
+            <tr><td colspan="3" class="text-center">No game costs defined. All games are free.</td></tr>
+          }
+        </tbody>
+      </table>
+    </section>
+  }
+  @if (activeTab() === 'point-packages') {
+    <section class="glass-card panel-block">
+      <h2>Points Store / Boutique</h2>
+      <p class="dash-p">Manage packages that users can buy using Stripe to get loyalty points.</p>
+      <div class="form-grid">
+        <label>
+          Package Name
+          <input type="text" [(ngModel)]="newPointPackage.name" placeholder="e.g. 100 Points Pack" />
+        </label>
+        <label>
+          Points Amount
+          <input type="number" [(ngModel)]="newPointPackage.pointsAmount" min="1" />
+        </label>
+        <label>
+          Price (Currency)
+          <input type="number" [(ngModel)]="newPointPackage.price" min="0" step="0.01" />
+        </label>
+        <div class="switch" style="align-self: flex-end; margin-bottom: 0.5rem;">
+          <label>
+            <input type="checkbox" [(ngModel)]="newPointPackage.active" /> Active (Visible in Store)
+          </label>
+        </div>
+      </div>
+      <div class="btn-row mt-4">
+        <button type="button" class="btn-primary main-act" (click)="savePointPackage()" [disabled]="busy()">
+          {{ editPointPackageId ? 'Update Package' : 'Create Package' }}
+        </button>
+        @if (editPointPackageId) {
+          <button type="button" class="btn-ghost" (click)="cancelEditPointPackage()">Cancel Edit</button>
+        }
+      </div>
+
+      <table class="data-table mt-4">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Points</th>
+            <th>Price</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (p of pointPackages(); track p.id) {
+            <tr>
+              <td><strong>{{ p.name }}</strong></td>
+              <td><span class="rs-badge badge-quiz">+ {{ p.pointsAmount }} pts</span></td>
+              <td><strong>{{ p.price | currency:'USD' }}</strong></td>
+              <td>
+                <span class="rs-badge" [class.badge-active]="p.active" [class.badge-inactive]="!p.active">
+                  {{ p.active ? 'Active' : 'Inactive' }}
+                </span>
+              </td>
+              <td class="actions">
+                <button type="button" class="btn-ghost" (click)="startEditPointPackage(p)">Edit</button>
+                <button type="button" class="btn-danger" (click)="deletePointPackage(p.id!)">Delete</button>
+              </td>
+            </tr>
+          }
+          @if (pointPackages().length === 0) {
+            <tr><td colspan="5" class="text-center">No point packages yet. Please create one.</td></tr>
           }
         </tbody>
       </table>

@@ -608,28 +608,28 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ---------- Dropdown Panel ---------- */
 .p-dropdown-panel {
-  background: #111827 !important;
-  border: 1px solid rgba(255,255,255,0.12) !important;
+  background: var(--surface-1) !important;
+  border: 1px solid var(--border-soft) !important;
   border-radius: 12px !important;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.5) !important;
+  box-shadow: var(--shadow-card) !important;
   z-index: 10000 !important;
   overflow: hidden;
 }
 .p-dropdown-panel .p-dropdown-header {
-  background: #0f1520 !important;
-  border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+  background: var(--surface-2) !important;
+  border-bottom: 1px solid var(--border-soft) !important;
   padding: 0.65rem 0.85rem !important;
 }
 .p-dropdown-panel .p-dropdown-filter {
-  background: #1a2332 !important;
-  border: 1px solid rgba(255,255,255,0.12) !important;
-  color: #eef2f7 !important;
+  background: var(--input-bg) !important;
+  border: 1px solid var(--border-soft) !important;
+  color: var(--text-color) !important;
   border-radius: 8px !important;
   padding: 0.5rem 0.75rem !important;
   font-size: 0.9rem !important;
 }
 .p-dropdown-panel .p-dropdown-filter::placeholder {
-  color: #667085 !important;
+  color: var(--text-muted) !important;
 }
 .p-dropdown-panel .p-dropdown-filter-container {
   position: relative !important;
@@ -644,7 +644,7 @@ h1, h2, h3, h4, h5, h6 {
   left: 0.7rem !important;
   top: 50% !important;
   transform: translateY(-50%) !important;
-  color: #a8b3c7 !important;
+  color: var(--text-muted) !important;
   font-size: 0.85rem !important;
   pointer-events: none !important;
 }
@@ -656,45 +656,45 @@ h1, h2, h3, h4, h5, h6 {
   padding: 0.35rem !important;
 }
 .p-dropdown-panel .p-dropdown-item {
-  color: #d1d5db !important;
+  color: var(--text-color) !important;
   padding: 0.6rem 0.85rem !important;
   border-radius: 8px !important;
   margin: 1px 0 !important;
   transition: background 0.15s !important;
 }
 .p-dropdown-panel .p-dropdown-item:hover {
-  background: rgba(241,37,69,0.08) !important;
-  color: #eef2f7 !important;
+  background: var(--menu-hover-bg) !important;
+  color: var(--text-color) !important;
 }
 .p-dropdown-panel .p-dropdown-item.p-highlight {
   background: rgba(241,37,69,0.14) !important;
   color: #f12545 !important;
 }
 .p-dropdown-panel .p-dropdown-empty-message {
-  color: #667085 !important;
+  color: var(--text-muted) !important;
   padding: 0.75rem !important;
 }
 
-/* Dropdown list scroll: dark panel — piste + curseur contrastés (villes/régions lisibles) */
+/* Dropdown list scroll: theme aware scrollbar */
 .p-dropdown-panel .p-dropdown-items-wrapper {
   scrollbar-gutter: stable;
   scrollbar-width: thin;
-  scrollbar-color: #94a3b8 #1a2332;
+  scrollbar-color: var(--text-muted) var(--surface-2);
 }
 .p-dropdown-panel .p-dropdown-items-wrapper::-webkit-scrollbar {
   width: 10px;
 }
 .p-dropdown-panel .p-dropdown-items-wrapper::-webkit-scrollbar-track {
-  background: #1a2332;
+  background: var(--surface-2);
   border-radius: 8px;
 }
 .p-dropdown-panel .p-dropdown-items-wrapper::-webkit-scrollbar-thumb {
-  background: #64748b;
+  background: var(--text-muted);
   border-radius: 8px;
-  border: 2px solid #1a2332;
+  border: 2px solid var(--surface-2);
 }
 .p-dropdown-panel .p-dropdown-items-wrapper::-webkit-scrollbar-thumb:hover {
-  background: #cbd5e1;
+  background: var(--text-color);
 }
 
 /* Virtual scroll (certaines listes PrimeNG) */
@@ -720,44 +720,44 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ---------- Calendar / Datepicker Panel ---------- */
 .p-datepicker {
-  background: #111827 !important;
-  border: 1px solid rgba(255,255,255,0.12) !important;
+  background: var(--surface-1) !important;
+  border: 1px solid var(--border-soft) !important;
   border-radius: 16px !important;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.5) !important;
+  box-shadow: var(--shadow-card) !important;
   z-index: 10000 !important;
   padding: 1rem 1.15rem !important;
-  color: #eef2f7 !important;
+  color: var(--text-color) !important;
   min-width: 22.5rem !important;
 }
 .p-datepicker .p-datepicker-header {
   background: transparent !important;
-  border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+  border-bottom: 1px solid var(--border-soft) !important;
   padding: 0.5rem 0 0.65rem !important;
-  color: #eef2f7 !important;
+  color: var(--text-color) !important;
 }
 .p-datepicker .p-datepicker-title .p-datepicker-month,
 .p-datepicker .p-datepicker-title .p-datepicker-year {
-  color: #eef2f7 !important;
+  color: var(--text-color) !important;
   font-weight: 600 !important;
 }
 .p-datepicker .p-datepicker-title .p-datepicker-month:hover,
 .p-datepicker .p-datepicker-title .p-datepicker-year:hover {
-  color: #f12545 !important;
+  color: var(--tunisia-red) !important;
 }
 .p-datepicker .p-datepicker-prev,
 .p-datepicker .p-datepicker-next {
-  color: #a8b3c7 !important;
+  color: var(--text-muted) !important;
   width: 2rem !important;
   height: 2rem !important;
   border-radius: 8px !important;
 }
 .p-datepicker .p-datepicker-prev:hover,
 .p-datepicker .p-datepicker-next:hover {
-  background: rgba(241,37,69,0.08) !important;
-  color: #f12545 !important;
+  background: var(--menu-hover-bg) !important;
+  color: var(--tunisia-red) !important;
 }
 .p-datepicker table th {
-  color: #94a3b8 !important;
+  color: var(--text-muted) !important;
   font-weight: 600 !important;
   font-size: 0.8rem !important;
   padding: 0.5rem 0.35rem !important;
@@ -770,32 +770,32 @@ h1, h2, h3, h4, h5, h6 {
   width: 2.55rem !important;
   height: 2.55rem !important;
   border-radius: 10px !important;
-  color: #d1d5db !important;
+  color: var(--text-color) !important;
   font-weight: 500 !important;
   font-size: 0.9rem !important;
   transition: background 0.18s ease, color 0.18s ease, transform 0.15s ease !important;
 }
 .p-datepicker table td > span:hover {
-  background: rgba(241,37,69,0.08) !important;
-  color: #eef2f7 !important;
+  background: var(--menu-hover-bg) !important;
+  color: var(--text-color) !important;
 }
 .p-datepicker table td > span.p-highlight {
   background: #f12545 !important;
   color: #fff !important;
 }
 .p-datepicker table td.p-datepicker-today > span {
-  border: 1px solid rgba(241,37,69,0.35) !important;
-  color: #f12545 !important;
+  border: 1px solid var(--tunisia-red) !important;
+  color: var(--tunisia-red) !important;
 }
 .p-datepicker table td > span.p-disabled {
-  color: #374151 !important;
+  color: var(--text-muted) !important;
   opacity: 0.5 !important;
 }
 
 /* Month/Year picker views */
 .p-datepicker .p-monthpicker .p-monthpicker-month,
 .p-datepicker .p-yearpicker .p-yearpicker-year {
-  color: #d1d5db !important;
+  color: var(--text-color) !important;
   border-radius: 8px !important;
   padding: 0.5rem !important;
 }
