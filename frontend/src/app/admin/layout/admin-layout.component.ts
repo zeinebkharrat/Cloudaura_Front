@@ -63,6 +63,7 @@ export class AdminLayoutComponent implements OnInit {
     { label: 'Events', route: '/admin/events', iconClass: 'pi pi-calendar', section: 'content' },
     { label: 'Accommodations', route: '/admin/accommodations', iconClass: 'pi pi-building', section: 'commerce' },
     { label: 'Transport', route: '/admin/transports', iconClass: 'pi pi-send', section: 'commerce' },
+    { label: 'Rental fleet', route: '/admin/rental-fleet', iconClass: 'pi pi-car', section: 'commerce' },
     { label: 'Crafts & products', route: '/admin/products', iconClass: 'pi pi-box', section: 'commerce' },
     { label: 'Orders', route: '/admin/orders', iconClass: 'pi pi-shopping-bag', section: 'commerce' },
     { label: 'Activity bookings', route: '/admin/activity-reservations', iconClass: 'pi pi-ticket', section: 'commerce' },

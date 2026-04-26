@@ -1,0 +1,163 @@
+<div class="crx">
+  <!-- Page toolbar: back only (global app navbar handles profile, currency, theme) -->
+  <header class="crx-topbar">
+    <a routerLink="/transport" class="crx-back">
+      <i class="pi pi-arrow-left" aria-hidden="true"></i>
+      <span>{{ 'CAR_AMADEUS.NAV_BACK' | translate }}</span>
+    </a>
+  </header>
+
+  <main class="crx-main">
+    <!-- Hero -->
+    <section class="crx-hero">
+      <p class="crx-kicker">{{ 'CAR_AMADEUS.KICKER' | translate }}</p>
+      <h1 class="crx-title">{{ 'CAR_AMADEUS.TITLE_HERO' | translate }}</h1>
+    </section>
+
+    <!-- Trust strip -->
+    <section class="crx-values" [attr.aria-label]="('CAR_AMADEUS.VALUES_ARIA' | translate)">
+      @for (v of valueProps; track v.icon) {
+        <div class="crx-value-card">
+          <div class="crx-value-icon"><i [class]="'pi ' + v.icon" aria-hidden="true"></i></div>
+          <div class="crx-value-text">
+            <span class="crx-value-title">{{ v.titleKey | translate }}</span>
+            <span class="crx-value-desc">{{ v.descKey | translate }}</span>
+          </div>
+        </div>
+      }
+    </section>
+
+    <!-- Search -->
+    <section class="crx-search-wrap">
+      <div class="crx-search-card">
+        @if (pickedCityId() != null && cityHintFromTransport()) {
+          <p class="crx-hint">
+            <i class="pi pi-info-circle" aria-hidden="true"></i>
+            {{ 'CAR_AMADEUS.HINT_CITY_DEPOT' | translate: { name: cityHintFromTransport()! } }}
+          </p>
+        }
+
+        <div class="crx-fields">
+          <!-- City list + calendar on one row (desktop); stacked on small screens -->
+          <div class="crx-row-city-dates">
+            <div class="crx-col-city">
+              <app-governorate-city-picker
+                [cities]="governorates()"
+                [selectedId]="governoratePickerId()"
+                (selectedIdChange)="onGovernorateSelect($event)"
+                [fieldLabelKey]="'CAR_AMADEUS.FIELD_GOVERNORATE'"
+                [allOptionLabelKey]="'CAR_AMADEUS.GOVERNORATE_ANY'"
+                [panelAriaLabelKey]="'HEBERG.LIST.CITIES_ARIA'"
+              />
+            </div>
+
+            <label class="crx-field crx-field-date">
+              <span class="crx-label">{{ 'CAR_AMADEUS.FIELD_START' | translate }}</span>
+              <div class="crx-input-shell">
+                <i class="pi pi-calendar crx-input-icon" aria-hidden="true"></i>
+                <input type="date" [(ngModel)]="startDate" class="crx-input crx-input-date" />
+              </div>
+            </label>
+
+            <label class="crx-field crx-field-date">
+              <span class="crx-label">{{ 'CAR_AMADEUS.FIELD_END' | translate }}</span>
+              <div class="crx-input-shell">
+                <i class="pi pi-calendar crx-input-icon" aria-hidden="true"></i>
+                <input type="date" [(ngModel)]="endDate" class="crx-input crx-input-date" />
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="crx-popular">
+          <span class="crx-popular-label">{{ 'CAR_AMADEUS.POPULAR_LABEL' | translate }}</span>
+          <div class="crx-chips">
+            @for (p of popularCities; track p.name) {
+              <button type="button" class="crx-chip" (click)="applyQuickCity(p.name)">
+                <span class="crx-chip-name">{{ p.labelKey | translate }}</span>
+              </button>
+            }
+          </div>
+        </div>
+
+        <button
+          type="button"
+          class="crx-cta"
+          [disabled]="loading()"
+          (click)="runSearch()"
+        >
+          @if (loading()) {
+            <i class="pi pi-spinner pi-spin" aria-hidden="true"></i>
+          } @else {
+            <i class="pi pi-search" aria-hidden="true"></i>
+          }
+          <span>{{ 'CAR_AMADEUS.CTA_PRIMARY' | translate }}</span>
+        </button>
+      </div>
+    </section>
+
+    @if (errorMsg()) {
+      <p class="crx-err" role="alert">{{ errorMsg() }}</p>
+    }
+
+    @if (simulation()) {
+      <div class="crx-sim">
+        <h2>{{ 'CAR_AMADEUS.SIM_TITLE' | translate }}</h2>
+        <p><strong>{{ simulation()!.confirmationRef }}</strong></p>
+        <p class="crx-muted">{{ simulation()!.message }}</p>
+      </div>
+    }
+
+    @if (loading() && offers().length === 0 && !errorMsg()) {
+      <div class="crx-loading">
+        <p-progressSpinner strokeWidth="3" animationDuration=".75s" />
+        <span>{{ 'CAR_AMADEUS.LOADING' | translate }}</span>
+      </div>
+    }
+
+    @if (!loading() && offers().length > 0) {
+      <section class="crx-results">
+        <div class="crx-results-head">
+          <h2>{{ 'CAR_AMADEUS.RESULTS' | translate }}</h2>
+          <span class="crx-count">{{ 'CAR_AMADEUS.OFFERS_COUNT' | translate: { count: offers().length } }}</span>
+        </div>
+        <ul class="crx-list">
+          @for (o of offers(); track o.offerId) {
+            <li class="crx-offer">
+              <div class="crx-offer-top">
+                <span class="crx-provider">{{ o.provider }}</span>
+                <span class="crx-price">{{ o.price | number: '1.0-0' }} {{ o.currency }}</span>
+              </div>
+              <p class="crx-model">{{ o.model }}</p>
+              <p class="crx-loc">{{ o.location }}</p>
+              <button type="button" class="crx-sim-btn" pButton pRipple (click)="simulate(o)">
+                {{ 'CAR_AMADEUS.BTN_SIMULATE' | translate }}
+              </button>
+            </li>
+          }
+        </ul>
+      </section>
+    } @else if (!loading() && searched() && !errorMsg() && offers().length === 0) {
+      <div class="crx-empty">
+        <div class="crx-empty-art" aria-hidden="true">
+          <svg viewBox="0 0 200 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path
+              d="M20 88h160M40 88V68l12-18h96l12 18v20"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              opacity="0.35"
+            />
+            <rect x="48" y="52" width="104" height="28" rx="6" stroke="currentColor" stroke-width="2" opacity="0.45" />
+            <circle cx="56" cy="88" r="10" stroke="currentColor" stroke-width="2" opacity="0.4" />
+            <circle cx="144" cy="88" r="10" stroke="currentColor" stroke-width="2" opacity="0.4" />
+            <path d="M72 52V44c0-4 3-8 8-8h40c5 0 8 4 8 8v8" stroke="currentColor" stroke-width="2" opacity="0.35" />
+          </svg>
+        </div>
+        <h3 class="crx-empty-title">{{ 'CAR_AMADEUS.EMPTY_TITLE' | translate }}</h3>
+        <p class="crx-empty-body">{{ 'CAR_AMADEUS.EMPTY_BODY' | translate }}</p>
+      </div>
+    }
+  </main>
+</div>

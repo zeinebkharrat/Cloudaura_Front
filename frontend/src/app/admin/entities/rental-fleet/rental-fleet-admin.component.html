@@ -1,0 +1,360 @@
+<div class="admin-container">
+  @if (apiBanner(); as banner) {
+    <div class="transport-api-banner" role="alert">
+      <span class="transport-api-banner__text">{{ banner }}</span>
+      <button type="button" class="transport-api-banner__dismiss" (click)="dismissBanner()" aria-label="Dismiss">
+        <i class="pi pi-times"></i>
+      </button>
+    </div>
+  }
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon red"><i class="pi pi-car"></i></div>
+      <div class="stat-body">
+        <span class="stat-num">{{ totalCount() }}</span>
+        <span class="stat-lbl">Fleet vehicles</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon green"><i class="pi pi-check-circle"></i></div>
+      <div class="stat-body">
+        <span class="stat-num">{{ activeCount() }}</span>
+        <span class="stat-lbl">Active in search</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon blue"><i class="pi pi-map-marker"></i></div>
+      <div class="stat-body">
+        <span class="stat-num">{{ citiesCount() }}</span>
+        <span class="stat-lbl">Cities with stock</span>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon teal"><i class="pi pi-book"></i></div>
+      <div class="stat-body">
+        <span class="stat-num">{{ reservationsCount() }}</span>
+        <span class="stat-lbl">Rental bookings (all)</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-header">
+    <h2>Rental fleet (Tunisia)</h2>
+    <button pButton label="+ New vehicle" class="btn-create" (click)="openDialog()"></button>
+  </div>
+
+  <p class="section-intro">
+    Internal catalogue used by <strong>/transport/cars</strong>. Each row is one bookable vehicle at a city station (TND / day).
+    Flights are managed separately under <strong>Transport</strong>.
+  </p>
+
+  <div class="search-form">
+    <input
+      class="search-input"
+      type="text"
+      [ngModel]="search()"
+      (ngModelChange)="onSearch($event)"
+      placeholder="Search city, category, model, price, bookings…"
+    />
+    <button class="search-btn" type="button" (click)="clearSearch()">
+      <i class="pi pi-refresh"></i> Clear
+    </button>
+  </div>
+
+  <div class="table-wrap">
+    @if (isLoading()) {
+      <table class="data-table">
+        <tbody>
+          @for (i of [1, 2, 3, 4, 5, 6, 7]; track i) {
+            <tr>
+              <td colspan="7" style="padding: 12px 14px">
+                <div style="height: 18px; background: rgba(255, 255, 255, 0.04); border-radius: 6px; animation: pulse 1.5s infinite"></div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    } @else if (pagedFleet().length === 0) {
+      <div class="empty-state">
+        <i class="pi pi-car empty-icon"></i>
+        <p>{{ search() ? 'No vehicle matches your search.' : 'No vehicles in the catalogue yet.' }}</p>
+      </div>
+    } @else {
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>CITY</th>
+            <th>CATEGORY</th>
+            <th>MODEL</th>
+            <th>RATE / DAY</th>
+            <th>BOOKINGS</th>
+            <th>STATUS</th>
+            <th>ACTIONS</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (c of pagedFleet(); track c.fleetCarId) {
+            <tr [class.inactive]="!c.isActive">
+              <td>
+                <div class="cell-main">{{ c.cityName }}</div>
+              </td>
+              <td>
+                <span class="type-badge badge-plane">{{ c.category }}</span>
+              </td>
+              <td>
+                <div class="cell-main">{{ c.modelLabel }}</div>
+              </td>
+              <td>
+                <span class="price-val">{{ c.dailyRateTnd | currency: 'TND' : 'symbol' : '1.2-2' }}</span>
+              </td>
+              <td>{{ c.reservationCount }}</td>
+              <td>
+                <span class="status-badge" [class.active]="c.isActive" [class.inactive-badge]="!c.isActive">{{
+                  c.isActive ? 'Active' : 'Inactive'
+                }}</span>
+              </td>
+              <td>
+                <div class="actions">
+                  <button type="button" class="action-btn edit" title="Edit" (click)="openDialog(c)">
+                    <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                      <path d="M12 20h9" />
+                      <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4Z" />
+                    </svg>
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="action-btn"
+                    [class.toggle-on]="c.isActive"
+                    [class.toggle-off]="!c.isActive"
+                    [title]="c.isActive ? 'Deactivate' : 'Activate'"
+                    (click)="toggleStatus(c)"
+                  >
+                    <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                      <circle cx="12" cy="12" r="9" />
+                      @if (c.isActive) {
+                        <path d="M5 5l14 14" />
+                      } @else {
+                        <path d="M20 6 9 17l-5-5" />
+                      }
+                    </svg>
+                    <span>{{ c.isActive ? 'Deactivate' : 'Activate' }}</span>
+                  </button>
+                  <button type="button" class="action-btn delete" title="Delete" (click)="deleteCar(c)">
+                    <svg class="icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                      <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
+                    </svg>
+                    <span>Delete</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+
+    @if (totalPages() > 1) {
+      <div class="pagination">
+        <span class="pg-info">
+          {{ (page - 1) * PAGE_SIZE + 1 }}–{{ pageEnd() }} of {{ filteredFleet().length }}
+        </span>
+        <div class="pg-controls">
+          <button type="button" class="pg-btn" (click)="page = 1" [disabled]="page === 1">«</button>
+          <button type="button" class="pg-btn" (click)="page = page - 1" [disabled]="page === 1">‹</button>
+          @for (p of getPageNumbers(); track $index) {
+            @if (p === -1) {
+              <span class="pg-dots">…</span>
+            } @else {
+              <button type="button" class="pg-btn" [class.active]="page === p" (click)="page = p">{{ p }}</button>
+            }
+          }
+          <button type="button" class="pg-btn" (click)="page = page + 1" [disabled]="page === totalPages()">›</button>
+          <button type="button" class="pg-btn" (click)="page = totalPages()" [disabled]="page === totalPages()">»</button>
+        </div>
+      </div>
+    }
+  </div>
+</div>
+
+<p-dialog
+  [(visible)]="showDialog"
+  [modal]="true"
+  [closable]="true"
+  appendTo="body"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{ width: 'min(92vw, 640px)', maxWidth: '100%' }"
+  styleClass="adm-modal-dialog"
+  [focusOnShow]="true"
+  (onHide)="closeDialog()"
+  [attr.aria-label]="selectedCar() ? 'Edit vehicle' : 'New vehicle'"
+>
+  <ng-template pTemplate="header">
+    <div class="adm-dlg-head">
+      <div class="adm-dlg-head-accent" aria-hidden="true"></div>
+      <div class="adm-dlg-head-main">
+        <span class="adm-dlg-icon-wrap" aria-hidden="true"><i class="pi pi-car"></i></span>
+        <div>
+          <h2 class="adm-dlg-title" id="adm-fleet-dialog-title">{{ selectedCar() ? 'Edit vehicle' : 'New vehicle' }}</h2>
+          <p class="adm-dlg-subtitle">Tunisia internal fleet — same persistence as public car search.</p>
+        </div>
+      </div>
+    </div>
+  </ng-template>
+
+  <form [formGroup]="fleetForm" class="adm-transport-form" aria-labelledby="adm-fleet-dialog-title">
+    <div class="adm-dlg-body">
+      <section class="adm-section adm-animate" aria-labelledby="adm-fleet-loc">
+        <div class="adm-section-head">
+          <span class="adm-section-icon" aria-hidden="true"><i class="pi pi-map-marker"></i></span>
+          <div>
+            <h3 class="adm-section-title" id="adm-fleet-loc">Station city</h3>
+            <p class="adm-section-hint">Pickup city for this vehicle (public governorates only).</p>
+          </div>
+        </div>
+        <div
+          class="adm-field"
+          [class.adm-field--error]="fieldInvalid('cityId')"
+          [class.adm-field--ok]="fieldValid('cityId')"
+        >
+          <label class="adm-label" for="adm-fleet-city">City</label>
+          <p-dropdown
+            inputId="adm-fleet-city"
+            [options]="cities()"
+            formControlName="cityId"
+            optionLabel="name"
+            optionValue="cityId"
+            placeholder="e.g. Tunis"
+            [filter]="true"
+            filterPlaceholder="Search city…"
+            styleClass="adm-p-dropdown w-full"
+            panelStyleClass="admin-city-dropdown-panel"
+            scrollHeight="220px"
+            [showClear]="true"
+            [appendTo]="'body'"
+          >
+          </p-dropdown>
+          @if (fieldInvalid('cityId')) {
+            <span class="adm-field-msg adm-field-msg--err" role="alert">Select a city</span>
+          }
+        </div>
+      </section>
+
+      <section class="adm-section adm-animate adm-animate-delay-1" aria-labelledby="adm-fleet-cat">
+        <div class="adm-section-head">
+          <span class="adm-section-icon" aria-hidden="true"><i class="pi pi-th-large"></i></span>
+          <div>
+            <h3 class="adm-section-title" id="adm-fleet-cat">Category</h3>
+            <p class="adm-section-hint">Vehicle class shown in offers.</p>
+          </div>
+        </div>
+        <div
+          class="adm-field"
+          [class.adm-field--error]="fieldInvalid('category')"
+          [class.adm-field--ok]="fieldValid('category')"
+        >
+          <label class="adm-label" for="adm-fleet-cat-dd">Class</label>
+          <p-dropdown
+            inputId="adm-fleet-cat-dd"
+            [options]="categoryOptions"
+            formControlName="category"
+            optionLabel="label"
+            optionValue="value"
+            styleClass="adm-p-dropdown w-full"
+            [appendTo]="'body'"
+          >
+          </p-dropdown>
+        </div>
+      </section>
+
+      <section class="adm-section adm-animate adm-animate-delay-2" aria-labelledby="adm-fleet-model">
+        <div class="adm-section-head">
+          <span class="adm-section-icon" aria-hidden="true"><i class="pi pi-align-left"></i></span>
+          <div>
+            <h3 class="adm-section-title" id="adm-fleet-model">Model label</h3>
+            <p class="adm-section-hint">What travellers see (e.g. Peugeot 308 / Golf or equivalent).</p>
+          </div>
+        </div>
+        <div
+          class="adm-field"
+          [class.adm-field--error]="fieldInvalid('modelLabel')"
+          [class.adm-field--ok]="fieldValid('modelLabel')"
+        >
+          <label class="adm-label adm-sr-only" for="adm-fleet-model-ta">Model</label>
+          <textarea
+            id="adm-fleet-model-ta"
+            pInputText
+            formControlName="modelLabel"
+            rows="2"
+            class="adm-textarea-auto"
+            placeholder="e.g. Dacia Duster or equivalent"
+            (input)="resizeDescription($event)"
+          ></textarea>
+          @if (fieldInvalid('modelLabel')) {
+            <span class="adm-field-msg adm-field-msg--err" role="alert">Enter a short model description</span>
+          }
+        </div>
+      </section>
+
+      <section class="adm-section adm-animate adm-animate-delay-3" aria-labelledby="adm-fleet-price">
+        <div class="adm-section-head">
+          <span class="adm-section-icon" aria-hidden="true"><i class="pi pi-wallet"></i></span>
+          <div>
+            <h3 class="adm-section-title" id="adm-fleet-price">Daily rate</h3>
+            <p class="adm-section-hint">Price per calendar day in Tunisian dinar.</p>
+          </div>
+        </div>
+        <div
+          class="adm-price-card"
+          [class.adm-field--error]="fieldInvalid('dailyRateTnd')"
+          [class.adm-field--ok]="fieldValid('dailyRateTnd')"
+        >
+          <div class="adm-price-card-inner">
+            <span class="adm-price-currency">TND</span>
+            <p-inputNumber
+              inputId="adm-fleet-rate"
+              formControlName="dailyRateTnd"
+              [min]="0.01"
+              [minFractionDigits]="2"
+              mode="decimal"
+              styleClass="adm-price-input-wrap"
+            >
+            </p-inputNumber>
+          </div>
+          @if (fieldInvalid('dailyRateTnd')) {
+            <span class="adm-field-msg adm-field-msg--err" role="alert">Enter a positive rate</span>
+          }
+        </div>
+      </section>
+
+      <section class="adm-section adm-animate adm-animate-delay-4" aria-labelledby="adm-fleet-active">
+        <div class="adm-section-head">
+          <span class="adm-section-icon" aria-hidden="true"><i class="pi pi-eye"></i></span>
+          <div>
+            <h3 class="adm-section-title" id="adm-fleet-active">Visibility</h3>
+            <p class="adm-section-hint">Inactive vehicles stay in the database but are hidden from new searches.</p>
+          </div>
+        </div>
+        <label class="adm-inline-check">
+          <input type="checkbox" formControlName="isActive" />
+          <span>Active in catalogue</span>
+        </label>
+      </section>
+    </div>
+  </form>
+
+  <ng-template pTemplate="footer">
+    <div class="adm-dlg-footer">
+      <button type="button" class="adm-btn adm-btn--secondary" (click)="closeDialog()">
+        <i class="pi pi-times" aria-hidden="true"></i>
+        Cancel
+      </button>
+      <button type="button" class="adm-btn adm-btn--primary" (click)="saveFleetCar()" [disabled]="fleetForm.invalid">
+        <i class="pi pi-check" aria-hidden="true"></i>
+        {{ selectedCar() ? 'Save changes' : 'Create vehicle' }}
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>

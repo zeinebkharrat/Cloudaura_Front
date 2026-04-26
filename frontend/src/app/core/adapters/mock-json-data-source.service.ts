@@ -321,13 +321,15 @@ export class MockJsonDataSource implements DataSourceAdapter {
   }
 
   searchAmadeusCars(params: AmadeusCarSearchParams): Observable<AmadeusCarOffer[]> {
+    const label =
+      params.cityId != null ? `City #${params.cityId}` : (params.location || 'MOCK').trim() || 'MOCK';
     const offer: AmadeusCarOffer = {
       offerId: 'MOCK-OFFER-1',
       provider: 'Mock Mobility',
       model: 'SUV · mock data',
       price: 120,
       currency: 'EUR',
-      location: `${params.location} → City center`,
+      location: `${label} → City center`,
       transferType: 'PRIVATE',
       pickupDateTime: `${params.startDate}T10:00:00`,
     };

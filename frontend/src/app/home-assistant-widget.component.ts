@@ -73,9 +73,13 @@ export class HomeAssistantWidgetComponent {
       }
 
       this.previousAuthToken = currentToken;
-      this.rotateClientSessionId();
-      this.messages.set([this.buildWelcomeMessage()]);
-      this.loadConversationHistory();
+      // Defer signal writes: NG0600 forbids synchronous writes to other signals inside an effect
+      // triggered by the same producer graph (e.g. token() → storeSession → this effect).
+      queueMicrotask(() => {
+        this.rotateClientSessionId();
+        this.messages.set([this.buildWelcomeMessage()]);
+        this.loadConversationHistory();
+      });
     });
   }
 

@@ -164,8 +164,10 @@ export interface TransportEstimateResult {
   advisoryMessage?: string | null;
 }
 
-/** Query for GET /api/cars/search (Amadeus transfer-offers via backend). */
+/** Query for GET /api/cars/search (Tunisia internal fleet and optional Amadeus). */
 export interface AmadeusCarSearchParams {
+  /** When set, backend searches this city’s fleet; `location` may be omitted. */
+  cityId?: number | null;
   location: string;
   startDate: string;
   endDate: string;

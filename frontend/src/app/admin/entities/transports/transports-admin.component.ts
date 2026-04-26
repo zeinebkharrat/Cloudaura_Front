@@ -1,8 +1,7 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
-import { catchError, of } from 'rxjs';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { DialogModule } from 'primeng/dialog';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -24,8 +23,9 @@ interface Transport {
   departureTime: string;
   arrivalTime: string;
   capacity: number;
-  price: number;
-  description: string;
+  /** Backend sends Double; may be fractional TND */
+  price: number | null;
+  description: string | null;
   isActive: boolean;
   departureCityId: number;
   departureCityName?: string;
@@ -94,6 +94,8 @@ export class TransportsAdminComponent {
   selectedTransport = signal<Transport | null>(null);
 
   isLoading = signal(false);
+  /** Inline banner when admin transport API fails (auth, network, etc.) */
+  transportApiBanner = signal<string | null>(null);
   showTransportDialog   = false;
   showReservationsDialog = false;
 
@@ -103,19 +105,15 @@ export class TransportsAdminComponent {
   priceWarning: string | null = null;
 
   transportSearch  = signal('');
-  filterTypeValue  = signal('');
 
   transportPageSig = signal(1);
 
   get transportPage() { return this.transportPageSig(); }
   set transportPage(v: number) { this.transportPageSig.set(v); }
 
-  /** Admin UI: only these four modes; legacy DB rows may still use other enum values. */
-  transportTypes: { label: string; value: string; icon: string }[] = [
+  /** Catalogue rows created/edited here are flights only (FO bus/taxi = estimate engine). */
+  readonly transportTypes: { label: string; value: string; icon: string }[] = [
     { label: 'Flight', value: 'PLANE', icon: 'pi pi-send' },
-    { label: 'Car', value: 'CAR', icon: 'pi pi-car' },
-    { label: 'Bus', value: 'BUS', icon: 'pi pi-car' },
-    { label: 'Taxi', value: 'TAXI', icon: 'pi pi-map-marker' },
   ];
 
   airlines = [
@@ -129,16 +127,19 @@ export class TransportsAdminComponent {
   transportForm: FormGroup;
 
   totalTransportsCount  = computed(() => this.stats()?.totalTransports  ?? this.transports().length);
-  activeTransportCount  = computed(() => this.stats()?.activeTransports  ?? this.transports().filter(t => t.isActive).length);
+  activeTransportCount  = computed(() => this.stats()?.activeTransports
+    ?? this.transports().filter(t => t.type === 'PLANE' && t.isActive).length);
   totalAvailableSeats   = computed(() => this.stats()?.totalAvailableSeats ?? 0);
   todayReservationsCount = computed(() => this.stats()?.todayReservations ?? 0);
 
+  /** API returns flights only; extra PLANE filter is redundant if the client is honest. */
   filteredTransports = computed(() => {
-    const q    = this.transportSearch().toLowerCase().trim();
-    const type = this.filterTypeValue();
+    const q = this.transportSearch().toLowerCase().trim();
     return this.transports().filter(t => {
-      const matchType = !type || t.type === type;
-      if (!q) return matchType;
+      if (t.type !== 'PLANE') {
+        return false;
+      }
+      if (!q) return true;
       const haystack = [
         t.type, this.getTypeLabel(t.type),
         t.departureCityName ?? '', t.arrivalCityName ?? '',
@@ -147,7 +148,7 @@ export class TransportsAdminComponent {
         t.departureTime, t.arrivalTime,
         String(t.capacity), String(t.availableSeats ?? ''),
       ].join(' ').toLowerCase();
-      return matchType && haystack.includes(q);
+      return haystack.includes(q);
     });
   });
 
@@ -183,16 +184,28 @@ export class TransportsAdminComponent {
   }
 
   loadStats() {
-    this.http.get<any>('/api/admin/transports/stats')
-      .pipe(catchError(() => of(null)))
-      .subscribe(r => { if (r?.data) this.stats.set(r.data); });
+    this.http.get<AdminApiEnvelope<TransportStats>>('/api/admin/transports/stats').subscribe({
+      next: (r) => {
+        const parsed = this.parseAdminEnvelope<TransportStats>(r);
+        if (parsed.ok && parsed.data) {
+          this.stats.set(parsed.data);
+          this.transportApiBanner.set(null);
+        } else if (parsed.message) {
+          void this.alerts.warning('Statistics', parsed.message);
+        }
+      },
+      error: (err) => this.onTransportAdminHttpError(err, 'Could not load transport statistics.'),
+    });
   }
 
   loadCities() {
-    this.http
-      .get<unknown>('/api/cities')
-      .pipe(catchError(() => of(null)))
-      .subscribe((r) => this.cities.set(this.normalizeCityListPayload(r)));
+    this.http.get<unknown>('/api/cities').subscribe({
+      next: (r) => this.cities.set(this.normalizeCityListPayload(r)),
+      error: () => {
+        void this.alerts.warning('Cities', 'Could not load city list. Check your connection and try again.');
+        this.cities.set([]);
+      },
+    });
   }
 
   private normalizeCityListPayload(payload: unknown): City[] {
@@ -232,29 +245,56 @@ export class TransportsAdminComponent {
 
   loadTransports() {
     this.isLoading.set(true);
-    this.http.get<any>('/api/admin/transports')
-      .pipe(catchError(() => of({ data: [] })))
-      .subscribe(r => {
-        this.transports.set(r?.data ?? []);
+    this.http.get<AdminApiEnvelope<Transport[]>>('/api/admin/transports').subscribe({
+      next: (r) => {
+        const parsed = this.parseAdminEnvelope<Transport[]>(r);
+        if (parsed.ok && Array.isArray(parsed.data)) {
+          this.transports.set(parsed.data);
+          this.transportApiBanner.set(null);
+        } else {
+          this.transports.set([]);
+          if (parsed.message) {
+            void this.alerts.warning('Transports', parsed.message);
+          }
+        }
         this.isLoading.set(false);
         this.transportPageSig.set(1);
-      });
+      },
+      error: (err) => {
+        this.onTransportAdminHttpError(err, 'Could not load transports.');
+        this.transports.set([]);
+        this.isLoading.set(false);
+        this.transportPageSig.set(1);
+      },
+    });
   }
 
   loadReservations(transportId: number) {
-    this.http.get<any>(`/api/admin/transports/${transportId}/reservations`)
-      .pipe(catchError(() => of({ data: [] })))
-      .subscribe(r => this.reservations.set(r?.data ?? []));
+    this.http.get<AdminApiEnvelope<TransportReservation[]>>(`/api/admin/transports/${transportId}/reservations`).subscribe({
+      next: (r) => {
+        const parsed = this.parseAdminEnvelope<TransportReservation[]>(r);
+        if (parsed.ok && Array.isArray(parsed.data)) {
+          this.reservations.set(parsed.data);
+        } else {
+          this.reservations.set([]);
+          if (parsed.message) {
+            void this.alerts.warning('Reservations', parsed.message);
+          }
+        }
+      },
+      error: (err) => {
+        this.onTransportAdminHttpError(err, 'Could not load reservations for this transport.');
+        this.reservations.set([]);
+      },
+    });
   }
 
   clearTransportSearch() {
     this.transportSearch.set('');
-    this.filterTypeValue.set('');
     this.transportPageSig.set(1);
   }
 
   onTransportSearch(v: string) { this.transportSearch.set(v); this.transportPageSig.set(1); }
-  onTypeFilter(v: string)      { this.filterTypeValue.set(v); this.transportPageSig.set(1); }
 
   getTransportPageNumbers() { return this.buildPageArray(this.transportPage, this.totalTransportPages()); }
 
@@ -304,16 +344,6 @@ export class TransportsAdminComponent {
 
     op.updateValueAndValidity();
     cap.updateValueAndValidity();
-  }
-
-  onTypeChange(event: { value?: string } | string) {
-    const type = typeof event === 'string' ? event : (event?.value ?? '');
-    this.applyTransportTypeValidators(type, true);
-  }
-
-  selectTransportType(value: string): void {
-    this.transportForm.patchValue({ type: value });
-    this.applyTransportTypeValidators(value, true);
   }
 
   fieldInvalid(name: string): boolean {
@@ -385,25 +415,36 @@ export class TransportsAdminComponent {
     this.calculatedDuration = null;
     this.durationWarning = null;
     this.priceWarning = null;
+    this.transportForm.enable({ emitEvent: false });
 
     if (transport) {
+      if (transport.type !== 'PLANE') {
+        void this.alerts.warning('Not available', 'Only flights are shown in admin. This row is not a flight.');
+        return;
+      }
       this.selectedTransport.set(transport);
-      const type = transport.type;
-      this.showAirlineField = type === 'PLANE';
-
+      this.showAirlineField = true;
       this.transportForm.patchValue({
         ...transport,
         departureTime: this.toDateTimeLocal(transport.departureTime),
         arrivalTime:   this.toDateTimeLocal(transport.arrivalTime),
       });
-      this.applyTransportTypeValidators(type, false);
+      this.applyTransportTypeValidators('PLANE', false);
     } else {
       this.selectedTransport.set(null);
-      this.showAirlineField = false;
-      this.transportForm.reset({ type: 'BUS', price: 0, capacity: 45, isActive: true });
-      this.applyTransportTypeValidators('BUS', false);
+      this.showAirlineField = true;
+      this.transportForm.reset({ type: 'PLANE', price: 0, capacity: 100, isActive: true });
+      this.applyTransportTypeValidators('PLANE', false);
     }
     this.showTransportDialog = true;
+  }
+
+  closeTransportDialog(): void {
+    this.showTransportDialog = false;
+  }
+
+  onTransportDialogHide(): void {
+    this.transportForm.enable({ emitEvent: false });
   }
 
   saveTransport() {
@@ -450,7 +491,7 @@ export class TransportsAdminComponent {
       next: () => {
         this.loadTransports();
         this.loadStats();
-        this.showTransportDialog = false;
+        this.closeTransportDialog();
         void this.alerts.success(
           id ? 'Transport updated' : 'Transport created',
           id
@@ -604,6 +645,9 @@ export class TransportsAdminComponent {
     const hit = this.transportTypes.find((t) => t.value === type)?.label;
     if (hit) return hit;
     const legacy: Record<string, string> = {
+      CAR: 'Car',
+      BUS: 'Bus',
+      TAXI: 'Taxi',
       VAN: 'Van',
       TRAIN: 'Train',
       FERRY: 'Ferry',
@@ -628,8 +672,21 @@ export class TransportsAdminComponent {
   }
 
   private friendlyApiMessage(err: unknown, fallback: string): string {
-    const body = (err as { error?: { message?: string } })?.error;
-    const m = typeof body?.message === 'string' ? body.message.trim() : '';
+    const httpErr = err as HttpErrorResponse;
+    const status = httpErr?.status;
+    if (status === 401) {
+      return 'Session expired or not signed in. Please sign in again with an admin account.';
+    }
+    if (status === 403) {
+      return 'Access denied. This area requires ROLE_ADMIN.';
+    }
+    const raw = httpErr?.error;
+    let m = '';
+    if (raw != null && typeof raw === 'object' && 'message' in raw) {
+      m = String((raw as { message?: unknown }).message ?? '').trim();
+    } else if (typeof raw === 'string') {
+      m = raw.trim();
+    }
     if (!m) return fallback;
     const lower = m.toLowerCase();
     if (lower.includes('could not execute statement') || lower.includes('foreign key')) {
@@ -639,5 +696,35 @@ export class TransportsAdminComponent {
       return 'Something went wrong on the server. Please try again.';
     }
     return m;
+  }
+
+  /**
+   * Unwraps Spring {@code ApiResponse<T>} bodies for admin transport endpoints.
+   */
+  private parseAdminEnvelope<T>(body: unknown): { ok: boolean; data: T | null; message?: string } {
+    if (body == null || typeof body !== 'object') {
+      return { ok: false, data: null };
+    }
+    const o = body as { success?: boolean; data?: T; message?: string };
+    if (o.success === false) {
+      return { ok: false, data: null, message: o.message };
+    }
+    return { ok: true, data: (o.data ?? null) as T | null, message: o.message };
+  }
+
+  private onTransportAdminHttpError(err: unknown, fallback: string): void {
+    const msg = this.friendlyApiMessage(err, fallback);
+    const status = (err as HttpErrorResponse)?.status;
+    if (status === 401 || status === 403) {
+      this.transportApiBanner.set(msg);
+      void this.alerts.warning('Admin — Transport', msg);
+    } else {
+      this.transportApiBanner.set(msg);
+      void this.alerts.error('Admin — Transport', msg);
+    }
+  }
+
+  dismissTransportApiBanner(): void {
+    this.transportApiBanner.set(null);
   }
 }

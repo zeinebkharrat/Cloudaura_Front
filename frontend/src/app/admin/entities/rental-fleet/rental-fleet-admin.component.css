@@ -474,3 +474,27 @@ code {
   .stats-row { grid-template-columns: 1fr 1fr; }
   .pagination { flex-direction: column; gap: 0.75rem; }
 }
+
+.section-intro {
+  margin: -0.25rem 0 1.25rem;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--text-muted, #94a3b8);
+  max-width: 52rem;
+}
+
+.adm-inline-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+.adm-inline-check input {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: #f12545;
+}
