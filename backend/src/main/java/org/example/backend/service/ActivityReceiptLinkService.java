@@ -26,6 +26,12 @@ public class ActivityReceiptLinkService {
     @Value("${app.frontend.base-url:http://localhost:4200}")
     private String publicBaseUrl;
 
+    private final CloudflaredTunnelService cloudflaredTunnelService;
+
+    public ActivityReceiptLinkService(CloudflaredTunnelService cloudflaredTunnelService) {
+        this.cloudflaredTunnelService = cloudflaredTunnelService;
+    }
+
     public String buildPublicPdfUrl(Integer reservationId) {
         String sig = signReservation(reservationId);
         return resolvePublicBaseUrl()
@@ -79,35 +85,43 @@ public class ActivityReceiptLinkService {
     }
 
     private String normalizeBaseUrl(String baseUrl) {
-        String base = baseUrl == null ? "http://localhost:4200" : baseUrl.trim();
+        String base = baseUrl == null ? "" : baseUrl.trim();
+        if (base.isBlank()) {
+            return "";
+        }
         return base.endsWith("/") ? base.substring(0, base.length() - 1) : base;
     }
 
     private String resolvePublicBaseUrl() {
+        String tunnelUrl = cloudflaredTunnelService.getPublicBaseUrl().orElse("");
         String explicit = normalizeBaseUrl(explicitPublicBaseUrl);
         String frontend = normalizeBaseUrl(publicBaseUrl);
         String backend = normalizeBaseUrl(backendBaseUrl);
 
+        if (!isBlank(tunnelUrl) && !isLocalAddress(tunnelUrl)) {
+            return tunnelUrl;
+        }
+
         if (!isBlank(explicit) && !isLocalAddress(explicit)) {
             return explicit;
         }
-        if (!isBlank(frontend) && !isLocalAddress(frontend)) {
-            return frontend;
-        }
         if (!isBlank(backend) && !isLocalAddress(backend)) {
             return backend;
+        }
+        if (!isBlank(frontend) && !isLocalAddress(frontend)) {
+            return frontend;
         }
 
         if (!isBlank(explicit)) {
             return explicit;
         }
-        if (!isBlank(frontend)) {
-            return frontend;
-        }
         if (!isBlank(backend)) {
             return backend;
         }
-        return "http://localhost:4200";
+        if (!isBlank(frontend)) {
+            return frontend;
+        }
+        return "http://localhost:9091";
     }
 
     private boolean isBlank(String value) {

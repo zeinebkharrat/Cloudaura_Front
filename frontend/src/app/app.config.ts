@@ -23,13 +23,13 @@ export const appConfig: ApplicationConfig = {
     MessageService,
     ConfirmationService,
     provideTranslateService({
+      loader: provideTranslateHttpLoader({
+        prefix: '/assets/i18n/',
+        suffix: '.json',
+      }),
       defaultLanguage: 'en',
       extend: true,
       useDefaultLang: true,
-    }),
-    ...provideTranslateHttpLoader({
-      prefix: '/assets/i18n/',
-      suffix: '.json',
     }),
     {
       provide: APP_INITIALIZER,
