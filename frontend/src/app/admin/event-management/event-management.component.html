@@ -88,7 +88,7 @@
             </td>
             <td class="price-cell"><strong>{{ ev.price }} TN</strong></td>
             <td>
-              <img [src]="ev.imageUrl || 'assets/placeholder.png'" class="event-img" alt="event">
+              <img [src]="ev.imageUrl || 'assets/banner.png'" class="event-img" alt="event">
             </td>
             <td style="text-align: right;">
               <div class="action-btns">
@@ -300,7 +300,7 @@
           [class.details-poster--generated]="isAiGeneratedEventImage(selectedEventDetails)"
         >
           <img
-            [src]="selectedEventDetails.imageUrl || 'assets/placeholder.png'"
+            [src]="selectedEventDetails.imageUrl || 'assets/banner.png'"
             alt="Event image"
             class="details-modal__image"
             [class.details-modal__image--generated]="isAiGeneratedEventImage(selectedEventDetails)"

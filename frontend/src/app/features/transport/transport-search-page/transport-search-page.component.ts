@@ -38,7 +38,7 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
         <div class="hero-content">
           <h1 class="hero-title">{{ 'TRANSPORT_SEARCH.HERO_TITLE' | translate }}</h1>
           <p class="hero-sub">{{ 'TRANSPORT_SEARCH.HERO_SUB' | translate }}</p>
-          <p class="hero-car-link"><a routerLink="/transport/cars/amadeus">{{ 'TRANSPORT_SEARCH.LINK_CAR_AMADEUS' | translate }}</a></p>
+          <p class="hero-car-link"><a routerLink="/transport/cars">{{ 'TRANSPORT_SEARCH.LINK_CAR_AMADEUS' | translate }}</a></p>
         </div>
       </section>
 
@@ -165,7 +165,7 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
             <div class="tcard"
                  [class.tcard-active]="card.available"
                  [class.tcard-disabled]="!card.available && hasBothCities()"
-                 [class.tcard-waiting]="!hasBothCities()"
+                 [class.tcard-waiting]="!hasBothCities() && card.type !== 'CAR'"
                  [pTooltip]="card.reason ?? ''"
                  tooltipPosition="top"
                  (click)="onTypeClick(card)">
@@ -176,7 +176,8 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
                   [alt]="card.labelKey | translate"
                   class="tcard-img"
                   [class.tcard-img-bus]="card.type === 'BUS'"
-                  [class.tcard-img-plane]="card.type === 'PLANE'" />
+                  [class.tcard-img-plane]="card.type === 'PLANE'"
+                  [class.tcard-img-car]="card.type === 'CAR'" />
               </div>
               <span class="tcard-name">{{ card.labelKey | translate }}</span>
 
@@ -560,7 +561,11 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
     }
     .tcard-img-bus { transform: translateY(1px) scale(1.04); }
     .tcard-img-plane { transform: translateY(-1px) scale(1.03); }
-    .tcard-disabled .tcard-img, .tcard-waiting .tcard-img { opacity: 0.4; filter: grayscale(1); }
+    /* Car rental is always actionable without A→B; keep icon full-color (never dimmed / grayscale). */
+    .tcard-img-car { opacity: 1; filter: none; }
+    .tcard-disabled .tcard-img:not(.tcard-img-car), .tcard-waiting .tcard-img:not(.tcard-img-car) {
+      opacity: 0.4; filter: grayscale(1);
+    }
     .tcard-name { font-weight: 700; font-size: 0.95rem; color: var(--text-color); }
     .tcard-badge {
       font-size: 0.68rem; font-weight: 600; padding: 0.2rem 0.65rem;
@@ -724,6 +729,16 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
       const meta = TRANSPORT_TYPE_META[type];
       let available = true;
       let reason: string | undefined;
+
+      if (type === 'CAR') {
+        return {
+          type,
+          labelKey: `TRANSPORT.TYPE.${type}`,
+          iconPath: this.iconFor(type),
+          available: true,
+          reason: undefined,
+        };
+      }
 
       if (fromCity && toCity) {
         const fromHasInfra = this.citySupportsInfra(fromCity, meta.requiresFrom);
@@ -926,6 +941,12 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
 
   onTypeClick(card: TypeCard) {
     if (!card.available) return;
+
+    if (card.type === 'CAR') {
+      this.navigateToCarRentalFromHome();
+      return;
+    }
+
     if (!this.validateSearchBusinessRules()) {
       return;
     }
@@ -964,6 +985,36 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
   }
 
   quickSearch(route: { fromId: number; toId: number; type: string; labelKey: string }) {
+    if ((route.type ?? '').toUpperCase() === 'CAR') {
+      const dateVal = this.searchForm.get('date')?.value ?? new Date();
+      if (!this.isDateNotInPast(dateVal)) {
+        void this.alerts.warning(
+          this.translate.instant('TRANSPORT_SEARCH.ALERT_INVALID_DATE'),
+          this.translate.instant('TRANSPORT_SEARCH.ALERT_PAST_DATE'),
+        );
+        return;
+      }
+      const dateStr = this.travelDateTimeLocalIso(dateVal);
+      const start = dateStr.slice(0, 10);
+      const endD = new Date(dateVal);
+      endD.setDate(endD.getDate() + 3);
+      const end = this.travelDateTimeLocalIso(endD).slice(0, 10);
+      const fromCity = this.cityById(route.fromId);
+      this.searchForm.patchValue({ from: route.fromId, to: route.toId });
+      this.store.setDates({ travelDate: dateStr });
+      this.store.setPax({ adults: this.searchForm.get('passengers')?.value ?? 1, children: 0 });
+      void this.router.navigate(['/transport/cars'], {
+        queryParams: {
+          cityId: route.fromId,
+          city: fromCity?.name?.trim() ?? '',
+          location: fromCity?.name?.trim() ?? '',
+          start,
+          end,
+        },
+      });
+      return;
+    }
+
     if (route.fromId === route.toId) {
       void this.alerts.warning(
         this.translate.instant('TRANSPORT_SEARCH.ALERT_INVALID_ROUTE'),
@@ -1050,6 +1101,36 @@ export class TransportSearchPageComponent implements OnInit, OnDestroy {
   }
 
   /** Business rules before navigating to results. */
+  /** Car rental: pickup city from “from” + date range; no A→B transport form required. */
+  private navigateToCarRentalFromHome(): void {
+    const v = this.searchForm.getRawValue();
+    const dateVal = v.date;
+    let start: string;
+    let end: string;
+    if (dateVal && this.isDateNotInPast(dateVal)) {
+      start = this.travelDateTimeLocalIso(dateVal).slice(0, 10);
+      const endD = new Date(dateVal);
+      endD.setDate(endD.getDate() + 3);
+      end = this.travelDateTimeLocalIso(endD).slice(0, 10);
+    } else {
+      const t = new Date();
+      start = this.travelDateTimeLocalIso(t).slice(0, 10);
+      const t2 = new Date(t);
+      t2.setDate(t2.getDate() + 3);
+      end = this.travelDateTimeLocalIso(t2).slice(0, 10);
+    }
+    const fromCity = this.cityById(v.from ?? null);
+    void this.router.navigate(['/transport/cars'], {
+      queryParams: {
+        cityId: v.from ?? '',
+        city: fromCity?.name?.trim() ?? '',
+        location: fromCity?.name?.trim() ?? '',
+        start,
+        end,
+      },
+    });
+  }
+
   private validateSearchBusinessRules(): boolean {
     const v = this.searchForm.getRawValue();
     if (v.from == null || v.to == null || !v.date) {

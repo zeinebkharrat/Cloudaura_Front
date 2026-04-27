@@ -1320,3 +1320,78 @@ th {
   padding: 4px 10px;
   border-radius: 999px;
 }
+
+:host-context([data-theme='dark']) .admin-products-modal-light,
+:host-context([data-theme='dark']) .pd-view-modal {
+  background: rgba(15, 23, 42, 0.98) !important;
+  border-color: rgba(71, 85, 105, 0.55) !important;
+  box-shadow: 0 28px 60px rgba(2, 6, 23, 0.48) !important;
+  color: #e2e8f0 !important;
+}
+
+:host-context([data-theme='dark']) .admin-products-modal-light .fp-modal-head,
+:host-context([data-theme='dark']) .admin-products-modal-light .fp-modal-body,
+:host-context([data-theme='dark']) .admin-products-modal-light .fp-modal-footer,
+:host-context([data-theme='dark']) .pd-view-head,
+:host-context([data-theme='dark']) .pd-view-info {
+  background: rgba(15, 23, 42, 0.96) !important;
+  border-color: rgba(71, 85, 105, 0.45) !important;
+}
+
+:host-context([data-theme='dark']) .admin-products-modal-light .fp-modal-head h2,
+:host-context([data-theme='dark']) .admin-products-modal-light .fp-modal-sub,
+:host-context([data-theme='dark']) .admin-products-modal-light .form-label,
+:host-context([data-theme='dark']) .admin-products-modal-light .form-section__title,
+:host-context([data-theme='dark']) .admin-products-modal-light .detail-info-admin .detail-desc,
+:host-context([data-theme='dark']) .admin-products-modal-light .details-meta-grid,
+:host-context([data-theme='dark']) .admin-products-modal-light .variants-list ul,
+:host-context([data-theme='dark']) .pd-view-title,
+:host-context([data-theme='dark']) .pd-view-spec dt,
+:host-context([data-theme='dark']) .pd-view-spec dd,
+:host-context([data-theme='dark']) .pd-view-card__label,
+:host-context([data-theme='dark']) .pd-view-desc,
+:host-context([data-theme='dark']) .pd-view-variant__size,
+:host-context([data-theme='dark']) .pd-view-variant__color {
+  color: #e2e8f0 !important;
+}
+
+:host-context([data-theme='dark']) .admin-products-modal-light .form-input,
+:host-context([data-theme='dark']) .admin-products-modal-light .form-textarea,
+:host-context([data-theme='dark']) .admin-products-modal-light .form-select,
+:host-context([data-theme='dark']) .admin-products-modal-light .variant-row,
+:host-context([data-theme='dark']) .admin-products-modal-light .media-zone,
+:host-context([data-theme='dark']) .admin-products-modal-light .upload-box.modern,
+:host-context([data-theme='dark']) .admin-products-modal-light .file-trigger,
+:host-context([data-theme='dark']) .admin-products-modal-light .detail-gallery-admin,
+:host-context([data-theme='dark']) .pd-view-close,
+:host-context([data-theme='dark']) .pd-view-card,
+:host-context([data-theme='dark']) .pd-view-card--desc,
+:host-context([data-theme='dark']) .pd-view-variant,
+:host-context([data-theme='dark']) .pd-view-thumb,
+:host-context([data-theme='dark']) .pd-view-empty,
+:host-context([data-theme='dark']) .pd-view-ref {
+  background: rgba(30, 41, 59, 0.92) !important;
+  border-color: rgba(71, 85, 105, 0.5) !important;
+  color: #e2e8f0 !important;
+}
+
+:host-context([data-theme='dark']) .admin-products-modal-light .btn-add-variant,
+:host-context([data-theme='dark']) .admin-products-modal-light .btn-remove-variant,
+:host-context([data-theme='dark']) .admin-products-modal-light .btn-cancel,
+:host-context([data-theme='dark']) .pd-view-nav,
+:host-context([data-theme='dark']) .pd-view-thumb--active {
+  color: #e2e8f0 !important;
+}
+:host-context([data-theme='dark']) .pd-view-gallery {
+  background: rgba(15, 23, 42, 0.98) !important;
+  border-right-color: rgba(71, 85, 105, 0.45) !important;
+}
+
+:host-context([data-theme='dark']) .pd-view-stage {
+  background: rgba(30, 41, 59, 0.92) !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4) !important;
+}
+
+:host-context([data-theme='dark']) .pd-view-head {
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.96) 0%, rgba(15, 23, 42, 0.96) 100%) !important;
+}

@@ -20,6 +20,9 @@ public class Event {
     @JoinColumn(name="city_id")
     private City city;
 
+    @Transient
+    private Integer cityId;
+
     private String title;
     private String eventType;
 
@@ -45,7 +48,17 @@ public class Event {
     public Integer getEventId() { return eventId; }
     public void setEventId(Integer eventId) { this.eventId = eventId; }
     public City getCity() { return city; }
-    public void setCity(City city) { this.city = city; }
+    public void setCity(City city) {
+        this.city = city;
+        this.cityId = city != null ? city.getCityId() : null;
+    }
+    public Integer getCityId() {
+        if (city != null && city.getCityId() != null) {
+            return city.getCityId();
+        }
+        return cityId;
+    }
+    public void setCityId(Integer cityId) { this.cityId = cityId; }
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
     public String getEventType() { return eventType; }

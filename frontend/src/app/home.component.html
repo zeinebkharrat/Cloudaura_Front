@@ -15,7 +15,6 @@
   <div *ngIf="heroVideoError()" class="hero-cinematic__fallback"></div>
   <div class="hero-cinematic__overlay"></div>
   <div class="hero-cinematic__content animate-in">
-    <span class="hero-cinematic__kicker">Tunisia, curated beautifully</span>
     <h1>Discover Tunisia through one elegant travel platform</h1>
     <p>
       Cities, activities, stays, transport, restaurants, artisan products, community, and events.
@@ -118,6 +117,8 @@
         <button type="button" class="persona-hotspot" (click)="exploreMatchedCity(m.cityName)" [attr.aria-label]="m.cityName">
           <span class="persona-ring" [style.--pct]="m.percent"></span>
           <span class="persona-city">{{ m.cityName }}</span>
+          <span class="persona-meta" *ngIf="m.recommendedRegion">{{ m.recommendedRegion }}</span>
+          <span class="persona-meta" *ngIf="m.recommendedEvent">{{ m.recommendedEvent }}</span>
           <span class="persona-pct">{{ m.percent }}%</span>
           <span class="persona-hint">{{ 'HOME.PERSONA_EXPLORE' | translate }}</span>
         </button>
@@ -140,7 +141,7 @@
         </div>
         <div class="activity-card__body">
           <div class="slider-card__topline">
-            <span class="slider-card__badge slider-card__badge--solid" *ngIf="item.badge">{{ item.badge }}</span>
+            <span class="slider-card__badge slider-card__badge--solid" [class.slider-card__badge--activity]="item.badge === 'Activity'" *ngIf="item.badge">{{ item.badge }}</span>
             <span class="slider-card__hint slider-card__hint--dark">Popular choice</span>
           </div>
           <h3 class="slider-card__title-lg slider-card__title-lg--dark">{{ item.title }}</h3>
@@ -219,7 +220,7 @@
         </div>
         <div class="activity-card__body">
           <div class="slider-card__topline">
-            <span class="slider-card__badge slider-card__badge--solid" *ngIf="item.badge">{{ item.badge }}</span>
+            <span class="slider-card__badge slider-card__badge--solid" [class.slider-card__badge--restaurant]="item.badge === 'Restaurant'" *ngIf="item.badge">{{ item.badge }}</span>
             <span class="slider-card__hint slider-card__hint--dark">Chef choice</span>
           </div>
           <h3 class="slider-card__title-lg slider-card__title-lg--dark">{{ item.title }}</h3>

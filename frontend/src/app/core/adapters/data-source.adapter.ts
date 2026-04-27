@@ -45,7 +45,7 @@ export interface DataSourceAdapter {
   /** Taxi & bus indicative price band (+ holiday advisory). */
   estimateTransport(input: TransportEstimateInput): Observable<TransportEstimateResult>;
 
-  /** Amadeus-backed car / private transfer search (GET /api/cars/search). */
+  /** Car rental search (GET /api/cars/search): Tunisia fleet by city/IATA; optional Amadeus when enabled. */
   searchAmadeusCars(params: AmadeusCarSearchParams): Observable<AmadeusCarOffer[]>;
 
   /** Simulated booking (POST /api/cars/book-simulation). */

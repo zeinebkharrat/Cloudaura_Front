@@ -1217,7 +1217,7 @@
 }
 
 .slider-card__hint--dark {
-  color: #334155;
+  color: #272829;
 }
 
 .slider-card__title-lg--dark {
@@ -1256,7 +1256,7 @@
 }
 
 .slider-card__hint {
-  color: rgba(241, 245, 249, 0.9);
+  color: rgba(40, 42, 44, 0.9);
   font-size: 0.72rem;
   font-weight: 600;
 }
@@ -1274,7 +1274,7 @@
 }
 
 .slider-card__action {
-  color: #e2e8f0;
+  color: #2f3133;
   font-size: 0.8rem;
   font-weight: 700;
   transition: transform 0.25s ease, color 0.25s ease;
@@ -1290,7 +1290,7 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.4);
-  color: #f8fafc;
+  color: #4c5053;
   padding: 4px 10px;
   font-size: 0.72rem;
   font-weight: 700;
@@ -1474,6 +1474,54 @@
 
 :host-context([data-theme='dark']) .slider-card__cta {
   color: #e2e8f0;
+}
+
+:host-context([data-theme='dark']) .slider-card--activity-clean {
+  background: #1f2937 !important;
+  border-color: rgba(71, 85, 105, 0.45) !important;
+}
+
+:host-context([data-theme='dark']) .slider-card__hint--dark {
+  color: rgba(248, 250, 252, 0.8) !important;
+}
+
+:host-context([data-theme='dark']) .slider-card__title-lg--dark {
+  color: #f8fafc !important;
+}
+
+:host-context([data-theme='dark']) .activity-stars--dark .activity-stars__star {
+  color: rgba(148, 163, 184, 0.5) !important;
+}
+
+:host-context([data-theme='dark']) .activity-stars__count--dark {
+  color: #cbd5e1 !important;
+}
+
+:host-context([data-theme='dark']) .slider-card__action--dark {
+  color: #f8fafc !important;
+}
+
+:host-context([data-theme='dark']) .slider-card__chips--light span {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #e2e8f0 !important;
+}
+
+:host-context([data-theme='dark']) .activity-card__subtitle {
+  color: #94a3b8 !important;
+}
+
+/* Specific badge colors in dark mode */
+:host-context([data-theme='dark']) .slider-card__badge--activity {
+  background: rgba(148, 163, 184, 0.1) !important;
+  border-color: rgba(148, 163, 184, 0.35) !important;
+  color: #94a3b8 !important; /* Gray color */
+}
+
+:host-context([data-theme='dark']) .slider-card__badge--restaurant {
+  background: rgba(248, 250, 252, 0.1) !important;
+  border-color: rgba(248, 250, 252, 0.4) !important;
+  color: #f8fafc !important; /* Clear/Light color */
 }
 
 @keyframes sliderShimmer {
@@ -1752,6 +1800,50 @@
   font-size: 0.8rem;
   font-weight: 600;
   max-width: 200px;
+}
+
+:host-context([data-theme='dark']) .about-us-home {
+  border-color: rgba(71, 85, 105, 0.45);
+  background:
+    radial-gradient(circle at 10% 20%, rgba(232, 0, 45, 0.16), transparent 38%),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(17, 24, 39, 0.96));
+  box-shadow: 0 22px 46px rgba(2, 6, 23, 0.45);
+}
+
+:host-context([data-theme='dark']) .about-us-home__kicker {
+  border-color: rgba(148, 163, 184, 0.45);
+  color: #e2e8f0;
+  background: rgba(15, 23, 42, 0.6);
+}
+
+:host-context([data-theme='dark']) .about-us-home__content h2,
+:host-context([data-theme='dark']) .about-us-home__content p,
+:host-context([data-theme='dark']) .about-us-home__stats strong,
+:host-context([data-theme='dark']) .about-us-home__steps span {
+  color: #e2e8f0;
+}
+
+:host-context([data-theme='dark']) .about-us-home__content p,
+:host-context([data-theme='dark']) .about-us-home__stats span {
+  color: #cbd5e1;
+}
+
+:host-context([data-theme='dark']) .about-us-home__values span,
+:host-context([data-theme='dark']) .about-us-home__stats article,
+:host-context([data-theme='dark']) .about-us-home__steps div {
+  background: rgba(15, 23, 42, 0.7);
+  border-color: rgba(71, 85, 105, 0.45);
+  color: #e2e8f0;
+}
+
+:host-context([data-theme='dark']) .about-us-home__steps strong {
+  background: linear-gradient(135deg, #0ea5e9, #1d4ed8);
+}
+
+:host-context([data-theme='dark']) .about-us-home__btn--ghost {
+  background: rgba(15, 23, 42, 0.7);
+  border-color: rgba(71, 85, 105, 0.45);
+  color: #e2e8f0;
 }
 
 .card-pop-in {
@@ -2164,6 +2256,13 @@
   font-weight: 800;
   font-size: 1.05rem;
   letter-spacing: -0.01em;
+}
+
+.persona-meta {
+  grid-column: 2;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  line-height: 1.2;
 }
 
 .persona-pct {

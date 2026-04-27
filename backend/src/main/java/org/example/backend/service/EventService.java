@@ -9,6 +9,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import org.example.backend.i18n.CatalogKeyUtil;
 import org.example.backend.model.City;
 import org.example.backend.model.Event;
@@ -63,7 +64,11 @@ public class EventService {
         List<Event> toUpdate = new ArrayList<>();
 
         for (Event event : events) {
+            boolean changed = ensureCityLink(event);
             if (applyAutomaticStatusByDate(event)) {
+                changed = true;
+            }
+            if (changed) {
                 toUpdate.add(event);
             }
         }
@@ -85,7 +90,11 @@ public class EventService {
         syncStatusesByDateInDatabase();
         Optional<Event> eventOpt = eventRepository.findById(id);
         eventOpt.ifPresent(event -> {
+            boolean changed = ensureCityLink(event);
             if (applyAutomaticStatusByDate(event)) {
+                changed = true;
+            }
+            if (changed) {
                 eventRepository.save(event);
             }
         });
@@ -100,15 +109,8 @@ public class EventService {
     @Transactional
     public Event createOrUpdateEvent(Event event) {
         boolean isNewEvent = event.getEventId() == null;
-
-        // Si une ville est fournie avec un ID
-        if (event.getCity() != null && event.getCity().getCityId() != null) {
-            City city = cityRepository.findById(event.getCity().getCityId())
-                    .orElse(null); // Si pas trouvé, on met null au lieu de faire planter
-            event.setCity(city);
-        } else {
-            event.setCity(null); // Autorise l'ajout sans ville si besoin
-        }
+        City resolvedCity = resolveCityFromPayloadOrVenue(event);
+        event.setCity(resolvedCity);
 
         normalizeCapacity(event);
 
@@ -120,6 +122,102 @@ public class EventService {
         }
 
         return saved;
+    }
+
+    private boolean ensureCityLink(Event event) {
+        if (event == null || event.getCity() != null) {
+            return false;
+        }
+        City resolved = resolveCityFromPayloadOrVenue(event);
+        if (resolved == null) {
+            return false;
+        }
+        event.setCity(resolved);
+        return true;
+    }
+
+    private City resolveCityFromPayloadOrVenue(Event event) {
+        if (event == null) {
+            return null;
+        }
+
+        Integer requestedCityId = extractRequestedCityId(event);
+        if (requestedCityId != null) {
+            Optional<City> byId = cityRepository.findById(requestedCityId);
+            if (byId.isPresent()) {
+                return byId.get();
+            }
+        }
+
+        String requestedCityName = extractRequestedCityName(event);
+        if (!requestedCityName.isBlank()) {
+            Optional<City> byName = cityRepository.findFirstByNameIgnoreCase(requestedCityName);
+            if (byName.isPresent()) {
+                return byName.get();
+            }
+        }
+
+        return resolveCityFromVenue(event.getVenue());
+    }
+
+    private Integer extractRequestedCityId(Event event) {
+        if (event == null) {
+            return null;
+        }
+        if (event.getCity() != null && event.getCity().getCityId() != null) {
+            return event.getCity().getCityId();
+        }
+        return event.getCityId();
+    }
+
+    private String extractRequestedCityName(Event event) {
+        if (event == null || event.getCity() == null || event.getCity().getName() == null) {
+            return "";
+        }
+        return event.getCity().getName().trim();
+    }
+
+    private City resolveCityFromVenue(String venue) {
+        if (venue == null || venue.isBlank()) {
+            return null;
+        }
+
+        String foldedVenue = foldText(venue);
+        if (foldedVenue.isBlank()) {
+            return null;
+        }
+
+        for (City city : cityRepository.findAll()) {
+            String foldedCityName = foldText(city.getName());
+            if (foldedCityName.isBlank()) {
+                continue;
+            }
+            if (containsWholeWord(foldedVenue, foldedCityName)) {
+                return city;
+            }
+        }
+
+        return null;
+    }
+
+    private String foldText(String value) {
+        if (value == null) {
+            return "";
+        }
+        return Normalizer.normalize(value, Normalizer.Form.NFD)
+            .replaceAll("\\p{M}", "")
+            .toLowerCase(Locale.ROOT)
+            .replaceAll("[^a-z0-9\\s]", " ")
+            .replaceAll("\\s+", " ")
+            .trim();
+    }
+
+    private boolean containsWholeWord(String haystack, String needle) {
+        if (haystack == null || haystack.isBlank() || needle == null || needle.isBlank()) {
+            return false;
+        }
+        Pattern pattern = Pattern.compile("(^|\\\\s)" + Pattern.quote(needle) + "(\\\\s|$)");
+        return pattern.matcher(haystack).find();
     }
 
     @Transactional

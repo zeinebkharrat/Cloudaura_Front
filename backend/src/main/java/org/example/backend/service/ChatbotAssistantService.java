@@ -3174,7 +3174,7 @@ public class ChatbotAssistantService {
 
     private List<City> citiesForNlpMatching() {
         return cityRepository.findAll().stream()
-                .filter(c -> !c.isVirtualFlightEndpointCity())
+                .filter(c -> !c.isExcludedFromPublicCityCatalog())
                 .collect(Collectors.toList());
     }
 

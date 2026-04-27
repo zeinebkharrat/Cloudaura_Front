@@ -26,53 +26,47 @@ export class LanguageService {
 
   /** Resolve language before first paint (no TranslateService dependency). */
   resolveInitialLanguageCode(): AppLang {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored === 'en' || stored === 'ar') {
-        return stored;
-      }
-      if (stored === 'fr') {
-        // Migrate previous default (French) to English unless user later picks another language.
-        return 'en';
-      }
-    } catch {
-      /* private mode */
-    }
+    this.persistEnglishOnlyPreference();
     return 'en';
   }
 
   applyDocumentDirection(lang: AppLang): void {
+    void lang;
     if (typeof document === 'undefined') {
       return;
     }
     const el = document.documentElement;
-    el.setAttribute('lang', lang);
+    el.setAttribute('lang', 'en');
     el.setAttribute('translate', 'no');
-    el.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
-    if (lang === 'ar') {
-      el.style.setProperty('font-family', "'Cairo', 'Outfit', sans-serif");
-    } else {
-      el.style.removeProperty('font-family');
-    }
+    el.setAttribute('dir', 'ltr');
+    el.style.removeProperty('font-family');
   }
 
   setLanguage(lang: AppLang): void {
-    this.currentLang.set(lang);
-    this.langChangeRaw$.next(lang);
-    try {
-      localStorage.setItem(STORAGE_KEY, lang);
-    } catch {
-      /* ignore */
-    }
-    this.applyDocumentDirection(lang);
-    this.translate.use(lang).subscribe(() => {
-      this.langChanged$.next(lang);
+    void lang;
+    const enforced: AppLang = 'en';
+    this.currentLang.set(enforced);
+    this.langChangeRaw$.next(enforced);
+    this.persistEnglishOnlyPreference();
+    this.applyDocumentDirection(enforced);
+    this.translate.use(enforced).subscribe(() => {
+      this.langChanged$.next(enforced);
     });
   }
 
   /** Call after initial `translate.use()` in APP_INITIALIZER so late subscribers get the current code. */
   notifyLanguageReady(code: AppLang): void {
-    this.langChangeRaw$.next(code);
-    this.langChanged$.next(code);
+    const enforced: AppLang = 'en';
+    void code;
+    this.langChangeRaw$.next(enforced);
+    this.langChanged$.next(enforced);
+  }
+
+  private persistEnglishOnlyPreference(): void {
+    try {
+      localStorage.setItem(STORAGE_KEY, 'en');
+    } catch {
+      /* ignore */
+    }
   }
 }

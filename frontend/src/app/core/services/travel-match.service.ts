@@ -4,79 +4,117 @@ import { Observable, catchError, map, shareReplay } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   CityMatchScore,
-  TravelMatchModelJson,
+  RecommendationProfile,
   TravelPreferencePayload,
   TravelRecommendationApiResponse,
+  TravelRecommendationModelJson,
 } from '../travel-match.types';
 
 @Injectable({ providedIn: 'root' })
 export class TravelMatchService {
   private readonly http = inject(HttpClient);
-  private model$?: Observable<TravelMatchModelJson>;
+  private model$?: Observable<TravelRecommendationModelJson>;
 
-  private loadModel(): Observable<TravelMatchModelJson> {
+  private loadModel(): Observable<TravelRecommendationModelJson> {
     if (!this.model$) {
       this.model$ = this.http
-        .get<TravelMatchModelJson>('/assets/travel-match-model.json')
+        .get<TravelRecommendationModelJson>('/assets/travel-match-model.json')
         .pipe(shareReplay(1));
     }
     return this.model$;
   }
 
-  /** Encode user prefs to the same vector space as training (column order must match Python). */
-  encodePreferences(model: TravelMatchModelJson, prefs: TravelPreferencePayload): number[] {
-    const row: number[] = [];
-    const raw = prefs as unknown as Record<string, unknown>;
-    for (const col of model.categoricalColumns) {
-      const allowed = model.categories[col];
-      if (col === 'travel_style') {
-        const arr = Array.isArray(raw['travel_styles'])
-          ? (raw['travel_styles'] as unknown[])
-          : raw['travel_style']
-            ? [raw['travel_style']]
-            : [];
-        const selected = new Set(
-          arr.map((x) => String(x ?? '').trim().toLowerCase()).filter(Boolean)
-        );
-        for (const opt of allowed) {
-          row.push(selected.has(String(opt).trim().toLowerCase()) ? 1 : 0);
-        }
-        continue;
-      }
-      const v = String(raw[col] ?? '').trim().toLowerCase();
-      for (const opt of allowed) {
-        row.push(opt.toLowerCase() === v ? 1 : 0);
-      }
-    }
-    for (let i = 0; i < model.numericColumns.length; i++) {
-      const name = model.numericColumns[i];
-      const rawNum = Number((prefs as unknown as Record<string, unknown>)[name]);
-      const z = (rawNum - model.numericMean[i]) / (model.numericScale[i] || 1);
-      row.push(Number.isFinite(z) ? z : 0);
-    }
-    return row;
+  private normalize(value: unknown): string {
+    return String(value ?? '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ');
   }
 
-  private cosineSimilarity(a: number[], b: number[]): number {
-    let dot = 0;
-    let na = 0;
-    let nb = 0;
-    for (let i = 0; i < a.length; i++) {
-      dot += a[i] * b[i];
-      na += a[i] * a[i];
-      nb += b[i] * b[i];
+  private normalizeStyle(style: unknown): string {
+    const raw = this.normalize(style);
+    if (!raw) {
+      return '';
     }
-    const d = Math.sqrt(na) * Math.sqrt(nb);
-    return d < 1e-12 ? 0 : dot / d;
+    const parts = raw
+      .split('|')
+      .map((x) => this.normalize(x))
+      .filter(Boolean);
+    return [...new Set(parts)].sort().join('|');
   }
 
-  private softmax(logits: number[], temperature: number): number[] {
-    const t = Math.max(0.08, temperature);
-    const scaled = logits.map((x) => x / t);
-    const max = Math.max(...scaled);
-    const exps = scaled.map((x) => Math.exp(x - max));
-    const sum = exps.reduce((s, v) => s + v, 0);
-    return exps.map((v) => v / sum);
+  private resolveBudgetRange(prefs: TravelPreferencePayload): { min: number; max: number } {
+    const directMin = Number(prefs.budget_min ?? prefs.budgetMin);
+    const directMax = Number(prefs.budget_max ?? prefs.budgetMax);
+    if (Number.isFinite(directMin) && Number.isFinite(directMax)) {
+      return directMin <= directMax
+        ? { min: directMin, max: directMax }
+        : { min: directMax, max: directMin };
+    }
+
+    const avg = Number(prefs.budget_avg ?? 180);
+    const approxMin = Number.isFinite(directMin) ? directMin : avg * 0.7;
+    const approxMax = Number.isFinite(directMax) ? directMax : avg * 1.3;
+    return approxMin <= approxMax
+      ? { min: approxMin, max: approxMax }
+      : { min: approxMax, max: approxMin };
+  }
+
+  private encodePreferenceFeatures(prefs: TravelPreferencePayload) {
+    const styles = Array.isArray(prefs.travel_styles)
+      ? prefs.travel_styles.map((s) => this.normalize(s)).filter(Boolean)
+      : [];
+    const style = styles.length
+      ? this.normalizeStyle(styles.join('|'))
+      : this.normalizeStyle(prefs.travel_style ?? '');
+    const budget = this.resolveBudgetRange(prefs);
+
+    return {
+      accommodation_type: this.normalize(prefs.accommodation_type),
+      preferred_cuisine: this.normalize(prefs.preferred_cuisine),
+      preferred_region: this.normalize(prefs.preferred_region),
+      transport_preference: this.normalize(prefs.transport_preference),
+      travel_style: style,
+      travel_with: this.normalize(prefs.travel_with),
+      budget_min: budget.min,
+      budget_max: budget.max,
+    };
+  }
+
+  private scoreProfile(
+    pref: ReturnType<TravelMatchService['encodePreferenceFeatures']>,
+    profile: RecommendationProfile
+  ): number {
+    const f = profile.features;
+    const sameAccommodation = pref.accommodation_type === this.normalize(f.accommodation_type) ? 1 : 0;
+    const sameCuisine = pref.preferred_cuisine === this.normalize(f.preferred_cuisine) ? 1 : 0;
+    const sameRegion = pref.preferred_region === this.normalize(f.preferred_region) ? 1 : 0;
+    const sameTransport = pref.transport_preference === this.normalize(f.transport_preference) ? 1 : 0;
+    const sameTravelWith = pref.travel_with === this.normalize(f.travel_with) ? 1 : 0;
+    const profileStyle = this.normalizeStyle(f.travel_style);
+    const prefStyles = new Set(pref.travel_style.split('|').filter(Boolean));
+    const profileStyles = new Set(profileStyle.split('|').filter(Boolean));
+    let sameStyle = 0;
+    if (pref.travel_style && profileStyle) {
+      const overlap = [...prefStyles].filter((token) => profileStyles.has(token)).length;
+      const denom = Math.max(prefStyles.size, profileStyles.size, 1);
+      sameStyle = overlap / denom;
+    }
+
+    const pMid = (pref.budget_min + pref.budget_max) / 2;
+    const rMid = (Number(f.budget_min) + Number(f.budget_max)) / 2;
+    const dist = Math.abs(pMid - rMid);
+    const budgetScore = Math.max(0, 1 - dist / 300);
+
+    return (
+      sameRegion * 0.22 +
+      sameStyle * 0.2 +
+      sameTravelWith * 0.13 +
+      sameCuisine * 0.12 +
+      sameAccommodation * 0.12 +
+      sameTransport * 0.09 +
+      budgetScore * 0.12
+    );
   }
 
   /**
@@ -110,75 +148,79 @@ export class TravelMatchService {
 
   private mapApiToRanked(res: TravelRecommendationApiResponse, topN: number): CityMatchScore[] {
     const rows: CityMatchScore[] = (res.cities ?? []).slice(0, topN).map((c) => ({
-      cityName: c.cityName,
+      cityName: c.recommended_city_name || c.cityName,
       score01: c.score01,
       percent: 0,
+      cityId: c.recommended_city_id,
+      recommendedRegion: c.recommended_region,
+      recommendedActivities: c.recommended_activities,
+      recommendedEvent: c.recommended_event,
     }));
-    /** Same “decisive” gamma as centroid path for comparable UI. */
+
     const displayGamma = 0.34;
     let boosted = rows.map((r) => Math.pow(Math.max(r.score01, 1e-15), displayGamma));
     const sumB = boosted.reduce((s, v) => s + v, 0) || 1;
     boosted = boosted.map((v) => v / sumB);
-    const ranked = rows.map((r, i) => ({
-      cityName: r.cityName,
-      score01: boosted[i],
-      percent: 0,
-    }));
+    const ranked = rows.map((r, i) => ({ ...r, score01: boosted[i], percent: 0 }));
     this.applyCalibratedMatchPercents(ranked);
     return ranked;
   }
 
-  private rankCentroidFromStaticModel(
-    prefs: TravelPreferencePayload,
-    topN: number,
-    temperature: number
-  ): Observable<CityMatchScore[]> {
+  private rankFromStaticModel(prefs: TravelPreferencePayload, topN: number): Observable<CityMatchScore[]> {
     return this.loadModel().pipe(
       map((model) => {
-        const u = this.encodePreferences(model, prefs);
-        const logits: number[] = [];
-        for (const city of model.cities) {
-          const c = model.centroids[city];
-          if (!c || c.length !== u.length) {
-            logits.push(-1e9);
-            continue;
+        const pref = this.encodePreferenceFeatures(prefs);
+        const byCity = new Map<string, CityMatchScore & { totalScore: number; supportCount: number }>();
+
+        for (const p of model.profiles) {
+          const cityName = p.labels.recommended_city_name;
+          const current = byCity.get(cityName);
+          const score = this.scoreProfile(pref, p);
+
+          if (!current) {
+            byCity.set(cityName, {
+              cityName,
+              score01: score,
+              percent: 0,
+              totalScore: score,
+              supportCount: 1,
+              cityId: p.labels.recommended_city_id,
+              recommendedRegion: p.labels.recommended_region,
+              recommendedActivities: p.labels.recommended_activities,
+              recommendedEvent: p.labels.recommended_event,
+            });
+          } else {
+            current.score01 = Math.max(current.score01, score);
+            current.totalScore += score;
+            current.supportCount += 1;
           }
-          const sim = this.cosineSimilarity(u, c);
-          const prior = model.cityPriors[city] ?? 1 / model.cities.length;
-          const blended = sim * (0.28 + 0.72 * Math.sqrt(prior));
-          logits.push(blended);
         }
-        const probs = this.softmax(logits, temperature);
-        const displayGamma = 0.34;
-        let ranked = model.cities
-          .map((cityName, i) => ({
-            cityName,
-            score01: probs[i],
-            percent: 0,
-          }))
+
+        const rows = [...byCity.values()]
+          .map((row) => {
+            const averageScore = row.totalScore / Math.max(1, row.supportCount);
+            const support = Math.min(1, row.supportCount / 5);
+            return {
+              ...row,
+              score01: row.score01 * 0.68 + averageScore * 0.22 + support * 0.1,
+            };
+          })
           .sort((a, b) => b.score01 - a.score01)
           .slice(0, topN);
-        const boosted = ranked.map((r) => Math.pow(Math.max(r.score01, 1e-15), displayGamma));
-        const sumB = boosted.reduce((s, v) => s + v, 0) || 1;
-        ranked = ranked.map((r, i) => {
-          const p = boosted[i] / sumB;
-          return {
-            cityName: r.cityName,
-            score01: p,
-            percent: 0,
-          };
-        });
-        this.applyCalibratedMatchPercents(ranked);
-        return ranked;
+
+        const sum = rows.reduce((acc, x) => acc + x.score01, 0) || 1;
+        for (const r of rows) {
+          r.score01 = r.score01 / sum;
+        }
+
+        this.applyCalibratedMatchPercents(rows);
+        return rows;
       })
     );
   }
 
-  /**
-   * Ranks governorates using the Flask microservice when `environment.travelRecommendationApiUrl`
-   * is set; otherwise uses static `travel-match-model.json` centroid ranking.
-   */
   rankCities(prefs: TravelPreferencePayload, topN = 8, temperature = 0.26): Observable<CityMatchScore[]> {
+    void temperature;
     const baseUrl = environment.travelRecommendationApiUrl?.trim();
     if (baseUrl) {
       return this.http
@@ -188,9 +230,9 @@ export class TravelMatchService {
         })
         .pipe(
           map((res) => this.mapApiToRanked(res, topN)),
-          catchError(() => this.rankCentroidFromStaticModel(prefs, topN, temperature))
+          catchError(() => this.rankFromStaticModel(prefs, topN))
         );
     }
-    return this.rankCentroidFromStaticModel(prefs, topN, temperature);
+    return this.rankFromStaticModel(prefs, topN);
   }
 }

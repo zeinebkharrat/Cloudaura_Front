@@ -120,6 +120,37 @@
   font-size: 0.79rem;
 }
 
+:host-context([data-theme='dark']) .stories-search-input-wrap,
+:host-context([data-theme='dark']) .stories-search-results,
+:host-context([data-theme='dark']) .story-upload-btn {
+  background: rgba(15, 23, 42, 0.94);
+  border-color: rgba(71, 85, 105, 0.55);
+  color: #e2e8f0;
+}
+
+:host-context([data-theme='dark']) .stories-search-input,
+:host-context([data-theme='dark']) .stories-search-user-meta strong,
+:host-context([data-theme='dark']) .stories-header h3,
+:host-context([data-theme='dark']) .story-avatar small {
+  color: #e2e8f0;
+}
+
+:host-context([data-theme='dark']) .stories-search-input::placeholder,
+:host-context([data-theme='dark']) .stories-search-state,
+:host-context([data-theme='dark']) .stories-search-user-meta small {
+  color: #94a3b8;
+}
+
+:host-context([data-theme='dark']) .stories-search-item:hover {
+  background: rgba(51, 65, 85, 0.65);
+}
+
+:host-context([data-theme='dark']) .stories-search-avatar,
+:host-context([data-theme='dark']) .story-avatar img,
+:host-context([data-theme='dark']) .avatar-fallback {
+  border-color: rgba(148, 163, 184, 0.24);
+}
+
 .stories-header {
   display: flex;
   justify-content: space-between;

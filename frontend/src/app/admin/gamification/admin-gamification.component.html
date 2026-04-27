@@ -40,7 +40,7 @@
           Icon (URL or from PC)
           <div style="display: flex; gap: 8px;">
             <input type="text" [(ngModel)]="newBadge.iconUrl" name="bi" placeholder="https://..." style="flex: 1;" />
-            <button type="button" class="btn-secondary" (click)="fileIn.click()">📁 Browse</button>
+            <button type="button" class="btn-secondary btn-browse-modern" (click)="fileIn.click()">Browse files</button>
             <input #fileIn type="file" (change)="onBadgeFileSelected($event)" style="display: none;" accept="image/*" />
           </div>
           @if (badgePreviewUrl || newBadge.iconUrl) {

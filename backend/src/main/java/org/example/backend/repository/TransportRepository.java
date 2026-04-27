@@ -1,6 +1,7 @@
 package org.example.backend.repository;
 
 import org.example.backend.model.Transport;
+import org.example.backend.model.Transport.TransportType;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -15,6 +16,17 @@ import java.util.Optional;
 
 @Repository
 public interface TransportRepository extends JpaRepository<Transport, Integer> {
+
+    /** Admin flight catalogue: list with cities loaded. */
+    @EntityGraph(attributePaths = {"departureCity", "arrivalCity"})
+    List<Transport> findByType(TransportType type);
+
+    long countByType(TransportType type);
+
+    long countByIsActiveTrueAndType(TransportType type);
+
+    @EntityGraph(attributePaths = {"departureCity", "arrivalCity"})
+    List<Transport> findByIsActiveTrueAndType(TransportType type);
 
         @EntityGraph(attributePaths = {"departureCity", "arrivalCity"})
         List<Transport> findByDepartureCity_CityIdAndArrivalCity_CityIdAndIsActiveTrue(int departureCityId, int arrivalCityId);

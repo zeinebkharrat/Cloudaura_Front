@@ -450,7 +450,7 @@ public class CityImageDetectionService {
             if (city.getName() == null || city.getName().isBlank()) {
                 continue;
             }
-            if (city.isVirtualFlightEndpointCity()) {
+            if (city.isExcludedFromPublicCityCatalog()) {
                 continue;
             }
 
@@ -496,7 +496,7 @@ public class CityImageDetectionService {
             if (city.getName() == null || city.getName().isBlank()) {
                 continue;
             }
-            if (city.isVirtualFlightEndpointCity()) {
+            if (city.isExcludedFromPublicCityCatalog()) {
                 continue;
             }
 

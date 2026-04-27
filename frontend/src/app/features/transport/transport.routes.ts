@@ -27,6 +27,11 @@ export const TRANSPORT_ROUTES: Routes = [
     component: TransportEstimatePageComponent,
   },
   {
+    path: 'cars',
+    loadComponent: () =>
+      import('./car-rental-amadeus-page/car-rental-amadeus-page.component').then((m) => m.CarRentalAmadeusPageComponent),
+  },
+  {
     path: 'cars/amadeus',
     loadComponent: () =>
       import('./car-rental-amadeus-page/car-rental-amadeus-page.component').then((m) => m.CarRentalAmadeusPageComponent),

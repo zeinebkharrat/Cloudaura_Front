@@ -518,6 +518,24 @@ input:checked+.slider:before {
   animation: animate-in 0.4s ease forwards;
 }
 
+.btn-browse-modern {
+  border: 1px solid var(--border-soft);
+  background: color-mix(in srgb, var(--surface-2) 82%, transparent);
+  color: var(--text-color);
+  border-radius: 12px;
+  padding: 0 16px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  box-shadow: var(--shadow-soft);
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.btn-browse-modern:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--mediterranean-blue) 55%, var(--border-soft));
+  background: color-mix(in srgb, var(--surface-1) 90%, transparent);
+}
+
 .visual-grid {
   display: grid;
   gap: 4px;

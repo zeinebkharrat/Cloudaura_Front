@@ -5,14 +5,14 @@
   font-family: 'Inter', sans-serif;
   color: var(--text-color);
   min-height: 100vh;
-  background: var(--bg-color); 
+  background: #f9fafb; 
 }
 
 .hub-hero {
   text-align: center;
   margin-bottom: 60px;
   padding: 60px 20px;
-  background: radial-gradient(circle at 50% 100%, rgba(14, 165, 233, 0.1), transparent 70%), var(--surface-1);
+  background: radial-gradient(circle at 50% 100%, rgba(14, 165, 233, 0.08), transparent 70%), #ffffff;
   border-radius: 30px;
   border: 1px solid var(--border-soft);
   box-shadow: var(--shadow-card);
@@ -57,7 +57,8 @@
 }
 .roadmap-section .line {
   flex: 1;
-  border-bottom: 2px solid var(--border-soft);
+  border-bottom: 1.5px solid var(--border-soft);
+  opacity: 0.6;
 }
 .roadmap-section h2 {
   margin: 0 20px;
@@ -115,23 +116,23 @@
 
 .hex-shadow {
   top: 14px; bottom: -8px;
-  background-color: var(--surface-3);
+  background-color: #e2e8f0;
   transition: background-color 0.3s;
 }
 
 .hex-base {
   top: 8px; bottom: 0;
-  background-color: var(--surface-2);
+  background-color: #f1f5f9;
   transition: background-color 0.3s;
 }
 
 .hex-top {
   top: 0; bottom: 6px;
-  background-color: var(--surface-1);
+  background-color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--border-soft);
+  border: 1px solid #cbd5e1;
   transition: all 0.3s;
 }
 
@@ -145,19 +146,25 @@
 .filter-locked { color: var(--text-muted); opacity: 0.5; }
 
 /* Colors for specific states */
-.node-row.current .hex-shadow { background-color: color-mix(in srgb, var(--mediterranean-blue) 40%, black); }
-.node-row.current .hex-base { background-color: color-mix(in srgb, var(--mediterranean-blue) 70%, black); }
-.node-row.current .hex-top { background-color: var(--mediterranean-blue); border-color: transparent; }
+.node-row.current .hex-shadow { background-color: #0369a1; }
+.node-row.current .hex-base { background-color: #0284c7; }
+.node-row.current .hex-top { 
+  background-color: #0ea5e9; 
+  border-color: #7dd3fc;
+}
 .node-row.current .hex-icon { color: #fff; }
 
-.node-row.completed .hex-shadow { background-color: var(--surface-3); }
-.node-row.completed .hex-base { background-color: var(--surface-2); }
-.node-row.completed .hex-top { background-color: var(--surface-1); }
+.node-row.completed .hex-shadow { background-color: #e2e8f0; }
+.node-row.completed .hex-base { background-color: #f1f5f9; }
+.node-row.completed .hex-top { 
+  background-color: #f0fdf4;
+  border-color: #86efac;
+}
 .node-row.completed .hex-icon { color: var(--adm-success); }
 
-.node-row.locked .hex-shadow { background-color: var(--surface-3); opacity: 0.5; }
-.node-row.locked .hex-base { background-color: var(--surface-2); opacity: 0.5; }
-.node-row.locked .hex-top { background-color: var(--surface-1); opacity: 0.5; }
+.node-row.locked .hex-shadow { background-color: #e2e8f0; opacity: 0.5; }
+.node-row.locked .hex-base { background-color: #f1f5f9; opacity: 0.5; }
+.node-row.locked .hex-top { background-color: #ffffff; opacity: 0.5; }
 
 /* Connecting lines */
 .node-connector {
@@ -400,14 +407,14 @@
   position: absolute;
   top: 12px;
   left: 12px;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
-  color: #0ea5e9;
+  background: rgba(14, 165, 233, 0.1);
+  backdrop-filter: blur(8px);
+  color: #0284c7;
   font-size: 0.65rem;
   font-weight: 800;
   padding: 4px 10px;
   border-radius: 20px;
-  border: 1px solid rgba(14, 165, 233, 0.3);
+  border: 1px solid rgba(14, 165, 233, 0.2);
   z-index: 10;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -482,4 +489,68 @@
 .package-card .btn-primary {
   width: 100%;
   justify-content: center;
+}
+
+:host-context([data-theme='dark']) .roadmap-page {
+  background: linear-gradient(180deg, rgba(2, 6, 23, 0.94), rgba(15, 23, 42, 0.95));
+}
+
+:host-context([data-theme='dark']) .hub-hero,
+:host-context([data-theme='dark']) .game-card,
+:host-context([data-theme='dark']) .puzzle-card,
+:host-context([data-theme='dark']) .package-card,
+:host-context([data-theme='dark']) .ludo-card-info {
+  background: rgba(15, 23, 42, 0.94);
+  border-color: rgba(71, 85, 105, 0.45);
+}
+
+:host-context([data-theme='dark']) .hub-hero p,
+:host-context([data-theme='dark']) .store-section p,
+:host-context([data-theme='dark']) .gc-desc,
+:host-context([data-theme='dark']) .gc-meta,
+:host-context([data-theme='dark']) .ludo-card-info p,
+:host-context([data-theme='dark']) .puzzle-card__blurb,
+:host-context([data-theme='dark']) .puzzle-empty {
+  color: #cbd5e1;
+}
+
+:host-context([data-theme='dark']) .game-category-badge {
+  background: rgba(0, 0, 0, 0.5) !important;
+  color: #38bdf8 !important;
+  border-color: rgba(56, 189, 248, 0.3) !important;
+}
+
+:host-context([data-theme='dark']) .node-label-right,
+:host-context([data-theme='dark']) .node-label-left {
+  background: rgba(15, 23, 42, 0.96);
+  color: #e2e8f0;
+  border-color: rgba(71, 85, 105, 0.45);
+}
+
+:host-context([data-theme='dark']) .hex-top {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+:host-context([data-theme='dark']) .node-row.current .hex-top {
+  background-color: #0ea5e9 !important;
+  border-color: #7dd3fc !important;
+}
+
+:host-context([data-theme='dark']) .node-row.completed .hex-top {
+  background-color: rgba(34, 197, 94, 0.1) !important;
+  border-color: rgba(34, 197, 94, 0.4) !important;
+}
+
+:host-context([data-theme='dark']) .hex-shadow,
+:host-context([data-theme='dark']) .hex-base,
+:host-context([data-theme='dark']) .node-row.completed .hex-shadow,
+:host-context([data-theme='dark']) .node-row.completed .hex-base,
+:host-context([data-theme='dark']) .node-row.locked .hex-shadow,
+:host-context([data-theme='dark']) .node-row.locked .hex-base {
+  background-color: #020617;
+}
+
+:host-context([data-theme='dark']) .continue-bubble {
+  border-color: rgba(255, 255, 255, 0.65);
 }

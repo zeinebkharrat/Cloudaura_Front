@@ -466,7 +466,9 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
       this.transport.set(selected);
       this.applySeatCapacityValidators(selected);
       this.maybeRedirectEstimateOnly(selected);
-    } else if (Number.isFinite(transportIdNum)) {
+    } else if (Number.isFinite(transportIdNum) && transportIdNum > 0) {
+      // Only load from server for positive IDs (real transports)
+      // Synthetic transports (negative IDs) don't exist in database
       this.dataSource.getTransportById(transportIdNum).subscribe({
         next: (t) => {
           this.transport.set(t);
@@ -482,6 +484,13 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
           this.router.navigate(['/transport']);
         },
       });
+    } else if (Number.isFinite(transportIdNum) && transportIdNum < 0) {
+      // Synthetic transport (negative ID) not in store - redirect back
+      void this.alerts.warning(
+        this.translate.instant('TRANSPORT_BOOKING.ALERT_TRIP_NOT_FOUND'),
+        this.translate.instant('TRANSPORT_BOOKING.ALERT_TRIP_NOT_FOUND_BODY'),
+      );
+      this.router.navigate(['/transport']);
     } else if (selected) {
       this.transport.set(selected);
       this.applySeatCapacityValidators(selected);
@@ -631,7 +640,9 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
     if (!t) return;
 
     const syntheticOffer = this.buildSyntheticFlightOfferPayload(t);
-    if (t.id < 0 && !syntheticOffer) {
+    // Only require synthetic flight offer for flight bookings (PLANE type with negative ID)
+    // Car rentals (CAR type) can have negative IDs but don't need flight offer payload
+    if (t.id < 0 && t.type === 'PLANE' && !syntheticOffer) {
       void this.alerts.warning(
         this.translate.instant('TRANSPORT_BOOKING.ALERT_SYNTHETIC_FLIGHT_TITLE'),
         this.translate.instant('TRANSPORT_BOOKING.ALERT_SYNTHETIC_FLIGHT_BODY'),
@@ -817,6 +828,8 @@ export class TransportBookingPageComponent implements OnInit, OnDestroy {
           ? (this.store.transportRouteDurationMin() ?? undefined)
           : undefined,
         rentalDays: t.type === 'CAR' ? this.store.transportRentalDays() : undefined,
+        departureCityId: t.departureCityId || undefined,
+        arrivalCityId: t.arrivalCityId || undefined,
         ...(syntheticOffer ? { syntheticFlightOffer: syntheticOffer } : {}),
       })
       .subscribe({

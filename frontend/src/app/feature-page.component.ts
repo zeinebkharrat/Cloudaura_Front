@@ -495,11 +495,9 @@ export class FeaturePageComponent implements OnInit {
     this.catalogLoading.set(true);
     this.catalogError.set(null);
     const cityId = this.selectedCityId();
-    const lang = this.language.currentLang();
-    const langParam = `lang=${encodeURIComponent(lang)}`;
-    let primary = `${API_BASE_URL}/api/products?${langParam}`;
-    if (cityId) primary += `&cityId=${cityId}`;
-    const fallback = `${API_FALLBACK_ORIGIN}/api/products?${langParam}${cityId ? `&cityId=${cityId}` : ''}`;
+    let primary = `${API_BASE_URL}/api/products`;
+    if (cityId) primary += `?cityId=${cityId}`;
+    const fallback = `${API_FALLBACK_ORIGIN}/api/products${cityId ? `?cityId=${cityId}` : ''}`;
     const tryFallback = API_BASE_URL === '';
 
     this.http.get<CatalogProduct[]>(primary).subscribe({
@@ -553,9 +551,7 @@ export class FeaturePageComponent implements OnInit {
     if (p == null || Number.isNaN(Number(p))) {
       return this.translate.instant('FEATURE_CATALOG.PRICE_DASH');
     }
-    const lang = this.language.currentLang();
-    const locale = lang === 'ar' ? 'ar-TN' : lang === 'fr' ? 'fr-FR' : 'en-US';
-    return new Intl.NumberFormat(locale, {
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'TND',
       minimumFractionDigits: 2,
@@ -632,14 +628,13 @@ export class FeaturePageComponent implements OnInit {
   private loadArtisanProducts(): void {
     this.artisanProductsLoading.set(true);
     this.artisanProductsError.set(null);
-    const langQ = `lang=${encodeURIComponent(this.language.currentLang())}`;
-    this.http.get<CatalogProduct[]>(`${API_BASE_URL}/api/products/my-products?${langQ}`).subscribe({
+    this.http.get<CatalogProduct[]>(`${API_BASE_URL}/api/products/my-products`).subscribe({
       next: (list) => {
         this.artisanProducts.set(list ?? []);
         this.artisanProductsLoading.set(false);
       },
       error: () => {
-        const fallback = `${API_FALLBACK_ORIGIN}/api/products/my-products?${langQ}`;
+        const fallback = `${API_FALLBACK_ORIGIN}/api/products/my-products`;
         const tryFallback = API_BASE_URL === '';
         if (tryFallback) {
           this.http.get<CatalogProduct[]>(fallback).subscribe({

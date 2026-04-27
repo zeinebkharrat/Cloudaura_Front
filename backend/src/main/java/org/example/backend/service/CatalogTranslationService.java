@@ -87,14 +87,19 @@ public class CatalogTranslationService {
     }
 
     /**
-     * Resolves {@code entityType}.{id}.{field} for the current request language, then French, then
-     * {@code fallback}. If nothing is stored and resolution falls back to the constructed key,
-     * returns {@code fallback} so callers can keep the original DB field.
+     * Resolves {@code entityType}.{id}.{field} for the current request language only.
+     *
+     * <p>Unlike {@link #resolve(String, String, String)}, this method does not fall back to French
+     * because entity fields are source content from the database; when no translation exists for
+     * the requested language, callers should keep the persisted value.
      */
     @Transactional(readOnly = true)
     public String resolveEntityField(long id, String entityType, String field, String fallback) {
         String key = entityType + "." + id + "." + field;
-        String result = resolveForRequest(key, fallback);
-        return result.equals(key) ? fallback : result;
+        // For entity source fields (name/description/address...), keep the persisted value unless
+        // there is an exact translation for the current request language.
+        return find(key, ApiRequestLang.get())
+                .filter(v -> !v.isBlank())
+                .orElse(fallback);
     }
 }

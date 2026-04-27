@@ -84,6 +84,11 @@
   min-width: 0;
 }
 
+.sb-badge--stacked {
+  width: fit-content;
+  margin-top: 2px;
+}
+
 .sb-logo-text {
   font-family: 'Outfit', sans-serif;
   font-weight: 800;
@@ -125,6 +130,10 @@
   }
 
   .sb-logo-sub {
+    display: none;
+  }
+
+  .sb-badge--stacked {
     display: none;
   }
 }

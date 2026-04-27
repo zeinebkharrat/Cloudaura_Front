@@ -16,9 +16,7 @@ export class LanguageSelectorComponent {
   readonly current = this.language.currentLang;
 
   readonly options: { code: AppLang; label: string }[] = [
-    { code: 'fr', label: 'FR' },
     { code: 'en', label: 'EN' },
-    { code: 'ar', label: 'ع' },
   ];
 
   select(code: AppLang): void {

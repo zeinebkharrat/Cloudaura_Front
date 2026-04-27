@@ -95,6 +95,7 @@
               <td>{{ post.totalViews ?? 0 }}</td>
               <td>{{ post.postScore ?? 0 }}</td>
               <td>
+
                 @if (postThumbnail(post); as thumb) {
                   <img
                     class="post-thumb"
@@ -104,6 +105,7 @@
                 } @else {
                   <span class="no-image-indicator" title="No image">🚫</span>
                 }
+
               </td>
               <td>{{ formatDate(post.createdAt) }}</td>
               <td>

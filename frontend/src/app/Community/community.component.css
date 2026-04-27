@@ -473,6 +473,46 @@
   display: none;
 }
 
+:root[data-theme='dark'] .composer-main-input,
+:root[data-theme='dark'] .quick-comment-input {
+  background: rgba(15, 23, 42, 0.88);
+  border-color: rgba(71, 85, 105, 0.55);
+  color: #e2e8f0;
+}
+
+:root[data-theme='dark'] .composer-chip,
+:root[data-theme='dark'] .giphy-btn,
+:root[data-theme='dark'] .my-posts-btn,
+:root[data-theme='dark'] .publish-btn {
+  background: rgba(15, 23, 42, 0.88);
+  border-color: rgba(71, 85, 105, 0.55);
+  color: #e2e8f0;
+}
+
+:root[data-theme='dark'] .composer-location-select,
+:root[data-theme='dark'] .composer-location-select option {
+  background: rgba(15, 23, 42, 0.96);
+  color: #e2e8f0;
+}
+
+:root[data-theme='dark'] .selected-giphy,
+:root[data-theme='dark'] .giphy-modal-card {
+  background: rgba(15, 23, 42, 0.96);
+  border-color: rgba(71, 85, 105, 0.55);
+}
+
+:root[data-theme='dark'] .giphy-tile,
+:root[data-theme='dark'] .giphy-type-btn {
+  background: rgba(30, 41, 59, 0.9);
+  border-color: rgba(71, 85, 105, 0.5);
+  color: #e2e8f0;
+}
+
+:root[data-theme='dark'] .selected-giphy img,
+:root[data-theme='dark'] .comment-giphy {
+  border-color: rgba(148, 163, 184, 0.22);
+}
+
 .composer-location-select {
   border: 1px solid var(--glass-border);
   background: var(--surface-1);
@@ -2417,30 +2457,26 @@
 }
 
 :root[data-theme='dark'] .post-card--event-announcement {
-  border-color: color-mix(in srgb, #ff5d3d 44%, var(--glass-border));
-  background:
-    radial-gradient(circle at 86% 12%, rgba(255, 190, 95, 0.22), transparent 42%),
-    radial-gradient(circle at 14% 82%, rgba(255, 92, 92, 0.16), transparent 48%),
-    linear-gradient(145deg, #202d45, #162239 56%, #111a2c);
+  border-color: rgba(255, 255, 255, 0.1);
+  background: linear-gradient(160deg, #1f2b3f 0%, #1b2739 55%, #182335 100%);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 14px 30px rgba(0, 0, 0, 0.35);
 }
 
 html[data-theme='dark'] .post-card--event-announcement {
-  border: 1px solid rgba(255, 123, 84, 0.46);
-  border-left: 4px solid rgba(255, 143, 89, 0.76);
-  background:
-    radial-gradient(circle at 84% 10%, rgba(255, 198, 112, 0.26), transparent 42%),
-    radial-gradient(circle at 6% 88%, rgba(80, 138, 255, 0.2), transparent 46%),
-    linear-gradient(152deg, #1d2a44 0%, #17243a 55%, #121d31 100%);
-  box-shadow: 0 22px 48px rgba(4, 10, 22, 0.48);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(160deg, #1f2b3f 0%, #1b2739 55%, #182335 100%);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 14px 30px rgba(0, 0, 0, 0.35);
 }
 
 :root[data-theme='dark'] .event-announcement-panel {
-  border-color: color-mix(in srgb, #ff5d3d 42%, var(--glass-border));
-  background: linear-gradient(120deg, rgba(255, 111, 76, 0.16), rgba(255, 211, 126, 0.12));
+  border-color: rgba(255, 255, 255, 0.1);
+  background: #1e293b;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.28);
 }
 
 :root[data-theme='dark'] .event-announcement-panel__badge {
-  color: #ffd9b8;
+  color: #94a3b8;
 }
 
 :root[data-theme='dark'] .post-card--event-announcement .author-name {
@@ -2488,21 +2524,24 @@ html[data-theme='dark'] .post-card--event-announcement .post-content {
 }
 
 html[data-theme='dark'] .post-card--event-announcement .event-announcement-panel {
-  border-color: rgba(255, 151, 94, 0.52);
-  background: linear-gradient(120deg, rgba(255, 116, 74, 0.2), rgba(255, 208, 132, 0.16));
+  border-color: rgba(255, 255, 255, 0.1);
+  background: #1e293b;
 }
 
 html[data-theme='dark'] .post-card--event-announcement .event-announcement-panel__badge {
-  color: #ffe1c7;
+  color: #94a3b8;
 }
 
 html[data-theme='dark'] .post-card--event-announcement .event-announcement-panel__cta {
-  box-shadow: 0 8px 22px rgba(255, 104, 44, 0.44);
+  color: #f8fafc;
+  background: linear-gradient(135deg, #ff6a2b 0%, #f68631 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 12px rgba(246, 134, 49, 0.35);
 }
 
 html[data-theme='dark'] .post-card--event-announcement .post-media-item {
-  border-color: rgba(133, 165, 222, 0.46);
-  background: rgba(19, 32, 53, 0.66);
+  border-color: rgba(255, 255, 255, 0.1);
+  background: #1e293b;
 }
 
 html[data-theme='dark'] .post-card--event-announcement .post-media-item .media-image {
@@ -2535,8 +2574,32 @@ html[data-theme='dark'] .post-card--event-announcement .post-media-item .media-i
 }
 
 :root[data-theme='dark'] .post-media-book-btn {
-  border-color: rgba(255, 236, 214, 0.45);
-  box-shadow: 0 10px 24px rgba(255, 89, 35, 0.58);
+  color: #f8fafc;
+  border-color: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, #ff6a2b 0%, #f68631 100%);
+  box-shadow: 0 4px 12px rgba(246, 134, 49, 0.35);
+}
+
+html[data-theme='dark'] .post-card--event-announcement .author-name,
+html[data-theme='dark'] .post-card--event-announcement .post-caption,
+html[data-theme='dark'] .post-card--event-announcement .post-content {
+  color: #f8fafc;
+}
+
+html[data-theme='dark'] .post-card--event-announcement .post-time,
+html[data-theme='dark'] .post-card--event-announcement .post-location-inline,
+html[data-theme='dark'] .post-card--event-announcement .stat-item,
+html[data-theme='dark'] .post-card--event-announcement .stat-count,
+html[data-theme='dark'] .post-card--event-announcement .event-announcement-panel__badge {
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .community-main-grid {
+  gap: clamp(24px, 3vw, 40px);
+}
+
+html[data-theme='dark'] .posts-container {
+  gap: clamp(22px, 2.6vw, 30px);
 }
 
 @media (max-width: 900px) {
@@ -2615,4 +2678,141 @@ html[data-theme='dark'] .post-card--event-announcement .post-media-item .media-i
 .stat-item--disabled {
   opacity: 0.62;
   cursor: not-allowed;
+}
+
+/* Dark mode refresh for event announcement cards only. */
+html[data-theme='dark'] .community-page {
+  background: linear-gradient(180deg, #0b1220 0%, #0f172a 100%);
+}
+
+html[data-theme='dark'] .community-main-grid {
+  gap: clamp(24px, 3vw, 40px);
+}
+
+html[data-theme='dark'] .posts-container {
+  gap: clamp(22px, 2.6vw, 30px);
+}
+
+html[data-theme='dark'] .post-card--event-announcement {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  background: linear-gradient(160deg, #1f2b3f 0%, #1b2739 55%, #182335 100%);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 14px 30px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme='dark'] .post-card--event-announcement:hover {
+  box-shadow: 0 8px 16px -2px rgba(0, 0, 0, 0.4), 0 18px 36px rgba(0, 0, 0, 0.42);
+}
+
+html[data-theme='dark'] .post-card--event-announcement .post-content {
+  color: #f8fafc;
+}
+
+html[data-theme='dark'] .post-card--event-announcement .author-name,
+html[data-theme='dark'] .post-card--event-announcement .post-caption,
+html[data-theme='dark'] .post-card--event-announcement .event-announcement-panel__cta,
+html[data-theme='dark'] .post-card--event-announcement .post-media-book-btn {
+  color: #f8fafc;
+}
+
+html[data-theme='dark'] .post-card--event-announcement .post-time,
+html[data-theme='dark'] .post-card--event-announcement .post-location-inline,
+html[data-theme='dark'] .post-card--event-announcement .stat-item,
+html[data-theme='dark'] .post-card--event-announcement .stat-count,
+html[data-theme='dark'] .post-card--event-announcement .event-announcement-panel__badge {
+  color: #94a3b8;
+}
+
+html[data-theme='dark'] .post-card--event-announcement .post-media-item {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: #1e293b;
+}
+
+html[data-theme='dark'] .post-card--event-announcement .post-media-item .media-image {
+  filter: saturate(1.08) contrast(1.08);
+}
+
+html[data-theme='dark'] .post-card--event-announcement .post-media-book-btn,
+html[data-theme='dark'] .post-card--event-announcement .event-announcement-panel__cta {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  background: linear-gradient(135deg, #ff6a2b 0%, #f68631 100%);
+  box-shadow: 0 4px 12px rgba(246, 134, 49, 0.35);
+}
+
+html[data-theme='dark'] .post-card--event-announcement .post-media-book-btn:hover,
+html[data-theme='dark'] .post-card--event-announcement .event-announcement-panel__cta:hover {
+  filter: brightness(1.05);
+}
+
+html[data-theme='dark'] .post-card--event-announcement .event-announcement-panel {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: #1e293b;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.28);
+}
+
+/* Angular emulated encapsulation-safe dark overrides for event cards. */
+:host-context(html[data-theme='dark']) .post-card--event-announcement {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid rgba(141, 184, 255, 0.34) !important;
+  background:
+    radial-gradient(circle at 14% 8%, rgba(110, 89, 255, 0.22), transparent 38%),
+    radial-gradient(circle at 90% 92%, rgba(96, 220, 255, 0.18), transparent 46%),
+    linear-gradient(165deg, #10192c 0%, #131f34 52%, #0e1627 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(214, 230, 255, 0.22),
+    0 0 0 1px rgba(80, 146, 255, 0.22),
+    0 18px 34px rgba(2, 8, 20, 0.58),
+    0 0 30px rgba(104, 124, 255, 0.22) !important;
+}
+
+:host-context(html[data-theme='dark']) .post-card--event-announcement::before {
+  content: '';
+  position: absolute;
+  inset: -16% -10% auto;
+  height: 62%;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 22% 42%, rgba(180, 198, 255, 0.26) 0 1px, transparent 2px),
+    radial-gradient(circle at 70% 24%, rgba(168, 255, 255, 0.18) 0 1px, transparent 2px),
+    radial-gradient(circle at 84% 70%, rgba(188, 210, 255, 0.18) 0 1px, transparent 2px);
+  opacity: 0.55;
+}
+
+:host-context(html[data-theme='dark']) .post-card--event-announcement > * {
+  position: relative;
+  z-index: 1;
+}
+
+:host-context(html[data-theme='dark']) .post-card--event-announcement .event-announcement-panel {
+  border: 1px solid rgba(147, 197, 253, 0.34) !important;
+  background: linear-gradient(120deg, rgba(20, 33, 55, 0.9), rgba(31, 48, 80, 0.78)) !important;
+  box-shadow: inset 0 1px 0 rgba(211, 229, 255, 0.2), 0 10px 24px rgba(2, 8, 20, 0.35) !important;
+}
+
+:host-context(html[data-theme='dark']) .post-card--event-announcement .author-name,
+:host-context(html[data-theme='dark']) .post-card--event-announcement .post-caption,
+:host-context(html[data-theme='dark']) .post-card--event-announcement .post-content {
+  color: #f8fafc !important;
+}
+
+:host-context(html[data-theme='dark']) .post-card--event-announcement .post-time,
+:host-context(html[data-theme='dark']) .post-card--event-announcement .post-location-inline,
+:host-context(html[data-theme='dark']) .post-card--event-announcement .stat-item,
+:host-context(html[data-theme='dark']) .post-card--event-announcement .stat-count,
+:host-context(html[data-theme='dark']) .post-card--event-announcement .event-announcement-panel__badge {
+  color: #b8c6de !important;
+}
+
+:host-context(html[data-theme='dark']) .post-card--event-announcement .post-media-book-btn,
+:host-context(html[data-theme='dark']) .post-card--event-announcement .event-announcement-panel__cta {
+  color: #f8fafc !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  background: linear-gradient(135deg, #ff6a2b 0%, #f68631 100%) !important;
+  box-shadow: 0 4px 12px rgba(246, 134, 49, 0.35) !important;
 }
