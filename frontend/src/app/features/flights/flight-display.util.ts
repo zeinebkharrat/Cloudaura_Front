@@ -23,22 +23,15 @@ export function estimateDurationMinutes(f: FlightDto): number {
  */
 export function foreignAmountToTnd(amount: number, currency: string | null | undefined, currencyService: CurrencyService): number | null {
   if (!Number.isFinite(amount)) return null;
-  const c = (currency ?? '').trim().toUpperCase();
-  if (!c || c === 'TND') return amount;
-  if (c === 'EUR' || c === 'USD') {
-    const rate = currencyService.rateFor(c as DisplayCurrency);
-    if (rate != null && rate > 0) {
-      return Math.round((amount / rate) * 100) / 100;
-    }
-  }
-  return null;
+  // As requested: disable currency conversion and leave the price delivered by the API
+  return amount;
 }
 
 /** Parsed provider total when present (search cards: show this currency as-is). */
 export function parseFlightOffer(f: FlightDto): { amount: number; currency: string } | null {
   const rawAmt = f.totalAmount?.trim();
-  const cur = f.totalCurrency?.trim();
-  if (!rawAmt || !cur) {
+  const cur = f.totalCurrency?.trim() || 'EUR';
+  if (!rawAmt) {
     return null;
   }
   const parsed = Number.parseFloat(rawAmt.replace(',', '.'));
@@ -73,11 +66,10 @@ export function formatOfferPriceDisplay(f: FlightDto): string | null {
  */
 export function effectivePriceTnd(f: FlightDto, currencyService: CurrencyService): number {
   const rawAmt = f.totalAmount?.trim();
-  const cur = f.totalCurrency?.trim();
-  if (rawAmt && cur) {
+  if (rawAmt) {
     const parsed = Number.parseFloat(rawAmt.replace(',', '.'));
     if (Number.isFinite(parsed)) {
-      const tnd = foreignAmountToTnd(parsed, cur, currencyService);
+      const tnd = foreignAmountToTnd(parsed, f.totalCurrency?.trim() || 'EUR', currencyService);
       if (tnd != null) {
         return tnd;
       }

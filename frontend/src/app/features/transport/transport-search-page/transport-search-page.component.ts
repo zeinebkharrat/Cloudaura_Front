@@ -38,7 +38,6 @@ const VISIBLE_TYPES: TransportType[] = ['BUS', 'TAXI', 'CAR', 'PLANE'];
         <div class="hero-content">
           <h1 class="hero-title">{{ 'TRANSPORT_SEARCH.HERO_TITLE' | translate }}</h1>
           <p class="hero-sub">{{ 'TRANSPORT_SEARCH.HERO_SUB' | translate }}</p>
-          <p class="hero-car-link"><a routerLink="/transport/cars">{{ 'TRANSPORT_SEARCH.LINK_CAR_AMADEUS' | translate }}</a></p>
         </div>
       </section>
 

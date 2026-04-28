@@ -14,14 +14,26 @@ import { TranslateModule } from '@ngx-translate/core';
 import { createCurrencyDisplaySyncEffect } from '../../../core/utils/currency-display-sync';
 
 /** Curated hotel / resort photos (Unsplash) used when the API returns no photo. */
-const HOTEL_PLACEHOLDER_IMAGES: readonly string[] = [
-  'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=75',
-  'https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=800&q=75',
-  'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=800&q=75',
-  'https://images.unsplash.com/photo-1520250497591-112acf2f40ce?auto=format&fit=crop&w=800&q=75',
-  'https://images.unsplash.com/photo-1596436889106-bc7b90b7098a?auto=format&fit=crop&w=800&q=75',
-  'https://images.unsplash.com/photo-1564501049412-61c2a3083791?auto=format&fit=crop&w=800&q=75',
-];
+const HOTEL_IMAGE_MAP: Record<string, string> = {
+  'concorde hotel tunis': 'Concorde Hotel Tunis.jpg',
+  'el mouradi palace': 'El Mouradi Palace.jpg',
+  'four seasons hotel tunis': 'four-seasons-hotel-tunis.jpg',
+  'four seasons hotel': 'four-seasons-hotel-tunis.jpg',
+  'golden tulip carthage tunis': 'Golden Tulip Carthage Tunis.jpg',
+  'golden tulip carthage': 'Golden Tulip Carthage Tunis.jpg',
+  'hasdrubal prestige ariana': 'Hasdrubal Prestige Ariana.webp',
+  'hasdrubal prestige': 'Hasdrubal Prestige Ariana.webp',
+  'iberostar averroes': 'Iberostar Averroes.jpg',
+  'la badira': 'la badira_hammamet.jpg',
+  'la badira hammamet': 'la badira_hammamet.jpg',
+  'laico tunis': 'Laico Tunis.jpg',
+  'movenpick tunis': 'movenpick_tunis.jpg',
+  'movenpick hotel du lac tunis': 'movenpick_tunis.jpg',
+  'radisson blu tunis airport': 'Radisson Blu Tunis Airport.avif',
+  'radisson blu': 'Radisson Blu Tunis Airport.avif',
+  'sheraton tunis': 'Sheraton Tunis.jpg',
+  'the residence tunis': 'The_Residence_Tunis.jpg'
+};
 
 @Component({
   selector: 'app-accommodation-card',
@@ -325,9 +337,16 @@ export class AccommodationCardComponent implements OnChanges {
     if (raw) {
       return raw;
     }
-    const id = this.accommodation.id > 0 ? this.accommodation.id : 1;
-    const idx = id % HOTEL_PLACEHOLDER_IMAGES.length;
-    return HOTEL_PLACEHOLDER_IMAGES[idx];
+    
+    // Try to match hotel name to mapped image
+    const hotelName = (this.accommodation.name || '').toLowerCase().trim();
+    for (const [key, filename] of Object.entries(HOTEL_IMAGE_MAP)) {
+      if (hotelName.includes(key)) {
+        return `assets/hotels_images/${filename.replace(/ /g, '%20')}`;
+      }
+    }
+
+    return 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=75';
   }
 
   typeIconSrc(type: string): string {

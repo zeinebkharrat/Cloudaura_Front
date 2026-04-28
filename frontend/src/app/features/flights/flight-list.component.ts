@@ -77,8 +77,8 @@ export class FlightListComponent {
     if (offer) {
       return offer;
     }
-    const tnd = estimateSeatPriceTnd(estimateDurationMinutes(f));
-    return `${tnd.toFixed(2)} TND (est.)`;
+    const eur = estimateSeatPriceTnd(estimateDurationMinutes(f));
+    return `${eur.toFixed(2)} EUR `;
   }
 
   isBestPrice(f: FlightDto): boolean {

@@ -79,6 +79,7 @@
     "ARIA_VIEWER": "360 degree panorama viewer",
     "SCENE_LOCAL": "Local View",
     "SCENE_HIGHLIGHTS": "Highlights View",
+    "SCENE_EXTRA": "Panorama View",
     "CREDITS_TITLE": "Photo credits:",
     "CREDIT_TABARKA": "Tabarka",
     "CREDITS_AFTER_TABARKA": " — Habib Mhenni (CC BY-SA 4.0) ;",
@@ -1252,7 +1253,6 @@
   "TRANSPORT_SEARCH": {
     "HERO_TITLE": "Find your ride",
     "HERO_SUB": "Compare and book buses, taxis, car rentals and flights across Tunisia",
-    "LINK_CAR_AMADEUS": "Car rental (Tunisia fleet & optional Amadeus)",
     "INTL_FLIGHTS_BTN": "International flights",
     "INTL_FLIGHTS_TT": "Search worldwide flights to a Tunisian airport (uses your date, arrival & passengers)",
     "FROM": "From",

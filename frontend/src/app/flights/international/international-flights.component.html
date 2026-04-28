@@ -154,17 +154,7 @@
         <h2 class="results-title">Best options</h2>
         <p class="results-count">{{ displayedFlights.length }} results</p>
       </div>
-      <div class="toolbar-actions">
-        <label class="sort-wrap">
-          <span class="sort-label">Sort</span>
-          <select class="sort-select" [value]="sortMode" (change)="setSort($any($event.target).value)">
-            <option value="best">Best price</option>
-            <option value="duration">Duration</option>
-            <option value="depart">Departure time</option>
-          </select>
-        </label>
-        <span class="filters-pill" title="More filters coming soon">Filters</span>
-      </div>
+      
     </div>
 
     <div class="content-split live-split">
@@ -192,7 +182,7 @@
         <div class="live-foot">
           <div class="live-foot-card">
             <i class="pi pi-clock" aria-hidden="true"></i>
-            <p>List prices use the provider currency. TND for payment is computed at booking.</p>
+            <p>List prices use the provider currency. Payment is processed in the original currency.</p>
           </div>
         </div>
       </aside>

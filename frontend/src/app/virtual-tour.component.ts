@@ -24,24 +24,18 @@ export interface VirtualTourScene {
   partial?: VirtualTourPartialPano;
 }
 
-/**
- * Tunisia panoramas from Wikimedia Commons (CC licenses). Thumbnails keep loads reasonable;
- * replace with local files under /public/ for production if you prefer.
- */
-const WIKI_THUMB = 'https://upload.wikimedia.org/wikipedia/commons/thumb';
-
 export const TUNISIA_VIRTUAL_TOUR_SCENES: VirtualTourScene[] = [
   {
     id: 'local',
-    /** Tabarka — cylindrical pano; EXIF FOV 103° × 50° (Hugin). CC BY-SA 4.0 — Habib Mhenni. */
-    panorama: `${WIKI_THUMB}/7/71/Vue_de_Tabarka%2C_25_d%C3%A9cembre_2014.jpg/2048px-Vue_de_Tabarka%2C_25_d%C3%A9cembre_2014.jpg`,
-    partial: { haov: 103, vaov: 50 },
+    panorama: `/360/medina_360.jpg`,
   },
   {
     id: 'highlights',
-    /** Tozeur oasis strip panorama. CC BY 2.0 — McKay Savage. Approx. partial FOV for viewer. */
-    panorama: `${WIKI_THUMB}/e/e6/Tunisia_10-12_-_165_-_Tozeur_-_Panorama_%286609494779%29.jpg/2048px-Tunisia_10-12_-_165_-_Tozeur_-_Panorama_%286609494779%29.jpg`,
-    partial: { haov: 128, vaov: 44 },
+    panorama: `/360/photo-360.jpg`,
+  },
+  {
+    id: 'extra',
+    panorama: `/360/0.jpg`,
   },
 ];
 

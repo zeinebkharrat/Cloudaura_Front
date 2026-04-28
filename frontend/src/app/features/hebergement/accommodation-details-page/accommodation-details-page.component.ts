@@ -24,6 +24,27 @@ import { DualCurrencyPipe } from '../../../core/pipes/dual-currency.pipe';
 import { createCurrencyDisplaySyncEffect } from '../../../core/utils/currency-display-sync';
 import { TranslateModule, TranslateService } from '@ngx-translate/core';
 
+const HOTEL_IMAGE_MAP: Record<string, string> = {
+  'concorde hotel tunis': 'Concorde Hotel Tunis.jpg',
+  'el mouradi palace': 'El Mouradi Palace.jpg',
+  'four seasons hotel tunis': 'four-seasons-hotel-tunis.jpg',
+  'four seasons hotel': 'four-seasons-hotel-tunis.jpg',
+  'golden tulip carthage tunis': 'Golden Tulip Carthage Tunis.jpg',
+  'golden tulip carthage': 'Golden Tulip Carthage Tunis.jpg',
+  'hasdrubal prestige ariana': 'Hasdrubal Prestige Ariana.webp',
+  'hasdrubal prestige': 'Hasdrubal Prestige Ariana.webp',
+  'iberostar averroes': 'Iberostar Averroes.jpg',
+  'la badira': 'la badira_hammamet.jpg',
+  'la badira hammamet': 'la badira_hammamet.jpg',
+  'laico tunis': 'Laico Tunis.jpg',
+  'movenpick tunis': 'movenpick_tunis.jpg',
+  'movenpick hotel du lac tunis': 'movenpick_tunis.jpg',
+  'radisson blu tunis airport': 'Radisson Blu Tunis Airport.avif',
+  'radisson blu': 'Radisson Blu Tunis Airport.avif',
+  'sheraton tunis': 'Sheraton Tunis.jpg',
+  'the residence tunis': 'The_Residence_Tunis.jpg'
+};
+
 @Component({
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -807,9 +828,16 @@ export class AccommodationDetailsPageComponent implements OnInit {
   }
 
   getHotelImage(acc: Accommodation): string {
-    // Generate a deterministic Unsplash image based on city and type
-    const keywords = ['hotel', acc.cityName || 'tunisia', 'luxury'];
-    const seed = acc.id || 1;
-    return `https://source.unsplash.com/1200x600/?${keywords.join(',')}&sig=${seed}`;
+    const raw = (acc.mainPhotoUrl || acc.imageUrl || '').trim();
+    if (raw) return raw;
+
+    const hotelName = (acc.name || '').toLowerCase().trim();
+    for (const [key, filename] of Object.entries(HOTEL_IMAGE_MAP)) {
+      if (hotelName.includes(key)) {
+        return `assets/hotels_images/${filename.replace(/ /g, '%20')}`;
+      }
+    }
+
+    return 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80';
   }
 }
