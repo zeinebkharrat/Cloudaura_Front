@@ -36,6 +36,14 @@ export interface SignInPayload {
   password: string;
 }
 
+export interface LoginRiskResponse {
+  status: 'allowed' | 'blocked' | string;
+  trusted: boolean;
+  riskScore: number;
+  details: string[];
+  message: string;
+}
+
 export interface SignUpPayload {
   username: string;
   email: string;

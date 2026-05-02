@@ -1,7 +1,8 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, catchError, map, shareReplay } from 'rxjs';
+import { Observable, catchError, map, of, shareReplay, switchMap } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { API_BASE_URL } from '../api-url';
 import {
   CityMatchScore,
   RecommendationProfile,
@@ -222,8 +223,10 @@ export class TravelMatchService {
   rankCities(prefs: TravelPreferencePayload, topN = 8, temperature = 0.26): Observable<CityMatchScore[]> {
     void temperature;
     const baseUrl = environment.travelRecommendationApiUrl?.trim();
+    let obs: Observable<CityMatchScore[]>;
+
     if (baseUrl) {
-      return this.http
+      obs = this.http
         .post<TravelRecommendationApiResponse>(`${baseUrl}/api/recommend`, {
           ...prefs,
           topN,
@@ -232,7 +235,57 @@ export class TravelMatchService {
           map((res) => this.mapApiToRanked(res, topN)),
           catchError(() => this.rankFromStaticModel(prefs, topN))
         );
+    } else {
+      obs = this.rankFromStaticModel(prefs, topN);
     }
-    return this.rankFromStaticModel(prefs, topN);
+
+    return obs.pipe(
+      switchMap((initial) => this.refineWithGemini(prefs, initial).pipe(
+        catchError(() => of(initial))
+      ))
+    );
+  }
+
+  private refineWithGemini(prefs: TravelPreferencePayload, initial: CityMatchScore[]): Observable<CityMatchScore[]> {
+    const payload = {
+      preferences: {
+        budgetMin: prefs.budget_min ?? prefs.budgetMin ?? (prefs.budget_avg ? prefs.budget_avg * 0.7 : 120),
+        budgetMax: prefs.budget_max ?? prefs.budgetMax ?? (prefs.budget_avg ? prefs.budget_avg * 1.3 : 240),
+        travelStyles: Array.isArray(prefs.travel_styles) ? prefs.travel_styles : [prefs.travel_style].filter(Boolean),
+        preferredRegion: prefs.preferred_region,
+        preferredCuisine: prefs.preferred_cuisine,
+        travelWith: prefs.travel_with,
+        transportPreference: prefs.transport_preference,
+        accommodationType: prefs.accommodation_type
+      },
+      recommendations: initial.map(r => ({
+        cityName: r.cityName,
+        score: r.score01,
+        percentage: r.percent,
+        region: r.recommendedRegion,
+        activities: r.recommendedActivities,
+        event: r.recommendedEvent
+      }))
+    };
+
+    return this.http.post<any>(`${API_BASE_URL}/api/ai/recommendation/refine`, payload).pipe(
+      map(res => {
+        const refined = res.refinedRecommendations || [];
+        if (!refined.length) {
+          return initial;
+        }
+
+        return refined.map((ref: any) => {
+          const orig = initial.find(o => o.cityName.toLowerCase() === ref.cityName.toLowerCase()) || initial[0];
+          return {
+            ...orig,
+            cityName: ref.cityName,
+            score01: ref.refinedScore,
+            percent: ref.refinedPercentage,
+            logicReasoning: ref.logicReasoning
+          };
+        }).sort((a: any, b: any) => b.score01 - a.score01);
+      })
+    );
   }
 }

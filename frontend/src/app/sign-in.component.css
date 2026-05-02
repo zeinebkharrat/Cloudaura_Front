@@ -198,23 +198,7 @@ input:focus {
   font-weight: 600;
 }
 
-.auth-error {
-  margin-bottom: 14px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(232, 0, 45, 0.5);
-  background: rgba(232, 0, 45, 0.12);
-  color: #ff9a9a;
-}
 
-.auth-success {
-  margin-bottom: 14px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(0, 186, 124, 0.45);
-  background: rgba(0, 186, 124, 0.12);
-  color: #9df7d4;
-}
 
 .auth-links-row {
   display: flex;

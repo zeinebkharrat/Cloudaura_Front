@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "ZeroTrust Bot Tester",
+  "version": "1.0",
+  "description": "Extension pour tester la détection de bots",
+  "permissions": ["activeTab", "scripting"],
+  "action": {
+    "default_popup": "popup.html"
+  }
+}

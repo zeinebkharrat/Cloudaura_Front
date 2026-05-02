@@ -553,14 +553,11 @@ export class CommunityComponent {
           ? httpError.error
           : (typeof httpError?.error?.message === 'string' ? httpError.error.message : '');
 
-      if (
-        httpError?.status === 422 &&
-        /bad words|inappropriate|profanity|cannot be published/i.test(backendMessage)
-      ) {
+      if (httpError?.status === 422) {
         await Swal.fire({
           icon: 'warning',
           title: 'Post blocked',
-          text: backendMessage || 'You cannot use bad words in posts.',
+          text: 'You cannot create a post with bad words.',
           ...this.swalTheme(),
         });
       } else {
@@ -1557,7 +1554,7 @@ export class CommunityComponent {
       this.updatePostCounts(postId, {
         commentsCount: this.getCommentCount(postId) + 1,
       });
-      
+
       // Clear draft and reload feed
       if (isReply) {
         this.setReplyDraft(parentCommentId, '');
@@ -1566,6 +1563,16 @@ export class CommunityComponent {
       } else {
         this.setCommentDraft(postId, '');
         this.setPostCommentGiphy(postId, null);
+      }
+
+      // Show SweetAlert if the comment contained bad words
+      if (createdComment.abuseCategories) {
+        await Swal.fire({
+          icon: 'warning',
+          title: 'Comment Filtered',
+          text: 'Your comment contained inappropriate language. The bad words have been replaced with asterisks.',
+          ...this.swalTheme(),
+        });
       }
     } catch (error) {
       console.error('Error adding comment:', error);

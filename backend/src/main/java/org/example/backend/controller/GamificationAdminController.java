@@ -17,7 +17,11 @@ import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.LinkedHashMap;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 @RestController
 @RequestMapping("/api/admin/gamification")
@@ -29,18 +33,24 @@ public class GamificationAdminController {
     private final GamificationService gamificationService;
     private final GameUnlockCostRepository gameUnlockCostRepository;
     private final PointPackageRepository pointPackageRepository;
+    private final JdbcTemplate jdbcTemplate;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public GamificationAdminController(
             BadgeRepository badgeRepository,
             DailyChallengeRepository dailyChallengeRepository,
             GamificationService gamificationService,
             GameUnlockCostRepository gameUnlockCostRepository,
-            PointPackageRepository pointPackageRepository) {
+            PointPackageRepository pointPackageRepository,
+            JdbcTemplate jdbcTemplate,
+            SimpMessagingTemplate messagingTemplate) {
         this.badgeRepository = badgeRepository;
         this.dailyChallengeRepository = dailyChallengeRepository;
         this.gamificationService = gamificationService;
         this.gameUnlockCostRepository = gameUnlockCostRepository;
         this.pointPackageRepository = pointPackageRepository;
+        this.jdbcTemplate = jdbcTemplate;
+        this.messagingTemplate = messagingTemplate;
     }
 
     @GetMapping("/badges")
@@ -100,7 +110,44 @@ public class GamificationAdminController {
         Date now = new Date();
         c.setValidFrom(now);
         c.setValidTo(Date.from(now.toInstant().plus(24, ChronoUnit.HOURS)));
-        return dailyChallengeRepository.save(c);
+        DailyChallenge saved = dailyChallengeRepository.save(c);
+        String challengeRoute = buildChallengeRoute(saved);
+
+        try {
+            jdbcTemplate.update(
+                "INSERT INTO user_notifications (user_id, type, title, message, is_read, created_at, route) " +
+                "SELECT user_id, 'GAME', 'New Daily Challenge', 'A new daily challenge has been added. Play now!', false, NOW(), ? " +
+                    "FROM users WHERE status IS NULL OR status != 'BANNED'"
+                , challengeRoute
+            );
+
+            List<Map<String, Object>> users = jdbcTemplate.queryForList("SELECT username, email FROM users WHERE status IS NULL OR status != 'BANNED'");
+            Map<String, Object> payload = new LinkedHashMap<>();
+            // Assuming random id for realtime payload since it's mass inserted
+            payload.put("notificationId", (int)(Math.random() * 1000000));
+            payload.put("type", "GAME");
+            payload.put("title", "New Daily Challenge");
+            payload.put("message", "A new daily challenge has been added. Play now!");
+            payload.put("route", challengeRoute);
+            payload.put("read", false);
+            payload.put("createdAt", new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(new Date()));
+
+            for (Map<String, Object> user : users) {
+                String username = (String) user.get("username");
+                String email = (String) user.get("email");
+                if (username != null && !username.isBlank()) {
+                    messagingTemplate.convertAndSendToUser(username, "/queue/notifications", payload);
+                }
+                if (email != null && !email.isBlank() && (username == null || !email.equalsIgnoreCase(username))) {
+                    messagingTemplate.convertAndSendToUser(email, "/queue/notifications", payload);
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to insert or broadcast daily challenge notifications: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return saved;
     }
 
     @PutMapping("/daily-challenges/{id}")
@@ -138,6 +185,29 @@ public class GamificationAdminController {
         if (req.active() != null) {
             c.setActive(req.active());
         }
+    }
+
+    private String buildChallengeRoute(DailyChallenge challenge) {
+        if (challenge == null) {
+            return "/games";
+        }
+
+        LudificationGameKind gameKind = challenge.getGameKind();
+        Integer targetId = challenge.getTargetId();
+
+        return switch (gameKind) {
+            case QUIZ -> targetId == null ? "/games" : "/games/quiz/" + targetId;
+            case CROSSWORD -> targetId == null ? "/games" : "/games/crossword/" + targetId;
+            case PUZZLE -> targetId == null ? "/games" : "/games/puzzle/" + targetId;
+            case LUDO -> "/games/ludo";
+            case GOVERNORATE_GUESS -> "/games/governorate-guess";
+            case EL_JEM_QUEST -> "/games/el-jem-quest";
+            case CHEF_QUEST -> "/games/chef-quest";
+            case CHKOBBA -> "/games/chkobba";
+            case MUSIC -> "/games/music";
+            case KARAOKE -> "/games/karaoke";
+            default -> "/games";
+        };
     }
 
 

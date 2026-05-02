@@ -143,7 +143,18 @@
 
       <label>
         Password
-        <input type="password" formControlName="password" placeholder="At least 8 characters" autocomplete="new-password" [class.input-invalid]="controlInvalid('password')" />
+        <div class="password-toggle-wrapper">
+          <input
+            [type]="showPw() ? 'text' : 'password'"
+            formControlName="password"
+            placeholder="At least 8 characters"
+            autocomplete="new-password"
+            [class.input-invalid]="controlInvalid('password')"
+          />
+          <button type="button" class="eye-toggle-btn" (click)="showPw.set(!showPw())" tabindex="-1">
+            {{ showPw() ? '🙈' : '👁️' }}
+          </button>
+        </div>
         <div class="password-strength-card" role="status" aria-live="polite">
           <div class="password-strength-head">
             <span>Password strength</span>
@@ -160,7 +171,18 @@
 
       <label>
         Confirm password
-        <input type="password" formControlName="confirmPassword" placeholder="Confirm your password" autocomplete="new-password" [class.input-invalid]="controlInvalid('confirmPassword') || (form.hasError('passwordMismatch') && form.controls.confirmPassword.touched)" />
+        <div class="password-toggle-wrapper">
+          <input
+            [type]="showConfirmPw() ? 'text' : 'password'"
+            formControlName="confirmPassword"
+            placeholder="Confirm your password"
+            autocomplete="new-password"
+            [class.input-invalid]="controlInvalid('confirmPassword') || (form.hasError('passwordMismatch') && form.controls.confirmPassword.touched)"
+          />
+          <button type="button" class="eye-toggle-btn" (click)="showConfirmPw.set(!showConfirmPw())" tabindex="-1">
+            {{ showConfirmPw() ? '🙈' : '👁️' }}
+          </button>
+        </div>
         <small class="password-match-hint" [class.password-match-ok]="passwordMatchOk()" [class.password-match-ko]="!passwordMatchOk() && form.controls.confirmPassword.value">
           {{ passwordMatchHint() }}
         </small>

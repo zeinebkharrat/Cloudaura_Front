@@ -36,9 +36,9 @@ export function extractApiErrorMessage(error: HttpErrorResponse, fallback: strin
 
   switch (error.status) {
     case 401:
-      return 'Invalid session or incorrect credentials.';
+      return 'invalid_credentials';
     case 403:
-      return 'Access denied for this action.';
+      return 'access_denied';
     case 409:
       return 'Data conflict. Please check the information you entered.';
     case 422:

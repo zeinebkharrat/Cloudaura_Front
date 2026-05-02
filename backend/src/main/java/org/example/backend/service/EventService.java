@@ -51,7 +51,7 @@ public class EventService {
     @Autowired
     private PostService postService;
 
-    @Value("${app.community.event-announcement-user-id:5}")
+    @Value("${app.community.event-announcement-user-id:28}")
     private Integer eventAnnouncementUserId;
 
     @Autowired
@@ -205,11 +205,11 @@ public class EventService {
             return "";
         }
         return Normalizer.normalize(value, Normalizer.Form.NFD)
-            .replaceAll("\\p{M}", "")
-            .toLowerCase(Locale.ROOT)
-            .replaceAll("[^a-z0-9\\s]", " ")
-            .replaceAll("\\s+", " ")
-            .trim();
+                .replaceAll("\\p{M}", "")
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9\\s]", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
     }
 
     private boolean containsWholeWord(String haystack, String needle) {
@@ -372,9 +372,9 @@ public class EventService {
 
     private String buildAnnouncementContent(String title, String eventType, String venue) {
         return "New event just dropped: " + title
-            + "\nType: " + eventType
-            + "\nVenue: " + venue
-            + "\nTap to open the event card and book your spot.";
+                + "\nType: " + eventType
+                + "\nVenue: " + venue
+                + "\nTap to open the event card and book your spot.";
     }
 
     private String buildAnnouncementHashtags(String title, String eventType, String venue) {
@@ -399,10 +399,10 @@ public class EventService {
         }
 
         String normalized = Normalizer.normalize(source, Normalizer.Form.NFD)
-            .replaceAll("\\p{M}", "")
-            .toLowerCase(Locale.ROOT)
-            .replaceAll("[^a-z0-9]+", "_")
-            .replaceAll("^_+|_+$", "");
+                .replaceAll("\\p{M}", "")
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]+", "_")
+                .replaceAll("^_+|_+$", "");
 
         if (normalized.isBlank()) {
             return "";

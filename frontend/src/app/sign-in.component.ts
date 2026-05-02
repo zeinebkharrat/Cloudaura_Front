@@ -33,6 +33,7 @@ export class SignInComponent implements OnInit {
   readonly formError = signal<string | null>(null);
   readonly formSuccess = signal<string | null>(null);
   readonly socialProviders = signal({ google: false, github: false, facebook: false, instagram: false });
+  readonly showPw = signal(false);
 
   readonly form = this.fb.nonNullable.group({
     identifier: ['', [Validators.required]],
@@ -50,6 +51,62 @@ export class SignInComponent implements OnInit {
       return this.translate.instant('AUTH_SIGNIN.ERR_PASSWORD_REQUIRED');
     }
     return this.translate.instant('AUTH_SIGNIN.ERR_PASSWORD_INVALID');
+  }
+
+  private detectAttack(value: string, isPassword = false): string[] {
+    const text = value.trim();
+    const findings: string[] = [];
+
+    if (/\bunion\b\s+\bselect\b/i.test(text) || /(?:\bor\b|\band\b)\s+['"]?\w+['"]?\s*=\s*['"]?\w+['"]?/i.test(text) || /--|#|\/\*|\*\//.test(text)) {
+      findings.push('SQL injection');
+    }
+    if (/<script|javascript:|onerror=|onload=|<img|<iframe|<svg/i.test(text)) {
+      findings.push('XSS');
+    }
+    // Command Injection
+    if (/[&`] |\$\(|<|>/.test(text)) {
+      findings.push('Command injection');
+    } else if (!isPassword && /[;|\|]/.test(text)) {
+      findings.push('Command injection');
+    }
+    if (/\.\.[/\\]|\/etc\/|\/var\/|C:\\|Windows\\/i.test(text)) {
+      findings.push('Path traversal');
+    }
+    if (/\$gt|\$ne|\$eq|\$where|\$regex/i.test(text)) {
+      findings.push('NoSQL injection');
+    }
+    if (/\.(passwd|shadow|htpasswd|config|ini|env|git|bak|sql|old|log|db|yaml|json|yml)\b/i.test(text)) {
+      findings.push('Sensitive file probe');
+    }
+
+    return findings;
+  }
+
+  private showFraudAlert(findings: string[], message = 'Vous êtes un hacker') {
+    const details = findings.length > 0
+      ? `<ul style="text-align:left;margin:0;padding-left:18px">${findings.map((item) => `<li>${item}</li>`).join('')}</ul>`
+      : '';
+
+    void Swal.fire({
+      icon: 'error',
+      title: 'Fraud detected',
+      html: `${message}<br><br><strong>Alert only:</strong> no one was actually banned.${details ? `<br><br>${details}` : ''}`,
+      confirmButtonText: 'Understood',
+    });
+  }
+
+  private formatBackendMessage(message: string | null | undefined, fallbackKey: string): string {
+    const raw = (message ?? '').trim();
+    if (!raw) {
+      return this.translate.instant(fallbackKey);
+    }
+    if (raw.startsWith('ui:')) {
+      return raw.substring(3).trim();
+    }
+    if (raw.startsWith('AUTH_SIGNIN.') || raw.startsWith('api.error.')) {
+      return this.translate.instant(raw);
+    }
+    return raw;
   }
 
   ngOnInit() {
@@ -92,31 +149,60 @@ export class SignInComponent implements OnInit {
       return;
     }
 
+    const credentials = this.form.getRawValue();
+    const localFindings = [
+      ...this.detectAttack(credentials.identifier, false),
+      ...this.detectAttack(credentials.password, true)
+    ];
+    if (localFindings.length > 0) {
+      this.formError.set(null);
+      this.formSuccess.set(null);
+      this.showFraudAlert(Array.from(new Set(localFindings)));
+      return;
+    }
+
     this.isLoading.set(true);
     this.formError.set(null);
     this.formSuccess.set(null);
 
-    this.authService.signin(this.form.getRawValue()).subscribe({
-      next: async () => {
-        await this.showFirstSigninWelcomeIfNeeded();
-        this.markNavbarTutorialPending();
-        const returnUrl = this.getReturnUrl();
-        this.finishAuthFlow(returnUrl);
-      },
-      error: (error: HttpErrorResponse) => {
+    this.authService.checkLoginRisk(credentials).subscribe({
+      next: (risk) => {
         this.isLoading.set(false);
-        if (error.status === 403) {
-          const fromApi = extractApiErrorMessage(error, '');
-          this.formError.set(
-            fromApi && fromApi.trim().length > 0
-              ? fromApi
-              : this.translate.instant('AUTH_SIGNIN.MSG_VERIFY_REMINDER')
-          );
+        if (risk.status === 'blocked' || !risk.trusted) {
+          this.showFraudAlert(risk.details ?? [], risk.message || 'Vous êtes un hacker');
           return;
         }
-        this.formError.set(extractApiErrorMessage(error, this.translate.instant('AUTH_SIGNIN.MSG_SIGNIN_FAILED')));
+
+        this.authService.signin(credentials).subscribe({
+          next: async () => {
+            await this.showFirstSigninWelcomeIfNeeded();
+            this.markNavbarTutorialPending();
+            const returnUrl = this.getReturnUrl();
+            this.finishAuthFlow(returnUrl);
+          },
+          error: (error: HttpErrorResponse) => {
+            this.isLoading.set(false);
+            if (error.status === 403) {
+              const fromApi = extractApiErrorMessage(error, '');
+              this.formError.set(this.formatBackendMessage(fromApi, 'AUTH_SIGNIN.MSG_VERIFY_REMINDER'));
+              return;
+            }
+            const msg = extractApiErrorMessage(error, 'AUTH_SIGNIN.MSG_SIGNIN_FAILED');
+            this.formError.set(this.formatBackendMessage(msg, 'AUTH_SIGNIN.MSG_SIGNIN_FAILED'));
+          },
+          complete: () => this.isLoading.set(false),
+        });
       },
-      complete: () => this.isLoading.set(false),
+      error: () => {
+        this.isLoading.set(false);
+        const fallbackFindings = [...this.detectAttack(credentials.identifier), ...this.detectAttack(credentials.password)];
+        if (fallbackFindings.length > 0) {
+          this.showFraudAlert(Array.from(new Set(fallbackFindings)));
+          return;
+        }
+
+        this.formError.set(this.translate.instant('AUTH_SIGNIN.MSG_SIGNIN_FAILED'));
+      },
     });
   }
 

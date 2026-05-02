@@ -188,20 +188,18 @@
             Target ({{ challengeKind }})
             @if (aiGenerated()) {
               <div class="ai-success-indicator">
-                <span>✨ Auto-generated & selected</span>
-                <button type="button" class="btn-ghost btn-sm" (click)="aiGenerated.set(false)">Change manual</button>
+                <span>✨ AI-generated quiz #{{ newChallenge.targetId }}</span>
               </div>
             }
 
-            @if (!aiGenerated()) {
-              @if (challengeKind === 'QUIZ') {
-                <select [(ngModel)]="newChallenge.targetId" name="ctid">
-                  <option [ngValue]="null">Select a quiz...</option>
-                  @for (q of allQuizzes(); track q.quizId) {
-                    <option [ngValue]="q.quizId">{{ q.title }} (#{{ q.quizId }})</option>
-                  }
-                </select>
-              } @else if (challengeKind === 'CROSSWORD') {
+            @if (challengeKind === 'QUIZ') {
+              @if (!aiGenerated()) {
+                <div class="ai-hint-box">
+                  <p>Generate a new quiz with AI. Existing quizzes from the database are not used here.</p>
+                </div>
+              }
+            } @else if (!aiGenerated()) {
+              @if (challengeKind === 'CROSSWORD') {
                 <select [(ngModel)]="newChallenge.targetId" name="ctid">
                   <option [ngValue]="null">Select a crossword...</option>
                   @for (c of allCrosswords(); track c.crosswordId) {
@@ -234,7 +232,7 @@
               }
             }
             <small class="form-hint" style="margin-top: 4px;">
-              Manage content in <a href="/admin/games" style="color: #e63946; text-decoration: underline;">Games section</a>.
+              For quiz challenges, use AI generation only. Other game kinds can still be selected manually.
             </small>
           </label>
           <label class="span-2">
@@ -247,7 +245,11 @@
           </label>
         </div>
         <div class="btn-row">
-          <button type="button" class="btn-primary main-act" (click)="saveChallenge()" [disabled]="busy()">
+          <button
+            type="button"
+            class="btn-primary main-act"
+            (click)="saveChallenge()"
+            [disabled]="busy() || (challengeKind === 'QUIZ' && (!aiGenerated() || newChallenge.targetId == null))">
             Create challenge
           </button>
         </div>

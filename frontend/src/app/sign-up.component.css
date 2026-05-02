@@ -768,23 +768,7 @@ select option {
   font-size: 0.86rem;
 }
 
-.auth-error {
-  margin-bottom: 14px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(232, 0, 45, 0.5);
-  background: rgba(232, 0, 45, 0.1);
-  color: #b42318;
-}
 
-.auth-success {
-  margin-bottom: 14px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(0, 186, 124, 0.45);
-  background: rgba(0, 186, 124, 0.1);
-  color: #067647;
-}
 
 :root[data-theme="dark"] .upload-state.success {
   color: #8ef0cb;
@@ -835,17 +819,13 @@ select option {
   background: linear-gradient(140deg, rgba(15, 23, 42, 0.6), rgba(30, 41, 59, 0.48));
 }
 
-:root[data-theme="dark"] .auth-error {
-  color: #ffb4b4;
-}
+
 
 :root[data-theme="dark"] .field-error {
   color: #ff9ab5;
 }
 
-:root[data-theme="dark"] .auth-success {
-  color: #9df7d4;
-}
+
 
 .auth-submit {
   width: 100%;

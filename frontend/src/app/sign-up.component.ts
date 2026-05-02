@@ -82,6 +82,8 @@ export class SignUpComponent implements OnDestroy {
   readonly passwordStrengthTone = signal('#ef4444');
   readonly passwordMatchHint = signal('Waiting for confirmation');
   readonly passwordMatchOk = signal(false);
+  readonly showPw = signal(false);
+  readonly showConfirmPw = signal(false);
   readonly maxBirthDate = new Date().toISOString().slice(0, 10);
 
   private recaptchaWidgetId = -1;
@@ -364,7 +366,8 @@ export class SignUpComponent implements OnDestroy {
       error: (error: HttpErrorResponse) => {
         this.isLoading.set(false);
         resetRecaptchaWidget(this.recaptchaWidgetId);
-        this.formError.set(extractApiErrorMessage(error, this.translate.instant('AUTH_SIGNUP.MSG_SIGNUP_FAILED')));
+        const msg = extractApiErrorMessage(error, 'AUTH_SIGNUP.MSG_SIGNUP_FAILED');
+        this.formError.set(this.formatBackendMessage(msg, 'AUTH_SIGNUP.MSG_SIGNUP_FAILED'));
       },
       complete: () => this.isLoading.set(false),
     });
@@ -536,6 +539,20 @@ export class SignUpComponent implements OnDestroy {
     const match = password === confirm;
     this.passwordMatchOk.set(match);
     this.passwordMatchHint.set(match ? 'Passwords match' : 'Passwords do not match');
+  }
+
+  private formatBackendMessage(message: string | null | undefined, fallbackKey: string): string {
+    const raw = (message ?? '').trim();
+    if (!raw) {
+      return this.translate.instant(fallbackKey);
+    }
+    if (raw.startsWith('ui:')) {
+      return raw.substring(3).trim();
+    }
+    if (raw.startsWith('AUTH_SIGNUP.') || raw.startsWith('AUTH_') || raw.startsWith('api.error.')) {
+      return this.translate.instant(raw);
+    }
+    return raw;
   }
 
   showCityField(): boolean {

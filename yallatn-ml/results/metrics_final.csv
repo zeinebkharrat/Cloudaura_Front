@@ -1,0 +1,4 @@
+Modele,Accuracy,F1_Score,HitRate@3,NDCG,Usage
+Random Forest,0.2288,0.2267,0.6247,N/A,Baseline
+XGBoost,0.2332,0.2299,0.6405,0.6091,Production
+Content-Based,N/A,N/A,0.178,N/A,Cold-start

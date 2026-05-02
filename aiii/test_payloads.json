@@ -1,0 +1,86 @@
+[
+    {
+        "category": "Connexion Légitime",
+        "name": "Utilisateur normal",
+        "username": "jean.dupont",
+        "password": "MonSuperMotDePasse123!",
+        "expected_blocked": false
+    },
+    {
+        "category": "Connexion Légitime",
+        "name": "Email comme nom d'utilisateur",
+        "username": "contact@entreprise.com",
+        "password": "Password!2024",
+        "expected_blocked": false
+    },
+    {
+        "category": "Injection SQL",
+        "name": "Contournement d'authentification basique",
+        "username": "admin' OR '1'='1",
+        "password": "password",
+        "expected_blocked": true
+    },
+    {
+        "category": "Injection SQL",
+        "name": "Commentaire de fin de ligne",
+        "username": "admin' --",
+        "password": "pwd",
+        "expected_blocked": true
+    },
+    {
+        "category": "Injection SQL",
+        "name": "Requête UNION (Vol de données)",
+        "username": "admin' UNION SELECT username, password FROM users --",
+        "password": "pwd",
+        "expected_blocked": true
+    },
+    {
+        "category": "Cross-Site Scripting (XSS)",
+        "name": "Vol de session via alerte",
+        "username": "<script>alert('XSS')</script>",
+        "password": "password123",
+        "expected_blocked": true
+    },
+    {
+        "category": "Cross-Site Scripting (XSS)",
+        "name": "XSS via attribut d'image",
+        "username": "normal_user",
+        "password": "<img src=x onerror=alert(1)>",
+        "expected_blocked": true
+    },
+    {
+        "category": "Command Injection",
+        "name": "Exécution de commande système",
+        "username": "admin; ls -la",
+        "password": "password123",
+        "expected_blocked": true
+    },
+    {
+        "category": "Command Injection",
+        "name": "Pipes et redirections",
+        "username": "user | cat /etc/passwd",
+        "password": "pwd",
+        "expected_blocked": true
+    },
+    {
+        "category": "Path Traversal",
+        "name": "Lecture de fichiers sensibles Linux",
+        "username": "../../../../etc/passwd",
+        "password": "pwd",
+        "expected_blocked": true
+    },
+    {
+        "category": "Path Traversal",
+        "name": "Lecture de fichiers sensibles Windows",
+        "username": "admin",
+        "password": "..\\..\\..\\Windows\\System32\\cmd.exe",
+        "expected_blocked": true
+    },
+    {
+        "category": "NoSQL Injection",
+        "name": "Contournement de mot de passe MongoDB",
+        "username": "admin",
+        "password": "{\"$gt\": \"\"}",
+        "expected_blocked": true
+    }
+]

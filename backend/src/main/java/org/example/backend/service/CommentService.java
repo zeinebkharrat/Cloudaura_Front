@@ -268,99 +268,11 @@ public class CommentService implements ICommentService {
     }
 
     private void ensureUserCanComment(User user) {
-        Date now = new Date();
-
-        banRepository.findTopByUserAndIsActiveTrueOrderByCreatedAtDesc(user)
-                .ifPresent(ban -> {
-                    if (!Boolean.TRUE.equals(ban.getIsActive())) {
-                        return;
-                    }
-                    if (ban.getExpiresAt() != null && !ban.getExpiresAt().after(now)) {
-                        ban.setIsActive(false);
-                        banRepository.save(ban);
-                        return;
-                    }
-
-                    String banMessage = ban.getExpiresAt() == null
-                            ? "Your account is currently banned from posting comments."
-                            : "Your account is banned until " + formatDateTime(ban.getExpiresAt()) + ".";
-                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, banMessage);
-                });
-
-        Date mutedUntil = user.getCommentMutedUntil();
-        if (mutedUntil != null) {
-            if (mutedUntil.after(now)) {
-                throw new ResponseStatusException(
-                        HttpStatus.TOO_MANY_REQUESTS,
-                        "You are temporarily blocked from commenting until " + formatDateTime(mutedUntil) + "."
-                );
-            }
-            user.setCommentMutedUntil(null);
-            userRepository.save(user);
-        }
+        // Validation removed: user can comment even if previously banned or restricted
     }
 
     private void applyEscalationPolicy(User user, List<String> categories) {
-        if (categories == null || categories.isEmpty()) {
-            return;
-        }
-
-        Date now = new Date();
-        int nextViolation = (user.getCommentViolationCount() == null ? 0 : user.getCommentViolationCount()) + 1;
-        user.setCommentViolationCount(nextViolation);
-
-        if (nextViolation == 1) {
-            userRepository.save(user);
-            throw new ResponseStatusException(
-                    HttpStatus.UNPROCESSABLE_ENTITY,
-                    "Abusive comment detected. Next violation will block commenting for 15 minutes."
-            );
-        }
-
-        if (nextViolation == 2) {
-            Date mutedUntil = new Date(now.getTime() + TimeUnit.MINUTES.toMillis(SECOND_OFFENSE_MUTE_MINUTES));
-            user.setCommentMutedUntil(mutedUntil);
-            userRepository.save(user);
-            sendSecondOffenseWarning(user, mutedUntil, categories);
-            throw new ResponseStatusException(
-                    HttpStatus.TOO_MANY_REQUESTS,
-                    "Second violation detected. You cannot comment for 15 minutes (until "
-                            + formatDateTime(mutedUntil)
-                        + "). A warning email was sent. Next violation will trigger a multi-day account ban."
-            );
-        }
-
-            int previousBanEvents = user.getCommentBanCount() == null ? 0 : user.getCommentBanCount();
-            int nextBanCount = previousBanEvents + 1;
-            int banDays = resolveBanDays(previousBanEvents);
-        Date expiresAt = new Date(now.getTime() + TimeUnit.DAYS.toMillis(banDays));
-
-        banRepository.findTopByUserAndIsActiveTrueOrderByCreatedAtDesc(user)
-                .ifPresent(existing -> {
-                    existing.setIsActive(false);
-                    banRepository.save(existing);
-                });
-
-        Ban ban = new Ban();
-        ban.setUser(user);
-        ban.setReason("Community moderation escalation (offense #" + nextViolation + "): " + String.join(",", categories));
-        ban.setCreatedAt(now);
-        ban.setExpiresAt(expiresAt);
-        ban.setIsActive(true);
-        banRepository.save(ban);
-
-        user.setCommentBanCount(nextBanCount);
-        user.setCommentMutedUntil(null);
-        userRepository.save(user);
-
-        sendEscalatedBanEmail(user, expiresAt, banDays, categories);
-
-        throw new ResponseStatusException(
-                HttpStatus.FORBIDDEN,
-                "Account banned for " + banDays + " days due to repeated abusive comments (until "
-                        + formatDateTime(expiresAt)
-                        + ")."
-        );
+        // Escalation policy removed: Bad words will just be sanitized with asterisks.
     }
 
     private int resolveBanDays(int previousBanEvents) {

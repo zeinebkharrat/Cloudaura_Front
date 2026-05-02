@@ -835,6 +835,11 @@ export class AppComponent implements OnInit {
       return;
     }
 
+    if (item.type?.toUpperCase() === 'GAME') {
+      void this.router.navigateByUrl(item.route || '/games');
+      return;
+    }
+
     const type = this.notificationTypeKey(item.reservationType);
     void this.router.navigate(['/settings'], {
       queryParams: {
@@ -878,6 +883,9 @@ export class AppComponent implements OnInit {
     }
     if (normalizedType === 'POST_REPOST') {
       return 'Reposts';
+    }
+    if (normalizedType === 'GAME') {
+      return 'Daily Challenge';
     }
     return this.notificationTypeLabel(item.reservationType);
   }

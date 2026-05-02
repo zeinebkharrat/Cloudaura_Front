@@ -70,6 +70,7 @@ export interface CityMatchScore {
   recommendedRegion?: string;
   recommendedActivities?: string;
   recommendedEvent?: string;
+  logicReasoning?: string;
 }
 
 /** Response from travel-recommendation Flask `POST /api/recommend` */

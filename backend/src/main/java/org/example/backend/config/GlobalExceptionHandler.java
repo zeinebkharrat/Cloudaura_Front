@@ -235,13 +235,18 @@ public class GlobalExceptionHandler {
             return err(status, resolve(key, "Une erreur inattendue s'est produite."), key);
         }
         String key;
+        if (reason != null && reason.startsWith("ui:")) {
+            String message = reason.substring(3).trim();
+            key = defaultKeyForHttpStatus(status);
+            return err(status, message.isBlank() ? resolve(key, key) : message, key);
+        }
         if (CatalogKeyUtil.looksLikeCatalogKey(reason)) {
             key = reason.trim();
         } else {
             log.warn("ResponseStatus {} with non-catalog reason (redacted from client): {}", status, reason);
             key = defaultKeyForHttpStatus(status);
         }
-        String message = resolve(key, "La requête a échoué.");
+        String message = resolve(key, key);
         return err(status, message, key);
     }
 

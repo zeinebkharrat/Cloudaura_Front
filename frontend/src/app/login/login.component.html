@@ -15,11 +15,11 @@
     </div>
 
     @if (error()) {
-      <div class="error-box" role="alert">⚠️ {{ error() }}</div>
+      <div class="auth-error" role="alert">{{ error() }}</div>
     }
 
     <form class="login-form" (ngSubmit)="submit()" novalidate>
-      <div class="field">
+      <div class="field" id="username_input">
         <label for="f-user" class="field-label">Username</label>
         <div class="field-wrap">
           <span class="fi">👤</span>
@@ -28,7 +28,7 @@
         </div>
       </div>
 
-      <div class="field">
+      <div class="field" id="password_input">
         <label for="f-pass" class="field-label">Password</label>
         <div class="field-wrap">
           <span class="fi">🔒</span>
@@ -40,7 +40,7 @@
         </div>
       </div>
 
-      <button type="submit" class="btn-primary submit-btn" [disabled]="loading()" id="login-submit-btn">
+      <button type="submit" class="btn-primary submit-btn" [disabled]="loading()" id="login_btn">
         @if (loading()) { <span class="spin"></span> Signing in… }
         @else { Sign in → }
       </button>

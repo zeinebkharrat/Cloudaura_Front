@@ -110,7 +110,7 @@
 
     <ul class="persona-tunisia-belt" role="list">
       <li
-        *ngFor="let m of personaMatches(); let i = index"
+        *ngFor="let m of personaMatches() | slice:0:1; let i = index"
         class="persona-hotspot-wrap"
         [style.animation-delay.ms]="80 + i * 55"
       >

@@ -10,6 +10,7 @@ import {
   CityOption,
   ChangePasswordPayload,
   ForgotPasswordPayload,
+  LoginRiskResponse,
   ProfileUpdatePayload,
   ResendVerificationPayload,
   ResetPasswordPayload,
@@ -47,6 +48,10 @@ export class AuthService {
       tap((response) => this.storeSession(response)),
       map((response) => response.user)
     );
+  }
+
+  checkLoginRisk(payload: SignInPayload) {
+    return this.http.post<LoginRiskResponse>(`${OAUTH_BACKEND_ORIGIN}${this.apiBase}/auth/login-risk`, payload);
   }
 
   hasStoredToken(): boolean {

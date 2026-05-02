@@ -1,0 +1,10 @@
+import pandas as pd 
+df = pd.read_csv('data/yallatn_recommendations_dataset.csv') 
+print("=== SHAPE ===") 
+print(df.shape) 
+print("\n=== NULLS ===") 
+print(df.isnull().sum()) 
+print("\n=== DISTRIBUTION VILLES ===") 
+print(df['recommended_city_name'].value_counts()) 
+print("\n=== REGIONS UNIQUES ===") 
+print(df['preferred_region'].unique()) 

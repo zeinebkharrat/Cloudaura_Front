@@ -8,12 +8,14 @@ import org.example.backend.dto.AuthResponse;
 import org.example.backend.dto.CaptchaConfigResponse;
 import org.example.backend.dto.ForgotPasswordRequest;
 import org.example.backend.dto.LoginRequest;
+import org.example.backend.dto.LoginRiskResponse;
 import org.example.backend.dto.ResendVerificationRequest;
 import org.example.backend.dto.ResetPasswordRequest;
 import org.example.backend.dto.SignupRequest;
 import org.example.backend.dto.SocialProvidersResponse;
 import org.example.backend.dto.UserSummaryResponse;
 import org.example.backend.service.AuthService;
+import org.example.backend.service.LoginRiskService;
 import org.example.backend.service.RecaptchaService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -32,6 +34,7 @@ public class AuthController {
 
     private final AuthService authService;
     private final RecaptchaService recaptchaService;
+    private final LoginRiskService loginRiskService;
 
     @Value("${app.recaptcha.site-key:}")
     private String recaptchaSiteKey;
@@ -68,9 +71,10 @@ public class AuthController {
     @Value("${app.public.url:http://localhost:4200}")
     private String publicAppBaseUrl;
 
-    public AuthController(AuthService authService, RecaptchaService recaptchaService) {
+    public AuthController(AuthService authService, RecaptchaService recaptchaService, LoginRiskService loginRiskService) {
         this.authService = authService;
         this.recaptchaService = recaptchaService;
+        this.loginRiskService = loginRiskService;
     }
 
     @GetMapping("/captcha-config")
@@ -99,6 +103,11 @@ public class AuthController {
     @PostMapping("/signin")
     public AuthResponse signin(@Valid @RequestBody LoginRequest request) {
         return authService.signin(request);
+    }
+
+    @PostMapping("/login-risk")
+    public LoginRiskResponse loginRisk(@Valid @RequestBody LoginRequest request) {
+        return loginRiskService.analyze(request);
     }
 
     /** GET /api/auth/signin → redirect to SPA sign-in page. */

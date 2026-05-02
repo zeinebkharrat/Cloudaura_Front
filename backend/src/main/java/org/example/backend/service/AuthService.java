@@ -39,6 +39,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Date;
 import java.util.ArrayList;
@@ -61,6 +63,7 @@ public class AuthService {
     private static final long LOGIN_LOCK_DURATION_MS = 15 * 60 * 1000L;
     private static final long EMAIL_VERIFICATION_EXPIRATION_MS = 24 * 60 * 60 * 1000L;
     private static final long RESET_PASSWORD_EXPIRATION_MS = 30 * 60 * 1000L;
+    private static final DateTimeFormatter LOGIN_LOCK_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
     private static final String TOKEN_TYPE_EMAIL_VERIFICATION = "EMAIL_VERIFICATION";
     private static final String TOKEN_TYPE_RESET_PASSWORD = "RESET_PASSWORD";
 
@@ -193,7 +196,7 @@ public class AuthService {
      * Read-only transaction keeps the persistence context open so {@link #toUserSummary(User)}
      * can initialize lazy associations ({@code city}, {@code level}) safely.
      */
-    @Transactional(readOnly = true)
+    @Transactional(noRollbackFor = ResponseStatusException.class)
     public AuthResponse signin(LoginRequest request) {
         Optional<User> candidate = findByIdentifier(request.identifier());
         candidate.ifPresent(this::ensureAccountNotLocked);
@@ -601,15 +604,22 @@ public class AuthService {
 
         if (attempts >= MAX_FAILED_ATTEMPTS) {
             user.setFailedLoginAttempts(0);
-            user.setLockedUntil(new Date(System.currentTimeMillis() + LOGIN_LOCK_DURATION_MS));
+            Date lockedUntil = new Date(System.currentTimeMillis() + LOGIN_LOCK_DURATION_MS);
+            user.setLockedUntil(lockedUntil);
             userRepository.save(user);
-            throw new ResponseStatusException(HttpStatus.LOCKED, "api.error.auth.account_locked_brute_force");
+            throw new ResponseStatusException(
+                    HttpStatus.LOCKED,
+                    "ui:Compte bloqué après 3 tentatives. Réessayez après " + formatLoginLockUntil(lockedUntil) + "."
+            );
         }
 
         user.setFailedLoginAttempts(attempts);
         userRepository.save(user);
         log.warn("Failed sign-in for user id={}, attempts={}", user.getUserId(), attempts);
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "api.error.auth.invalid_password");
+        throw new ResponseStatusException(
+                HttpStatus.UNAUTHORIZED,
+                "ui:Identifiant ou mot de passe invalide. Tentative " + attempts + " sur " + MAX_FAILED_ATTEMPTS + "."
+        );
     }
 
     private void ensureAccountNotLocked(User user) {
@@ -620,7 +630,10 @@ public class AuthService {
 
         Date now = new Date();
         if (lockedUntil.after(now)) {
-            throw new ResponseStatusException(HttpStatus.LOCKED, "api.error.auth.account_locked_temp");
+            throw new ResponseStatusException(
+                    HttpStatus.LOCKED,
+                    "ui:Compte temporairement bloqué jusqu’au " + formatLoginLockUntil(lockedUntil) + "."
+            );
         }
 
         user.setLockedUntil(null);
@@ -641,7 +654,10 @@ public class AuthService {
             return;
         }
         if (!Boolean.TRUE.equals(user.getEmailVerified())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "api.error.auth.email_unverified");
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "ui:Votre adresse e-mail n’est pas vérifiée. Consultez votre boîte de réception pour activer le compte."
+            );
         }
     }
 
@@ -707,6 +723,16 @@ public class AuthService {
                 || normalized.equals("tunisie")
                 || normalized.equals("tunisien")
                 || normalized.equals("tunisienne");
+    }
+
+    private String formatLoginLockUntil(Date date) {
+        if (date == null) {
+            return "bientôt";
+        }
+        return date.toInstant()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDateTime()
+                .format(LOGIN_LOCK_FORMATTER);
     }
 
     private User currentUser() {

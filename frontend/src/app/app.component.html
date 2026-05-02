@@ -1,5 +1,5 @@
 @if (!isAdminArea()) {
-<nav class="navbar animate-in" [class.navbar--scrolled]="isScrolled()" [class.navbar--overlay]="isHeroRoute() && !isScrolled()" [class.navbar--mobile-open]="isMobileNavOpen()">
+<nav class="navbar animate-in" [class.navbar--scrolled]="isScrolled() || isNavbarTourActive()" [class.navbar--overlay]="isHeroRoute() && !isScrolled() && !isNavbarTourActive()" [class.navbar--mobile-open]="isMobileNavOpen()">
   <div class="logo">
     <a routerLink="/" class="logo-link" aria-label="Yalla TN — home">
       <img
@@ -189,7 +189,7 @@
               @if (notificationsBusy()) {
                 <p class="empty-msg">Loading notifications...</p>
               } @else if (reservationNotifications().length === 0) {
-                <p class="empty-msg">No reservation notifications for this account yet.</p>
+                <p class="empty-msg">No notifications for this account yet.</p>
               } @else {
                 <div class="notif-list">
                   @for (n of reservationNotifications(); track n.notificationId) {
